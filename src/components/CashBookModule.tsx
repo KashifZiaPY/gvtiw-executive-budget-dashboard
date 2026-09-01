@@ -33,7 +33,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({ darkMode }) => {
   const [activeAccountKey, setActiveAccountKey] = useState<BankAccountKey>('NS');
   const [cashBookStates] = useState<Record<BankAccountKey, CashBookAccountState>>(INITIAL_CASHBOOK_STATES);
   const [searchTerm, setSearchTerm] = useState('');
-  const [periodFilter, setPeriodFilter] = useState<'ALL' | 'JUL' | 'AUG' | 'Q1' | 'CUSTOM'>('ALL');
+  const [periodFilter, setPeriodFilter] = useState<'ALL' | 'JUL' | 'AUG' | 'SEP' | 'Q1' | 'Q2' | 'CUSTOM'>('ALL');
   const [customFromDate, setCustomFromDate] = useState('');
   const [customToDate, setCustomToDate] = useState('');
   const [selectedVoucherForPAF, setSelectedVoucherForPAF] = useState<MasterVoucher | null>(null);
@@ -45,9 +45,13 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({ darkMode }) => {
     if (!currentAccount) return [];
     return currentAccount.entries.filter((entry) => {
       // Period filter
-      if (periodFilter === 'JUL' && !entry.month.toLowerCase().includes('jul')) return false;
-      if (periodFilter === 'AUG' && !entry.month.toLowerCase().includes('aug')) return false;
-      if (periodFilter === 'Q1' && !['july', 'august', 'september'].some((m) => entry.month.toLowerCase().includes(m))) return false;
+      const m = (entry.month || '').toLowerCase();
+      const d = (entry.date || '').toLowerCase();
+      if (periodFilter === 'JUL' && !m.includes('jul') && !d.includes('jul')) return false;
+      if (periodFilter === 'AUG' && !m.includes('aug') && !d.includes('aug')) return false;
+      if (periodFilter === 'SEP' && !m.includes('sep') && !d.includes('sep') && !d.includes('-09-') && !d.includes('/09/')) return false;
+      if (periodFilter === 'Q1' && !['jul', 'aug', 'sep'].some((term) => m.includes(term) || d.includes(term))) return false;
+      if (periodFilter === 'Q2' && !['oct', 'nov', 'dec'].some((term) => m.includes(term) || d.includes(term))) return false;
       if (periodFilter === 'CUSTOM' && (customFromDate || customToDate)) {
         const entryTs = new Date(entry.date).getTime();
         if (customFromDate && entryTs < new Date(customFromDate).getTime()) return false;
@@ -312,7 +316,9 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({ darkMode }) => {
               <option value="ALL">📅 All FY 2026-27</option>
               <option value="JUL">July 2026</option>
               <option value="AUG">August 2026</option>
+              <option value="SEP">September 2026</option>
               <option value="Q1">Quarter 1 (Jul-Sep 2026)</option>
+              <option value="Q2">Quarter 2 (Oct-Dec 2026)</option>
               <option value="CUSTOM">Custom Date Range...</option>
             </select>
           </div>

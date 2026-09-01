@@ -1,10 +1,10 @@
 import { AccountHead, CategoryType, VoucherTransaction, AuditLogEntry } from '../types';
 
-export const SCRIPT_VERSION = 'v3.3+ Enterprise Suite (Clean CashBook Folios)';
+export const SCRIPT_VERSION = 'v3.4+ Enterprise Suite (September Support)';
 export const INSTITUTE_NAME = 'GOVT. VOCATIONAL TRAINING INSTITUTE (W) SAMANABAD, FAISALABAD';
 export const REPORT_TITLE = 'EXECUTIVE BUDGET POSITION & FINANCIAL MANAGEMENT DASHBOARD';
 export const FINANCIAL_YEAR = 'FINANCIAL YEAR 2026-27';
-export const DEV_WATERMARK = 'Developed by MKZ for Institute:33028 (v3.3)';
+export const DEV_WATERMARK = 'Developed by MKZ for Institute:33028 (v3.4)';
 export const SOURCE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1wU3zS6BSrCJuFqio8Az7sKkCcwuTOSeJ8GRW7FhCRls/edit?gid=240736415#gid=240736415';
 export const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwe-6OGK3AcRp8KEpSRgEYzbdikHKY32W3TAnmfnBrTXmE-28nxqsLp5kcz9t7Mzz3WvA/exec';
 export const DEFAULT_GVTIW_LOGO = '/gvtiw-logo.jpg';
