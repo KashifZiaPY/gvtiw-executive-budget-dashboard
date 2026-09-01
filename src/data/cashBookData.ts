@@ -1,7 +1,7 @@
 // =============================================================
 // INSTITUTIONAL CASHBOOK & VOUCHER SYSTEM DATA MODELS (v3.14 Aligned)
 // Government Vocational Training Institute (W) Samanabad, Faisalabad
-// 100% Authentic Source-Synchronized (All 6 Accounts & 37 Master Vouchers)
+// 100% Authentic Source-Synchronized (All 6 Accounts & 38 Master Vouchers)
 // =============================================================
 
 export type BankAccountKey = 'NS' | 'PF' | 'FC' | 'SC' | 'SEC' | 'AA';
@@ -48,39 +48,7 @@ export interface CashBookAccountState {
   closingBalance: number;
   unpresentedChequesTotal: number;
   reconciledBankBalance: number;
-  entries: CashBookEntry[  {
-    srNo: 38,
-    voucherNo: 'AA-SEP26-001',
-    payeeName: 'M/S FESCO (Electricity Bill)',
-    ntnCnic: 'Govt Utility',
-    billNo: 'Ref# 13132130885109',
-    billDate: '01-Sep-2026',
-    chequeNo: 'AAA',
-    chequeDate: '01-Sep-2026',
-    bankAccount: 'AA',
-    accountHead: 'A03303-ELECTRICITY CHARGES',
-    majorHead: 'A033-Utilities',
-    grossAmount: 137325,
-    salesTaxPra: 0,
-    incomeTaxDeduction: 0,
-    otherDeductions: 0,
-    netPayable: 137325,
-    status: 'PAID',
-    sanctionDate: '01-Sep-2026',
-    description: 'FESCO Electricity Bill Aug 2026 with Original Due Date 04-09-2026 paid via Assan Assignment Account',
-    claimants: [
-      {
-        description: 'FESCO Electricity Bill Aug 2026 (Ref# 13132130885109)',
-        quantity: 1,
-        rate: 137325,
-        grossAmount: 137325,
-        praTax: 0,
-        incomeTax: 0,
-        netAmount: 137325,
-      },
-    ],
-  },
-];
+  entries: CashBookEntry[];
 }
 
 export interface MasterVoucher {
@@ -101,7 +69,7 @@ export interface MasterVoucher {
   chequeNoIncomeTax: string;
   billAmountGross: number;
   description: string;
-  entryStatus: 'New' | 'Updated' | 'Verified';
+  entryStatus: string;
   timestamp: string;
   bankAccount: string;
   preEntryBalance: number;
@@ -1913,6 +1881,30 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
 
     }
 
+,
+    {
+        "srNo": 38,
+        "voucherNo": "AA-SEP26-001",
+        "payeeName": "FESCO",
+        "ntnCnic": "Govt Utility",
+        "billNo": "Ref# 13132130885109",
+        "billDate": "01-Sep-2026",
+        "chequeNoNet": "AAA",
+        "chequeDate": "01-Sep-2026",
+        "chequeAmountNet": 137325,
+        "accountHead": "A03303-ELECTRICITY CHARGES",
+        "gstAmount": 0,
+        "praAmount": 0,
+        "chequeNoPra": "0.0",
+        "incomeTaxAmount": 0,
+        "chequeNoIncomeTax": "0.0",
+        "billAmountGross": 137325,
+        "description": "FESCO Bill Ref# 13132130885109 Aug 2026 with Original Due Date 04-09-2026",
+        "entryStatus": "New",
+        "timestamp": "01-Sep-2026",
+        "bankAccount": "Assan Assignment Account (AA)",
+        "preEntryBalance": 385521
+    }
 ]
 
 ;
