@@ -48,7 +48,39 @@ export interface CashBookAccountState {
   closingBalance: number;
   unpresentedChequesTotal: number;
   reconciledBankBalance: number;
-  entries: CashBookEntry[];
+  entries: CashBookEntry[  {
+    srNo: 38,
+    voucherNo: 'AA-SEP26-001',
+    payeeName: 'M/S FESCO (Electricity Bill)',
+    ntnCnic: 'Govt Utility',
+    billNo: 'Ref# 13132130885109',
+    billDate: '01-Sep-2026',
+    chequeNo: 'AAA',
+    chequeDate: '01-Sep-2026',
+    bankAccount: 'AA',
+    accountHead: 'A03303-ELECTRICITY CHARGES',
+    majorHead: 'A033-Utilities',
+    grossAmount: 137325,
+    salesTaxPra: 0,
+    incomeTaxDeduction: 0,
+    otherDeductions: 0,
+    netPayable: 137325,
+    status: 'PAID',
+    sanctionDate: '01-Sep-2026',
+    description: 'FESCO Electricity Bill Aug 2026 with Original Due Date 04-09-2026 paid via Assan Assignment Account',
+    claimants: [
+      {
+        description: 'FESCO Electricity Bill Aug 2026 (Ref# 13132130885109)',
+        quantity: 1,
+        rate: 137325,
+        grossAmount: 137325,
+        praTax: 0,
+        incomeTax: 0,
+        netAmount: 137325,
+      },
+    ],
+  },
+];
 }
 
 export interface MasterVoucher {
@@ -3709,10 +3741,10 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
     meta: INSTITUTIONAL_BANK_ACCOUNTS.AA,
     openingBalance: 0,
     totalReceipts: 508831,
-    totalPayments: 123310,
-    closingBalance: 385521,
+    totalPayments: 260635,
+    closingBalance: 248196,
     unpresentedChequesTotal: 0,
-    reconciledBankBalance: 385521,
+    reconciledBankBalance: 248196,
     entries: [
 
     {
@@ -4193,6 +4225,22 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
 
         "entryType":  "RECEIPT"
 
+    },
+    {
+        "id": "AA-E21",
+        "srNo": 16,
+        "date": "01-Sep-2026",
+        "month": "September",
+        "vNo": "40",
+        "voucherSerial": "AA-SEP26-001",
+        "particulars": "FESCO Bill Ref# 13132130885109 Aug 2026 with Original Due Date 04-09-2026",
+        "paidToBy": "FESCO",
+        "accountHead": "A03303-ELECTRICITY CHARGES",
+        "chequeNo": "AAA",
+        "receipts": 0,
+        "payments": 137325,
+        "runningBalance": 248196,
+        "entryType": "PAYMENT"
     }
 
 ],
