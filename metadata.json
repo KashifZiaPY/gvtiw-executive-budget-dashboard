@@ -1,0 +1,6 @@
+{
+  "name": "GVTIW Executive Budget Position Dashboard",
+  "description": "Enterprise financial management and real-time executive budget position dashboard for GVTIW Samanabad Faisalabad (Institute:33028).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

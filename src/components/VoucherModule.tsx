@@ -1,0 +1,391 @@
+import React, { useState, useMemo } from 'react';
+import { MasterVoucher, INITIAL_MASTER_VOUCHERS, INSTITUTIONAL_BANK_ACCOUNTS, BankAccountKey } from '../data/cashBookData';
+import { PaymentApprovalForm } from './PaymentApprovalForm';
+import { formatPKR } from '../lib/formatters';
+import {
+  Search,
+  Filter,
+  FileText,
+  Printer,
+  Download,
+  Eye,
+  CreditCard,
+  Building2,
+  Calendar,
+  Layers,
+  ArrowUpDown,
+  FileSpreadsheet,
+} from 'lucide-react';
+
+interface VoucherModuleProps {
+  darkMode: boolean;
+}
+
+export const VoucherModule: React.FC<VoucherModuleProps> = ({ darkMode }) => {
+  const [vouchers] = useState<MasterVoucher[]>(INITIAL_MASTER_VOUCHERS);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('ALL');
+  const [selectedVoucherForPAF, setSelectedVoucherForPAF] = useState<MasterVoucher | null>(null);
+
+  // Sorting
+  const [sortBy, setSortBy] = useState<'srNo' | 'amount' | 'date'>('srNo');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Filtered & Sorted vouchers
+  const filteredVouchers = useMemo(() => {
+    return vouchers
+      .filter((v) => {
+        if (selectedAccountFilter !== 'ALL' && !v.bankAccount.includes(selectedAccountFilter)) {
+          return false;
+        }
+        if (searchTerm) {
+          const t = searchTerm.toLowerCase();
+          const matchesNo = v.voucherNo.toLowerCase().includes(t);
+          const matchesPayee = v.payeeName.toLowerCase().includes(t);
+          const matchesHead = v.accountHead.toLowerCase().includes(t);
+          const matchesDesc = v.description.toLowerCase().includes(t);
+          const matchesCheque = v.chequeNoNet.toLowerCase().includes(t);
+          const matchesNtn = v.ntnCnic.toLowerCase().includes(t);
+          if (!matchesNo && !matchesPayee && !matchesHead && !matchesDesc && !matchesCheque && !matchesNtn) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        let diff = 0;
+        if (sortBy === 'srNo') diff = a.srNo - b.srNo;
+        else if (sortBy === 'amount') diff = a.chequeAmountNet - b.chequeAmountNet;
+        else if (sortBy === 'date') diff = new Date(a.chequeDate).getTime() - new Date(b.chequeDate).getTime();
+        return sortOrder === 'asc' ? diff : -diff;
+      });
+  }, [vouchers, searchTerm, selectedAccountFilter, sortBy, sortOrder]);
+
+  // Aggregate Metrics
+  const totalGrossClaimed = useMemo(() => vouchers.reduce((sum, v) => sum + v.billAmountGross, 0), [vouchers]);
+  const totalNetDisbursed = useMemo(() => vouchers.reduce((sum, v) => sum + v.chequeAmountNet, 0), [vouchers]);
+  const totalPraTax = useMemo(() => vouchers.reduce((sum, v) => sum + v.praAmount, 0), [vouchers]);
+  const totalIncomeTax = useMemo(() => vouchers.reduce((sum, v) => sum + v.incomeTaxAmount, 0), [vouchers]);
+
+  // Export CSV
+  const handleExportCSV = () => {
+    const headers = [
+      'Sr No',
+      'Voucher No',
+      'Payee Name',
+      'NTN/CNIC',
+      'Bill No',
+      'Bill Date',
+      'Account Head',
+      'Bill Gross Amount',
+      'Net Cheque No',
+      'Net Cheque Amount',
+      'PRA Tax Amount',
+      'PRA Cheque No',
+      'Income Tax Amount',
+      'Income Tax Cheque No',
+      'Narration',
+      'Bank Account',
+    ];
+
+    const rows = filteredVouchers.map((v) => [
+      v.srNo,
+      `"${v.voucherNo}"`,
+      `"${v.payeeName}"`,
+      `"${v.ntnCnic}"`,
+      `"${v.billNo}"`,
+      v.billDate,
+      `"${v.accountHead}"`,
+      v.billAmountGross,
+      `"${v.chequeNoNet}"`,
+      v.chequeAmountNet,
+      v.praAmount,
+      `"${v.chequeNoPra}"`,
+      v.incomeTaxAmount,
+      `"${v.chequeNoIncomeTax}"`,
+      `"${v.description.replace(/"/g, '""')}"`,
+      `"${v.bankAccount}"`,
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `GVTIW_Master_Vouchers_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="space-y-6">
+      
+      {/* ------------------------------------------------------------- */}
+      {/* 1. TOP SUMMARY BANNER & METRIC CARDS                           */}
+      {/* ------------------------------------------------------------- */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        
+        {/* Total Vouchers Recorded */}
+        <div className={`p-4 rounded-xl border transition-all ${
+          darkMode ? 'bg-[#0B132B] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+        }`}>
+          <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase mb-1">
+            <span>Total Vouchers</span>
+            <FileSpreadsheet className="w-4 h-4 text-blue-400" />
+          </div>
+          <p className="text-xl sm:text-2xl font-black font-mono text-blue-400">
+            {vouchers.length} <span className="text-xs font-normal text-slate-400">Entries</span>
+          </p>
+          <p className="text-[11px] text-slate-400 mt-1">Master Registry FY 2026-27</p>
+        </div>
+
+        {/* Net Cheques Disbursed */}
+        <div className={`p-4 rounded-xl border transition-all ${
+          darkMode ? 'bg-[#0B132B] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+        }`}>
+          <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase mb-1">
+            <span>Net Paid via Cheques</span>
+            <CreditCard className="w-4 h-4 text-emerald-400" />
+          </div>
+          <p className="text-xl sm:text-2xl font-black font-mono text-emerald-400">
+            {formatPKR(totalNetDisbursed, false)}
+          </p>
+          <p className="text-[11px] text-slate-400 mt-1">Direct Vendor Net Disbursed</p>
+        </div>
+
+        {/* PRA Punjab Sales Tax Deducted */}
+        <div className={`p-4 rounded-xl border transition-all ${
+          darkMode ? 'bg-[#0B132B] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+        }`}>
+          <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase mb-1">
+            <span>PRA Tax Deductions</span>
+            <Building2 className="w-4 h-4 text-amber-400" />
+          </div>
+          <p className="text-xl sm:text-2xl font-black font-mono text-amber-400">
+            {formatPKR(totalPraTax, false)}
+          </p>
+          <p className="text-[11px] text-slate-400 mt-1">Dedicated PRA Cheques Drawn</p>
+        </div>
+
+        {/* Withholding Income Tax Deducted */}
+        <div className={`p-4 rounded-xl border transition-all ${
+          darkMode ? 'bg-[#0B132B] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+        }`}>
+          <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase mb-1">
+            <span>Income Tax (WHT)</span>
+            <Building2 className="w-4 h-4 text-rose-400" />
+          </div>
+          <p className="text-xl sm:text-2xl font-black font-mono text-rose-400">
+            {formatPKR(totalIncomeTax, false)}
+          </p>
+          <p className="text-[11px] text-slate-400 mt-1">Federal Tax FBR Deductions</p>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* 2. SEARCH & ACCOUNT FILTER BAR                                 */}
+      {/* ------------------------------------------------------------- */}
+      <div className={`p-4 rounded-xl border flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 ${
+        darkMode ? 'bg-[#0F1D3B] border-slate-700/90 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-sm'
+      }`}>
+        {/* Search Input */}
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by Voucher# (NS-JUL26-001), Payee, Head, Cheque#, or Narration..."
+            className={`w-full pl-9 pr-3 py-2 text-xs rounded-lg border outline-none transition-all ${
+              darkMode
+                ? 'bg-slate-900/90 border-slate-700 text-white placeholder-slate-500 focus:border-blue-400'
+                : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-blue-600'
+            }`}
+          />
+        </div>
+
+        {/* Bank Account Filter Dropdown */}
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedAccountFilter}
+            onChange={(e) => setSelectedAccountFilter(e.target.value)}
+            className={`px-3 py-2 text-xs rounded-lg border outline-none font-medium cursor-pointer transition-all ${
+              darkMode
+                ? 'bg-slate-900 border-slate-700 text-slate-200'
+                : 'bg-slate-50 border-slate-300 text-slate-800'
+            }`}
+          >
+            <option value="ALL">All Bank Accounts ({vouchers.length})</option>
+            <option value="Non Salary">Non-Salary Account</option>
+            <option value="Pupil Funds">Pupil Funds Account</option>
+            <option value="Short Course">Short Course Account</option>
+            <option value="AAA">AAA Revolving Account</option>
+            <option value="Fee Collection">Fee Collection Account</option>
+            <option value="Securities">Securities Account</option>
+          </select>
+
+          {/* Export CSV */}
+          <button
+            onClick={handleExportCSV}
+            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 border border-slate-700 shadow-xs transition-all cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-blue-400" />
+            <span className="hidden sm:inline">Export CSV</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* 3. MASTER VOUCHER TABLE                                        */}
+      {/* ------------------------------------------------------------- */}
+      <div className={`rounded-xl border overflow-hidden shadow-xl ${
+        darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-300'
+      }`}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs text-left border-collapse min-w-[1050px]">
+            <thead className="bg-slate-900 text-white font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-800">
+              <tr>
+                <th className="py-3 px-2 text-center w-14 border-r border-slate-800">Sr.#</th>
+                <th className="py-3 px-3 border-r border-slate-800">Voucher No.</th>
+                <th className="py-3 px-3 border-r border-slate-800">Payee & Bill Particulars</th>
+                <th className="py-3 px-3 border-r border-slate-800">Budget Account Head</th>
+                <th className="py-3 px-3 text-right border-r border-slate-800">Gross (PKR)</th>
+                <th className="py-3 px-3 text-center border-r border-slate-800">Net Cheque #</th>
+                <th className="py-3 px-3 text-right border-r border-slate-800">Net Paid (PKR)</th>
+                <th className="py-3 px-3 text-center border-r border-slate-800">Tax Deductions</th>
+                <th className="py-3 px-3 text-center">Action / Sanction</th>
+              </tr>
+            </thead>
+            <tbody className={`divide-y font-sans ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
+              {filteredVouchers.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center text-slate-500 italic">
+                    No matching vouchers found in Master Registry.
+                  </td>
+                </tr>
+              ) : (
+                filteredVouchers.map((v, idx) => {
+                  const isEven = idx % 2 === 0;
+                  const hasPra = v.praAmount > 0;
+                  const hasWht = v.incomeTaxAmount > 0;
+
+                  return (
+                    <tr
+                      key={v.voucherNo}
+                      className={`transition-colors hover:bg-blue-500/10 ${
+                        isEven
+                          ? darkMode
+                            ? 'bg-[#0B132B]'
+                            : 'bg-white'
+                          : darkMode
+                          ? 'bg-[#070E20]'
+                          : 'bg-slate-50/70'
+                      }`}
+                    >
+                      {/* Sr.# */}
+                      <td className="py-3 px-2 text-center font-mono font-bold text-slate-400 border-r border-slate-700/50">
+                        {v.srNo}
+                      </td>
+
+                      {/* Voucher Serial & Date */}
+                      <td className="py-3 px-3 border-r border-slate-700/50">
+                        <span className="font-extrabold font-mono text-blue-400 block text-xs">
+                          {v.voucherNo}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block font-mono">
+                          {v.chequeDate || v.billDate}
+                        </span>
+                      </td>
+
+                      {/* Payee Particulars */}
+                      <td className="py-3 px-3 border-r border-slate-700/50">
+                        <span className={`font-bold block ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                          {v.payeeName}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block line-clamp-1 italic" title={v.description}>
+                          {v.description}
+                        </span>
+                        <div className="flex items-center gap-2 text-[9px] text-slate-500 font-mono mt-0.5">
+                          {v.ntnCnic && <span>NTN: {v.ntnCnic}</span>}
+                          {v.billNo && <span>Bill#: {v.billNo}</span>}
+                        </div>
+                      </td>
+
+                      {/* Account Head */}
+                      <td className="py-3 px-3 border-r border-slate-700/50">
+                        <span className={`font-bold text-[11px] block line-clamp-1 ${darkMode ? 'text-amber-300' : 'text-blue-900'}`} title={v.accountHead}>
+                          {v.accountHead}
+                        </span>
+                        <span className="text-[10px] text-slate-400 block truncate">
+                          {v.bankAccount.replace('Payment of ', '').replace(' For 2026-2027', '')}
+                        </span>
+                      </td>
+
+                      {/* Gross Amount */}
+                      <td className="py-3 px-3 text-right font-mono font-bold text-slate-400 border-r border-slate-700/50">
+                        {formatPKR(v.billAmountGross, false)}
+                      </td>
+
+                      {/* Net Cheque # */}
+                      <td className="py-3 px-3 text-center font-mono font-bold text-slate-300 border-r border-slate-700/50 text-[11px]">
+                        {v.chequeNoNet}
+                      </td>
+
+                      {/* Net Paid Amount */}
+                      <td className="py-3 px-3 text-right font-mono font-black text-emerald-400 border-r border-slate-700/50 text-xs">
+                        {formatPKR(v.chequeAmountNet, false)}
+                      </td>
+
+                      {/* Tax Deductions Column */}
+                      <td className="py-3 px-3 text-center border-r border-slate-700/50">
+                        {hasPra || hasWht ? (
+                          <div className="flex flex-col items-center gap-0.5 text-[10px] font-mono">
+                            {hasWht && (
+                              <span className="text-rose-400 font-bold">
+                                WHT: {formatPKR(v.incomeTaxAmount, false)}
+                              </span>
+                            )}
+                            {hasPra && (
+                              <span className="text-amber-400 font-bold">
+                                PRA: {formatPKR(v.praAmount, false)}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-slate-500 font-mono">Nil (0)</span>
+                        )}
+                      </td>
+
+                      {/* Action Button: View / Print PAF */}
+                      <td className="py-3 px-3 text-center">
+                        <button
+                          onClick={() => setSelectedVoucherForPAF(v)}
+                          className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] rounded-lg shadow-sm flex items-center justify-center gap-1 mx-auto transition-all cursor-pointer"
+                        >
+                          <FileText className="w-3 h-3 text-amber-300" />
+                          <span>View PAF</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* 4. MODAL: PAYMENT APPROVAL FORM (PAF) POPUP                    */}
+      {/* ------------------------------------------------------------- */}
+      {selectedVoucherForPAF && (
+        <PaymentApprovalForm
+          voucher={selectedVoucherForPAF}
+          onClose={() => setSelectedVoucherForPAF(null)}
+          isModal={true}
+        />
+      )}
+
+    </div>
+  );
+};

@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    @apply antialiased selection:bg-blue-600 selection:text-white;
+  }
+}
+
+/* Custom sleek scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.5);
+  border-radius: 9999px;
+  border: 2px solid rgba(15, 23, 42, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.8);
+}
+
+/* Always-visible horizontal scrollbar for mobile and table containers */
+.table-scrollbar-always-visible {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59, 130, 246, 0.6) rgba(15, 23, 42, 0.4);
+}
+
+.table-scrollbar-always-visible::-webkit-scrollbar {
+  height: 12px;
+  display: block !important;
+}
+
+.table-scrollbar-always-visible::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 6px;
+  margin: 0 4px;
+}
+
+.table-scrollbar-always-visible::-webkit-scrollbar-thumb {
+  background: #2563EB;
+  border-radius: 6px;
+  border: 2px solid #0F172A;
+}
+
+.table-scrollbar-always-visible::-webkit-scrollbar-thumb:hover {
+  background: #3B82F6;
+}
+
+/* Official Print Isolation Styles */
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+  nav, footer, .print-hidden {
+    display: none !important;
+  }
+  @page {
+    size: auto;
+    margin: 8mm;
+  }
+}
+
