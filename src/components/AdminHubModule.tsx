@@ -268,30 +268,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
     }
   };
 
-  // Submit New Voucher
-  const handleSubmitNewVoucher = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const netAmount = formGrossAmount - (formIncomeTax + formPra + formGst);
-
-    await triggerAppScriptCommand('submitNewVoucher', {
-      bankAccount: formAccount,
-      payeeName: formPayee,
-      ntnCnic: formNtn,
-      billNo: formBillNo,
-      billDate: formBillDate,
-      accountHead: formHead,
-      grossAmount: formGrossAmount,
-      incomeTax: formIncomeTax,
-      praAmount: formPra,
-      gstAmount: formGst,
-      netAmount: netAmount,
-      chequeNo: formChequeNo,
-      description: formDescription,
-    });
-
-    setIsNewVoucherModalOpen(false);
-    alert(`✅ Voucher recorded successfully!\nPayee: ${formPayee}\nGross Amount: Rs. ${formGrossAmount.toLocaleString()}\nNet Cheque: Rs. ${netAmount.toLocaleString()}`);
-  };
+// handleSubmitNewVoucher replaced by handleSaveNewVoucherFromModal
 
   // Submit Bank Charge (aligned with saveBankChargeServer)
   const handleSubmitBankCharge = async (e: React.FormEvent) => {
@@ -523,7 +500,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
             </button>
 
             <button
-              onClick={() => triggerAppScriptCommand('refreshAccountHeadsSummaryPrompt')}
+              onClick={() => triggerAppScriptCommand('refreshAccountHeadsSummary')}
               className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
             >
               <span>♻️ Refresh Account Heads Summary</span>
@@ -564,7 +541,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
             </div>
 
             <button
-              onClick={() => triggerAppScriptCommand('rePostCashbookPrompt', { srNo: actionParamSr })}
+              onClick={() => triggerAppScriptCommand('rePostCashbook', { srNo: actionParamSr })}
               className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
             >
               <span>🔄 Re-post to Cashbook (by Sr.#)</span>
@@ -577,6 +554,24 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
             >
               <span>🏦 Record Direct Bank Charge</span>
               <Building className="w-3.5 h-3.5 text-amber-400" />
+            </button>
+
+            <button
+              onClick={() => triggerAppScriptCommand('sortCashbookByDate')}
+              className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
+              title="Sort all 6 cashbooks chronologically by date"
+            >
+              <span>🔀 Sort Cashbooks by Date</span>
+              <RefreshCw className="w-3.5 h-3.5 text-blue-400" />
+            </button>
+
+            <button
+              onClick={() => triggerAppScriptCommand('exportVoucherPdf', { srNo: actionParamSr })}
+              className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
+              title="Generate 2-page A4 Portrait Voucher PDF in Google Drive"
+            >
+              <span>🖨️ Print Voucher PDF (Sr.#)</span>
+              <Play className="w-3.5 h-3.5 text-emerald-400" />
             </button>
           </div>
         </div>
@@ -607,13 +602,20 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
 
-            <button
-              onClick={() => triggerAppScriptCommand('enableDailyBackup')}
-              className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
-            >
-              <span>🟢 Enable Daily 4 PM Backup Trigger</span>
-              <CheckCircle2 className="w-3.5 h-3.5" />
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => triggerAppScriptCommand('enableDailyBackup')}
+                className="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold rounded-xl flex items-center justify-center gap-1 border border-slate-700 transition-all cursor-pointer text-[11px]"
+              >
+                <span>🟢 Enable (4 PM)</span>
+              </button>
+              <button
+                onClick={() => triggerAppScriptCommand('disableDailyBackup')}
+                className="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 text-rose-400 font-bold rounded-xl flex items-center justify-center gap-1 border border-slate-700 transition-all cursor-pointer text-[11px]"
+              >
+                <span>🔴 Disable Backup</span>
+              </button>
+            </div>
           </div>
         </div>
 

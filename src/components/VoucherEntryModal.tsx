@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { MasterVoucher } from '../data/cashBookData';
 import { MASTER_PAYEE_LIST, MASTER_ACCOUNT_HEADS, PayeeRecord } from '../data/voucherMasterLists';
 import { formatPKR } from '../lib/formatters';
-import { X, CheckCircle, AlertCircle, Building2, Receipt, Landmark, FileSpreadsheet, Search } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Building2, Receipt, Landmark, FileSpreadsheet, Search, ChevronDown } from 'lucide-react';
 
 interface VoucherEntryModalProps {
   isOpen: boolean;
