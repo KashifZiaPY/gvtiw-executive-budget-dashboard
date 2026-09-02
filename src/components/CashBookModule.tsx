@@ -177,7 +177,142 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({ darkMode }) => {
   };
 
   const handlePrint = () => {
-    window.print();
+    if (!currentAccount) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      window.print();
+      return;
+    }
+
+    const rowsHtml = filteredEntries.map((e) => `
+      <tr>
+        <td style="text-align:center; padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold;">${e.srNo}</td>
+        <td style="padding: 4px 6px; border: 1px solid #cbd5e1; white-space: nowrap;">${e.date}</td>
+        <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">${e.month}</td>
+        <td style="text-align:center; padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold;">${e.vNo || '-'}</td>
+        <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">${e.particulars}</td>
+        <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: 600;">${e.paidToBy}</td>
+        <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-family: monospace; font-size: 10px;">${e.accountHead}</td>
+        <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-family: monospace; text-align: center;">${e.chequeNo || '-'}</td>
+        <td style="text-align:right; padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: 600; color: #047857;">${e.receipts > 0 ? Number(e.receipts).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
+        <td style="text-align:right; padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: 600; color: #be123c;">${e.payments > 0 ? Number(e.payments).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
+        <td style="text-align:right; padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; font-family: monospace;">${Number(e.runningBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+      </tr>
+    `).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>CashBook - ${currentAccount.meta.shortName} (FY 2026-27)</title>
+          <style>
+            @page { size: A4 landscape; margin: 8mm; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; font-size: 11px; }
+            .header-box { text-align: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; margin-bottom: 12px; }
+            .header-box h1 { font-size: 16px; margin: 0; text-transform: uppercase; color: #0f172a; font-weight: 900; }
+            .header-box h2 { font-size: 13px; margin: 3px 0 0 0; text-transform: uppercase; color: #1e3a8a; font-weight: 800; }
+            .header-box p { font-size: 10px; margin: 2px 0 0 0; color: #475569; font-weight: 600; font-family: monospace; }
+            .meta-strip { display: flex; justify-content: space-between; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; margin-bottom: 12px; font-size: 11px; font-weight: bold; }
+            .metrics-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; text-align: center; }
+            .metric-card { border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; background-color: #f8fafc; }
+            .metric-card span { display: block; font-size: 9px; text-transform: uppercase; color: #64748b; font-weight: bold; }
+            .metric-card strong { font-size: 13px; font-family: monospace; }
+            table { width: 100%; border-collapse: collapse; font-size: 10px; }
+            th { background-color: #0f172a; color: #ffffff; padding: 6px 4px; text-align: left; font-size: 9px; text-transform: uppercase; border: 1px solid #0f172a; }
+            .sig-box { margin-top: 35px; display: flex; justify-content: space-between; page-break-inside: avoid; }
+            .sig-col { text-align: center; width: 28%; border-top: 1px solid #475569; padding-top: 6px; }
+            .sig-col strong { display: block; font-size: 11px; }
+            .sig-col span { font-size: 10px; color: #475569; }
+          </style>
+        </head>
+        <body>
+          <div class="header-box">
+            <p>TECHNICAL EDUCATION & VOCATIONAL TRAINING AUTHORITY • GOVERNMENT OF PUNJAB</p>
+            <h1>GOVT. VOCATIONAL TRAINING INSTITUTE FOR WOMEN SAMANABAD, FAISALABAD</h1>
+            <h2>OFFICIAL CASH BOOK FOLIO — FY 2026-2027</h2>
+            <p>${currentAccount.meta.fullName} • A/C NO: ${currentAccount.meta.accountNo} (${currentAccount.meta.bankName})</p>
+          </div>
+
+          <div class="meta-strip">
+            <div><span>Account: </span>${currentAccount.meta.shortName} (${currentAccount.meta.code})</div>
+            <div><span>Period Filter: </span>${periodFilter === 'ALL' ? 'Complete FY 2026-27' : periodFilter}</div>
+            <div><span>Total Records: </span>${filteredEntries.length}</div>
+            <div><span>Printed Date: </span>${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
+          </div>
+
+          <div class="metrics-strip">
+            <div class="metric-card">
+              <span>1. Opening Balance</span>
+              <strong style="color: #1e3a8a;">Rs. ${Number(currentAccount.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+            </div>
+            <div class="metric-card">
+              <span>2. Total Receipts</span>
+              <strong style="color: #047857;">Rs. ${Number(currentAccount.totalReceipts).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+            </div>
+            <div class="metric-card">
+              <span>3. Total Payments</span>
+              <strong style="color: #be123c;">Rs. ${Number(currentAccount.totalPayments).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+            </div>
+            <div class="metric-card" style="background-color: #fef3c7; border-color: #f59e0b;">
+              <span style="color: #92400e;">4. Net Closing Balance</span>
+              <strong style="color: #b45309;">Rs. ${Number(currentAccount.closingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+            </div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 25px; text-align: center;">Sr#</th>
+                <th style="width: 65px;">Date</th>
+                <th style="width: 45px;">Month</th>
+                <th style="width: 35px; text-align: center;">V#</th>
+                <th>Particulars / Narration</th>
+                <th style="width: 120px;">Paid To / By</th>
+                <th style="width: 140px;">Budget Account Head</th>
+                <th style="width: 65px; text-align: center;">Cheque #</th>
+                <th style="width: 75px; text-align: right;">Receipts (Rs.)</th>
+                <th style="width: 75px; text-align: right;">Payments (Rs.)</th>
+                <th style="width: 85px; text-align: right;">Balance (Rs.)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="background-color: #f8fafc; font-weight: bold;">
+                <td style="text-align: center; border: 1px solid #cbd5e1;">-</td>
+                <td style="border: 1px solid #cbd5e1;">01-Jul-2026</td>
+                <td style="border: 1px solid #cbd5e1;">July</td>
+                <td style="text-align: center; border: 1px solid #cbd5e1;">-</td>
+                <td style="border: 1px solid #cbd5e1;" colspan="6">OPENING BALANCE BROUGHT FORWARD (FY 2026-27)</td>
+                <td style="text-align: right; border: 1px solid #cbd5e1; font-family: monospace;">${Number(currentAccount.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+              </tr>
+              ${rowsHtml}
+            </tbody>
+          </table>
+
+          <div class="sig-box">
+            <div class="sig-col">
+              <strong>Kashif Zia</strong>
+              <span>Prepared by: Accountant</span>
+            </div>
+            <div class="sig-col">
+              <strong>ANEEBA JAMIL</strong>
+              <span>Checked by: CO-Signatory</span>
+            </div>
+            <div class="sig-col">
+              <strong>SHAZIA KHADIM</strong>
+              <span>Approved by: Acting Principal / DDO</span>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    setTimeout(() => {
+      printWindow.focus();
+      printWindow.print();
+    }, 400);
   };
 
   return (
@@ -273,19 +408,6 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({ darkMode }) => {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
-            <button
-              onClick={handleSyncLive}
-              disabled={isSyncing}
-              className={`px-3 py-2 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
-                isSyncing
-                  ? 'bg-emerald-800 text-emerald-200 cursor-wait'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
-              }`}
-              title="Sync immediately from Live Google Spreadsheet"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-emerald-200 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Syncing...' : 'Sync Live Sheet'}</span>
-            </button>
             <button
               onClick={handleExportCSV}
               className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 border border-white/20 shadow-xs transition-all cursor-pointer"

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { MasterVoucher, INITIAL_MASTER_VOUCHERS, INSTITUTIONAL_BANK_ACCOUNTS, BankAccountKey } from '../data/cashBookData';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
+import { VoucherEntryModal } from './VoucherEntryModal';
 import { formatPKR } from '../lib/formatters';
 import {
   Search,
@@ -15,6 +16,8 @@ import {
   Layers,
   ArrowUpDown,
   FileSpreadsheet,
+  PlusCircle,
+  Edit3,
 } from 'lucide-react';
 
 interface VoucherModuleProps {
@@ -22,10 +25,45 @@ interface VoucherModuleProps {
 }
 
 export const VoucherModule: React.FC<VoucherModuleProps> = ({ darkMode }) => {
-  const [vouchers] = useState<MasterVoucher[]>(INITIAL_MASTER_VOUCHERS);
+  const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
+    try {
+      const cached = localStorage.getItem('gvtiw_live_vouchers_v1');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return INITIAL_MASTER_VOUCHERS;
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('ALL');
   const [selectedVoucherForPAF, setSelectedVoucherForPAF] = useState<MasterVoucher | null>(null);
+
+  // New & Amend Voucher Modal States
+  const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
+  const [voucherToAmend, setVoucherToAmend] = useState<MasterVoucher | null>(null);
+
+  const handleOpenNewEntry = () => {
+    setVoucherToAmend(null);
+    setIsEntryModalOpen(true);
+  };
+
+  const handleOpenAmend = (v: MasterVoucher) => {
+    setVoucherToAmend(v);
+    setIsEntryModalOpen(true);
+  };
+
+  const handleSaveVoucher = (savedVoucher: MasterVoucher, isAmend: boolean) => {
+    setVouchers((prev) => {
+      let updated: MasterVoucher[];
+      if (isAmend) {
+        updated = prev.map((v) => (v.srNo === savedVoucher.srNo ? savedVoucher : v));
+      } else {
+        updated = [savedVoucher, ...prev];
+      }
+      try {
+        localStorage.setItem('gvtiw_live_vouchers_v1', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
 
   // Sorting
   const [sortBy, setSortBy] = useState<'srNo' | 'amount' | 'date'>('srNo');
@@ -226,6 +264,13 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({ darkMode }) => {
 
           {/* Export CSV */}
           <button
+            onClick={handleOpenNewEntry}
+            className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+          >
+            <PlusCircle className="w-4 h-4 text-emerald-300" />
+            <span>New Voucher Entry</span>
+          </button>
+          <button
             onClick={handleExportCSV}
             className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 border border-slate-700 shadow-xs transition-all cursor-pointer"
           >
@@ -356,15 +401,26 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({ darkMode }) => {
                         )}
                       </td>
 
-                      {/* Action Button: View / Print PAF */}
+                      {/* Action Buttons: View PAF & Amend Voucher */}
                       <td className="py-3 px-3 text-center">
-                        <button
-                          onClick={() => setSelectedVoucherForPAF(v)}
-                          className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] rounded-lg shadow-sm flex items-center justify-center gap-1 mx-auto transition-all cursor-pointer"
-                        >
-                          <FileText className="w-3 h-3 text-amber-300" />
-                          <span>View PAF</span>
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => setSelectedVoucherForPAF(v)}
+                            className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] rounded-lg shadow-xs flex items-center gap-1 transition-all cursor-pointer"
+                            title="View & Print Official PAF (N'Sheet)"
+                          >
+                            <FileText className="w-3 h-3 text-amber-300" />
+                            <span>PAF</span>
+                          </button>
+                          <button
+                            onClick={() => handleOpenAmend(v)}
+                            className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-[10px] rounded-lg shadow-xs flex items-center gap-1 transition-all cursor-pointer"
+                            title="Amend / Edit Voucher in v3.14 Form"
+                          >
+                            <Edit3 className="w-3 h-3 text-white" />
+                            <span>Amend</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
