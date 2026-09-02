@@ -115,7 +115,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              📄 Page 1: PAF (N'Sheet) [B4:K49]
+              📄 Page 1: PAF (N&apos;Sheet) [B4:K49]
             </button>
             <button
               onClick={() => setPrintFormat('SANCTION')}

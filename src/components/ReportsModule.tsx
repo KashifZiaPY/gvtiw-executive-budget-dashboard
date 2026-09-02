@@ -318,8 +318,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({ darkMode }) => {
 
     const csvContent =
       'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map((r) => r.join(','))].join('
-');
+      [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -854,7 +853,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({ darkMode }) => {
             <Printer className="w-8 h-8 text-blue-400 mx-auto mb-2" />
             <h3 className="text-base font-black uppercase tracking-tight">Print Center & Document Retrieval</h3>
             <p className="text-xs text-slate-400 mt-0.5">
-              Retrieve official PAF (N'Sheet) [B4:K49] & Sanction Order XL [A1:H23] by Voucher Sr.#
+              Retrieve official PAF (N&apos;Sheet) [B4:K49] &amp; Sanction Order XL [A1:H23] by Voucher Sr.#
             </p>
           </div>
 
