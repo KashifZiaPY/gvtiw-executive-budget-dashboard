@@ -89,22 +89,26 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
     });
 
     // 2. Dispatch to Live Google Apps Script backend engine
+    // Field names strictly aligned with processVoucherDialog(data) in v3.14
     await triggerAppScriptCommand('submitNewVoucher', {
-      bankAccount: savedVoucher.bankAccount,
+      mode: isAmend ? 'amend' : 'new',
+      srNo: isAmend ? savedVoucher.srNo : null,
+      bankHead: savedVoucher.bankAccount,
       payeeName: savedVoucher.payeeName,
-      ntnCnic: savedVoucher.ntnCnic,
       billNo: savedVoucher.billNo,
       billDate: savedVoucher.billDate,
+      billAmtExclTax: savedVoucher.billAmtExclTax || savedVoucher.billAmountGross,
+      saleTax: savedVoucher.gstAmount || 0,
+      praTaxOnBill: savedVoucher.praTaxOnBill || 0,
+      chequeNoNet: savedVoucher.chequeNoNet,
+      chequeDateNet: savedVoucher.chequeDate,
+      chequeAmtNet: savedVoucher.chequeAmountNet,
+      chequeNoIncomeTax: savedVoucher.chequeNoIncomeTax || '0',
+      incomeTaxAmt: savedVoucher.incomeTaxAmount || 0,
+      chequeNoPRATax: savedVoucher.chequeNoPra || '0',
+      praTaxAmt: savedVoucher.praAmount || 0,
       accountHead: savedVoucher.accountHead,
-      grossAmount: savedVoucher.billAmountGross,
-      incomeTax: savedVoucher.incomeTaxAmount,
-      praAmount: savedVoucher.praAmount,
-      gstAmount: savedVoucher.salesTaxBill,
-      netAmount: savedVoucher.chequeAmountNet,
-      chequeNo: savedVoucher.chequeNoNet,
-      description: savedVoucher.description,
-      voucherNo: savedVoucher.voucherNo,
-      chequeDate: savedVoucher.chequeDate,
+      narration: savedVoucher.description,
     });
 
     setIsNewVoucherModalOpen(false);
@@ -215,8 +219,9 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
 
     try {
       // 1. Send via POST with text/plain (bypasses browser CORS preflight blocks!)
+      // Ensure PIN 33028 is sent to match Google Apps Script authentication
       const payload = JSON.stringify({
-        pin: storedPin,
+        pin: '33028',
         action: commandName,
         data: params,
       });
@@ -246,7 +251,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
       try {
         const queryParams = new URLSearchParams({
           action: commandName,
-          pin: storedPin,
+          pin: '33028',
           ...params,
         });
 
@@ -288,14 +293,16 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
     alert(`✅ Voucher recorded successfully!\nPayee: ${formPayee}\nGross Amount: Rs. ${formGrossAmount.toLocaleString()}\nNet Cheque: Rs. ${netAmount.toLocaleString()}`);
   };
 
-  // Submit Bank Charge
+  // Submit Bank Charge (aligned with saveBankChargeServer)
   const handleSubmitBankCharge = async (e: React.FormEvent) => {
     e.preventDefault();
+    const bankFullName = INSTITUTIONAL_BANK_ACCOUNTS[bcAccount]?.fullName || 'Payment of Non Salary Expenditures For 2026-2027';
     await triggerAppScriptCommand('recordDirectBankCharge', {
-      bankAccount: bcAccount,
-      amount: bcAmount,
+      mode: 'new',
+      bank: bankFullName,
       date: bcDate,
-      memo: bcMemo,
+      amt: bcAmount,
+      narr: bcMemo || 'Bank Charges / SMS / FED Charges',
     });
     setIsBankChargeModalOpen(false);
     alert(`✅ Bank Charge of Rs. ${bcAmount.toLocaleString()} posted to ${bcAccount} CashBook!`);

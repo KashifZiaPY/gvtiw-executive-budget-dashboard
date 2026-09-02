@@ -103,26 +103,26 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       setIncomeTaxAmt(0);
       setChequeNoPra('0');
       setPraTaxAmt(0);
-      setAccountHead(MASTER_ACCOUNT_HEADS[0] || '');
-      setHeadSearch(MASTER_ACCOUNT_HEADS[0] || '');
+      setAccountHead('');
+      setHeadSearch('');
       setDescription('');
     }
     setErrorMsg(null);
   }, [isOpen, voucherToAmend]);
 
-  // Filter Payees
+  // Filter Payees: when search matches payeeName or is empty, show all 121 payees!
   const filteredPayees = useMemo(() => {
-    if (!payeeSearch) return MASTER_PAYEE_LIST;
-    const s = payeeSearch.toLowerCase();
+    if (!payeeSearch || payeeSearch.trim() === payeeName.trim()) return MASTER_PAYEE_LIST;
+    const s = payeeSearch.toLowerCase().trim();
     return MASTER_PAYEE_LIST.filter((p) => p.name.toLowerCase().includes(s));
-  }, [payeeSearch]);
+  }, [payeeSearch, payeeName]);
 
-  // Filter Heads
+  // Filter Heads: when search matches accountHead or is empty, show all 42 heads!
   const filteredHeads = useMemo(() => {
-    if (!headSearch) return MASTER_ACCOUNT_HEADS;
-    const s = headSearch.toLowerCase();
+    if (!headSearch || headSearch.trim() === accountHead.trim()) return MASTER_ACCOUNT_HEADS;
+    const s = headSearch.toLowerCase().trim();
     return MASTER_ACCOUNT_HEADS.filter((h) => h.toLowerCase().includes(s));
-  }, [headSearch]);
+  }, [headSearch, accountHead]);
 
   // Dynamic Current FY Expenditure for selected Head
   const currentHeadExpenditure = useMemo(() => {
@@ -580,38 +580,88 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
               <span>📊</span> ACCOUNT & NARRATION
             </h4>
 
-            {/* Searchable Account Head Dropdown */}
+            {/* Searchable Account Head Dropdown (Displays All 42 Account Heads) */}
             <div className="relative">
-              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                ACCOUNT HEAD <span className="text-rose-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                  ACCOUNT HEAD <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400">
+                  {filteredHeads.length} of {MASTER_ACCOUNT_HEADS.length} heads available
+                </span>
+              </div>
               <div className="relative">
                 <input
                   type="text"
                   value={headSearch}
                   onChange={(e) => {
                     setHeadSearch(e.target.value);
-                    setAccountHead(e.target.value);
                     setIsHeadDropdownOpen(true);
                   }}
-                  onFocus={() => setIsHeadDropdownOpen(true)}
-                  placeholder="Select or search Account Head..."
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold outline-none focus:border-indigo-500"
+                  onFocus={() => {
+                    setIsHeadDropdownOpen(true);
+                  }}
+                  placeholder="Click to browse 42 Account Heads or type to search..."
+                  className="w-full px-3 py-2 pr-16 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold outline-none focus:border-indigo-500 text-xs sm:text-sm"
                 />
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-2.5" />
+                <div className="absolute right-2 top-2 flex items-center gap-1">
+                  {headSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHeadSearch('');
+                        setAccountHead('');
+                        setIsHeadDropdownOpen(true);
+                      }}
+                      className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-slate-600 text-xs"
+                      title="Clear selection"
+                    >
+                      ✕
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsHeadDropdownOpen(!isHeadDropdownOpen)}
+                    className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500"
+                    title="Toggle all 42 heads"
+                  >
+                    <ChevronDown className={`w-4 h-4 transition-transform ${isHeadDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                </div>
               </div>
 
               {isHeadDropdownOpen && (
-                <div className="absolute z-20 top-full mt-1 left-0 right-0 max-h-48 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg shadow-xl divide-y divide-slate-100 dark:divide-slate-800">
-                  {filteredHeads.map((h, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => handleSelectHead(h)}
-                      className="px-3 py-2 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 cursor-pointer font-bold font-mono text-[11px]"
+                <div className="absolute z-30 top-full mt-1 left-0 right-0 max-h-60 overflow-y-auto bg-white dark:bg-slate-900 border-2 border-indigo-500/40 rounded-xl shadow-2xl divide-y divide-slate-100 dark:divide-slate-800">
+                  <div className="p-2 bg-indigo-50/80 dark:bg-indigo-950/60 sticky top-0 z-10 flex items-center justify-between text-[11px] font-bold text-indigo-900 dark:text-indigo-200 border-b border-indigo-200 dark:border-indigo-800">
+                    <span>Select from 42 Official Institutional Heads:</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsHeadDropdownOpen(false)}
+                      className="text-slate-500 hover:text-slate-700 text-xs"
                     >
-                      {h}
+                      Done ✕
+                    </button>
+                  </div>
+                  {filteredHeads.map((h, idx) => {
+                    const isSelected = h === accountHead;
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => handleSelectHead(h)}
+                        className={`px-3 py-2.5 hover:bg-indigo-100/70 dark:hover:bg-indigo-950/60 cursor-pointer font-mono text-[11px] flex items-center justify-between transition-colors ${
+                          isSelected ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 font-black' : 'text-slate-800 dark:text-slate-200 font-bold'
+                        }`}
+                      >
+                        <span>{h}</span>
+                        {isSelected && <span className="text-emerald-600 font-bold">✓ Selected</span>}
+                      </div>
+                    );
+                  })}
+                  {filteredHeads.length === 0 && (
+                    <div className="p-4 text-center text-xs text-slate-500 italic">
+                      No matching account head found for &ldquo;{headSearch}&rdquo;.
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
