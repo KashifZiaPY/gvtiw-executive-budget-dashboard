@@ -23,7 +23,8 @@ import {
   Save,
   X,
 } from 'lucide-react';
-import { INSTITUTIONAL_BANK_ACCOUNTS, BankAccountKey, MasterVoucher } from '../data/cashBookData';
+import { INSTITUTIONAL_BANK_ACCOUNTS, BankAccountKey, MasterVoucher, INITIAL_MASTER_VOUCHERS } from '../data/cashBookData';
+import { VoucherEntryModal } from './VoucherEntryModal';
 import { formatPKR } from '../lib/formatters';
 
 interface AdminHubModuleProps {
@@ -61,19 +62,65 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
   const [isNewVoucherModalOpen, setIsNewVoucherModalOpen] = useState(false);
   const [isBankChargeModalOpen, setIsBankChargeModalOpen] = useState(false);
 
-  // New Voucher Form State
-  const [formAccount, setFormAccount] = useState<BankAccountKey>('NS');
-  const [formPayee, setFormPayee] = useState('');
-  const [formNtn, setFormNtn] = useState('');
-  const [formBillNo, setFormBillNo] = useState('');
-  const [formBillDate, setFormBillDate] = useState(new Date().toISOString().split('T')[0]);
-  const [formHead, setFormHead] = useState('A00000NTOH-NAVTTC COOK-OVERHEADS');
-  const [formGrossAmount, setFormGrossAmount] = useState<number>(0);
-  const [formIncomeTax, setFormIncomeTax] = useState<number>(0);
-  const [formPra, setFormPra] = useState<number>(0);
-  const [formGst, setFormGst] = useState<number>(0);
-  const [formChequeNo, setFormChequeNo] = useState('');
-  const [formDescription, setFormDescription] = useState('');
+  // Live Vouchers Registry State for Admin Operations
+  const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
+    try {
+      const cached = localStorage.getItem('gvtiw_live_vouchers_v1');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return INITIAL_MASTER_VOUCHERS;
+  });
+  const [voucherToAmend, setVoucherToAmend] = useState<MasterVoucher | null>(null);
+
+  // New Voucher Save Handler (persists locally and dispatches to Google Apps Script Web App)
+  const handleSaveNewVoucherFromModal = async (savedVoucher: MasterVoucher, isAmend: boolean) => {
+    // 1. Update local state and localStorage
+    setVouchers((prev) => {
+      let updated: MasterVoucher[];
+      if (isAmend) {
+        updated = prev.map((v) => (v.srNo === savedVoucher.srNo ? savedVoucher : v));
+      } else {
+        updated = [savedVoucher, ...prev];
+      }
+      try {
+        localStorage.setItem('gvtiw_live_vouchers_v1', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    // 2. Dispatch to Live Google Apps Script backend engine
+    await triggerAppScriptCommand('submitNewVoucher', {
+      bankAccount: savedVoucher.bankAccount,
+      payeeName: savedVoucher.payeeName,
+      ntnCnic: savedVoucher.ntnCnic,
+      billNo: savedVoucher.billNo,
+      billDate: savedVoucher.billDate,
+      accountHead: savedVoucher.accountHead,
+      grossAmount: savedVoucher.billAmountGross,
+      incomeTax: savedVoucher.incomeTaxAmount,
+      praAmount: savedVoucher.praAmount,
+      gstAmount: savedVoucher.salesTaxBill,
+      netAmount: savedVoucher.chequeAmountNet,
+      chequeNo: savedVoucher.chequeNoNet,
+      description: savedVoucher.description,
+      voucherNo: savedVoucher.voucherNo,
+      chequeDate: savedVoucher.chequeDate,
+    });
+
+    setIsNewVoucherModalOpen(false);
+    setVoucherToAmend(null);
+  };
+
+  const handleOpenAmendBySr = () => {
+    const sr = parseInt(actionParamSr.trim());
+    const found = vouchers.find((v) => v.srNo === sr);
+    if (found) {
+      setVoucherToAmend(found);
+      setIsNewVoucherModalOpen(true);
+    } else {
+      alert(`Voucher with Sr.# ${sr} not found in local registry.`);
+    }
+  };
 
   // Bank Charge Form State
   const [bcAccount, setBcAccount] = useState<BankAccountKey>('NS');
@@ -500,8 +547,9 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
                 }`}
               />
               <button
-                onClick={() => triggerAppScriptCommand('amendBySerialPrompt', { srNo: actionParamSr })}
+                onClick={handleOpenAmendBySr}
                 className="flex-1 py-2 px-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg flex items-center justify-between cursor-pointer transition-all"
+                title="Open v3.14 Amend Form for this Sr.#"
               >
                 <span>✏️ Amend by Sr.#</span>
                 <Play className="w-3.5 h-3.5" />
@@ -565,182 +613,18 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* MODAL 1: NEW VOUCHER ENTRY FORM                                */}
+      {/* MODAL 1: OFFICIAL V3.14 VOUCHER ENTRY & AMEND FORM           */}
       {/* ------------------------------------------------------------- */}
-      {isNewVoucherModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-3 overflow-y-auto">
-          <div className="bg-slate-900 text-white w-full max-w-2xl rounded-2xl border border-slate-700 shadow-2xl p-6 space-y-4 my-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <FilePlus className="w-5 h-5 text-blue-400" />
-                <h3 className="font-extrabold text-sm uppercase">Record New Voucher Entry</h3>
-              </div>
-              <button
-                onClick={() => setIsNewVoucherModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitNewVoucher} className="space-y-3 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-400 mb-1">Bank Account</label>
-                  <select
-                    value={formAccount}
-                    onChange={(e) => setFormAccount(e.target.value as BankAccountKey)}
-                    className="w-full p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white font-bold outline-none"
-                  >
-                    <option value="NS">Non-Salary (6580006795600014)</option>
-                    <option value="PF">Pupil Funds (6580027832200022)</option>
-                    <option value="FC">Fee Collection (6580027832200011)</option>
-                    <option value="SC">Short Course (6580027832200033)</option>
-                    <option value="SEC">Securities (6580027832200044)</option>
-                    <option value="AA">Assan Assignment (AAA0000000000000)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 mb-1">Payee Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={formPayee}
-                    onChange={(e) => setFormPayee(e.target.value)}
-                    placeholder="e.g. M/S Anwar Traders"
-                    className="w-full p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 mb-1">Bill / Invoice No & Date</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={formBillNo}
-                      onChange={(e) => setFormBillNo(e.target.value)}
-                      placeholder="Bill #"
-                      className="w-1/2 p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white outline-none"
-                    />
-                    <input
-                      type="date"
-                      value={formBillDate}
-                      onChange={(e) => setFormBillDate(e.target.value)}
-                      className="w-1/2 p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-slate-400 mb-1">NTN / CNIC</label>
-                  <input
-                    type="text"
-                    value={formNtn}
-                    onChange={(e) => setFormNtn(e.target.value)}
-                    placeholder="e.g. 1234567-8"
-                    className="w-full p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Financial Calculation Row */}
-              <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700 space-y-3">
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <div>
-                    <label className="block text-slate-400 text-[10px] mb-1">Gross Bill Amount (Rs.)</label>
-                    <input
-                      type="number"
-                      required
-                      value={formGrossAmount || ''}
-                      onChange={(e) => setFormGrossAmount(parseFloat(e.target.value) || 0)}
-                      placeholder="0"
-                      className="w-full p-2 rounded-lg bg-slate-900 border border-slate-700 text-amber-300 font-bold font-mono outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-400 text-[10px] mb-1">Income Tax WHT (Rs.)</label>
-                    <input
-                      type="number"
-                      value={formIncomeTax || ''}
-                      onChange={(e) => setFormIncomeTax(parseFloat(e.target.value) || 0)}
-                      placeholder="0"
-                      className="w-full p-2 rounded-lg bg-slate-900 border border-slate-700 text-rose-300 font-mono outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-400 text-[10px] mb-1">PRA Sales Tax (Rs.)</label>
-                    <input
-                      type="number"
-                      value={formPra || ''}
-                      onChange={(e) => setFormPra(parseFloat(e.target.value) || 0)}
-                      placeholder="0"
-                      className="w-full p-2 rounded-lg bg-slate-900 border border-slate-700 text-rose-300 font-mono outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-400 text-[10px] mb-1">GST / Other (Rs.)</label>
-                    <input
-                      type="number"
-                      value={formGst || ''}
-                      onChange={(e) => setFormGst(parseFloat(e.target.value) || 0)}
-                      placeholder="0"
-                      className="w-full p-2 rounded-lg bg-slate-900 border border-slate-700 text-rose-300 font-mono outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-slate-700 text-xs font-mono">
-                  <span className="text-slate-400">Net Payable Cheque:</span>
-                  <span className="text-sm font-black text-emerald-400">
-                    {formatPKR(formGrossAmount - (formIncomeTax + formPra + formGst), false)}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-1">Cheque Number & Particulars</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={formChequeNo}
-                    onChange={(e) => setFormChequeNo(e.target.value)}
-                    placeholder="Cheque #"
-                    className="w-1/3 p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white outline-none"
-                  />
-                  <input
-                    type="text"
-                    value={formDescription}
-                    onChange={(e) => setFormDescription(e.target.value)}
-                    placeholder="Narration / Description of expense"
-                    className="w-2/3 p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsNewVoucherModalOpen(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-md flex items-center gap-1.5"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Save & Record Voucher</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <VoucherEntryModal
+        isOpen={isNewVoucherModalOpen}
+        onClose={() => {
+          setIsNewVoucherModalOpen(false);
+          setVoucherToAmend(null);
+        }}
+        voucherToAmend={voucherToAmend}
+        onSaveVoucher={handleSaveNewVoucherFromModal}
+        existingVouchers={vouchers}
+      />
 
       {/* ------------------------------------------------------------- */}
       {/* MODAL 2: RECORD DIRECT BANK CHARGE                             */}
