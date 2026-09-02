@@ -23,6 +23,51 @@ import { fetchDashboardPayload } from './lib/apiEngine';
 
 export type ActiveModuleTab = 'DASHBOARD' | 'CASHBOOK' | 'VOUCHERS' | 'REPORTS' | 'ADMIN';
 
+class ModuleErrorBoundary extends React.Component<
+  { children: React.ReactNode; moduleName: string },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode; moduleName: string }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error(`Error in ${this.props.moduleName}:`, error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 rounded-2xl bg-slate-900 border border-rose-500/50 text-white max-w-xl mx-auto my-12 text-center space-y-4 shadow-2xl">
+          <div className="w-12 h-12 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-400/30 flex items-center justify-center mx-auto">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <h3 className="text-base font-bold text-rose-300">Module Alert ({this.props.moduleName})</h3>
+          <p className="text-xs text-slate-300 font-mono bg-slate-950 p-3 rounded-lg border border-slate-800 break-words">
+            {this.state.error?.message || 'An unexpected error occurred in this module.'}
+          </p>
+          <button
+            onClick={() => {
+              sessionStorage.removeItem('gvtiw_admin_session');
+              this.setState({ hasError: false, error: null });
+              window.location.reload();
+            }}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl cursor-pointer"
+          >
+            Reset Session & Reload
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const [activeModule, setActiveModule] = useState<ActiveModuleTab>('DASHBOARD');
   const [data, setData] = useState<DashboardResponse | null>(null);
@@ -369,9 +414,11 @@ export default function App() {
         )}
 
         {activeModule === 'ADMIN' && (
-          <section aria-label="Admin Operations Hub">
-            <AdminHubModule darkMode={darkMode} />
-          </section>
+          <ModuleErrorBoundary moduleName="Admin Operations Hub">
+            <section aria-label="Admin Operations Hub">
+              <AdminHubModule darkMode={darkMode} />
+            </section>
+          </ModuleErrorBoundary>
         )}
       </main>
 

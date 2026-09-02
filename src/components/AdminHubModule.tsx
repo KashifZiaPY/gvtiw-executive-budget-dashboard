@@ -364,7 +364,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
           </button>
           
           <a
-            href={WEB_APP_EXEC_URL}
+            href={webAppUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 border border-slate-700 transition-all"
