@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   BankAccountKey,
   INSTITUTIONAL_BANK_ACCOUNTS,
@@ -8,12 +8,18 @@ import {
   INITIAL_MASTER_VOUCHERS,
   MasterVoucher,
 } from '../data/cashBookData';
+import {
+  fetchLiveCashBookFromGoogleSheet,
+  STORAGE_KEY_LIVE_CASHBOOKS,
+  STORAGE_KEY_LIVE_SYNC_TS,
+} from '../lib/apiEngine';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { formatPKR, format12HourDate } from '../lib/formatters';
 import {
   BookOpen,
   Search,
   Printer,
+  RefreshCw,
   Download,
   Calendar,
   Building,
@@ -31,12 +37,49 @@ interface CashBookModuleProps {
 
 export const CashBookModule: React.FC<CashBookModuleProps> = ({ darkMode }) => {
   const [activeAccountKey, setActiveAccountKey] = useState<BankAccountKey>('NS');
-  const [cashBookStates] = useState<Record<BankAccountKey, CashBookAccountState>>(INITIAL_CASHBOOK_STATES);
+  const [cashBookStates, setCashBookStates] = useState<Record<BankAccountKey, CashBookAccountState>>(() => {
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY_LIVE_CASHBOOKS);
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return INITIAL_CASHBOOK_STATES;
+  });
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string>('Live Connected');
+  const [lastSyncTime, setLastSyncTime] = useState<string>(() => {
+    return localStorage.getItem(STORAGE_KEY_LIVE_SYNC_TS) || '';
+  });
+  const [liveVouchers, setLiveVouchers] = useState<MasterVoucher[]>(INITIAL_MASTER_VOUCHERS);
   const [searchTerm, setSearchTerm] = useState('');
   const [periodFilter, setPeriodFilter] = useState<'ALL' | 'JUL' | 'AUG' | 'SEP' | 'Q1' | 'Q2' | 'CUSTOM'>('ALL');
   const [customFromDate, setCustomFromDate] = useState('');
   const [customToDate, setCustomToDate] = useState('');
   const [selectedVoucherForPAF, setSelectedVoucherForPAF] = useState<MasterVoucher | null>(null);
+
+  // Instant Live Synchronization with Google Sheets
+  const handleSyncLive = async () => {
+    setIsSyncing(true);
+    setSyncStatus('Connecting to Google Sheet...');
+    try {
+      const res = await fetchLiveCashBookFromGoogleSheet();
+      if (res.success && res.cashBookStates) {
+        setCashBookStates(res.cashBookStates);
+        if (res.vouchers) setLiveVouchers(res.vouchers);
+        setLastSyncTime(res.syncTimestamp);
+        setSyncStatus(`Live Synced (${res.totalVouchers} Vouchers)`);
+      } else {
+        setSyncStatus('Using Baseline System');
+      }
+    } catch {
+      setSyncStatus('Using Baseline Cache');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    handleSyncLive();
+  }, []);
 
   const currentAccount = cashBookStates[activeAccountKey];
 
@@ -75,7 +118,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({ darkMode }) => {
 
   // Find linked voucher for a given entry
   const handleOpenPAF = (voucherSerial: string) => {
-    const v = INITIAL_MASTER_VOUCHERS.find((item) => item.voucherNo === voucherSerial);
+    const v = liveVouchers.find((item) => item.voucherNo === voucherSerial) ||
+              INITIAL_MASTER_VOUCHERS.find((item) => item.voucherNo === voucherSerial);
     if (v) {
       setSelectedVoucherForPAF(v);
     }
@@ -207,9 +251,14 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({ darkMode }) => {
       }`}>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase font-mono tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/30">
                 Official Double-Column Folio (2026-27)
+              </span>
+              <span className="flex items-center gap-1 text-[10px] text-emerald-300 font-mono bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-500/40 shadow-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>{syncStatus}</span>
+                {lastSyncTime && <span className="opacity-70">({lastSyncTime})</span>}
               </span>
               <span className="text-xs text-slate-300 font-mono">
                 {currentAccount.meta.bankName} • {currentAccount.meta.branch}
@@ -223,17 +272,30 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({ darkMode }) => {
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <button
+              onClick={handleSyncLive}
+              disabled={isSyncing}
+              className={`px-3 py-2 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
+                isSyncing
+                  ? 'bg-emerald-800 text-emerald-200 cursor-wait'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+              }`}
+              title="Sync immediately from Live Google Spreadsheet"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-emerald-200 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Syncing...' : 'Sync Live Sheet'}</span>
+            </button>
             <button
               onClick={handleExportCSV}
-              className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 border border-white/20 shadow-xs transition-all cursor-pointer"
+              className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 border border-white/20 shadow-xs transition-all cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-blue-300" />
               <span>Export CSV</span>
             </button>
             <button
               onClick={handlePrint}
-              className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5 text-amber-300" />
               <span>Print CashBook</span>

@@ -741,3 +741,288 @@ export async function fetchAiAnalysis(): Promise<AiInsightResponse> {
     ],
   };
 }
+
+
+// =====================================================================
+// LIVE GOOGLE SHEET SYNCHRONIZATION ENGINE (v3.5 Enterprise)
+// Source: 1c_3lBJVl74jPl0F5Dg9A_Jpjs1oBc2poDkC5SgfEE-w (Vouchers Tab)
+// Automatically updates CashBooks in real-time as new entries occur
+// =====================================================================
+import {
+  BankAccountKey,
+  CashBookAccountState,
+  CashBookEntry,
+  MasterVoucher,
+  INITIAL_CASHBOOK_STATES,
+  INITIAL_MASTER_VOUCHERS,
+} from '../data/cashBookData';
+
+export const MASTER_SPREADSHEET_ID = '1c_3lBJVl74jPl0F5Dg9A_Jpjs1oBc2poDkC5SgfEE-w';
+export const LIVE_VOUCHERS_GVIZ_URL = `https://docs.google.com/spreadsheets/d/${MASTER_SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Vouchers`;
+
+export const STORAGE_KEY_LIVE_CASHBOOKS = 'gvtiw_live_cashbook_states_v1';
+export const STORAGE_KEY_LIVE_VOUCHERS = 'gvtiw_live_vouchers_v1';
+export const STORAGE_KEY_LIVE_SYNC_TS = 'gvtiw_live_cashbook_sync_ts_v1';
+
+export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
+  success: boolean;
+  cashBookStates: Record<BankAccountKey, CashBookAccountState>;
+  vouchers: MasterVoucher[];
+  totalVouchers: number;
+  message: string;
+  syncTimestamp: string;
+}> {
+  try {
+    const res = await fetch(LIVE_VOUCHERS_GVIZ_URL, { cache: 'no-store' });
+    if (!res.ok) {
+      throw new Error(`Google Sheets responded with HTTP ${res.status}`);
+    }
+    const text = await res.text();
+    const match = text.match(/setResponse\((.*)\);/s);
+    if (!match || !match[1]) {
+      throw new Error('Invalid response structure from Google Sheets');
+    }
+    const parsed = JSON.parse(match[1]);
+    const rows = parsed?.table?.rows || [];
+
+    const getVal = (c: any[], idx: number): string => {
+      if (!c || idx >= c.length || !c[idx]) return '';
+      if (c[idx].f !== undefined && c[idx].f !== null) return String(c[idx].f);
+      if (c[idx].v !== undefined && c[idx].v !== null) return String(c[idx].v);
+      return '';
+    };
+
+    const getNum = (c: any[], idx: number): number => {
+      if (!c || idx >= c.length || !c[idx]) return 0;
+      const val = c[idx].v;
+      const num = parseFloat(val);
+      return isNaN(num) ? 0 : num;
+    };
+
+    const parsedVouchers: MasterVoucher[] = [];
+    for (const r of rows) {
+      const c = r?.c || [];
+      if (!c || c.length < 2) continue;
+      const sr = getVal(c, 0);
+      if (!sr) continue;
+      const srNum = parseInt(sr, 10);
+      if (isNaN(srNum) || srNum <= 0) continue;
+
+      parsedVouchers.push({
+        srNo: srNum,
+        payeeName: getVal(c, 1).trim(),
+        ntnCnic: getVal(c, 2).trim(),
+        billNo: getVal(c, 3).trim(),
+        billDate: getVal(c, 4).trim(),
+        chequeNoNet: getVal(c, 5).trim(),
+        chequeDate: getVal(c, 6).trim(),
+        chequeAmountNet: getNum(c, 7),
+        accountHead: getVal(c, 8).trim(),
+        gstAmount: getNum(c, 9),
+        praAmount: getNum(c, 10),
+        chequeNoPra: getVal(c, 11).trim(),
+        incomeTaxAmount: getNum(c, 12),
+        chequeNoIncomeTax: getVal(c, 13).trim(),
+        billAmountGross: getNum(c, 14),
+        description: getVal(c, 15).trim(),
+        entryStatus: getVal(c, 16).trim(),
+        timestamp: getVal(c, 17).trim(),
+        bankAccount: getVal(c, 18).trim(),
+        billAmtExclTax: getNum(c, 19),
+        praTaxOnBill: getNum(c, 20),
+        voucherNo: getVal(c, 21).trim(),
+        preEntryBalance: getNum(c, 22),
+      });
+    }
+
+    if (parsedVouchers.length === 0) {
+      throw new Error('No voucher entries found in Google Sheet response.');
+    }
+
+    parsedVouchers.sort((a, b) => a.srNo - b.srNo);
+
+    const BANK_NAME_TO_KEY: Record<string, BankAccountKey> = {
+      'Payment of Non Salary Expenditures For 2026-2027': 'NS',
+      'Payment of Pupil Funds For 2026-2027': 'PF',
+      'Payment of TEVTA Fee Collection For 2026-2027': 'FC',
+      'Payment of Securities For 2026-2027': 'SEC',
+      'Payment of Short Course For 2026-2027': 'SC',
+      'Payment of AAA For 2026-2027': 'AA',
+    };
+
+    const newStates: Record<BankAccountKey, CashBookAccountState> = JSON.parse(
+      JSON.stringify(INITIAL_CASHBOOK_STATES)
+    );
+
+    for (const key of Object.keys(newStates) as BankAccountKey[]) {
+      newStates[key].entries = [];
+      newStates[key].totalReceipts = 0;
+      newStates[key].totalPayments = 0;
+      newStates[key].closingBalance = newStates[key].openingBalance;
+      newStates[key].reconciledBankBalance = newStates[key].openingBalance;
+    }
+
+    const AA_BUDGET_RECEIPTS = [
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03902-PRINTING CHARGES)', paidToBy: 'Budget', head: 'A03902-PRINTING CHARGES', chq: 'AAA', amount: 8393 },
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03933-SERVICE CHARGES)', paidToBy: 'Budget', head: 'A03933-SERVICE CHARGES', chq: 'AAA', amount: 142852 },
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A13101-REPAIR OF MACHINERY)', paidToBy: 'Budget', head: 'A13101-REPAIR OF MACHINERY & EQUIPMENT', chq: 'AAA', amount: 6212 },
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A13201-REPAIR OF FURNITURE)', paidToBy: 'Budget', head: 'A13201-REPAIR OF FURNITURE & FIXTURE', chq: 'AAA', amount: 11820 },
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03303-ELECTRICITY CHARGES)', paidToBy: 'Budget', head: 'A03303-ELECTRICITY CHARGES', chq: 'AAA', amount: 247435 },
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03301-GAS CHARGES)', paidToBy: 'Budget', head: 'A03301-GAS CHARGES', chq: 'AAA', amount: 1500 },
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03302-WATER CHARGES)', paidToBy: 'Budget', head: 'A03302-WATER CHARGES', chq: 'AAA', amount: 6000 },
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03202-TELEPHONE & TRUNK)', paidToBy: 'Budget', head: 'A03202-TELEPHONE & TRUNK CHARGES', chq: 'AAA', amount: 25000 },
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03201-POSTAGE & TELEGRAPH)', paidToBy: 'Budget', head: 'A03201-POSTAGE & TELEGRAPH', chq: 'AAA', amount: 4000 },
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A01274-MEDICAL CHARGES)', paidToBy: 'Budget', head: 'A01274-MEDICAL CHARGES', chq: 'AAA', amount: 12000 },
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03304-HOT & COLD CHARGES)', paidToBy: 'Budget', head: 'A03304-HOT & COLD CHARGES', chq: 'AAA', amount: 6000 },
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03901-STATIONERY CHARGES)', paidToBy: 'Budget', head: 'A03901-STATIONERY CHARGES', chq: 'AAA', amount: 12000 },
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03905-NEWSPAPERS & PERIODICALS)', paidToBy: 'Budget', head: 'A03905-NEWSPAPERS PERIODICALS & BOOKS', chq: 'AAA', amount: 1000 },
+      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03907-ADVERTISING & PUBLICITY)', paidToBy: 'Budget', head: 'A03907-ADVERTISING & PUBLICITY', chq: 'AAA', amount: 24619 },
+    ];
+
+    let aaRunningBal = newStates.AA.openingBalance;
+    for (let i = 0; i < AA_BUDGET_RECEIPTS.length; i++) {
+      const r = AA_BUDGET_RECEIPTS[i];
+      aaRunningBal += r.amount;
+      newStates.AA.totalReceipts += r.amount;
+      newStates.AA.entries.push({
+        id: `AA-R${i + 1}`,
+        srNo: i + 1,
+        date: r.date,
+        month: r.month,
+        vNo: '',
+        voucherSerial: '',
+        particulars: r.particulars,
+        paidToBy: r.paidToBy,
+        accountHead: r.head,
+        chequeNo: r.chq,
+        receipts: r.amount,
+        payments: 0,
+        runningBalance: aaRunningBal,
+        entryType: 'RECEIPT',
+      });
+    }
+
+    const getMonthName = (dtStr: string): string => {
+      const lower = (dtStr || '').toLowerCase();
+      if (lower.includes('sep') || lower.includes('-09-') || lower.includes('/09/')) return 'September';
+      if (lower.includes('aug') || lower.includes('-08-') || lower.includes('/08/')) return 'August';
+      if (lower.includes('jul') || lower.includes('-07-') || lower.includes('/07/')) return 'July';
+      if (lower.includes('oct')) return 'October';
+      if (lower.includes('nov')) return 'November';
+      if (lower.includes('dec')) return 'December';
+      return 'July';
+    };
+
+    for (const v of parsedVouchers) {
+      const bankKey = BANK_NAME_TO_KEY[v.bankAccount];
+      if (!bankKey || !newStates[bankKey]) continue;
+
+      const dateStr = v.chequeDate || v.billDate || '01-Jul-2026';
+      const monthStr = getMonthName(dateStr);
+      const srStr = String(v.srNo);
+      const vSerial = v.voucherNo || '';
+
+      if (v.chequeAmountNet > 0) {
+        newStates[bankKey].entries.push({
+          id: `${bankKey}-V${v.srNo}-NET`,
+          srNo: 0,
+          date: dateStr,
+          month: monthStr,
+          vNo: srStr,
+          voucherSerial: vSerial,
+          particulars: v.description,
+          paidToBy: v.payeeName,
+          accountHead: v.accountHead,
+          chequeNo: v.chequeNoNet,
+          receipts: 0,
+          payments: v.chequeAmountNet,
+          runningBalance: 0,
+          entryType: 'PAYMENT',
+        });
+      }
+
+      if (v.incomeTaxAmount > 0) {
+        newStates[bankKey].entries.push({
+          id: `${bankKey}-V${v.srNo}-IT`,
+          srNo: 0,
+          date: dateStr,
+          month: monthStr,
+          vNo: srStr,
+          voucherSerial: vSerial,
+          particulars: v.description,
+          paidToBy: 'Income Tax',
+          accountHead: v.accountHead,
+          chequeNo: v.chequeNoIncomeTax || '0',
+          receipts: 0,
+          payments: v.incomeTaxAmount,
+          runningBalance: 0,
+          entryType: 'PAYMENT',
+        });
+      }
+
+      if (v.praAmount > 0) {
+        newStates[bankKey].entries.push({
+          id: `${bankKey}-V${v.srNo}-PRA`,
+          srNo: 0,
+          date: dateStr,
+          month: monthStr,
+          vNo: srStr,
+          voucherSerial: vSerial,
+          particulars: v.description,
+          paidToBy: 'PRA Tax',
+          accountHead: v.accountHead,
+          chequeNo: v.chequeNoPra || '0',
+          receipts: 0,
+          payments: v.praAmount,
+          runningBalance: 0,
+          entryType: 'PAYMENT',
+        });
+      }
+    }
+
+    for (const key of Object.keys(newStates) as BankAccountKey[]) {
+      const state = newStates[key];
+      let bal = state.openingBalance;
+      let totPay = 0;
+
+      for (let i = 0; i < state.entries.length; i++) {
+        const e = state.entries[i];
+        e.srNo = i + 1;
+        if (e.entryType === 'PAYMENT') {
+          totPay += e.payments;
+          bal -= e.payments;
+        }
+        e.runningBalance = Math.round(bal * 100) / 100;
+      }
+
+      state.totalPayments = Math.round(totPay * 100) / 100;
+      state.closingBalance = Math.round(bal * 100) / 100;
+      state.reconciledBankBalance = Math.round(bal * 100) / 100;
+    }
+
+    const nowStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    try {
+      localStorage.setItem(STORAGE_KEY_LIVE_CASHBOOKS, JSON.stringify(newStates));
+      localStorage.setItem(STORAGE_KEY_LIVE_VOUCHERS, JSON.stringify(parsedVouchers));
+      localStorage.setItem(STORAGE_KEY_LIVE_SYNC_TS, nowStr);
+    } catch {}
+
+    return {
+      success: true,
+      cashBookStates: newStates,
+      vouchers: parsedVouchers,
+      totalVouchers: parsedVouchers.length,
+      message: `Successfully synchronized ${parsedVouchers.length} vouchers from live Google Sheet.`,
+      syncTimestamp: nowStr,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      cashBookStates: INITIAL_CASHBOOK_STATES,
+      vouchers: INITIAL_MASTER_VOUCHERS,
+      totalVouchers: INITIAL_MASTER_VOUCHERS.length,
+      message: err?.message || 'Failed to fetch live Google Sheet data',
+      syncTimestamp: '',
+    };
+  }
+}
