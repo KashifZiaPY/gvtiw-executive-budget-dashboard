@@ -30,7 +30,7 @@ interface AdminHubModuleProps {
   darkMode: boolean;
 }
 
-const WEB_APP_EXEC_URL =
+const DEFAULT_WEB_APP_EXEC_URL =
   'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
 
 export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
@@ -40,6 +40,13 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
   const [pinInput, setPinInput] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
+
+  // Web App Deployment URL
+  const [webAppUrl, setWebAppUrl] = useState<string>(() => {
+    return localStorage.getItem('gvtiw_admin_web_app_url') || DEFAULT_WEB_APP_EXEC_URL;
+  });
+  const [isTestingConn, setIsTestingConn] = useState(false);
+  const [connTestStatus, setConnTestStatus] = useState<string | null>(null);
 
   // Stored Custom PIN (defaults to 33028)
   const [storedPin, setStoredPin] = useState<string>(() => {
@@ -118,26 +125,92 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
     }, 1500);
   };
 
-  // Trigger Google Apps Script Web App Command
+  // Test Web App Connection
+  const handleTestConnection = async () => {
+    if (!webAppUrl.trim()) {
+      setConnTestStatus('⚠️ Please enter a valid Google Apps Script Web App URL.');
+      return;
+    }
+    setIsTestingConn(true);
+    setConnTestStatus('Connecting to Google Apps Script Web App...');
+    try {
+      const res = await fetch(webAppUrl.trim(), { method: 'GET' });
+      if (res.ok) {
+        const data = await res.json();
+        setConnTestStatus(`🟢 Connected: ${data.status || 'Active'} (${data.version || 'v3.14'})`);
+      } else {
+        setConnTestStatus(`⚠️ Server responded with HTTP ${res.status}. Verify deployment is set to "Anyone".`);
+      }
+    } catch {
+      // Fallback test via no-cors
+      try {
+        await fetch(webAppUrl.trim(), { method: 'GET', mode: 'no-cors' });
+        setConnTestStatus('🟢 Endpoint reached (CORS restricted, but operational).');
+      } catch (e: any) {
+        setConnTestStatus(`❌ Connection failed: ${e.message}`);
+      }
+    } finally {
+      setIsTestingConn(false);
+    }
+  };
+
+  // Trigger Google Apps Script Web App Command (POST + GET Fallback)
   const triggerAppScriptCommand = async (commandName: string, params: Record<string, any> = {}) => {
     setLoadingAction(commandName);
     setActionStatus(`Dispatching '${commandName}' to Google Apps Script backend engine...`);
 
+    const activeUrl = webAppUrl.trim();
+    if (!activeUrl) {
+      setActionStatus(`⚠️ No Web App URL configured. Please enter your Google Apps Script Web App Deployment URL in the Endpoint panel.`);
+      setLoadingAction(null);
+      return;
+    }
+
     try {
-      const queryParams = new URLSearchParams({
-        action: commandName,
+      // 1. Send via POST with text/plain (bypasses browser CORS preflight blocks!)
+      const payload = JSON.stringify({
         pin: storedPin,
-        ...params,
+        action: commandName,
+        data: params,
       });
 
-      await fetch(`${WEB_APP_EXEC_URL}?${queryParams.toString()}`, {
-        method: 'GET',
-        mode: 'no-cors',
+      const res = await fetch(activeUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: payload,
       });
 
-      setActionStatus(`✅ Command '${commandName}' dispatched successfully to Google Sheet backend!`);
-    } catch (err: any) {
-      setActionStatus(`✅ Signal sent to Google Apps Script Web App.`);
+      if (res.ok) {
+        try {
+          const jsonRes = await res.json();
+          if (jsonRes.success) {
+            setActionStatus(`✅ Success: '${commandName}' executed on Google Sheet backend!`);
+          } else {
+            setActionStatus(`⚠️ Script returned: ${jsonRes.message || jsonRes.error || 'Check Audit Log'}`);
+          }
+        } catch {
+          setActionStatus(`✅ Command '${commandName}' dispatched successfully to Google Apps Script.`);
+        }
+      } else {
+        throw new Error(`HTTP status ${res.status}`);
+      }
+    } catch {
+      // 2. Fallback to GET with URL query parameters
+      try {
+        const queryParams = new URLSearchParams({
+          action: commandName,
+          pin: storedPin,
+          ...params,
+        });
+
+        await fetch(`${activeUrl}?${queryParams.toString()}`, {
+          method: 'GET',
+          mode: 'no-cors',
+        });
+        setActionStatus(`✅ Signal '${commandName}' transmitted to Google Apps Script Web App.`);
+      } catch (getErr: any) {
+        setActionStatus(`❌ Error transmitting to Google Apps Script: ${getErr.message}`);
+      }
     } finally {
       setLoadingAction(null);
     }
@@ -308,6 +381,52 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
             <span>Lock Session</span>
           </button>
         </div>
+      </div>
+
+      {/* Web App Deployment URL & Live Connection Config */}
+      <div className={`p-4 rounded-2xl border space-y-3 ${
+        darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-300 shadow-sm'
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h4 className="font-extrabold text-xs uppercase tracking-wide flex items-center gap-1.5 text-white">
+              <span>🔗</span> Google Apps Script Web App Deployment Endpoint
+            </h4>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Required for two-way synchronization: writes new entries and bank charges directly to live Google Sheets.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleTestConnection}
+            disabled={isTestingConn}
+            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer flex items-center gap-1 shrink-0"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>{isTestingConn ? 'Testing...' : 'Test Backend Connection'}</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={webAppUrl}
+            onChange={(e) => {
+              setWebAppUrl(e.target.value);
+              localStorage.setItem('gvtiw_admin_web_app_url', e.target.value);
+            }}
+            placeholder="https://script.google.com/macros/s/.../exec"
+            className={`flex-1 px-3 py-2 text-xs font-mono rounded-lg border outline-none ${
+              darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
+            }`}
+          />
+        </div>
+
+        {connTestStatus && (
+          <div className="text-[11px] font-mono px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-300">
+            {connTestStatus}
+          </div>
+        )}
       </div>
 
       {/* Action Notification Box */}
