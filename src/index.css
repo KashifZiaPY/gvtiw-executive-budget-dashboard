@@ -59,7 +59,7 @@
 /* Official Print Isolation Styles */
 @page {
   size: A4 portrait;
-  margin: 8mm 8mm 8mm 8mm; /* 8mm print margin + 14mm inner gutter = 22mm filing clearance */
+  margin: 15mm 8mm 8mm 8mm; /* 15mm top margin prevents printer cropping; 8mm sides + 14mm gutter = 22mm filing clearance */
 }
 
 @media print {

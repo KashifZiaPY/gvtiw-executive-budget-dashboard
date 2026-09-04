@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { MasterVoucher } from '../data/cashBookData';
 import { Printer, X, FileText, Layers } from 'lucide-react';
-import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO } from '../data/initialData';
+import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO, DEFAULT_GOP_LOGO } from '../data/initialData';
 
 interface PaymentApprovalFormProps {
   voucher: MasterVoucher | null;
@@ -10,6 +10,7 @@ interface PaymentApprovalFormProps {
   isModal?: boolean;
   customGvtiwLogo?: string | null;
   customTevtaLogo?: string | null;
+  customGopLogo?: string | null;
 }
 
 // Convert numbers into words for official cheque / sanction
@@ -59,20 +60,21 @@ function numberToWords(amount: number): string {
 /**
  * Official Filing Margin Punch Hole Guide
  * Standard ISO 838 2-Hole Filing Coordinates:
- * - A4 Height: 297mm (center is 148.5mm)
+ * - A4 Height: 297mm (center is 148.5mm from top edge of paper)
  * - Hole Spacing: 80mm
- * - Page Top Margin in Print: 8mm
- * - Upper Hole: 108.5mm from A4 top (100.5mm from container top)
- * - Center Guide Mark: 148.5mm from A4 top (140.5mm from container top)
- * - Lower Hole: 188.5mm from A4 top (180.5mm from container top)
+ * - Page Top Margin in Print: 15mm (increased to eliminate printer cropping)
+ * - Upper Hole: 108.5mm from A4 top (93.5mm from container top in print)
+ * - Center Guide Mark: 148.5mm from A4 top (133.5mm from container top in print)
+ * - Lower Hole: 188.5mm from A4 top (173.5mm from container top in print)
+ * - Left Distance: 4mm inside container + 8mm page margin = 12mm from paper edge (exact ISO 838 standard)
  */
 const PunchHoleGuide: React.FC = () => (
   <div
-    className="absolute left-1.5 sm:left-[3.5mm] print:left-[4mm] top-0 bottom-0 pointer-events-none select-none z-10 w-6 print:w-[8mm]"
+    className="absolute left-1.5 sm:left-[3.5mm] print:left-[4mm] top-0 bottom-0 pointer-events-none select-none z-20 w-6 print:w-[8mm]"
     aria-hidden="true"
   >
-    {/* Upper Punch Guide (108.5mm from top of A4 sheet = 100.5mm in print container) */}
-    <div className="absolute top-[37%] sm:top-[100.5mm] print:top-[100.5mm] -translate-y-1/2 left-0 right-0 flex flex-col items-center gap-0.5 opacity-40 print:opacity-50">
+    {/* Upper Punch Guide (108.5mm from paper top = 93.5mm in container) */}
+    <div className="absolute top-[36%] sm:top-[93.5mm] print:top-[93.5mm] -translate-y-1/2 left-0 right-0 flex flex-col items-center gap-0.5 opacity-40 print:opacity-50">
       <svg
         width="18"
         height="18"
@@ -94,7 +96,7 @@ const PunchHoleGuide: React.FC = () => (
     </div>
 
     {/* Center Fold & Punch Center Slider Alignment Marker (148.5mm = Exact A4 Midpoint) */}
-    <div className="absolute top-[50%] sm:top-[140.5mm] print:top-[140.5mm] -translate-y-1/2 left-0 right-0 flex flex-col items-center gap-0.5 opacity-50 print:opacity-60">
+    <div className="absolute top-[50%] sm:top-[133.5mm] print:top-[133.5mm] -translate-y-1/2 left-0 right-0 flex flex-col items-center gap-0.5 opacity-50 print:opacity-60">
       <div className="flex items-center gap-0.5 w-full justify-center">
         <div className="w-2 border-t-2 border-slate-700 print:border-slate-800"></div>
         <div className="w-2 h-2 rounded-full border border-slate-700 print:border-slate-800 flex items-center justify-center">
@@ -107,8 +109,8 @@ const PunchHoleGuide: React.FC = () => (
       </span>
     </div>
 
-    {/* Lower Punch Guide (188.5mm from top of A4 sheet = 180.5mm in print container, exactly 80mm from upper hole) */}
-    <div className="absolute top-[63%] sm:top-[180.5mm] print:top-[180.5mm] -translate-y-1/2 left-0 right-0 flex flex-col items-center gap-0.5 opacity-40 print:opacity-50">
+    {/* Lower Punch Guide (188.5mm from paper top = 173.5mm in container, exactly 80mm from upper hole) */}
+    <div className="absolute top-[64%] sm:top-[173.5mm] print:top-[173.5mm] -translate-y-1/2 left-0 right-0 flex flex-col items-center gap-0.5 opacity-40 print:opacity-50">
       <svg
         width="18"
         height="18"
@@ -131,9 +133,31 @@ const PunchHoleGuide: React.FC = () => (
   </div>
 );
 
+/**
+ * Ink-Efficient Center Watermark (GVTIW Institutional Crest)
+ * Faint, desaturated, dignified background emblem that saves printer ink/toner
+ * Renders on both Page 1 (PAF) and Page 2 (Sanction Order)
+ */
+const CenterWatermark: React.FC<{ logoSrc: string }> = ({ logoSrc }) => (
+  <div
+    className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden z-0"
+    aria-hidden="true"
+  >
+    <img
+      src={logoSrc}
+      alt="GVTIW Institutional Watermark"
+      className="w-72 h-72 sm:w-88 sm:h-88 print:w-72 print:h-72 object-contain opacity-[0.08] print:opacity-[0.075] grayscale contrast-125 transition-opacity"
+      referrerPolicy="no-referrer"
+      onError={(e) => {
+        (e.currentTarget as HTMLImageElement).src = DEFAULT_GVTIW_LOGO;
+      }}
+    />
+  </div>
+);
+
 // Very Dim Footer Watermark Requested for System Attribution
 const DimSystemFooter: React.FC = () => (
-  <div className="mt-3 pt-1.5 border-t border-dotted border-slate-300 print:border-slate-300 text-center select-none">
+  <div className="relative z-10 mt-3 pt-1.5 border-t border-dotted border-slate-300 print:border-slate-300 text-center select-none">
     <p className="text-[7.5px] print:text-[7px] font-mono tracking-wider text-slate-400 print:text-slate-400">
       e-CashBook &amp; Voucher System Generated by MKZ for 33028
     </p>
@@ -146,21 +170,33 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
   isModal = true,
   customGvtiwLogo,
   customTevtaLogo,
+  customGopLogo,
 }) => {
   // Format state: 'BOTH' (default for 1-click 2-page print), 'PAF', or 'SANCTION'
   const [printFormat, setPrintFormat] = useState<'BOTH' | 'PAF' | 'SANCTION'>('BOTH');
 
   // Resolve institutional crests with local-storage and built-in fallbacks
   const [gvtiwLogoSrc] = useState<string>(() => {
-    if (customGvtiwLogo && customGvtiwLogo.startsWith('data:')) return customGvtiwLogo;
+    if (customGvtiwLogo && (customGvtiwLogo.startsWith('data:') || customGvtiwLogo.startsWith('/'))) return customGvtiwLogo;
     const saved = typeof window !== 'undefined' ? localStorage.getItem('gvtiw_custom_logo') : null;
-    return saved && saved.startsWith('data:') ? saved : DEFAULT_GVTIW_LOGO;
+    return saved && (saved.startsWith('data:') || saved.startsWith('/')) ? saved : DEFAULT_GVTIW_LOGO;
   });
 
   const [tevtaLogoSrc] = useState<string>(() => {
-    if (customTevtaLogo && customTevtaLogo.startsWith('data:')) return customTevtaLogo;
+    if (customTevtaLogo && (customTevtaLogo.startsWith('data:') || customTevtaLogo.startsWith('/'))) return customTevtaLogo;
     const saved = typeof window !== 'undefined' ? localStorage.getItem('tevta_custom_logo') : null;
-    return saved && saved.startsWith('data:') ? saved : DEFAULT_TEVTA_LOGO;
+    return saved && (saved.startsWith('data:') || saved.startsWith('/')) ? saved : DEFAULT_TEVTA_LOGO;
+  });
+
+  const [gopLogoSrc] = useState<string>(() => {
+    if (customGopLogo && (customGopLogo.startsWith('data:') || customGopLogo.startsWith('/')) && !customGopLogo.endsWith('.svg')) {
+      return customGopLogo;
+    }
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('gop_custom_logo') : null;
+    if (saved && (saved.startsWith('data:') || saved.startsWith('/')) && !saved.endsWith('.svg')) {
+      return saved;
+    }
+    return DEFAULT_GOP_LOGO;
   });
 
   // Handle Escape Key to dismiss modal and manage modal class
@@ -190,18 +226,18 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
 
   const balanceBudgetAfterPayment = Math.max(0, (voucher.preEntryBalance || 0) - voucher.billAmountGross);
 
-  // Reusable official institutional header with dual emblems (GVTIW on left, TEVTA on right)
+  // Official Institutional Header: TEVTA Logo (Left), Title (Center), Govt of Punjab Logo (Right)
   const renderOfficialHeader = (title: string, subheader: string) => (
-    <div className="flex items-center justify-between border-b-2 border-slate-900 pb-2 mb-2 print:pb-1.5 print:mb-1.5 gap-3">
-      {/* Left Crest: GVTIW */}
+    <div className="relative z-10 flex items-center justify-between border-b-2 border-slate-900 pb-2 mb-2 print:pb-1.5 print:mb-1.5 gap-3">
+      {/* Left Crest: TEVTA */}
       <div className="w-14 h-14 sm:w-16 sm:h-16 print:w-13 print:h-13 shrink-0 flex items-center justify-center p-0.5">
         <img
-          src={gvtiwLogoSrc}
-          alt="GVTIW Logo"
+          src={tevtaLogoSrc}
+          alt="TEVTA Authority"
           className="max-w-full max-h-full object-contain"
           referrerPolicy="no-referrer"
           onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = DEFAULT_GVTIW_LOGO;
+            (e.currentTarget as HTMLImageElement).src = DEFAULT_TEVTA_LOGO;
           }}
         />
       </div>
@@ -221,15 +257,15 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
         </p>
       </div>
 
-      {/* Right Crest: TEVTA */}
+      {/* Right Crest: Govt of Punjab (GOP) */}
       <div className="w-14 h-14 sm:w-16 sm:h-16 print:w-13 print:h-13 shrink-0 flex items-center justify-center p-0.5">
         <img
-          src={tevtaLogoSrc}
-          alt="TEVTA Logo"
+          src={gopLogoSrc}
+          alt="Govt of Punjab Emblem"
           className="max-w-full max-h-full object-contain"
           referrerPolicy="no-referrer"
           onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src = DEFAULT_TEVTA_LOGO;
+            (e.currentTarget as HTMLImageElement).src = DEFAULT_GOP_LOGO;
           }}
         />
       </div>
@@ -240,19 +276,22 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
   const renderPafPage = (pageBreakClass: string = '') => (
     <div
       key="page-1-paf"
-      className={`paf-single-page p-3 sm:py-5 sm:pr-5 sm:pl-10 border-2 border-slate-800 rounded-xl print:border-none relative bg-white ${pageBreakClass}`}
+      className={`paf-single-page min-h-[760px] sm:min-h-[860px] p-3 sm:pt-6 sm:pb-5 sm:pr-5 sm:pl-10 border-2 border-slate-800 rounded-xl print:border-none relative bg-white overflow-hidden ${pageBreakClass}`}
     >
+      {/* GVTIW Center Watermark (Ink Efficient / Saving) */}
+      <CenterWatermark logoSrc={gvtiwLogoSrc} />
+
       {/* Filing Margin Visual Punch Guideline (Aligned with A4 Center in Screen & Print) */}
       <PunchHoleGuide />
 
-      {/* Header with Both Institutional Emblems */}
+      {/* Top Header: Left TEVTA, Center Titles, Right GOP */}
       {renderOfficialHeader(
         "PAYMENT APPROVAL FORM",
         "GOVT. VOCATIONAL TRAINING INSTITUTE FOR WOMEN SAMANABAD, FAISALABAD"
       )}
 
       {/* Rows 8 to 16: Voucher Meta & Vendor Information with Light Grey Heading Style */}
-      <div className="border-2 border-slate-900 text-[10.5px] print:text-[9.5px] mb-1.5 divide-y divide-slate-400">
+      <div className="relative z-10 border-2 border-slate-900 text-[10.5px] print:text-[9.5px] mb-1.5 divide-y divide-slate-400 bg-white/80 backdrop-blur-none">
         <div className="grid grid-cols-12">
           <span className="col-span-4 font-bold text-slate-800 bg-slate-100 py-0.5 px-2.5 border-r border-slate-400 uppercase">
             Sr. / Voucher# :
@@ -301,7 +340,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
         </div>
         <div className="grid grid-cols-12">
           <span className="col-span-4 font-bold text-slate-800 bg-slate-100 py-0.5 px-2.5 border-r border-slate-400 uppercase">
-            INVOICE DATE & NO. :
+            INVOICE DATE &amp; NO. :
           </span>
           <span className="col-span-8 font-mono font-bold text-slate-900 py-0.5 px-2.5">
             Bill#: {voucher.billNo || 'N/A'} &nbsp;•&nbsp; Date: {voucher.billDate || 'N/A'}
@@ -326,7 +365,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
       </div>
 
       {/* Rows 18-21: Budget Appropriations & Approvals */}
-      <div className="border-2 border-slate-900 text-[10.5px] print:text-[9.5px] mb-1.5 divide-y divide-slate-400">
+      <div className="relative z-10 border-2 border-slate-900 text-[10.5px] print:text-[9.5px] mb-1.5 divide-y divide-slate-400 bg-white/90">
         <div className="grid grid-cols-12">
           <span className="col-span-5 font-bold text-slate-800 bg-slate-100 py-0.5 px-2.5 border-r border-slate-400 uppercase">
             CODE / HEAD OF PAYMENT :
@@ -362,7 +401,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
       </div>
 
       {/* Rows 23-25: Sanction Authorities with Light Grey Label Columns */}
-      <div className="border-2 border-slate-900 text-[10.5px] print:text-[9.5px] mb-1.5 divide-y divide-slate-400">
+      <div className="relative z-10 border-2 border-slate-900 text-[10.5px] print:text-[9.5px] mb-1.5 divide-y divide-slate-400 bg-white/90">
         <div className="grid grid-cols-12">
           <span className="col-span-6 font-bold text-slate-800 bg-slate-100 py-0.5 px-2.5 border-r border-slate-400 uppercase">
             ADMINISTRATIVE APPROVAL :
@@ -389,12 +428,12 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
         </div>
       </div>
 
-      {/* Rows 27-34: Double-Entry Deductions & Net Calculation Table */}
-      <div className="mb-1.5">
+      {/* Rows 27-34: Double-Entry Deductions & Net Calculation Table (SR.# as whole number 1) */}
+      <div className="relative z-10 mb-1.5">
         <div className="text-[10px] print:text-[9px] font-black uppercase text-center bg-slate-200 text-slate-950 py-0.5 border-2 border-b-0 border-slate-900 tracking-wider">
           DETAILED DEDUCTIONS &amp; NET PAYABLE DISTRIBUTION
         </div>
-        <table className="w-full text-[9.5px] print:text-[8.5px] border-collapse border-2 border-slate-900">
+        <table className="w-full text-[9.5px] print:text-[8.5px] border-collapse border-2 border-slate-900 bg-white/80 backdrop-blur-none">
           <thead className="bg-slate-100 font-black text-slate-950">
             <tr className="border-b-2 border-slate-900 text-center">
               <th className="border-r border-slate-900 p-0.5">SR.#</th>
@@ -410,7 +449,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
           </thead>
           <tbody className="font-mono text-center">
             <tr className="border-b border-slate-400">
-              <td className="border-r border-slate-900 p-0.5 font-bold">1.0</td>
+              <td className="border-r border-slate-900 p-0.5 font-bold">1</td>
               <td className="border-r border-slate-900 p-0.5 text-right">{Number(voucher.billAmtExclTax || voucher.billAmountGross).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
               <td className="border-r border-slate-900 p-0.5 text-right">{voucher.gstAmount > 0 ? Number(voucher.gstAmount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
               <td className="border-r border-slate-900 p-0.5 text-right">{voucher.praTaxOnBill > 0 ? Number(voucher.praTaxOnBill).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
@@ -436,7 +475,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
       </div>
 
       {/* Rows 36-41: Bank & Cheque Details */}
-      <div className="border-2 border-slate-900 text-[10.5px] print:text-[9.5px] mb-1.5 divide-y divide-slate-400">
+      <div className="relative z-10 border-2 border-slate-900 text-[10.5px] print:text-[9.5px] mb-1.5 divide-y divide-slate-400 bg-white/80 backdrop-blur-none">
         <div className="grid grid-cols-12">
           <span className="col-span-5 font-bold text-slate-800 bg-slate-100 py-0.5 px-2.5 border-r border-slate-400 uppercase">
             BANK NAME &amp; ACCOUNT TITLE :
@@ -491,13 +530,13 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
       </div>
 
       {/* Rows 43-44: Institutional Certifications */}
-      <div className="text-[8.5px] print:text-[8px] text-slate-600 mb-2 italic space-y-0.5 leading-tight">
+      <div className="relative z-10 text-[8.5px] print:text-[8px] text-slate-600 mb-2 italic space-y-0.5 leading-tight">
         <p>• This form shall be utilized for all categories of expenditures and purchases, including but not limited to the procurement of goods, services and works etc.</p>
         <p>• It is hereby certified that all applicable policies, procedures, SOP&apos;s and PPRA Rules have been duly complied with, prior to the execution of the said payment.</p>
       </div>
 
       {/* Rows 47-49: Official Signatories (KASHIF ZIA in ALL CAPS) */}
-      <div className="mt-3 sm:mt-4 print:mt-3 pt-2 print:pt-1.5 border-t-2 border-slate-900 grid grid-cols-3 gap-4 text-center text-xs print:text-[10px]">
+      <div className="relative z-10 mt-3 sm:mt-4 print:mt-3 pt-2 print:pt-1.5 border-t-2 border-slate-900 grid grid-cols-3 gap-4 text-center text-xs print:text-[10px]">
         {/* Prepared by - KASHIF ZIA */}
         <div className="flex flex-col items-center">
           <div className="h-12 sm:h-14 print:h-11 w-full flex items-end justify-center">
@@ -559,19 +598,22 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
   const renderSanctionPage = (pageBreakClass: string = '') => (
     <div
       key="page-2-sanction"
-      className={`paf-single-page p-3 sm:py-5 sm:pr-5 sm:pl-10 border-2 border-slate-800 rounded-xl print:border-none relative bg-white ${pageBreakClass}`}
+      className={`paf-single-page min-h-[760px] sm:min-h-[860px] p-3 sm:pt-6 sm:pb-5 sm:pr-5 sm:pl-10 border-2 border-slate-800 rounded-xl print:border-none relative bg-white overflow-hidden ${pageBreakClass}`}
     >
+      {/* GVTIW Center Watermark (Ink Efficient / Saving) */}
+      <CenterWatermark logoSrc={gvtiwLogoSrc} />
+
       {/* Filing Margin Visual Punch Guideline (Aligned with A4 Center in Screen & Print) */}
       <PunchHoleGuide />
 
-      {/* Header with Both Institutional Emblems */}
+      {/* Top Header: Left TEVTA, Center Titles, Right GOP */}
       {renderOfficialHeader(
         "Govt. Vocational Training Institute (W)",
         "Samanabad, Faisalabad"
       )}
 
       {/* Sanction Order Title & Corporate Meta Header with Light Grey Styling */}
-      <div className="text-center mb-2.5 print:mb-2">
+      <div className="relative z-10 text-center mb-2.5 print:mb-2">
         <h1 className="text-base sm:text-lg print:text-base font-black tracking-wider text-slate-950 uppercase underline decoration-2 underline-offset-4">
           SANCTION ORDER
         </h1>
@@ -581,7 +623,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
       </div>
 
       {/* Corporate Executive Voucher & Reference Strip (Light Grey Highlight) */}
-      <div className="grid grid-cols-12 bg-slate-100 border-2 border-slate-900 text-xs print:text-[10.5px] mb-3 divide-x divide-slate-400">
+      <div className="relative z-10 grid grid-cols-12 bg-slate-100/90 border-2 border-slate-900 text-xs print:text-[10.5px] mb-3 divide-x divide-slate-400">
         <div className="col-span-4 px-2.5 py-1.5 flex items-center gap-1.5">
           <span className="font-bold text-slate-700 uppercase text-[10px]">Voucher No :</span>
           <span className="font-black font-mono text-slate-950 text-xs sm:text-sm">{voucher.voucherNo}</span>
@@ -597,14 +639,14 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
       </div>
 
       {/* Legal Powers Delegation Clause with Bolded Key Values */}
-      <p className="text-xs print:text-[11px] text-justify leading-relaxed text-slate-900 mb-3 print:mb-2.5">
+      <p className="relative z-10 text-xs print:text-[11px] text-justify leading-relaxed text-slate-900 mb-3 print:mb-2.5">
         In exercise of the Powers Delegated to the undersigned vide Sr. No.06 Part 1st &amp; 2nd Schedule of Delegation of Financial Powers vides Notification No. TEVTA/GM (F&amp;A) Financial Powers/2012 dated September 22, 2012; the sanction is hereby accorded for Purchases, <strong className="font-black text-slate-950">{voucher.accountHead}</strong> of <strong className="font-black font-mono text-slate-950">Rs. {Number(voucher.billAmountGross).toLocaleString('en-US', { minimumFractionDigits: 2 })}/-</strong>.
       </p>
 
-      {/* Detail Table Header & Rows with Light Grey Styling */}
-      <div className="mb-3.5 print:mb-2.5">
+      {/* Detail Table Header & Rows with Light Grey Styling (Sr.# as whole number 1) */}
+      <div className="relative z-10 mb-3.5 print:mb-2.5">
         <p className="text-xs print:text-[11px] font-bold text-slate-800 mb-1">The detail is given below: -</p>
-        <table className="w-full text-xs print:text-[10.5px] border-collapse border-2 border-slate-900">
+        <table className="w-full text-xs print:text-[10.5px] border-collapse border-2 border-slate-900 bg-white/80 backdrop-blur-none">
           <thead className="bg-slate-200 font-black text-slate-950">
             <tr className="border-b-2 border-slate-900 text-center">
               <th className="border-r border-slate-900 p-1.5 w-12">Sr.#</th>
@@ -616,7 +658,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
           </thead>
           <tbody className="font-mono">
             <tr className="border-b border-slate-400">
-              <td className="border-r border-slate-900 p-1.5 text-center font-bold">1.0</td>
+              <td className="border-r border-slate-900 p-1.5 text-center font-bold">1</td>
               <td className="border-r border-slate-900 p-1.5 text-center font-black text-slate-950 text-[11px]">{voucher.voucherNo}</td>
               <td className="border-r border-slate-900 p-1.5 font-sans font-black uppercase text-slate-950 tracking-wide text-xs">{voucher.payeeName}</td>
               <td className="border-r border-slate-900 p-1.5 text-xs font-black text-slate-950">{voucher.accountHead}</td>
@@ -637,7 +679,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
       </div>
 
       {/* Budget Debit Head Clause */}
-      <div className="text-xs print:text-[11px] text-justify leading-relaxed text-slate-800 mb-5 print:mb-3.5 space-y-1.5">
+      <div className="relative z-10 text-xs print:text-[11px] text-justify leading-relaxed text-slate-800 mb-5 print:mb-3.5 space-y-1.5">
         <p>
           The expenditure involved shall be debit-able to the budget of Govt. Vocational Training Institute (W) Samanabad, Faisalabad. Under the head Grant No. PC-21022 (022)-044101- Support for Industrial Development – L04219 Grant-in-aid to TEVTA for the Financial Year 2026-27.
         </p>
@@ -647,7 +689,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
       </div>
 
       {/* Principal Signature Authority (SHAZIA KHADIM in ALL CAPS) */}
-      <div className="pt-3 print:pt-1.5 flex justify-end">
+      <div className="relative z-10 pt-3 print:pt-1.5 flex justify-end">
         <div className="text-center w-56 sm:w-64">
           <div className="h-12 sm:h-14 print:h-10"></div>
           <div className="border-b-2 border-slate-800 w-36 sm:w-44 mx-auto mb-1.5"></div>

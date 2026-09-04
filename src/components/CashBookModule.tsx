@@ -35,12 +35,14 @@ interface CashBookModuleProps {
   darkMode: boolean;
   customGvtiwLogo?: string | null;
   customTevtaLogo?: string | null;
+  customGopLogo?: string | null;
 }
 
 export const CashBookModule: React.FC<CashBookModuleProps> = ({
   darkMode,
   customGvtiwLogo,
   customTevtaLogo,
+  customGopLogo,
 }) => {
   const [activeAccountKey, setActiveAccountKey] = useState<BankAccountKey>('NS');
   const [cashBookStates, setCashBookStates] = useState<Record<BankAccountKey, CashBookAccountState>>(() => {
@@ -724,6 +726,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           isModal={true}
           customGvtiwLogo={customGvtiwLogo}
           customTevtaLogo={customTevtaLogo}
+          customGopLogo={customGopLogo}
         />
       )}
 

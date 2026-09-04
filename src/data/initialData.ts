@@ -9,6 +9,7 @@ export const SOURCE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1wU3zS6B
 export const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwe-6OGK3AcRp8KEpSRgEYzbdikHKY32W3TAnmfnBrTXmE-28nxqsLp5kcz9t7Mzz3WvA/exec';
 export const DEFAULT_GVTIW_LOGO = '/gvtiw-logo.jpg';
 export const DEFAULT_TEVTA_LOGO = '/tevta-logo.png';
+export const DEFAULT_GOP_LOGO = '/gop-logo.png';
 
 export const CATEGORY_DISPLAY_ORDER: CategoryType[] = [
   'Salary',

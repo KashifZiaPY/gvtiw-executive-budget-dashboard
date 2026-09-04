@@ -34,6 +34,7 @@ interface ReportsModuleProps {
   darkMode: boolean;
   customGvtiwLogo?: string | null;
   customTevtaLogo?: string | null;
+  customGopLogo?: string | null;
 }
 
 type ReportTab =
@@ -50,6 +51,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   darkMode,
   customGvtiwLogo,
   customTevtaLogo,
+  customGopLogo,
 }) => {
   const [activeReportTab, setActiveReportTab] = useState<ReportTab>('CASHBOOK');
   const [vouchers] = useState<MasterVoucher[]>(() => {
@@ -898,6 +900,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           isModal={true}
           customGvtiwLogo={customGvtiwLogo}
           customTevtaLogo={customTevtaLogo}
+          customGopLogo={customGopLogo}
         />
       )}
     </div>

@@ -24,12 +24,14 @@ interface VoucherModuleProps {
   darkMode: boolean;
   customGvtiwLogo?: string | null;
   customTevtaLogo?: string | null;
+  customGopLogo?: string | null;
 }
 
 export const VoucherModule: React.FC<VoucherModuleProps> = ({
   darkMode,
   customGvtiwLogo,
   customTevtaLogo,
+  customGopLogo,
 }) => {
   const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
     try {
@@ -447,6 +449,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
           isModal={true}
           customGvtiwLogo={customGvtiwLogo}
           customTevtaLogo={customTevtaLogo}
+          customGopLogo={customGopLogo}
         />
       )}
 

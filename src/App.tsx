@@ -11,7 +11,7 @@ import { CategoryDeck } from './components/CategoryDeck';
 import { HeadWiseTable } from './components/HeadWiseTable';
 import { PrintExecutiveReport } from './components/PrintExecutiveReport';
 import { LogoUploaderModal } from './components/LogoUploaderModal';
-import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO } from './data/initialData';
+import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO, DEFAULT_GOP_LOGO } from './data/initialData';
 import { CashBookModule } from './components/CashBookModule';
 import { VoucherModule } from './components/VoucherModule';
 import { PaymentApprovalForm } from './components/PaymentApprovalForm';
@@ -78,19 +78,25 @@ export default function App() {
   // Custom Logo State (Persisted in browser localStorage & Server Sync, with built-in official fallbacks)
   const [customGvtiwLogo, setCustomGvtiwLogo] = useState<string | null>(() => {
     const saved = localStorage.getItem('gvtiw_custom_logo');
-    return saved && saved.startsWith('data:') ? saved : DEFAULT_GVTIW_LOGO;
+    return saved && (saved.startsWith('data:') || saved.startsWith('/')) ? saved : DEFAULT_GVTIW_LOGO;
   });
   const [customTevtaLogo, setCustomTevtaLogo] = useState<string | null>(() => {
     const saved = localStorage.getItem('tevta_custom_logo');
-    return saved && saved.startsWith('data:') ? saved : DEFAULT_TEVTA_LOGO;
+    return saved && (saved.startsWith('data:') || saved.startsWith('/')) ? saved : DEFAULT_TEVTA_LOGO;
+  });
+  const [customGopLogo, setCustomGopLogo] = useState<string | null>(() => {
+    const saved = localStorage.getItem('gop_custom_logo');
+    return saved && (saved.startsWith('data:') || saved.startsWith('/')) ? saved : DEFAULT_GOP_LOGO;
   });
   const [isLogoModalOpen, setIsLogoModalOpen] = useState(false);
 
   const refreshLogos = () => {
     const localGv = localStorage.getItem('gvtiw_custom_logo');
     const localTv = localStorage.getItem('tevta_custom_logo');
-    setCustomGvtiwLogo(localGv && localGv.startsWith('data:') ? localGv : DEFAULT_GVTIW_LOGO);
-    setCustomTevtaLogo(localTv && localTv.startsWith('data:') ? localTv : DEFAULT_TEVTA_LOGO);
+    const localGp = localStorage.getItem('gop_custom_logo');
+    setCustomGvtiwLogo(localGv && (localGv.startsWith('data:') || localGv.startsWith('/')) ? localGv : DEFAULT_GVTIW_LOGO);
+    setCustomTevtaLogo(localTv && (localTv.startsWith('data:') || localTv.startsWith('/')) ? localTv : DEFAULT_TEVTA_LOGO);
+    setCustomGopLogo(localGp && (localGp.startsWith('data:') || localGp.startsWith('/')) ? localGp : DEFAULT_GOP_LOGO);
 
     fetch('/api/logos')
       .then((res) => res.json())
@@ -102,6 +108,10 @@ export default function App() {
         if (data?.tevtaLogo && data.tevtaLogo.startsWith('data:')) {
           setCustomTevtaLogo(data.tevtaLogo);
           localStorage.setItem('tevta_custom_logo', data.tevtaLogo);
+        }
+        if (data?.gopLogo && data.gopLogo.startsWith('data:')) {
+          setCustomGopLogo(data.gopLogo);
+          localStorage.setItem('gop_custom_logo', data.gopLogo);
         }
       })
       .catch(() => {});
@@ -119,6 +129,10 @@ export default function App() {
         if (data?.tevtaLogo && data.tevtaLogo.startsWith('data:') && !localStorage.getItem('tevta_custom_logo')) {
           setCustomTevtaLogo(data.tevtaLogo);
           localStorage.setItem('tevta_custom_logo', data.tevtaLogo);
+        }
+        if (data?.gopLogo && data.gopLogo.startsWith('data:') && !localStorage.getItem('gop_custom_logo')) {
+          setCustomGopLogo(data.gopLogo);
+          localStorage.setItem('gop_custom_logo', data.gopLogo);
         }
       })
       .catch(() => {});
@@ -401,6 +415,7 @@ export default function App() {
               darkMode={darkMode}
               customGvtiwLogo={customGvtiwLogo}
               customTevtaLogo={customTevtaLogo}
+              customGopLogo={customGopLogo}
             />
           </section>
         )}
@@ -411,6 +426,7 @@ export default function App() {
               darkMode={darkMode}
               customGvtiwLogo={customGvtiwLogo}
               customTevtaLogo={customTevtaLogo}
+              customGopLogo={customGopLogo}
             />
           </section>
         )}
@@ -421,6 +437,7 @@ export default function App() {
               darkMode={darkMode}
               customGvtiwLogo={customGvtiwLogo}
               customTevtaLogo={customTevtaLogo}
+              customGopLogo={customGopLogo}
             />
           </section>
         )}
