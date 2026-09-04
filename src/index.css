@@ -59,10 +59,15 @@
 /* Official Print Isolation Styles */
 @page {
   size: A4 portrait;
-  margin: 6mm 8mm;
+  margin: 10mm 10mm 10mm 20mm; /* 20mm left margin for 2-hole punch & file binder clip */
 }
 
 @media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   html, body {
     background-color: white !important;
     color: black !important;
