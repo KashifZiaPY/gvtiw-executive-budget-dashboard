@@ -59,7 +59,7 @@
 /* Official Print Isolation Styles */
 @page {
   size: A4 portrait;
-  margin: 10mm 10mm 10mm 20mm; /* 20mm left margin for 2-hole punch & file binder clip */
+  margin: 8mm 8mm 8mm 8mm; /* 8mm print margin + 14mm inner gutter = 22mm filing clearance */
 }
 
 @media print {
@@ -106,18 +106,22 @@
     border: none !important;
   }
 
-  /* Enforce single-page fit without trailing page breaks */
+  /* Enforce single-page fit with dedicated 14mm gutter for punch hole guide markers */
   .paf-single-page {
     page-break-after: avoid !important;
     break-after: avoid !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    padding-right: 0 !important;
+    padding-left: 14mm !important;
     box-shadow: none !important;
     border: none !important;
     width: 100% !important;
     max-width: 100% !important;
+    position: relative !important;
   }
 }
 

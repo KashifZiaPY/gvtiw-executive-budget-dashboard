@@ -56,6 +56,67 @@ function numberToWords(amount: number): string {
   return 'Rupees ' + words.trim() + ' Only';
 }
 
+// Official Filing Margin Punch Hole Guide (Displayed Dimly on Screen & Printed on Hardcopy for Hole Punching)
+const PunchHoleGuide: React.FC = () => (
+  <div
+    className="absolute left-2 sm:left-3.5 print:left-[3.5mm] top-12 bottom-12 print:top-[16mm] print:bottom-[16mm] flex flex-col justify-around items-center opacity-40 print:opacity-45 pointer-events-none select-none z-10"
+    aria-hidden="true"
+  >
+    {/* Upper Punch Guide */}
+    <div className="flex flex-col items-center gap-0.5">
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-slate-600 print:text-slate-700"
+      >
+        <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2.5 2" />
+        <circle cx="10" cy="10" r="1.5" fill="currentColor" />
+        <line x1="10" y1="1" x2="10" y2="4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+        <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+        <line x1="1" y1="10" x2="4" y2="10" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+        <line x1="16" y1="10" x2="19" y2="10" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+      </svg>
+      <span className="text-[6.5px] print:text-[6.5px] font-mono font-bold tracking-tight text-slate-500 print:text-slate-700 uppercase">
+        PUNCH
+      </span>
+    </div>
+
+    {/* Center Fold & Punch Alignment Marker */}
+    <div className="flex items-center gap-1">
+      <div className="w-2.5 border-t border-dashed border-slate-500 print:border-slate-700"></div>
+      <div className="w-1.5 h-1.5 rounded-full border border-slate-500 print:border-slate-700 flex items-center justify-center">
+        <div className="w-0.5 h-0.5 bg-slate-500 print:bg-slate-700 rounded-full"></div>
+      </div>
+      <div className="w-2.5 border-t border-dashed border-slate-500 print:border-slate-700"></div>
+    </div>
+
+    {/* Lower Punch Guide */}
+    <div className="flex flex-col items-center gap-0.5">
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 20 20"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className="text-slate-600 print:text-slate-700"
+      >
+        <circle cx="10" cy="10" r="7" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2.5 2" />
+        <circle cx="10" cy="10" r="1.5" fill="currentColor" />
+        <line x1="10" y1="1" x2="10" y2="4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+        <line x1="10" y1="16" x2="10" y2="19" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+        <line x1="1" y1="10" x2="4" y2="10" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+        <line x1="16" y1="10" x2="19" y2="10" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+      </svg>
+      <span className="text-[6.5px] print:text-[6.5px] font-mono font-bold tracking-tight text-slate-500 print:text-slate-700 uppercase">
+        PUNCH
+      </span>
+    </div>
+  </div>
+);
+
 export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
   voucher,
   onClose,
@@ -229,13 +290,10 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
           {/* PAGE 1: PAF (N'Sheet) STRICTLY BOUNDED TO SINGLE A4 PAGE         */}
           {/* ================================================================ */}
           {printFormat === 'PAF' && (
-            <div className="paf-single-page p-3 sm:py-5 sm:pr-5 sm:pl-9 border-2 border-slate-800 rounded-xl print:border-none print:p-0 relative">
+            <div className="paf-single-page p-3 sm:py-5 sm:pr-5 sm:pl-10 border-2 border-slate-800 rounded-xl print:border-none relative">
               
-              {/* Filing Margin Visual Punch Guideline (Screen Only) */}
-              <div className="hidden sm:flex print:hidden absolute left-3 top-10 bottom-10 flex-col justify-around items-center opacity-30 pointer-events-none select-none">
-                <div className="w-3.5 h-3.5 rounded-full border-2 border-dashed border-slate-600 flex items-center justify-center text-[7px] text-slate-600">●</div>
-                <div className="w-3.5 h-3.5 rounded-full border-2 border-dashed border-slate-600 flex items-center justify-center text-[7px] text-slate-600">●</div>
-              </div>
+              {/* Filing Margin Visual Punch Guideline (Dim Vector Targets Displayed on Screen & in Hard Print) */}
+              <PunchHoleGuide />
 
               {/* Header with Both Institutional Emblems */}
               {renderOfficialHeader(
@@ -549,13 +607,10 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
           {/* PAGE 2: N'Sheet-Sanction Order XL STRICTLY BOUNDED TO SINGLE A4 */}
           {/* ================================================================ */}
           {printFormat === 'SANCTION' && (
-            <div className="paf-single-page p-3 sm:py-5 sm:pr-5 sm:pl-9 border-2 border-slate-800 rounded-xl print:border-none print:p-0 relative">
+            <div className="paf-single-page p-3 sm:py-5 sm:pr-5 sm:pl-10 border-2 border-slate-800 rounded-xl print:border-none relative">
               
-              {/* Filing Margin Visual Punch Guideline (Screen Only) */}
-              <div className="hidden sm:flex print:hidden absolute left-3 top-10 bottom-10 flex-col justify-around items-center opacity-30 pointer-events-none select-none">
-                <div className="w-3.5 h-3.5 rounded-full border-2 border-dashed border-slate-600 flex items-center justify-center text-[7px] text-slate-600">●</div>
-                <div className="w-3.5 h-3.5 rounded-full border-2 border-dashed border-slate-600 flex items-center justify-center text-[7px] text-slate-600">●</div>
-              </div>
+              {/* Filing Margin Visual Punch Guideline (Dim Vector Targets Displayed on Screen & in Hard Print) */}
+              <PunchHoleGuide />
 
               {/* Header with Both Institutional Emblems */}
               {renderOfficialHeader(
