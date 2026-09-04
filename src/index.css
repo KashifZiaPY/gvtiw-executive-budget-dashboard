@@ -108,8 +108,6 @@
 
   /* Enforce single-page fit with dedicated 14mm gutter for punch hole guide markers */
   .paf-single-page {
-    page-break-after: avoid !important;
-    break-after: avoid !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
     margin: 0 !important;
@@ -122,6 +120,19 @@
     width: 100% !important;
     max-width: 100% !important;
     position: relative !important;
+    min-height: 275mm !important;
+    height: auto !important;
+  }
+
+  /* Forced clean page break when printing complete 2-page voucher set */
+  .paf-page-break {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  .paf-no-page-break {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 }
 
