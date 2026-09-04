@@ -397,19 +397,31 @@ export default function App() {
 
         {activeModule === 'CASHBOOK' && (
           <section aria-label="Digital Multi-Account CashBook">
-            <CashBookModule darkMode={darkMode} />
+            <CashBookModule
+              darkMode={darkMode}
+              customGvtiwLogo={customGvtiwLogo}
+              customTevtaLogo={customTevtaLogo}
+            />
           </section>
         )}
 
         {activeModule === 'VOUCHERS' && (
           <section aria-label="Master Voucher Matrix">
-            <VoucherModule darkMode={darkMode} />
+            <VoucherModule
+              darkMode={darkMode}
+              customGvtiwLogo={customGvtiwLogo}
+              customTevtaLogo={customTevtaLogo}
+            />
           </section>
         )}
 
         {activeModule === 'REPORTS' && (
           <section aria-label="Reports & Statements Hub">
-            <ReportsModule darkMode={darkMode} />
+            <ReportsModule
+              darkMode={darkMode}
+              customGvtiwLogo={customGvtiwLogo}
+              customTevtaLogo={customTevtaLogo}
+            />
           </section>
         )}
 

@@ -33,9 +33,15 @@ import {
 
 interface CashBookModuleProps {
   darkMode: boolean;
+  customGvtiwLogo?: string | null;
+  customTevtaLogo?: string | null;
 }
 
-export const CashBookModule: React.FC<CashBookModuleProps> = ({ darkMode }) => {
+export const CashBookModule: React.FC<CashBookModuleProps> = ({
+  darkMode,
+  customGvtiwLogo,
+  customTevtaLogo,
+}) => {
   const [activeAccountKey, setActiveAccountKey] = useState<BankAccountKey>('NS');
   const [cashBookStates, setCashBookStates] = useState<Record<BankAccountKey, CashBookAccountState>>(() => {
     try {
@@ -716,6 +722,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({ darkMode }) => {
           voucher={selectedVoucherForPAF}
           onClose={() => setSelectedVoucherForPAF(null)}
           isModal={true}
+          customGvtiwLogo={customGvtiwLogo}
+          customTevtaLogo={customTevtaLogo}
         />
       )}
 

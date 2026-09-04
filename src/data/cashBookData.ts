@@ -8,13 +8,15 @@
 export type BankAccountKey = 'NS' | 'PF' | 'FC' | 'SC' | 'SEC' | 'AA';
 
 export interface BankAccountMetadata {
-  key: BankAccountKey;
+  key?: BankAccountKey;
   code: string;
   shortName: string;
   fullName: string;
   accountNo: string;
   bankName: string;
   branch: string;
+  openingBalance?: number;
+  unpresentedChequesTotal?: number;
   themeColor: {
     primary: string;
     bgLight: string;
@@ -73,6 +75,8 @@ export interface MasterVoucher {
   entryStatus: string;
   timestamp: string;
   bankAccount: string;
+  billAmtExclTax?: number;
+  praTaxOnBill?: number;
   preEntryBalance: number;
 }
 

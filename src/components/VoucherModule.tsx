@@ -22,9 +22,15 @@ import {
 
 interface VoucherModuleProps {
   darkMode: boolean;
+  customGvtiwLogo?: string | null;
+  customTevtaLogo?: string | null;
 }
 
-export const VoucherModule: React.FC<VoucherModuleProps> = ({ darkMode }) => {
+export const VoucherModule: React.FC<VoucherModuleProps> = ({
+  darkMode,
+  customGvtiwLogo,
+  customTevtaLogo,
+}) => {
   const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
     try {
       const cached = localStorage.getItem('gvtiw_live_vouchers_v1');
@@ -439,6 +445,8 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({ darkMode }) => {
           voucher={selectedVoucherForPAF}
           onClose={() => setSelectedVoucherForPAF(null)}
           isModal={true}
+          customGvtiwLogo={customGvtiwLogo}
+          customTevtaLogo={customTevtaLogo}
         />
       )}
 

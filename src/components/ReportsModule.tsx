@@ -32,6 +32,8 @@ import {
 
 interface ReportsModuleProps {
   darkMode: boolean;
+  customGvtiwLogo?: string | null;
+  customTevtaLogo?: string | null;
 }
 
 type ReportTab =
@@ -44,7 +46,11 @@ type ReportTab =
   | 'AUDIT'
   | 'PRINT_CENTER';
 
-export const ReportsModule: React.FC<ReportsModuleProps> = ({ darkMode }) => {
+export const ReportsModule: React.FC<ReportsModuleProps> = ({
+  darkMode,
+  customGvtiwLogo,
+  customTevtaLogo,
+}) => {
   const [activeReportTab, setActiveReportTab] = useState<ReportTab>('CASHBOOK');
   const [vouchers] = useState<MasterVoucher[]>(() => {
     try {
@@ -889,6 +895,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({ darkMode }) => {
         <PaymentApprovalForm
           voucher={selectedVoucherForPAF}
           onClose={() => setSelectedVoucherForPAF(null)}
+          isModal={true}
+          customGvtiwLogo={customGvtiwLogo}
+          customTevtaLogo={customTevtaLogo}
         />
       )}
     </div>

@@ -57,17 +57,62 @@
 }
 
 /* Official Print Isolation Styles */
+@page {
+  size: A4 portrait;
+  margin: 6mm 8mm;
+}
+
 @media print {
-  body {
+  html, body {
     background-color: white !important;
     color: black !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
-  nav, footer, .print-hidden {
+
+  /* Hide app navigation, headers, footer and hidden elements */
+  header, nav, footer, .print-hidden {
     display: none !important;
   }
-  @page {
-    size: auto;
-    margin: 8mm;
+
+  /* When printing the voucher form modal, hide the entire root app so background content does not bleed */
+  body.paf-modal-open #root,
+  body:has(#print-paf-portal) #root {
+    display: none !important;
+  }
+
+  /* Ensure the portal container fills the print page seamlessly without extra margins */
+  #print-paf-portal {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Enforce single-page fit without trailing page breaks */
+  .paf-single-page {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
 
