@@ -26,11 +26,11 @@ import {
 const GOOGLE_SHEET_CSV_URL =
   'https://docs.google.com/spreadsheets/d/1wU3zS6BSrCJuFqio8Az7sKkCcwuTOSeJ8GRW7FhCRls/export?format=csv&gid=240736415';
 
-const STORAGE_KEY_ACCOUNTS = 'gvtiw_accounts_store_v29';
-const STORAGE_KEY_VOUCHERS = 'gvtiw_vouchers_store_v29';
-const STORAGE_KEY_AUDITS = 'gvtiw_audits_store_v29';
-const STORAGE_KEY_SPOTLIGHT = 'gvtiw_spotlight_code_v29';
-const STORAGE_KEY_LATEST_ACTIVITY_TS = 'gvtiw_latest_activity_ts_v29';
+const STORAGE_KEY_ACCOUNTS = 'gvtiw_accounts_store_v30';
+const STORAGE_KEY_VOUCHERS = 'gvtiw_vouchers_store_v30';
+const STORAGE_KEY_AUDITS = 'gvtiw_audits_store_v30';
+const STORAGE_KEY_SPOTLIGHT = 'gvtiw_spotlight_code_v30';
+const STORAGE_KEY_LATEST_ACTIVITY_TS = 'gvtiw_latest_activity_ts_v30';
 
 const VALID_ACCOUNT_CODES = new Set(INITIAL_ACCOUNTS.map((a) => a.code));
 
@@ -233,108 +233,96 @@ export async function syncDirectFromGoogleSheet(accounts: AccountHead[]): Promis
   latestTransactionTs: string | null;
 }> {
   try {
-    const res = await fetch(GOOGLE_SHEET_CSV_URL, { cache: 'no-store' });
+    const gvizUrl =
+      'https://docs.google.com/spreadsheets/d/1wU3zS6BSrCJuFqio8Az7sKkCcwuTOSeJ8GRW7FhCRls/gviz/tq?tqx=out:json';
+    const res = await fetch(gvizUrl, { cache: 'no-store' });
     if (!res.ok) return { changed: 0, spotlight: null, latestTransactionTs: null };
-    const csvText = await res.text();
-    if (!csvText || !csvText.includes('A00000DW')) return { changed: 0, spotlight: null, latestTransactionTs: null };
+    const text = await res.text();
+    const match = text.match(/setResponse\((.*)\);/s);
+    if (!match || !match[1]) return { changed: 0, spotlight: null, latestTransactionTs: null };
 
-    const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    const data = JSON.parse(match[1]);
+    const rows = data?.table?.rows;
+    if (!Array.isArray(rows)) return { changed: 0, spotlight: null, latestTransactionTs: null };
 
-    let extractedLatestTx: string | null = null;
-    let detectedChanges = 0;
-    let mostRecentChangedHead: string | null = null;
-
-    // 1. Extract overall Latest Transaction from Google Sheet Header (Row 3)
-    for (let i = 0; i < Math.min(10, lines.length); i++) {
-      const line = lines[i];
-      const match = line.match(/Latest (?:Transaction|Activity):\s*([0-9A-Za-z\-:\s]+?)(?:\||\,|$)/i);
-      if (match && match[1]) {
-        extractedLatestTx = match[1].trim();
+    const cleanNum = (val: any): number => {
+      if (val === null || val === undefined) return 0;
+      const s = String(val).replace(/,/g, '').trim();
+      if (s === '-' || s === '') return 0;
+      if (s.startsWith('(') && s.endsWith(')')) {
+        const n = parseFloat(s.slice(1, -1));
+        return isNaN(n) ? 0 : -n;
       }
-    }
-
-    const cleanNum = (str: string | undefined) => {
-      if (!str || str.trim() === '-' || str.trim() === '') return 0;
-      let s = str.replace(/[",\s]/g, '');
-      if (s.startsWith('(') && s.endsWith(')')) s = '-' + s.slice(1, -1);
       const n = parseFloat(s);
       return isNaN(n) ? 0 : n;
     };
 
-    // 2. Parse Valid Head-Wise Rows (Excluding category headers and subtotal rows)
-    for (const line of lines) {
-      const cols: string[] = [];
-      let cur = '';
-      let inQuotes = false;
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        if (char === '"') inQuotes = !inQuotes;
-        else if (char === ',' && !inQuotes) {
-          cols.push(cur.trim());
-          cur = '';
-        } else cur += char;
+    let detectedChanges = 0;
+    let mostRecentChangedHead: string | null = null;
+    let extractedLatestTx: string | null = null;
+    let maxTsMs = 0;
+
+    for (const r of rows) {
+      const c = r?.c;
+      if (!c || c.length < 8) continue;
+      const codeRaw = c[1]?.v;
+      if (!codeRaw || typeof codeRaw !== 'string') continue;
+      const code = codeRaw.trim();
+      if (!VALID_ACCOUNT_CODES.has(code) || code.includes('SUBTOTAL') || code.includes('GRAND')) continue;
+
+      const acc = accounts.find((a) => a.code === code);
+      if (!acc) continue;
+
+      const headDesc = c[2]?.v ? String(c[2].v).trim() : '';
+      if (headDesc && headDesc.length > code.length) {
+        acc.head = headDesc;
       }
-      cols.push(cur.trim());
 
-      // Valid account rows have numeric serial in cols[0], valid code in cols[1], full description in cols[2]
-      if (cols.length >= 7) {
-        const srStr = cols[0]?.trim();
-        const code = cols[1]?.trim();
-        const headDesc = cols[2]?.trim();
+      const newOpening = cleanNum(c[3]?.v);
+      const newReappr = cleanNum(c[4]?.v);
+      // If category is Non Salary, receipts in sheet column 5 represent AAA budget allocations (ceiling), not cash deposits into BOP NS Bank A/C.
+      // AAA allocation is tracked under the dedicated AAA head (A00000AA).
+      const rawReceipts = cleanNum(c[5]?.v);
+      const newReceipts = acc.category === 'Non Salary' ? 0 : rawReceipts;
+      const newPayments = cleanNum(c[6]?.v);
+      const newBalance = cleanNum(c[7]?.v);
+      const rawActivity = c[9]?.f || c[9]?.v ? String(c[9]?.f || c[9]?.v).trim() : '';
 
-        // Skip non-data rows, headers, and subtotal rows
-        if (!code || code.toUpperCase().includes('SUBTOTAL') || isNaN(parseInt(srStr))) {
-          continue;
+      if (rawActivity && rawActivity !== '-') {
+        const d = new Date(rawActivity).getTime();
+        if (!isNaN(d) && d > maxTsMs) {
+          maxTsMs = d;
+          extractedLatestTx = rawActivity;
         }
+      }
 
-        const newOpening = cleanNum(cols[3]);
-        const newReappr = cleanNum(cols[4]);
-        const newReceipts = cleanNum(cols[5]);
-        const newPayments = cleanNum(cols[6]);
-        const newBalance = cleanNum(cols[7]);
-        const rawActivity = cols[9]?.trim() || '';
+      const isNumChanged =
+        Math.abs(acc.opening - newOpening) > 0.001 ||
+        Math.abs(acc.reappr - newReappr) > 0.001 ||
+        Math.abs(acc.receipts - newReceipts) > 0.001 ||
+        Math.abs(acc.payments - newPayments) > 0.001 ||
+        Math.abs(acc.balance - newBalance) > 0.001;
 
-        const acc = accounts.find((a) => a.code === code);
-        if (acc) {
-          // Always maintain full descriptive title e.g. "A03806-TRANSPORTATION OF GOODS"
-          if (headDesc && headDesc.length > code.length) {
-            acc.head = headDesc;
-          }
-
-          // Check if numerical figures moved
-          const isNumChanged =
-            Math.abs(acc.opening - newOpening) > 0.001 ||
-            Math.abs(acc.reappr - newReappr) > 0.001 ||
-            Math.abs(acc.receipts - newReceipts) > 0.001 ||
-            Math.abs(acc.payments - newPayments) > 0.001 ||
-            Math.abs(acc.balance - newBalance) > 0.001;
-
-          if (isNumChanged) {
-            detectedChanges++;
-            mostRecentChangedHead = acc.code;
-            acc.opening = newOpening;
-            acc.reappr = newReappr;
-            acc.receipts = newReceipts;
-            acc.payments = newPayments;
-            acc.balance = newBalance;
-            const totalAlloc = newOpening + newReappr + newReceipts;
-            acc.burnRate = totalAlloc > 0 ? newPayments / totalAlloc : 0;
-            if (rawActivity) acc.lastActivity = rawActivity;
-            acc.hash = calculateHash(acc);
-          } else if (rawActivity && rawActivity !== '-') {
-            // Keep head activity synchronized with sheet
-            acc.lastActivity = rawActivity;
-          }
-        }
+      if (isNumChanged) {
+        detectedChanges++;
+        mostRecentChangedHead = acc.code;
+        acc.opening = newOpening;
+        acc.reappr = newReappr;
+        acc.receipts = newReceipts;
+        acc.payments = newPayments;
+        acc.balance = newBalance;
+        const totalAlloc = newOpening + newReappr + newReceipts;
+        acc.burnRate = totalAlloc > 0 ? newPayments / totalAlloc : 0;
+        if (rawActivity) acc.lastActivity = rawActivity;
+        acc.hash = calculateHash(acc);
+      } else if (rawActivity && rawActivity !== '-') {
+        acc.lastActivity = rawActivity;
       }
     }
 
-    // Determine authentic active spotlight
-    // If a head changed right now, use it. Otherwise, look for the head with the latest activity timestamp
     if (detectedChanges > 0 && mostRecentChangedHead) {
       localStorage.setItem(STORAGE_KEY_SPOTLIGHT, mostRecentChangedHead);
     } else {
-      // Find head with the newest lastActivity date in accounts (e.g. A03201 or A03806)
       let newestCode: string | null = null;
       let newestDate = 0;
       accounts.forEach((a) => {
@@ -395,6 +383,19 @@ export async function fetchDashboardPayload(): Promise<DashboardResponse> {
     localStorage.setItem(STORAGE_KEY_SPOTLIGHT, spotlight);
     saveAccountsStore(accounts);
   }
+
+  // Trigger live voucher synchronization from Google Sheet (Vouchers tab)
+  try {
+    await fetchLiveCashBookFromGoogleSheet();
+  } catch (err) {
+    console.warn('Live voucher sheet sync in fetchDashboardPayload:', err);
+  }
+
+  let liveMasterVouchers: MasterVoucher[] = [];
+  try {
+    const rawV = localStorage.getItem(STORAGE_KEY_LIVE_VOUCHERS);
+    if (rawV) liveMasterVouchers = JSON.parse(rawV);
+  } catch {}
 
   const { categories, grandTotal, aaaMemo } = computeAggregations(accounts);
 
@@ -760,9 +761,9 @@ import {
 export const MASTER_SPREADSHEET_ID = '1c_3lBJVl74jPl0F5Dg9A_Jpjs1oBc2poDkC5SgfEE-w';
 export const LIVE_VOUCHERS_GVIZ_URL = `https://docs.google.com/spreadsheets/d/${MASTER_SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Vouchers`;
 
-export const STORAGE_KEY_LIVE_CASHBOOKS = 'gvtiw_live_cashbook_states_v1';
-export const STORAGE_KEY_LIVE_VOUCHERS = 'gvtiw_live_vouchers_v1';
-export const STORAGE_KEY_LIVE_SYNC_TS = 'gvtiw_live_cashbook_sync_ts_v1';
+export const STORAGE_KEY_LIVE_CASHBOOKS = 'gvtiw_live_cashbook_states_v3';
+export const STORAGE_KEY_LIVE_VOUCHERS = 'gvtiw_live_vouchers_v3';
+export const STORAGE_KEY_LIVE_SYNC_TS = 'gvtiw_live_cashbook_sync_ts_v3';
 
 export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
   success: boolean;
@@ -839,7 +840,16 @@ export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
       throw new Error('No voucher entries found in Google Sheet response.');
     }
 
+    // Live Google Sheet is the authoritative single source of truth for vouchers.
     parsedVouchers.sort((a, b) => a.srNo - b.srNo);
+
+    // Persist live synchronized vouchers to local cache and notify active UI modules
+    try {
+      localStorage.setItem(STORAGE_KEY_LIVE_VOUCHERS, JSON.stringify(parsedVouchers));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
+      }
+    } catch {}
 
     const BANK_NAME_TO_KEY: Record<string, BankAccountKey> = {
       'Payment of Non Salary Expenditures For 2026-2027': 'NS',
@@ -862,44 +872,93 @@ export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
       newStates[key].reconciledBankBalance = newStates[key].openingBalance;
     }
 
-    const AA_BUDGET_RECEIPTS = [
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03902-PRINTING CHARGES)', paidToBy: 'Budget', head: 'A03902-PRINTING CHARGES', chq: 'AAA', amount: 8393 },
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03933-SERVICE CHARGES)', paidToBy: 'Budget', head: 'A03933-SERVICE CHARGES', chq: 'AAA', amount: 142852 },
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A13101-REPAIR OF MACHINERY)', paidToBy: 'Budget', head: 'A13101-REPAIR OF MACHINERY & EQUIPMENT', chq: 'AAA', amount: 6212 },
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A13201-REPAIR OF FURNITURE)', paidToBy: 'Budget', head: 'A13201-REPAIR OF FURNITURE & FIXTURE', chq: 'AAA', amount: 11820 },
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03303-ELECTRICITY CHARGES)', paidToBy: 'Budget', head: 'A03303-ELECTRICITY CHARGES', chq: 'AAA', amount: 247435 },
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03301-GAS CHARGES)', paidToBy: 'Budget', head: 'A03301-GAS CHARGES', chq: 'AAA', amount: 1500 },
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03302-WATER CHARGES)', paidToBy: 'Budget', head: 'A03302-WATER CHARGES', chq: 'AAA', amount: 6000 },
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03202-TELEPHONE & TRUNK)', paidToBy: 'Budget', head: 'A03202-TELEPHONE & TRUNK CHARGES', chq: 'AAA', amount: 25000 },
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03201-POSTAGE & TELEGRAPH)', paidToBy: 'Budget', head: 'A03201-POSTAGE & TELEGRAPH', chq: 'AAA', amount: 4000 },
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A01274-MEDICAL CHARGES)', paidToBy: 'Budget', head: 'A01274-MEDICAL CHARGES', chq: 'AAA', amount: 12000 },
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03304-HOT & COLD CHARGES)', paidToBy: 'Budget', head: 'A03304-HOT & COLD CHARGES', chq: 'AAA', amount: 6000 },
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03901-STATIONERY CHARGES)', paidToBy: 'Budget', head: 'A03901-STATIONERY CHARGES', chq: 'AAA', amount: 12000 },
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03905-NEWSPAPERS & PERIODICALS)', paidToBy: 'Budget', head: 'A03905-NEWSPAPERS PERIODICALS & BOOKS', chq: 'AAA', amount: 1000 },
-      { date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Jul-Sep 2026 AAA (A03907-ADVERTISING & PUBLICITY)', paidToBy: 'Budget', head: 'A03907-ADVERTISING & PUBLICITY', chq: 'AAA', amount: 24619 },
-    ];
+    // Authentic receipts from Google Sheet for all 6 bank cashbooks
+    const AUTHENTIC_CASHBOOK_RECEIPTS: Record<
+      BankAccountKey,
+      Array<{
+        id: string;
+        date: string;
+        month: string;
+        vNo?: string;
+        voucherSerial?: string;
+        particulars: string;
+        paidToBy: string;
+        head: string;
+        chq: string;
+        amount: number;
+      }>
+    > = {
+      AA: [
+        { id: 'AA-R1', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03902-PRINTING CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03902-PRINTING CHARGES', chq: 'AAA-Ceiling', amount: 8393 },
+        { id: 'AA-R2', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03933-SERVICE CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03933-SERVICE CHARGES', chq: 'AAA-Ceiling', amount: 142852 },
+        { id: 'AA-R3', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A13101-REPAIR OF MACHINERY)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A13101-REPAIR OF MACHINERY & EQUIPMENT', chq: 'AAA-Ceiling', amount: 6212 },
+        { id: 'AA-R4', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A13201-REPAIR OF FURNITURE)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A13201-REPAIR OF FURNITURE & FIXTURE', chq: 'AAA-Ceiling', amount: 11820 },
+        { id: 'AA-R5', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03303-ELECTRICITY CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03303-ELECTRICITY CHARGES', chq: 'AAA-Ceiling', amount: 247435 },
+        { id: 'AA-R6', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03301-GAS CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03301-GAS CHARGES', chq: 'AAA-Ceiling', amount: 1500 },
+        { id: 'AA-R7', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03302-WATER CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03302-WATER CHARGES', chq: 'AAA-Ceiling', amount: 6000 },
+        { id: 'AA-R8', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03202-TELEPHONE & TRUNK)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03202-TELEPHONE & TRUNK CHARGES', chq: 'AAA-Ceiling', amount: 25000 },
+        { id: 'AA-R9', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03201-POSTAGE & TELEGRAPH)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03201-POSTAGE & TELEGRAPH', chq: 'AAA-Ceiling', amount: 4000 },
+        { id: 'AA-R10', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A01274-MEDICAL CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A01274-MEDICAL CHARGES', chq: 'AAA-Ceiling', amount: 12000 },
+        { id: 'AA-R11', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03304-HOT & COLD CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03304-HOT & COLD CHARGES', chq: 'AAA-Ceiling', amount: 6000 },
+        { id: 'AA-R12', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03901-STATIONERY CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03901-STATIONERY CHARGES', chq: 'AAA-Ceiling', amount: 12000 },
+        { id: 'AA-R13', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03905-NEWSPAPERS & PERIODICALS)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03905-NEWSPAPERS PERIODICALS & BOOKS', chq: 'AAA-Ceiling', amount: 1000 },
+        { id: 'AA-R14', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03907-ADVERTISING & PUBLICITY)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03907-ADVERTISING & PUBLICITY', chq: 'AAA-Ceiling', amount: 24619 },
+      ],
+      NS: [],
+      PF: [
+        { id: 'PF-R1', date: '15-Jul-2026', month: 'July', particulars: 'Transfer / Collection of Student Pupil Fund Share from TEVTA Fee Collection A/C (6580027832200011)', paidToBy: 'TEVTA Fee Collection / Trainees', head: 'A00000PF-PUPIL FUND', chq: 'Online BOP Transfer', amount: 77717 },
+      ],
+      FC: [
+        { id: 'FC-R1', date: '15-Jul-2026', month: 'July', particulars: 'Admission & Tuition Fee Collection Session 2026-2027 from Enrolled Trainees', paidToBy: 'Enrolled Students / Trainees', head: 'A00000TFC-TEVTA FEE COL.', chq: 'Bank Challans', amount: 77717 },
+      ],
+      SC: [],
+      SEC: [],
+    };
 
-    let aaRunningBal = newStates.AA.openingBalance;
-    for (let i = 0; i < AA_BUDGET_RECEIPTS.length; i++) {
-      const r = AA_BUDGET_RECEIPTS[i];
-      aaRunningBal += r.amount;
-      newStates.AA.totalReceipts += r.amount;
-      newStates.AA.entries.push({
-        id: `AA-R${i + 1}`,
-        srNo: i + 1,
-        date: r.date,
-        month: r.month,
-        vNo: '',
-        voucherSerial: '',
-        particulars: r.particulars,
-        paidToBy: r.paidToBy,
-        accountHead: r.head,
-        chequeNo: r.chq,
-        receipts: r.amount,
-        payments: 0,
-        runningBalance: aaRunningBal,
-        entryType: 'RECEIPT',
-      });
+    // 1. Inject default authentic receipts into each bank account
+    for (const key of Object.keys(AUTHENTIC_CASHBOOK_RECEIPTS) as BankAccountKey[]) {
+      const recList = AUTHENTIC_CASHBOOK_RECEIPTS[key] || [];
+      for (const r of recList) {
+        newStates[key].entries.push({
+          id: r.id,
+          srNo: 0,
+          date: r.date,
+          month: r.month,
+          vNo: r.vNo || '',
+          voucherSerial: r.voucherSerial || '',
+          particulars: r.particulars,
+          paidToBy: r.paidToBy,
+          accountHead: r.head,
+          chequeNo: r.chq,
+          receipts: r.amount,
+          payments: 0,
+          runningBalance: 0,
+          entryType: 'RECEIPT',
+        });
+      }
+    }
+
+    // 2. Inject user-recorded custom receipts from local persistence
+    const customReceipts = getStoredUserReceipts();
+    for (const r of customReceipts) {
+      if (newStates[r.bankKey]) {
+        newStates[r.bankKey].entries.push({
+          id: r.id,
+          srNo: 0,
+          date: r.date,
+          month: r.month,
+          vNo: r.vNo || '',
+          voucherSerial: r.voucherSerial || '',
+          particulars: r.particulars,
+          paidToBy: r.paidToBy,
+          accountHead: r.accountHead,
+          chequeNo: r.chequeNo,
+          receipts: r.receipts,
+          payments: 0,
+          runningBalance: 0,
+          entryType: 'RECEIPT',
+        });
+      }
     }
 
     const getMonthName = (dtStr: string): string => {
@@ -980,21 +1039,27 @@ export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
       }
     }
 
+    // 4. Calculate accurate running balance and totals for all cashbooks
     for (const key of Object.keys(newStates) as BankAccountKey[]) {
       const state = newStates[key];
       let bal = state.openingBalance;
       let totPay = 0;
+      let totRec = 0;
 
       for (let i = 0; i < state.entries.length; i++) {
         const e = state.entries[i];
         e.srNo = i + 1;
-        if (e.entryType === 'PAYMENT') {
+        if (e.entryType === 'RECEIPT') {
+          totRec += e.receipts;
+          bal += e.receipts;
+        } else if (e.entryType === 'PAYMENT') {
           totPay += e.payments;
           bal -= e.payments;
         }
         e.runningBalance = Math.round(bal * 100) / 100;
       }
 
+      state.totalReceipts = Math.round(totRec * 100) / 100;
       state.totalPayments = Math.round(totPay * 100) / 100;
       state.closingBalance = Math.round(bal * 100) / 100;
       state.reconciledBankBalance = Math.round(bal * 100) / 100;
@@ -1025,4 +1090,67 @@ export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
       syncTimestamp: '',
     };
   }
+}
+
+// -------------------------------------------------------------
+// USER CUSTOM CASHBOOK RECEIPTS PERSISTENCE
+// -------------------------------------------------------------
+
+export interface UserRecordedReceipt {
+  id: string;
+  bankKey: BankAccountKey;
+  date: string;
+  month: string;
+  particulars: string;
+  paidToBy: string;
+  accountHead: string;
+  chequeNo: string;
+  receipts: number;
+  vNo?: string;
+  voucherSerial?: string;
+}
+
+const STORAGE_KEY_USER_RECEIPTS = 'gvtiw_custom_receipts_v29';
+
+export function getStoredUserReceipts(): UserRecordedReceipt[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_USER_RECEIPTS);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredUserReceipts(receipts: UserRecordedReceipt[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_USER_RECEIPTS, JSON.stringify(receipts));
+  } catch {}
+}
+
+export function recordCashBookReceipt(receipt: Omit<UserRecordedReceipt, 'id' | 'month'>): UserRecordedReceipt {
+  const receipts = getStoredUserReceipts();
+  const getMonthName = (dtStr: string): string => {
+    const lower = (dtStr || '').toLowerCase();
+    if (lower.includes('sep') || lower.includes('-09-') || lower.includes('/09/')) return 'September';
+    if (lower.includes('aug') || lower.includes('-08-') || lower.includes('/08/')) return 'August';
+    if (lower.includes('jul') || lower.includes('-07-') || lower.includes('/07/')) return 'July';
+    if (lower.includes('oct')) return 'October';
+    if (lower.includes('nov')) return 'November';
+    if (lower.includes('dec')) return 'December';
+    return 'July';
+  };
+
+  const newReceipt: UserRecordedReceipt = {
+    ...receipt,
+    id: `CUSTOM-REC-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+    month: getMonthName(receipt.date),
+  };
+  receipts.push(newReceipt);
+  saveStoredUserReceipts(receipts);
+  return newReceipt;
+}
+
+export function deleteCashBookReceipt(id: string): void {
+  const receipts = getStoredUserReceipts().filter((r) => r.id !== id);
+  saveStoredUserReceipts(receipts);
 }

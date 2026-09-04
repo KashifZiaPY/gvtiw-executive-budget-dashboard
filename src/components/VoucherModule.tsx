@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MasterVoucher, INITIAL_MASTER_VOUCHERS, INSTITUTIONAL_BANK_ACCOUNTS, BankAccountKey } from '../data/cashBookData';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { VoucherEntryModal } from './VoucherEntryModal';
@@ -18,6 +18,7 @@ import {
   FileSpreadsheet,
   PlusCircle,
   Edit3,
+  Trash2,
 } from 'lucide-react';
 
 interface VoucherModuleProps {
@@ -35,11 +36,26 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
 }) => {
   const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
     try {
-      const cached = localStorage.getItem('gvtiw_live_vouchers_v1');
+      const cached = localStorage.getItem('gvtiw_live_vouchers_v3');
       if (cached) return JSON.parse(cached);
     } catch {}
     return INITIAL_MASTER_VOUCHERS;
   });
+
+  useEffect(() => {
+    const handleVoucherUpdate = () => {
+      try {
+        const cached = localStorage.getItem('gvtiw_live_vouchers_v3');
+        if (cached) setVouchers(JSON.parse(cached));
+      } catch {}
+    };
+    window.addEventListener('gvtiw_vouchers_updated', handleVoucherUpdate);
+    window.addEventListener('storage', handleVoucherUpdate);
+    return () => {
+      window.removeEventListener('gvtiw_vouchers_updated', handleVoucherUpdate);
+      window.removeEventListener('storage', handleVoucherUpdate);
+    };
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('ALL');
   const [selectedVoucherForPAF, setSelectedVoucherForPAF] = useState<MasterVoucher | null>(null);
@@ -58,6 +74,42 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
     setIsEntryModalOpen(true);
   };
 
+  // Strict LIFO Rule: Max Sr No
+  const maxExistingSrNo = useMemo(() => {
+    return vouchers.reduce((m, v) => (v.srNo > m ? v.srNo : m), 0);
+  }, [vouchers]);
+
+  const handleDeleteVoucher = (srNo: number) => {
+    if (srNo !== maxExistingSrNo) {
+      alert(
+        `⚠️ STRICT LIFO CASH BOOK SEQUENCE INTEGRITY RULE:\n\nOnly the latest voucher (Sr. #${maxExistingSrNo}) can be deleted first as per Google Sheet Cash Book sequential rules.\n\nVoucher #${srNo} cannot be deleted out of sequence.`
+      );
+      return;
+    }
+
+    const targetVoucher = vouchers.find((v) => v.srNo === srNo);
+    if (!targetVoucher) return;
+
+    const confirmed = window.confirm(
+      `⚠️ PERMANENT VOUCHER DELETION (STRICT LIFO RULE):\n\nAre you sure you want to permanently delete Voucher #${targetVoucher.srNo} (${targetVoucher.voucherNo})?\n\n• Payee: ${targetVoucher.payeeName}\n• Net Cheque: Rs. ${Number(targetVoucher.chequeAmountNet).toLocaleString()}\n• Account Head: ${targetVoucher.accountHead}\n• Bank Ledger: ${targetVoucher.bankAccount}\n\nThis will reverse all financial ledger entries and restore budget balance.`
+    );
+    if (!confirmed) return;
+
+    setVouchers((prev) => {
+      const updated = prev.filter((v) => v.srNo !== srNo);
+      try {
+        localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
+      } catch {}
+      return updated;
+    });
+
+    if (voucherToAmend?.srNo === srNo) {
+      setVoucherToAmend(null);
+      setIsEntryModalOpen(false);
+    }
+  };
+
   const handleSaveVoucher = (savedVoucher: MasterVoucher, isAmend: boolean) => {
     setVouchers((prev) => {
       let updated: MasterVoucher[];
@@ -67,7 +119,8 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
         updated = [savedVoucher, ...prev];
       }
       try {
-        localStorage.setItem('gvtiw_live_vouchers_v1', JSON.stringify(updated));
+        localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
       } catch {}
       return updated;
     });
@@ -409,7 +462,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
                         )}
                       </td>
 
-                      {/* Action Buttons: View PAF & Amend Voucher */}
+                      {/* Action Buttons: View PAF, Amend, & LIFO Delete */}
                       <td className="py-3 px-3 text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
@@ -428,6 +481,16 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
                             <Edit3 className="w-3 h-3 text-white" />
                             <span>Amend</span>
                           </button>
+                          {v.srNo === maxExistingSrNo && (
+                            <button
+                              onClick={() => handleDeleteVoucher(v.srNo)}
+                              className="px-2.5 py-1.5 bg-rose-700 hover:bg-rose-600 text-white font-bold text-[10px] rounded-lg shadow-xs flex items-center gap-1 transition-all cursor-pointer"
+                              title="Delete Latest Voucher (Strict LIFO Rule)"
+                            >
+                              <Trash2 className="w-3 h-3 text-rose-200" />
+                              <span>Delete</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -452,6 +515,24 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
           customGopLogo={customGopLogo}
         />
       )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 5. MODAL: VOUCHER ENTRY & AMEND FORM                          */}
+      {/* ------------------------------------------------------------- */}
+      <VoucherEntryModal
+        isOpen={isEntryModalOpen}
+        onClose={() => {
+          setIsEntryModalOpen(false);
+          setVoucherToAmend(null);
+        }}
+        voucherToAmend={voucherToAmend}
+        onSaveVoucher={handleSaveVoucher}
+        onDeleteVoucher={handleDeleteVoucher}
+        existingVouchers={vouchers}
+        customGvtiwLogo={customGvtiwLogo}
+        customTevtaLogo={customTevtaLogo}
+        customGopLogo={customGopLogo}
+      />
 
     </div>
   );

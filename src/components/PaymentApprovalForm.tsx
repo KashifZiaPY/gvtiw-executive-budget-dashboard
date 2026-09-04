@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { MasterVoucher } from '../data/cashBookData';
 import { Printer, X, FileText, Layers } from 'lucide-react';
 import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO, DEFAULT_GOP_LOGO } from '../data/initialData';
+import { formatPakistaniDate } from '../lib/formatters';
 
 interface PaymentApprovalFormProps {
   voucher: MasterVoucher | null;
@@ -304,7 +305,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
           </div>
           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-slate-300 bg-slate-50/90 print:bg-white shadow-2xs">
             <span className="text-[8px] print:text-[7px] uppercase font-sans font-bold text-slate-400 tracking-wider">NET DATE</span>
-            <span className="font-semibold text-slate-800">{voucher.chequeDate || voucher.billDate}</span>
+            <span className="font-semibold text-slate-800">{formatPakistaniDate(voucher.chequeDate || voucher.billDate)}</span>
           </div>
         </div>
 
@@ -326,7 +327,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
             DATE :
           </span>
           <span className="col-span-8 font-black text-slate-950 font-mono text-xs py-0.5 px-2.5">
-            {voucher.chequeDate || voucher.billDate}
+            {formatPakistaniDate(voucher.chequeDate || voucher.billDate)}
           </span>
         </div>
         <div className="grid grid-cols-12">
@@ -364,7 +365,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
             INVOICE DATE &amp; NO. :
           </span>
           <span className="col-span-8 font-mono font-bold text-slate-900 py-0.5 px-2.5">
-            Bill#: {voucher.billNo || 'N/A'} &nbsp;•&nbsp; Date: {voucher.billDate || 'N/A'}
+            Bill#: {voucher.billNo || 'N/A'} &nbsp;•&nbsp; Date: {formatPakistaniDate(voucher.billDate)}
           </span>
         </div>
         <div className="grid grid-cols-12">
@@ -429,7 +430,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
           </span>
           <span className="col-span-3 font-bold text-slate-900 py-0.5 px-2.5">PRINCIPAL</span>
           <span className="col-span-3 text-right font-mono font-bold text-slate-900 py-0.5 px-2.5">
-            {voucher.chequeDate || voucher.billDate}
+            {formatPakistaniDate(voucher.chequeDate || voucher.billDate)}
           </span>
         </div>
         <div className="grid grid-cols-12">
@@ -438,7 +439,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
           </span>
           <span className="col-span-3 font-bold text-slate-900 py-0.5 px-2.5">PRINCIPAL</span>
           <span className="col-span-3 text-right font-mono font-bold text-slate-900 py-0.5 px-2.5">
-            {voucher.chequeDate || voucher.billDate}
+            {formatPakistaniDate(voucher.chequeDate || voucher.billDate)}
           </span>
         </div>
         <div className="grid grid-cols-12">
@@ -534,7 +535,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
             CHEQUE DATE :
           </span>
           <span className="col-span-7 font-mono font-black text-slate-950 text-xs py-0.5 px-2.5">
-            {voucher.chequeDate || voucher.billDate}
+            {formatPakistaniDate(voucher.chequeDate || voucher.billDate)}
           </span>
         </div>
         <div className="grid grid-cols-12 bg-slate-100">
@@ -651,7 +652,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
         </div>
         <div className="col-span-4 px-2.5 py-1.5 flex items-center gap-1.5">
           <span className="font-bold text-slate-700 uppercase text-[10px]">Cheque Date :</span>
-          <span className="font-black font-mono text-slate-950 text-xs">{voucher.chequeDate || voucher.billDate}</span>
+          <span className="font-black font-mono text-slate-950 text-xs">{formatPakistaniDate(voucher.chequeDate || voucher.billDate)}</span>
         </div>
         <div className="col-span-4 px-2.5 py-1.5 flex items-center gap-1.5">
           <span className="font-bold text-slate-700 uppercase text-[10px]">Cheque No :</span>

@@ -445,7 +445,12 @@ export default function App() {
         {activeModule === 'ADMIN' && (
           <ModuleErrorBoundary moduleName="Admin Operations Hub">
             <section aria-label="Admin Operations Hub">
-              <AdminHubModule darkMode={darkMode} />
+              <AdminHubModule
+                darkMode={darkMode}
+                customGvtiwLogo={customGvtiwLogo}
+                customTevtaLogo={customTevtaLogo}
+                customGopLogo={customGopLogo}
+              />
             </section>
           </ModuleErrorBoundary>
         )}

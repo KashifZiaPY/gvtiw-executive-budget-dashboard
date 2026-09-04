@@ -1,7 +1,7 @@
 // =============================================================
-// INSTITUTIONAL CASHBOOK & VOUCHER SYSTEM DATA MODELS (v3.14 Aligned)
+// INSTITUTIONAL CASHBOOK & VOUCHER SYSTEM DATA MODELS (v3.16 Pure Accounting Reconciled)
 // Government Vocational Training Institute (W) Samanabad, Faisalabad
-// 100% Authentic Source-Synchronized (All 6 Accounts & 44 Master Vouchers)
+// Pure Separation: BOP Non-Salary Bank Cashbook vs. AAA District Budget Allocation Ceiling
 // Synchronized Live with Google Sheet ID: 1c_3lBJVl74jPl0F5Dg9A_Jpjs1oBc2poDkC5SgfEE-w
 // =============================================================
 
@@ -81,102 +81,108 @@ export interface MasterVoucher {
 }
 
 export const INSTITUTIONAL_BANK_ACCOUNTS: Record<BankAccountKey, BankAccountMetadata> = {
-  NS: {
-    key: 'NS',
-    code: 'NS',
-    shortName: 'Non-Salary',
-    fullName: 'Payment of Non Salary Expenditures For 2026-2027',
-    accountNo: '6580006795600014',
-    bankName: 'Bank of Punjab (BOP)',
-    branch: 'Samanabad, Faisalabad',
-    themeColor: {
-      primary: 'blue',
-      bgLight: 'bg-blue-50',
-      bgDark: 'bg-blue-950/40',
-      border: 'border-blue-200 dark:border-blue-800',
-      badge: 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300',
-    },
+  "NS": {
+    "code": "NS",
+    "shortName": "Non-Salary",
+    "fullName": "Payment of Non Salary Expenditures For 2026-2027",
+    "accountNo": "6580006795600014",
+    "bankName": "Bank of Punjab (BOP)",
+    "branch": "Samanabad, Faisalabad",
+    "openingBalance": 2387207.0,
+    "unpresentedChequesTotal": 0,
+    "themeColor": {
+      "primary": "blue",
+      "bgLight": "bg-blue-50",
+      "bgDark": "bg-blue-950/40",
+      "border": "border-blue-200 dark:border-blue-800",
+      "badge": "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300"
+    }
   },
-  PF: {
-    key: 'PF',
-    code: 'PF',
-    shortName: 'Pupil Funds',
-    fullName: 'Payment of Pupil Funds For 2026-2027',
-    accountNo: '6580027832200022',
-    bankName: 'Bank of Punjab (BOP)',
-    branch: 'Samanabad, Faisalabad',
-    themeColor: {
-      primary: 'emerald',
-      bgLight: 'bg-emerald-50',
-      bgDark: 'bg-emerald-950/40',
-      border: 'border-emerald-200 dark:border-emerald-800',
-      badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300',
-    },
+  "PF": {
+    "code": "PF",
+    "shortName": "Pupil Funds",
+    "fullName": "Payment of Pupil Funds For 2026-2027",
+    "accountNo": "6580027832200022",
+    "bankName": "Bank of Punjab (BOP)",
+    "branch": "Samanabad, Faisalabad",
+    "openingBalance": 408588.0,
+    "unpresentedChequesTotal": 0,
+    "themeColor": {
+      "primary": "emerald",
+      "bgLight": "bg-emerald-50",
+      "bgDark": "bg-emerald-950/40",
+      "border": "border-emerald-200 dark:border-emerald-800",
+      "badge": "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300"
+    }
   },
-  FC: {
-    key: 'FC',
-    code: 'FC',
-    shortName: 'Fee Collection',
-    fullName: 'Payment of TEVTA Fee Collection For 2026-2027',
-    accountNo: '6580027832200011',
-    bankName: 'Bank of Punjab (BOP)',
-    branch: 'Samanabad, Faisalabad',
-    themeColor: {
-      primary: 'purple',
-      bgLight: 'bg-purple-50',
-      bgDark: 'bg-purple-950/40',
-      border: 'border-purple-200 dark:border-purple-800',
-      badge: 'bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300',
-    },
+  "FC": {
+    "code": "FC",
+    "shortName": "Fee Collection",
+    "fullName": "Payment of TEVTA Fee Collection For 2026-2027",
+    "accountNo": "6580027832200011",
+    "bankName": "Bank of Punjab (BOP)",
+    "branch": "Samanabad, Faisalabad",
+    "openingBalance": 0.0,
+    "unpresentedChequesTotal": 0,
+    "themeColor": {
+      "primary": "purple",
+      "bgLight": "bg-purple-50",
+      "bgDark": "bg-purple-950/40",
+      "border": "border-purple-200 dark:border-purple-800",
+      "badge": "bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300"
+    }
   },
-  SEC: {
-    key: 'SEC',
-    code: 'SEC',
-    shortName: 'Securities',
-    fullName: 'Payment of Securities For 2026-2027',
-    accountNo: '6580027832200044',
-    bankName: 'Bank of Punjab (BOP)',
-    branch: 'Samanabad, Faisalabad',
-    themeColor: {
-      primary: 'amber',
-      bgLight: 'bg-amber-50',
-      bgDark: 'bg-amber-950/40',
-      border: 'border-amber-200 dark:border-amber-800',
-      badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300',
-    },
+  "SEC": {
+    "code": "SEC",
+    "shortName": "Securities",
+    "fullName": "Payment of Securities For 2026-2027",
+    "accountNo": "6580027832200044",
+    "bankName": "Bank of Punjab (BOP)",
+    "branch": "Samanabad, Faisalabad",
+    "openingBalance": 357709.0,
+    "unpresentedChequesTotal": 0,
+    "themeColor": {
+      "primary": "amber",
+      "bgLight": "bg-amber-50",
+      "bgDark": "bg-amber-950/40",
+      "border": "border-amber-200 dark:border-amber-800",
+      "badge": "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300"
+    }
   },
-  SC: {
-    key: 'SC',
-    code: 'SC',
-    shortName: 'Short Course',
-    fullName: 'Payment of Short Course For 2026-2027',
-    accountNo: '6580027832200033',
-    bankName: 'Bank of Punjab (BOP)',
-    branch: 'Samanabad, Faisalabad',
-    themeColor: {
-      primary: 'rose',
-      bgLight: 'bg-rose-50',
-      bgDark: 'bg-rose-950/40',
-      border: 'border-rose-200 dark:border-rose-800',
-      badge: 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300',
-    },
+  "SC": {
+    "code": "SC",
+    "shortName": "Short Course",
+    "fullName": "Payment of Short Course For 2026-2027",
+    "accountNo": "6580027832200033",
+    "bankName": "Bank of Punjab (BOP)",
+    "branch": "Samanabad, Faisalabad",
+    "openingBalance": 251567.0,
+    "unpresentedChequesTotal": 0,
+    "themeColor": {
+      "primary": "rose",
+      "bgLight": "bg-rose-50",
+      "bgDark": "bg-rose-950/40",
+      "border": "border-rose-200 dark:border-rose-800",
+      "badge": "bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300"
+    }
   },
-  AA: {
-    key: 'AA',
-    code: 'AA',
-    shortName: 'AAA',
-    fullName: 'Payment of AAA For 2026-2027',
-    accountNo: 'AAA0000000000000',
-    bankName: 'National Bank of Pakistan (NBP)',
-    branch: 'Civil Lines, Faisalabad',
-    themeColor: {
-      primary: 'teal',
-      bgLight: 'bg-teal-50',
-      bgDark: 'bg-teal-950/40',
-      border: 'border-teal-200 dark:border-teal-800',
-      badge: 'bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300',
-    },
-  },
+  "AA": {
+    "code": "AA",
+    "shortName": "AAA (District Allocation)",
+    "fullName": "Payment of AAA For 2026-2027",
+    "accountNo": "AAA0000000000000",
+    "bankName": "National Bank of Pakistan (NBP)",
+    "branch": "Civil Lines, Faisalabad",
+    "openingBalance": 0.0,
+    "unpresentedChequesTotal": 0,
+    "themeColor": {
+      "primary": "teal",
+      "bgLight": "bg-teal-50",
+      "bgDark": "bg-teal-950/40",
+      "border": "border-teal-200 dark:border-teal-800",
+      "badge": "bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300"
+    }
+  }
 };
 
 export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
@@ -200,10 +206,10 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "entryStatus": "New",
     "timestamp": "14-Jul-2026 12:24",
     "bankAccount": "Payment of Non Salary Expenditures For 2026-2027",
-    "billAmtExclTax": 0.0,
-    "praTaxOnBill": 0.0,
+    "billAmtExclTax": 0,
+    "praTaxOnBill": 0,
     "voucherNo": "NS-JUL26-001",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 2,
@@ -225,10 +231,10 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "entryStatus": "New",
     "timestamp": "14-Jul-2026 12:35",
     "bankAccount": "Payment of Pupil Funds For 2026-2027",
-    "billAmtExclTax": 0.0,
-    "praTaxOnBill": 0.0,
+    "billAmtExclTax": 0,
+    "praTaxOnBill": 0,
     "voucherNo": "PF-JUL26-001",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 3,
@@ -250,10 +256,10 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "entryStatus": "New",
     "timestamp": "14-Jul-2026 12:40",
     "bankAccount": "Payment of Pupil Funds For 2026-2027",
-    "billAmtExclTax": 0.0,
-    "praTaxOnBill": 0.0,
+    "billAmtExclTax": 0,
+    "praTaxOnBill": 0,
     "voucherNo": "PF-JUL26-002",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 4,
@@ -275,10 +281,10 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "entryStatus": "Updated",
     "timestamp": "14-Jul-2026 12:55",
     "bankAccount": "Payment of Non Salary Expenditures For 2026-2027",
-    "billAmtExclTax": 0.0,
-    "praTaxOnBill": 0.0,
+    "billAmtExclTax": 0,
+    "praTaxOnBill": 0,
     "voucherNo": "NS-JUL26-002",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 5,
@@ -300,10 +306,10 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "entryStatus": "New",
     "timestamp": "14-Jul-2026 13:03",
     "bankAccount": "Payment of Non Salary Expenditures For 2026-2027",
-    "billAmtExclTax": 0.0,
-    "praTaxOnBill": 0.0,
+    "billAmtExclTax": 0,
+    "praTaxOnBill": 0,
     "voucherNo": "NS-JUL26-003",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 6,
@@ -325,10 +331,10 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "entryStatus": "New",
     "timestamp": "14-Jul-2026 13:10",
     "bankAccount": "Payment of Short Course For 2026-2027",
-    "billAmtExclTax": 0.0,
-    "praTaxOnBill": 0.0,
+    "billAmtExclTax": 0,
+    "praTaxOnBill": 0,
     "voucherNo": "SC-JUL26-001",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 7,
@@ -350,10 +356,10 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "entryStatus": "New",
     "timestamp": "14-Jul-2026 13:47",
     "bankAccount": "Payment of Non Salary Expenditures For 2026-2027",
-    "billAmtExclTax": 0.0,
-    "praTaxOnBill": 0.0,
+    "billAmtExclTax": 0,
+    "praTaxOnBill": 0,
     "voucherNo": "NS-JUL26-004",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 8,
@@ -375,10 +381,10 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "entryStatus": "New",
     "timestamp": "14-Jul-2026 13:50",
     "bankAccount": "Payment of Non Salary Expenditures For 2026-2027",
-    "billAmtExclTax": 0.0,
-    "praTaxOnBill": 0.0,
+    "billAmtExclTax": 0,
+    "praTaxOnBill": 0,
     "voucherNo": "NS-JUL26-005",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 9,
@@ -425,10 +431,10 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "entryStatus": "New",
     "timestamp": "14-Jul-2026 13:59",
     "bankAccount": "Payment of Short Course For 2026-2027",
-    "billAmtExclTax": 0.0,
-    "praTaxOnBill": 0.0,
+    "billAmtExclTax": 0,
+    "praTaxOnBill": 0,
     "voucherNo": "SC-JUL26-002",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 11,
@@ -478,7 +484,7 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "billAmtExclTax": 5000.0,
     "praTaxOnBill": 0.0,
     "voucherNo": "NS-JUL26-008",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 13,
@@ -486,7 +492,7 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "ntnCnic": "0801599-6",
     "billNo": "Jul 2026",
     "billDate": "05-Aug-2026",
-    "chequeNoNet": "",
+    "chequeNoNet": "AAA",
     "chequeDate": "05-Aug-2026",
     "chequeAmountNet": 16270.0,
     "accountHead": "A03202-TELEPHONE & TRUNK CHARGES",
@@ -503,7 +509,7 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "billAmtExclTax": 16270.0,
     "praTaxOnBill": 0.0,
     "voucherNo": "AA-AUG26-001",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 14,
@@ -511,7 +517,7 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "ntnCnic": "3048930-0",
     "billNo": "July 2026",
     "billDate": "05-Aug-2026",
-    "chequeNoNet": "",
+    "chequeNoNet": "AAA",
     "chequeDate": "05-Aug-2026",
     "chequeAmountNet": 107040.0,
     "accountHead": "A03303-ELECTRICITY CHARGES",
@@ -528,7 +534,7 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "billAmtExclTax": 107040.0,
     "praTaxOnBill": 0.0,
     "voucherNo": "AA-AUG26-002",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 15,
@@ -551,9 +557,9 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "timestamp": "10-Aug-2026 12:06",
     "bankAccount": "Payment of Short Course For 2026-2027",
     "billAmtExclTax": 25920.0,
-    "praTaxOnBill": 0.0,
+    "praTaxOnBill": 0,
     "voucherNo": "SC-AUG26-001",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 16,
@@ -603,7 +609,7 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "billAmtExclTax": 15250.0,
     "praTaxOnBill": 0.0,
     "voucherNo": "PF-AUG26-001",
-    "preEntryBalance": 0.0
+    "preEntryBalance": 0
   },
   {
     "srNo": 18,
@@ -775,8 +781,8 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "entryStatus": "New",
     "timestamp": "15-Aug-2026 08:36",
     "bankAccount": "Payment of Non Salary Expenditures For 2026-2027",
-    "billAmtExclTax": 0.0,
-    "praTaxOnBill": 0.0,
+    "billAmtExclTax": 0,
+    "praTaxOnBill": 0,
     "voucherNo": "BC-NS-JUL26-001",
     "preEntryBalance": 1407.0
   },
@@ -1011,7 +1017,7 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "ntnCnic": "",
     "billNo": "7719-20-228",
     "billDate": "12-Jun-2026",
-    "chequeNoNet": "",
+    "chequeNoNet": "8061187407-455",
     "chequeDate": "25-Aug-2026",
     "chequeAmountNet": 229000.0,
     "accountHead": "A00000PF-PUPIL FUND",
@@ -1161,7 +1167,7 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "ntnCnic": "3048930-0",
     "billNo": "FESCO Bill#109-Aug26",
     "billDate": "22-Aug-2026",
-    "chequeNoNet": "",
+    "chequeNoNet": "AAA",
     "chequeDate": "01-Sep-2026",
     "chequeAmountNet": 137325.0,
     "accountHead": "A03303-ELECTRICITY CHARGES",
@@ -1279,6 +1285,81 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "praTaxOnBill": 0.0,
     "voucherNo": "SC-SEP26-002",
     "preEntryBalance": 71964.0
+  },
+  {
+    "srNo": 45,
+    "payeeName": "PUPIL FUNDS ACCOUNT (6580027832200022)",
+    "ntnCnic": "",
+    "billNo": "Lapsed Fee 31-07-2026",
+    "billDate": "31-Jul-2026",
+    "chequeNoNet": "8060940614",
+    "chequeDate": "03-Sep-2026",
+    "chequeAmountNet": 77717.0,
+    "accountHead": "A00000TFC-TEVTA FEE COL.",
+    "gstAmount": 0.0,
+    "praAmount": 0.0,
+    "chequeNoPra": "0",
+    "incomeTaxAmount": 0.0,
+    "chequeNoIncomeTax": "0",
+    "billAmountGross": 77717.0,
+    "description": "Lapsed / Standing Balance at 31-07-2026 tranferred to Pupil Funds Account (directions by DDF TEVTA Fsd)",
+    "entryStatus": "New",
+    "timestamp": "03-Sep-2026 08:49",
+    "bankAccount": "Payment of TEVTA Fee Collection For 2026-2027",
+    "billAmtExclTax": 77717.0,
+    "praTaxOnBill": 0.0,
+    "voucherNo": "FC-SEP26-001",
+    "preEntryBalance": 0
+  },
+  {
+    "srNo": 46,
+    "payeeName": "KASHIF ZIA",
+    "ntnCnic": "6709658-5",
+    "billNo": "GAS for Cylinder NAVTTC",
+    "billDate": "04-Sep-2026",
+    "chequeNoNet": "8061193884",
+    "chequeDate": "04-Sep-2026",
+    "chequeAmountNet": 4000.0,
+    "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
+    "gstAmount": 0.0,
+    "praAmount": 0.0,
+    "chequeNoPra": "0",
+    "incomeTaxAmount": 0.0,
+    "chequeNoIncomeTax": "0",
+    "billAmountGross": 4000.0,
+    "description": "Cooking Class NAVTTC GAS for Cylinder Use",
+    "entryStatus": "New",
+    "timestamp": "04-Sep-2026 12:54",
+    "bankAccount": "Payment of Non Salary Expenditures For 2026-2027",
+    "billAmtExclTax": 4000.0,
+    "praTaxOnBill": 0.0,
+    "voucherNo": "NS-SEP26-002",
+    "preEntryBalance": 265530.0
+  },
+  {
+    "srNo": 47,
+    "payeeName": "HASHIR TRADERS",
+    "ntnCnic": "8637356-3",
+    "billNo": "211",
+    "billDate": "31-Aug-2026",
+    "chequeNoNet": "8061193885",
+    "chequeDate": "04-Sep-2026",
+    "chequeAmountNet": 14194.0,
+    "accountHead": "A13101-REPAIR OF MACHINERY/EQUIPMENTS",
+    "gstAmount": 1347.0,
+    "praAmount": 1252.0,
+    "chequeNoPra": "8061193887",
+    "incomeTaxAmount": 1739.0,
+    "chequeNoIncomeTax": "8061193886",
+    "billAmountGross": 17184.0,
+    "description": "Dress Making Sewing Machine Repair & Mintenance",
+    "entryStatus": "New",
+    "timestamp": "04-Sep-2026 13:31",
+    "bankAccount": "Payment of Non Salary Expenditures For 2026-2027",
+    "billAmtExclTax": 14685.0,
+    "praTaxOnBill": 1152.0,
+    "voucherNo": "NS-SEP26-003",
+    "preEntryBalance": 14646.0
   }
 ];
 
@@ -1291,7 +1372,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
       "accountNo": "6580006795600014",
       "bankName": "Bank of Punjab (BOP)",
       "branch": "Samanabad, Faisalabad",
-      "openingBalance": 2387207,
+      "openingBalance": 2387207.0,
       "unpresentedChequesTotal": 0,
       "themeColor": {
         "primary": "blue",
@@ -1301,12 +1382,12 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "badge": "bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300"
       }
     },
-    "openingBalance": 2387207,
-    "totalReceipts": 0,
-    "totalPayments": 622787.0,
-    "closingBalance": 1764420.0,
-    "unpresentedChequesTotal": 0,
-    "reconciledBankBalance": 1764420.0,
+    "openingBalance": 2387207.0,
+    "totalReceipts": 0.0,
+    "totalPayments": 643972.0,
+    "closingBalance": 1743235.0,
+    "unpresentedChequesTotal": 0.0,
+    "reconciledBankBalance": 1743235.0,
     "entries": [
       {
         "id": "NS-V1-NET",
@@ -1319,7 +1400,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Hashir Traders",
         "accountHead": "A00000NTOH-NAVTTC COOK-OVERHEADS",
         "chequeNo": "8061174906",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 62536.0,
         "runningBalance": 2324671.0,
         "entryType": "PAYMENT"
@@ -1335,7 +1416,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000NTOH-NAVTTC COOK-OVERHEADS",
         "chequeNo": "8061174907",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 5534.0,
         "runningBalance": 2319137.0,
         "entryType": "PAYMENT"
@@ -1351,7 +1432,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "PRA Tax",
         "accountHead": "A00000NTOH-NAVTTC COOK-OVERHEADS",
         "chequeNo": "8061174908",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 2500.0,
         "runningBalance": 2316637.0,
         "entryType": "PAYMENT"
@@ -1367,7 +1448,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Kashif Zia",
         "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
         "chequeNo": "8061174909",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 4000.0,
         "runningBalance": 2312637.0,
         "entryType": "PAYMENT"
@@ -1383,7 +1464,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "FESCO",
         "accountHead": "A03303-ELECTRICITY CHARGES",
         "chequeNo": "8061174913",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 89846.0,
         "runningBalance": 2222791.0,
         "entryType": "PAYMENT"
@@ -1399,7 +1480,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Amir Shahzad Driver",
         "accountHead": "PLACEMENT-A03807-POL",
         "chequeNo": "8061174910",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 6500.0,
         "runningBalance": 2216291.0,
         "entryType": "PAYMENT"
@@ -1415,7 +1496,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Iram Shahzadi",
         "accountHead": "PLACEMENT-A03903- CONFRENCE SEMINAR & WORKSHOP",
         "chequeNo": "8061174911",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 5000.0,
         "runningBalance": 2211291.0,
         "entryType": "PAYMENT"
@@ -1431,7 +1512,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Kashif Zia",
         "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
         "chequeNo": "8061174914",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 7500.0,
         "runningBalance": 2203791.0,
         "entryType": "PAYMENT"
@@ -1447,7 +1528,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "PTCL",
         "accountHead": "A00000NTOH-NAVTTC COOK-OVERHEADS",
         "chequeNo": "8061174915",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 16280.0,
         "runningBalance": 2187511.0,
         "entryType": "PAYMENT"
@@ -1463,7 +1544,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Iram Shahzadi",
         "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
         "chequeNo": "8061174916",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 5000.0,
         "runningBalance": 2182511.0,
         "entryType": "PAYMENT"
@@ -1472,14 +1553,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "id": "NS-V16-NET",
         "srNo": 11,
         "date": "Jul 2026",
-        "month": "August",
+        "month": "July",
         "vNo": "16",
         "voucherSerial": "NS-AUG26-001",
         "particulars": "NAVTTC Cook Kashaf Noor Salary Jul 2026",
         "paidToBy": "Kashaf Noor",
         "accountHead": "A00000NTTR-NAVTTC COOK-TEACHER REMUNERATION",
         "chequeNo": "8061174917",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 127646.0,
         "runningBalance": 2054865.0,
         "entryType": "PAYMENT"
@@ -1488,14 +1569,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "id": "NS-V16-IT",
         "srNo": 12,
         "date": "Jul 2026",
-        "month": "August",
+        "month": "July",
         "vNo": "16",
         "voucherSerial": "NS-AUG26-001",
         "particulars": "NAVTTC Cook Kashaf Noor Salary Jul 2026",
         "paidToBy": "Income Tax",
         "accountHead": "A00000NTTR-NAVTTC COOK-TEACHER REMUNERATION",
         "chequeNo": "8061174918",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 3979.0,
         "runningBalance": 2050886.0,
         "entryType": "PAYMENT"
@@ -1511,7 +1592,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Hashir Traders",
         "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
         "chequeNo": "8061174919",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 33933.0,
         "runningBalance": 2016953.0,
         "entryType": "PAYMENT"
@@ -1527,7 +1608,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
         "chequeNo": "8061174920",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 1975.0,
         "runningBalance": 2014978.0,
         "entryType": "PAYMENT"
@@ -1543,7 +1624,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Kashif Zia",
         "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
         "chequeNo": "8061174921",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 3500.0,
         "runningBalance": 2011478.0,
         "entryType": "PAYMENT"
@@ -1559,7 +1640,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "WASA",
         "accountHead": "A00000NTOH-NAVTTC COOK-OVERHEADS",
         "chequeNo": "8061174922",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 7880.0,
         "runningBalance": 2003598.0,
         "entryType": "PAYMENT"
@@ -1575,7 +1656,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Anwar Traders",
         "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
         "chequeNo": "8061174923",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 114844.0,
         "runningBalance": 1888754.0,
         "entryType": "PAYMENT"
@@ -1591,7 +1672,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
         "chequeNo": "8061174924",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 6684.0,
         "runningBalance": 1882070.0,
         "entryType": "PAYMENT"
@@ -1607,7 +1688,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Bank Charges",
         "accountHead": "A03101-BANK CHARGES",
         "chequeNo": "",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 2784.0,
         "runningBalance": 1879286.0,
         "entryType": "PAYMENT"
@@ -1623,7 +1704,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "ANWAR TRADERS",
         "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
         "chequeNo": "8061174925",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 43032.0,
         "runningBalance": 1836254.0,
         "entryType": "PAYMENT"
@@ -1639,7 +1720,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
         "chequeNo": "8061193876",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 2504.0,
         "runningBalance": 1833750.0,
         "entryType": "PAYMENT"
@@ -1655,7 +1736,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "ANWAR TRADERS",
         "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
         "chequeNo": "8061193877",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 35026.0,
         "runningBalance": 1798724.0,
         "entryType": "PAYMENT"
@@ -1671,7 +1752,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
         "chequeNo": "8061193878",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 2039.0,
         "runningBalance": 1796685.0,
         "entryType": "PAYMENT"
@@ -1687,7 +1768,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "KASHIF ZIA",
         "accountHead": "A00000NTOH-NAVTTC COOK-OVERHEADS",
         "chequeNo": "8061193879",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 6545.0,
         "runningBalance": 1790140.0,
         "entryType": "PAYMENT"
@@ -1703,7 +1784,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "HASHIR TRADERS",
         "accountHead": "A00000NTOH-NAVTTC COOK-OVERHEADS",
         "chequeNo": "8061193880",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 21437.0,
         "runningBalance": 1768703.0,
         "entryType": "PAYMENT"
@@ -1719,7 +1800,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000NTOH-NAVTTC COOK-OVERHEADS",
         "chequeNo": "8061193881",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 1883.0,
         "runningBalance": 1766820.0,
         "entryType": "PAYMENT"
@@ -1735,7 +1816,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "PRA Tax",
         "accountHead": "A00000NTOH-NAVTTC COOK-OVERHEADS",
         "chequeNo": "8061193882",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 900.0,
         "runningBalance": 1765920.0,
         "entryType": "PAYMENT"
@@ -1751,9 +1832,73 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "KASHIF ZIA",
         "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
         "chequeNo": "8061193883",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 1500.0,
         "runningBalance": 1764420.0,
+        "entryType": "PAYMENT"
+      },
+      {
+        "id": "NS-V46-NET",
+        "srNo": 29,
+        "date": "04-Sep-2026",
+        "month": "September",
+        "vNo": "46",
+        "voucherSerial": "NS-SEP26-002",
+        "particulars": "Cooking Class NAVTTC GAS for Cylinder Use",
+        "paidToBy": "KASHIF ZIA",
+        "accountHead": "A00000NTTM-NAVTTC COOK-TRAINING MATERIAL",
+        "chequeNo": "8061193884",
+        "receipts": 0.0,
+        "payments": 4000.0,
+        "runningBalance": 1760420.0,
+        "entryType": "PAYMENT"
+      },
+      {
+        "id": "NS-V47-NET",
+        "srNo": 30,
+        "date": "04-Sep-2026",
+        "month": "September",
+        "vNo": "47",
+        "voucherSerial": "NS-SEP26-003",
+        "particulars": "Dress Making Sewing Machine Repair & Mintenance",
+        "paidToBy": "HASHIR TRADERS",
+        "accountHead": "A13101-REPAIR OF MACHINERY/EQUIPMENTS",
+        "chequeNo": "8061193885",
+        "receipts": 0.0,
+        "payments": 14194.0,
+        "runningBalance": 1746226.0,
+        "entryType": "PAYMENT"
+      },
+      {
+        "id": "NS-V47-IT",
+        "srNo": 31,
+        "date": "04-Sep-2026",
+        "month": "September",
+        "vNo": "47",
+        "voucherSerial": "NS-SEP26-003",
+        "particulars": "Dress Making Sewing Machine Repair & Mintenance",
+        "paidToBy": "Income Tax",
+        "accountHead": "A13101-REPAIR OF MACHINERY/EQUIPMENTS",
+        "chequeNo": "8061193886",
+        "receipts": 0.0,
+        "payments": 1739.0,
+        "runningBalance": 1744487.0,
+        "entryType": "PAYMENT"
+      },
+      {
+        "id": "NS-V47-PRA",
+        "srNo": 32,
+        "date": "04-Sep-2026",
+        "month": "September",
+        "vNo": "47",
+        "voucherSerial": "NS-SEP26-003",
+        "particulars": "Dress Making Sewing Machine Repair & Mintenance",
+        "paidToBy": "PRA Tax",
+        "accountHead": "A13101-REPAIR OF MACHINERY/EQUIPMENTS",
+        "chequeNo": "8061193887",
+        "receipts": 0.0,
+        "payments": 1252.0,
+        "runningBalance": 1743235.0,
         "entryType": "PAYMENT"
       }
     ]
@@ -1766,7 +1911,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
       "accountNo": "6580027832200022",
       "bankName": "Bank of Punjab (BOP)",
       "branch": "Samanabad, Faisalabad",
-      "openingBalance": 409697,
+      "openingBalance": 408588.0,
       "unpresentedChequesTotal": 0,
       "themeColor": {
         "primary": "emerald",
@@ -1776,16 +1921,32 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "badge": "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300"
       }
     },
-    "openingBalance": 409697,
-    "totalReceipts": 0,
+    "openingBalance": 408588.0,
+    "totalReceipts": 77717.0,
     "totalPayments": 397336.0,
-    "closingBalance": 12361.0,
-    "unpresentedChequesTotal": 0,
-    "reconciledBankBalance": 12361.0,
+    "closingBalance": 88969.0,
+    "unpresentedChequesTotal": 0.0,
+    "reconciledBankBalance": 88969.0,
     "entries": [
       {
-        "id": "PF-V2-NET",
+        "id": "PF-R1",
         "srNo": 1,
+        "date": "15-Jul-2026",
+        "month": "July",
+        "vNo": "",
+        "voucherSerial": "",
+        "particulars": "Transfer / Collection of Student Pupil Fund Share from TEVTA Fee Collection A/C (6580027832200011)",
+        "paidToBy": "TEVTA Fee Collection / Trainees",
+        "accountHead": "A00000PF-PUPIL FUND",
+        "chequeNo": "Online BOP Transfer",
+        "receipts": 77717.0,
+        "payments": 0.0,
+        "runningBalance": 486305.0,
+        "entryType": "RECEIPT"
+      },
+      {
+        "id": "PF-V2-NET",
+        "srNo": 2,
         "date": "03-Jul-2026",
         "month": "July",
         "vNo": "2",
@@ -1794,14 +1955,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Hashir Traders",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061065795",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 52281.0,
-        "runningBalance": 357416.0,
+        "runningBalance": 434024.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V2-IT",
-        "srNo": 2,
+        "srNo": 3,
         "date": "03-Jul-2026",
         "month": "July",
         "vNo": "2",
@@ -1810,14 +1971,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061065796",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 3741.0,
-        "runningBalance": 353675.0,
+        "runningBalance": 430283.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V2-PRA",
-        "srNo": 3,
+        "srNo": 4,
         "date": "03-Jul-2026",
         "month": "July",
         "vNo": "2",
@@ -1826,14 +1987,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "PRA Tax",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061065797",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 980.0,
-        "runningBalance": 352695.0,
+        "runningBalance": 429303.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V3-NET",
-        "srNo": 4,
+        "srNo": 5,
         "date": "03-Jul-2026",
         "month": "July",
         "vNo": "3",
@@ -1842,14 +2003,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Anwar Traders",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061065798",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 12127.0,
-        "runningBalance": 340568.0,
+        "runningBalance": 417176.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V3-IT",
-        "srNo": 5,
+        "srNo": 6,
         "date": "03-Jul-2026",
         "month": "July",
         "vNo": "3",
@@ -1858,14 +2019,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061065799",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 706.0,
-        "runningBalance": 339862.0,
+        "runningBalance": 416470.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V17-NET",
-        "srNo": 6,
+        "srNo": 7,
         "date": "10-Aug-2026",
         "month": "August",
         "vNo": "17",
@@ -1874,14 +2035,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Hashir Traders",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061065800",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 14690.0,
-        "runningBalance": 325172.0,
+        "runningBalance": 401780.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V17-IT",
-        "srNo": 7,
+        "srNo": 8,
         "date": "10-Aug-2026",
         "month": "August",
         "vNo": "17",
@@ -1890,14 +2051,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061187401",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 855.0,
-        "runningBalance": 324317.0,
+        "runningBalance": 400925.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V19-NET",
-        "srNo": 8,
+        "srNo": 9,
         "date": "11-Aug-2026",
         "month": "August",
         "vNo": "19",
@@ -1906,14 +2067,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Afshan Alam",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061187402",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 5950.0,
-        "runningBalance": 318367.0,
+        "runningBalance": 394975.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V21-NET",
-        "srNo": 9,
+        "srNo": 10,
         "date": "11-Aug-2026",
         "month": "August",
         "vNo": "21",
@@ -1922,14 +2083,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Akbar Ali",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061187403",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 1200.0,
-        "runningBalance": 317167.0,
+        "runningBalance": 393775.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V26-NET",
-        "srNo": 10,
+        "srNo": 11,
         "date": "18-Aug-2026",
         "month": "August",
         "vNo": "26",
@@ -1938,14 +2099,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "HASHIR TRADERS",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061187404",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 35767.0,
-        "runningBalance": 281400.0,
+        "runningBalance": 358008.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V26-IT",
-        "srNo": 11,
+        "srNo": 12,
         "date": "18-Aug-2026",
         "month": "August",
         "vNo": "26",
@@ -1954,14 +2115,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061187405",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 2082.0,
-        "runningBalance": 279318.0,
+        "runningBalance": 355926.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V33-NET",
-        "srNo": 12,
+        "srNo": 13,
         "date": "25-Aug-2026",
         "month": "August",
         "vNo": "33",
@@ -1970,14 +2131,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "KASHIF ZIA",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061187406",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 2700.0,
-        "runningBalance": 276618.0,
+        "runningBalance": 353226.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V34-NET",
-        "srNo": 13,
+        "srNo": 14,
         "date": "25-Aug-2026",
         "month": "August",
         "vNo": "34",
@@ -1985,15 +2146,15 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "particulars": "Diya Stipend Chqs 2026 Distrbuted 49 Students",
         "paidToBy": "DIYA PAKISTAN STIPEND-STUDENT",
         "accountHead": "A00000PF-PUPIL FUND",
-        "chequeNo": "",
-        "receipts": 0,
+        "chequeNo": "8061187407-455",
+        "receipts": 0.0,
         "payments": 229000.0,
-        "runningBalance": 47618.0,
+        "runningBalance": 124226.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V38-NET",
-        "srNo": 14,
+        "srNo": 15,
         "date": "31-Aug-2026",
         "month": "August",
         "vNo": "38",
@@ -2002,14 +2163,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "ANWAR TRADERS",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061187456",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 30835.0,
-        "runningBalance": 16783.0,
+        "runningBalance": 93391.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V38-IT",
-        "srNo": 15,
+        "srNo": 16,
         "date": "31-Aug-2026",
         "month": "August",
         "vNo": "38",
@@ -2018,14 +2179,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061187457",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 2178.0,
-        "runningBalance": 14605.0,
+        "runningBalance": 91213.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V38-PRA",
-        "srNo": 16,
+        "srNo": 17,
         "date": "31-Aug-2026",
         "month": "August",
         "vNo": "38",
@@ -2034,14 +2195,14 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "PRA Tax",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061187458",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 580.0,
-        "runningBalance": 14025.0,
+        "runningBalance": 90633.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "PF-V41-NET",
-        "srNo": 17,
+        "srNo": 18,
         "date": "02-Sep-2026",
         "month": "September",
         "vNo": "41",
@@ -2050,9 +2211,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "KASHIF ZIA",
         "accountHead": "A00000PF-PUPIL FUND",
         "chequeNo": "8061187459",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 1664.0,
-        "runningBalance": 12361.0,
+        "runningBalance": 88969.0,
         "entryType": "PAYMENT"
       }
     ]
@@ -2065,7 +2226,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
       "accountNo": "6580027832200011",
       "bankName": "Bank of Punjab (BOP)",
       "branch": "Samanabad, Faisalabad",
-      "openingBalance": 0,
+      "openingBalance": 0.0,
       "unpresentedChequesTotal": 0,
       "themeColor": {
         "primary": "purple",
@@ -2075,13 +2236,46 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "badge": "bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300"
       }
     },
-    "openingBalance": 0,
-    "totalReceipts": 0,
-    "totalPayments": 0,
-    "closingBalance": 0,
-    "unpresentedChequesTotal": 0,
-    "reconciledBankBalance": 0,
-    "entries": []
+    "openingBalance": 0.0,
+    "totalReceipts": 77717.0,
+    "totalPayments": 77717.0,
+    "closingBalance": 0.0,
+    "unpresentedChequesTotal": 0.0,
+    "reconciledBankBalance": 0.0,
+    "entries": [
+      {
+        "id": "FC-R1",
+        "srNo": 1,
+        "date": "15-Jul-2026",
+        "month": "July",
+        "vNo": "",
+        "voucherSerial": "",
+        "particulars": "Admission & Tuition Fee Collection Session 2026-2027 from Enrolled Trainees",
+        "paidToBy": "Enrolled Students / Trainees",
+        "accountHead": "A00000TFC-TEVTA FEE COL.",
+        "chequeNo": "Bank Challans",
+        "receipts": 77717.0,
+        "payments": 0.0,
+        "runningBalance": 77717.0,
+        "entryType": "RECEIPT"
+      },
+      {
+        "id": "FC-V45-NET",
+        "srNo": 2,
+        "date": "03-Sep-2026",
+        "month": "September",
+        "vNo": "45",
+        "voucherSerial": "FC-SEP26-001",
+        "particulars": "Lapsed / Standing Balance at 31-07-2026 tranferred to Pupil Funds Account (directions by DDF TEVTA Fsd)",
+        "paidToBy": "PUPIL FUNDS ACCOUNT (6580027832200022)",
+        "accountHead": "A00000TFC-TEVTA FEE COL.",
+        "chequeNo": "8060940614",
+        "receipts": 0.0,
+        "payments": 77717.0,
+        "runningBalance": 0.0,
+        "entryType": "PAYMENT"
+      }
+    ]
   },
   "SEC": {
     "meta": {
@@ -2091,7 +2285,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
       "accountNo": "6580027832200044",
       "bankName": "Bank of Punjab (BOP)",
       "branch": "Samanabad, Faisalabad",
-      "openingBalance": 153680,
+      "openingBalance": 357709.0,
       "unpresentedChequesTotal": 0,
       "themeColor": {
         "primary": "amber",
@@ -2101,12 +2295,12 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "badge": "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300"
       }
     },
-    "openingBalance": 153680,
-    "totalReceipts": 0,
-    "totalPayments": 0,
-    "closingBalance": 153680,
-    "unpresentedChequesTotal": 0,
-    "reconciledBankBalance": 153680,
+    "openingBalance": 357709.0,
+    "totalReceipts": 0.0,
+    "totalPayments": 0.0,
+    "closingBalance": 357709.0,
+    "unpresentedChequesTotal": 0.0,
+    "reconciledBankBalance": 357709.0,
     "entries": []
   },
   "SC": {
@@ -2117,7 +2311,7 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
       "accountNo": "6580027832200033",
       "bankName": "Bank of Punjab (BOP)",
       "branch": "Samanabad, Faisalabad",
-      "openingBalance": 247431,
+      "openingBalance": 251567.0,
       "unpresentedChequesTotal": 0,
       "themeColor": {
         "primary": "rose",
@@ -2127,12 +2321,12 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "badge": "bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300"
       }
     },
-    "openingBalance": 247431,
-    "totalReceipts": 0,
+    "openingBalance": 251567.0,
+    "totalReceipts": 0.0,
     "totalPayments": 188083.0,
-    "closingBalance": 59348.0,
-    "unpresentedChequesTotal": 0,
-    "reconciledBankBalance": 59348.0,
+    "closingBalance": 63484.0,
+    "unpresentedChequesTotal": 0.0,
+    "reconciledBankBalance": 63484.0,
     "entries": [
       {
         "id": "SC-V6-NET",
@@ -2145,9 +2339,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "WASA",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065823",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 7880.0,
-        "runningBalance": 239551.0,
+        "runningBalance": 243687.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2161,25 +2355,25 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "M/S PANASONIC BUSINESS POINT-1",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065824",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 4950.0,
-        "runningBalance": 234601.0,
+        "runningBalance": 238737.0,
         "entryType": "PAYMENT"
       },
       {
         "id": "SC-V15-NET",
         "srNo": 3,
         "date": "Jul-2026",
-        "month": "August",
+        "month": "July",
         "vNo": "15",
         "voucherSerial": "SC-AUG26-001",
         "particulars": "BT Self Salary Jul 2026 Rozina Kousar Evening",
         "paidToBy": "Rozina Kousar",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065825",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 25920.0,
-        "runningBalance": 208681.0,
+        "runningBalance": 212817.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2193,9 +2387,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "M/S PANASONIC BUSINESS POINT",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065826",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 4950.0,
-        "runningBalance": 203731.0,
+        "runningBalance": 207867.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2209,9 +2403,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "ANWAR TRADERS",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065827",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 37991.0,
-        "runningBalance": 165740.0,
+        "runningBalance": 169876.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2225,9 +2419,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065828",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 2211.0,
-        "runningBalance": 163529.0,
+        "runningBalance": 167665.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2241,9 +2435,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "ANWAR TRADERS",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065829",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 22581.0,
-        "runningBalance": 140948.0,
+        "runningBalance": 145084.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2257,9 +2451,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065830",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 1314.0,
-        "runningBalance": 139634.0,
+        "runningBalance": 143770.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2273,9 +2467,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "HASHIR TRADERS",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065831",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 10638.0,
-        "runningBalance": 128996.0,
+        "runningBalance": 133132.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2289,9 +2483,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065832",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 2262.0,
-        "runningBalance": 126734.0,
+        "runningBalance": 130870.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2305,9 +2499,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "PRA Tax",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065833",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 2180.0,
-        "runningBalance": 124554.0,
+        "runningBalance": 128690.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2321,9 +2515,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "ANWAR TRADERS",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065834",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 30111.0,
-        "runningBalance": 94443.0,
+        "runningBalance": 98579.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2337,9 +2531,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065835",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 2199.0,
-        "runningBalance": 92244.0,
+        "runningBalance": 96380.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2353,9 +2547,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "PRA Tax",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065836",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 660.0,
-        "runningBalance": 91584.0,
+        "runningBalance": 95720.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2369,9 +2563,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "IRAM SHAHZADI",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065837",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 5000.0,
-        "runningBalance": 86584.0,
+        "runningBalance": 90720.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2385,9 +2579,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "HASHIR TRADERS",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065838",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 15815.0,
-        "runningBalance": 70769.0,
+        "runningBalance": 74905.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2401,9 +2595,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Income Tax",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065839",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 1241.0,
-        "runningBalance": 69528.0,
+        "runningBalance": 73664.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2417,9 +2611,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "PRA Tax",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065840",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 500.0,
-        "runningBalance": 69028.0,
+        "runningBalance": 73164.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2433,9 +2627,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "AKBAR ALI",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065841",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 1200.0,
-        "runningBalance": 67828.0,
+        "runningBalance": 71964.0,
         "entryType": "PAYMENT"
       },
       {
@@ -2449,9 +2643,9 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "paidToBy": "Muddasara Saeed",
         "accountHead": "A00000SC-SHORT COURSE",
         "chequeNo": "8061065842",
-        "receipts": 0,
+        "receipts": 0.0,
         "payments": 8480.0,
-        "runningBalance": 59348.0,
+        "runningBalance": 63484.0,
         "entryType": "PAYMENT"
       }
     ]
@@ -2459,12 +2653,12 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
   "AA": {
     "meta": {
       "code": "AA",
-      "shortName": "AAA",
+      "shortName": "AAA (District Allocation)",
       "fullName": "Payment of AAA For 2026-2027",
       "accountNo": "AAA0000000000000",
       "bankName": "National Bank of Pakistan (NBP)",
       "branch": "Civil Lines, Faisalabad",
-      "openingBalance": 0,
+      "openingBalance": 0.0,
       "unpresentedChequesTotal": 0,
       "themeColor": {
         "primary": "teal",
@@ -2474,11 +2668,11 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "badge": "bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300"
       }
     },
-    "openingBalance": 0,
-    "totalReceipts": 508831,
+    "openingBalance": 0.0,
+    "totalReceipts": 508831.0,
     "totalPayments": 260635.0,
     "closingBalance": 248196.0,
-    "unpresentedChequesTotal": 0,
+    "unpresentedChequesTotal": 0.0,
     "reconciledBankBalance": 248196.0,
     "entries": [
       {
@@ -2488,13 +2682,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A03902-PRINTING CHARGES)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03902-PRINTING CHARGES)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A03902-PRINTING CHARGES",
-        "chequeNo": "AAA",
-        "receipts": 8393,
-        "payments": 0,
-        "runningBalance": 8393,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 8393.0,
+        "payments": 0.0,
+        "runningBalance": 8393.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2504,13 +2698,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A03933-SERVICE CHARGES)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03933-SERVICE CHARGES)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A03933-SERVICE CHARGES",
-        "chequeNo": "AAA",
-        "receipts": 142852,
-        "payments": 0,
-        "runningBalance": 151245,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 142852.0,
+        "payments": 0.0,
+        "runningBalance": 151245.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2520,13 +2714,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A13101-REPAIR OF MACHINERY)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A13101-REPAIR OF MACHINERY)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A13101-REPAIR OF MACHINERY & EQUIPMENT",
-        "chequeNo": "AAA",
-        "receipts": 6212,
-        "payments": 0,
-        "runningBalance": 157457,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 6212.0,
+        "payments": 0.0,
+        "runningBalance": 157457.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2536,13 +2730,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A13201-REPAIR OF FURNITURE)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A13201-REPAIR OF FURNITURE)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A13201-REPAIR OF FURNITURE & FIXTURE",
-        "chequeNo": "AAA",
-        "receipts": 11820,
-        "payments": 0,
-        "runningBalance": 169277,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 11820.0,
+        "payments": 0.0,
+        "runningBalance": 169277.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2552,13 +2746,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A03303-ELECTRICITY CHARGES)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03303-ELECTRICITY CHARGES)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A03303-ELECTRICITY CHARGES",
-        "chequeNo": "AAA",
-        "receipts": 247435,
-        "payments": 0,
-        "runningBalance": 416712,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 247435.0,
+        "payments": 0.0,
+        "runningBalance": 416712.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2568,13 +2762,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A03301-GAS CHARGES)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03301-GAS CHARGES)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A03301-GAS CHARGES",
-        "chequeNo": "AAA",
-        "receipts": 1500,
-        "payments": 0,
-        "runningBalance": 418212,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 1500.0,
+        "payments": 0.0,
+        "runningBalance": 418212.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2584,13 +2778,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A03302-WATER CHARGES)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03302-WATER CHARGES)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A03302-WATER CHARGES",
-        "chequeNo": "AAA",
-        "receipts": 6000,
-        "payments": 0,
-        "runningBalance": 424212,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 6000.0,
+        "payments": 0.0,
+        "runningBalance": 424212.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2600,13 +2794,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A03202-TELEPHONE & TRUNK)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03202-TELEPHONE & TRUNK)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A03202-TELEPHONE & TRUNK CHARGES",
-        "chequeNo": "AAA",
-        "receipts": 25000,
-        "payments": 0,
-        "runningBalance": 449212,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 25000.0,
+        "payments": 0.0,
+        "runningBalance": 449212.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2616,13 +2810,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A03201-POSTAGE & TELEGRAPH)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03201-POSTAGE & TELEGRAPH)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A03201-POSTAGE & TELEGRAPH",
-        "chequeNo": "AAA",
-        "receipts": 4000,
-        "payments": 0,
-        "runningBalance": 453212,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 4000.0,
+        "payments": 0.0,
+        "runningBalance": 453212.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2632,13 +2826,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A01274-MEDICAL CHARGES)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A01274-MEDICAL CHARGES)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A01274-MEDICAL CHARGES",
-        "chequeNo": "AAA",
-        "receipts": 12000,
-        "payments": 0,
-        "runningBalance": 465212,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 12000.0,
+        "payments": 0.0,
+        "runningBalance": 465212.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2648,13 +2842,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A03304-HOT & COLD CHARGES)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03304-HOT & COLD CHARGES)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A03304-HOT & COLD CHARGES",
-        "chequeNo": "AAA",
-        "receipts": 6000,
-        "payments": 0,
-        "runningBalance": 471212,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 6000.0,
+        "payments": 0.0,
+        "runningBalance": 471212.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2664,13 +2858,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A03901-STATIONERY CHARGES)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03901-STATIONERY CHARGES)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A03901-STATIONERY CHARGES",
-        "chequeNo": "AAA",
-        "receipts": 12000,
-        "payments": 0,
-        "runningBalance": 483212,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 12000.0,
+        "payments": 0.0,
+        "runningBalance": 483212.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2680,13 +2874,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A03905-NEWSPAPERS & PERIODICALS)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03905-NEWSPAPERS & PERIODICALS)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A03905-NEWSPAPERS PERIODICALS & BOOKS",
-        "chequeNo": "AAA",
-        "receipts": 1000,
-        "payments": 0,
-        "runningBalance": 484212,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 1000.0,
+        "payments": 0.0,
+        "runningBalance": 484212.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2696,13 +2890,13 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "month": "August",
         "vNo": "",
         "voucherSerial": "",
-        "particulars": "1st Qtr Budget Jul-Sep 2026 AAA (A03907-ADVERTISING & PUBLICITY)",
-        "paidToBy": "Budget",
+        "particulars": "1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03907-ADVERTISING & PUBLICITY)",
+        "paidToBy": "Govt. of the Punjab / TEVTA Budget Wing",
         "accountHead": "A03907-ADVERTISING & PUBLICITY",
-        "chequeNo": "AAA",
-        "receipts": 24619,
-        "payments": 0,
-        "runningBalance": 508831,
+        "chequeNo": "AAA-Ceiling",
+        "receipts": 24619.0,
+        "payments": 0.0,
+        "runningBalance": 508831.0,
         "entryType": "RECEIPT"
       },
       {
@@ -2715,8 +2909,8 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "particulars": "PTCL Bills 0412662425=8560, 0412406642=7710",
         "paidToBy": "PTCL",
         "accountHead": "A03202-TELEPHONE & TRUNK CHARGES",
-        "chequeNo": "",
-        "receipts": 0,
+        "chequeNo": "AAA",
+        "receipts": 0.0,
         "payments": 16270.0,
         "runningBalance": 492561.0,
         "entryType": "PAYMENT"
@@ -2731,8 +2925,8 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "particulars": "Electricity Bill for the month of July 2026 Ref#13132130885109",
         "paidToBy": "FESCO",
         "accountHead": "A03303-ELECTRICITY CHARGES",
-        "chequeNo": "",
-        "receipts": 0,
+        "chequeNo": "AAA",
+        "receipts": 0.0,
         "payments": 107040.0,
         "runningBalance": 385521.0,
         "entryType": "PAYMENT"
@@ -2747,8 +2941,8 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "particulars": "FESCO Bill Ref# 13132130885109 Aug 2026 with Original Due Date 04-09-2026",
         "paidToBy": "FESCO",
         "accountHead": "A03303-ELECTRICITY CHARGES",
-        "chequeNo": "",
-        "receipts": 0,
+        "chequeNo": "AAA",
+        "receipts": 0.0,
         "payments": 137325.0,
         "runningBalance": 248196.0,
         "entryType": "PAYMENT"

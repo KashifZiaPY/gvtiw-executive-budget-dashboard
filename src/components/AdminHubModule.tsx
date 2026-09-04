@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Lock,
   Unlock,
@@ -22,25 +22,59 @@ import {
   Settings,
   Save,
   X,
+  Layers,
+  FileText,
+  Activity,
+  Terminal,
+  Clock,
+  Landmark,
+  FileSpreadsheet,
+  HelpCircle,
+  PlusCircle,
 } from 'lucide-react';
-import { INSTITUTIONAL_BANK_ACCOUNTS, BankAccountKey, MasterVoucher, INITIAL_MASTER_VOUCHERS } from '../data/cashBookData';
+import {
+  INSTITUTIONAL_BANK_ACCOUNTS,
+  BankAccountKey,
+  MasterVoucher,
+  INITIAL_MASTER_VOUCHERS,
+} from '../data/cashBookData';
+import { MASTER_ACCOUNT_HEADS, MASTER_PAYEE_LIST } from '../data/voucherMasterLists';
 import { VoucherEntryModal } from './VoucherEntryModal';
 import { formatPKR } from '../lib/formatters';
 
 interface AdminHubModuleProps {
   darkMode: boolean;
+  customGvtiwLogo?: string | null;
+  customTevtaLogo?: string | null;
+  customGopLogo?: string | null;
 }
 
 const DEFAULT_WEB_APP_EXEC_URL =
   'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
 
-export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
+interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  action: string;
+  status: 'pending' | 'success' | 'failed';
+  details: string;
+}
+
+export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
+  darkMode,
+  customGvtiwLogo,
+  customTevtaLogo,
+  customGopLogo,
+}) => {
   const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
     return sessionStorage.getItem('gvtiw_admin_session') === 'unlocked';
   });
   const [pinInput, setPinInput] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
+
+  // Active Admin Tab
+  const [activeTab, setActiveTab] = useState<'vouchers' | 'sync' | 'backup' | 'matrix' | 'terminal'>('vouchers');
 
   // Web App Deployment URL
   const [webAppUrl, setWebAppUrl] = useState<string>(() => {
@@ -65,12 +99,136 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
   // Live Vouchers Registry State for Admin Operations
   const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
     try {
-      const cached = localStorage.getItem('gvtiw_live_vouchers_v1');
+      const cached = localStorage.getItem('gvtiw_live_vouchers_v3');
       if (cached) return JSON.parse(cached);
     } catch {}
     return INITIAL_MASTER_VOUCHERS;
   });
+
+  useEffect(() => {
+    const handleVoucherUpdate = () => {
+      try {
+        const cached = localStorage.getItem('gvtiw_live_vouchers_v3');
+        if (cached) setVouchers(JSON.parse(cached));
+      } catch {}
+    };
+    window.addEventListener('gvtiw_vouchers_updated', handleVoucherUpdate);
+    window.addEventListener('storage', handleVoucherUpdate);
+    return () => {
+      window.removeEventListener('gvtiw_vouchers_updated', handleVoucherUpdate);
+      window.removeEventListener('storage', handleVoucherUpdate);
+    };
+  }, []);
   const [voucherToAmend, setVoucherToAmend] = useState<MasterVoucher | null>(null);
+
+  // Strict LIFO rule: Max Sr No
+  const maxExistingSrNo = useMemo(() => {
+    return vouchers.reduce((m, v) => (v.srNo > m ? v.srNo : m), 0);
+  }, [vouchers]);
+
+  const latestVoucher = useMemo(() => {
+    return vouchers.find((v) => v.srNo === maxExistingSrNo) || null;
+  }, [vouchers, maxExistingSrNo]);
+
+  // Execution & Terminal Logs
+  const [actionStatus, setActionStatus] = useState<string | null>(null);
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [actionParamSr, setActionParamSr] = useState('1');
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([
+    {
+      id: 'init-1',
+      timestamp: new Date().toLocaleTimeString(),
+      action: 'SYSTEM_BOOT',
+      status: 'success',
+      details: 'Admin Operations Hub v3.14 initialized for Institute Code 33028.',
+    },
+  ]);
+
+  // Bank Charge Form State
+  const [bcAccount, setBcAccount] = useState<BankAccountKey>('NS');
+  const [bcAmount, setBcAmount] = useState<number>(0);
+  const [bcDate, setBcDate] = useState(new Date().toISOString().split('T')[0]);
+  const [bcMemo, setBcMemo] = useState('Quarterly Bank Ledger / SMS Charges');
+
+  const addAuditLog = (action: string, status: 'pending' | 'success' | 'failed', details: string) => {
+    const entry: AuditLogEntry = {
+      id: Math.random().toString(36).substring(2, 9),
+      timestamp: new Date().toLocaleTimeString(),
+      action,
+      status,
+      details,
+    };
+    setAuditLogs((prev) => [entry, ...prev.slice(0, 49)]);
+  };
+
+  // Trigger Google Apps Script Web App Command (POST + GET Fallback)
+  const triggerAppScriptCommand = async (commandName: string, params: Record<string, any> = {}) => {
+    setLoadingAction(commandName);
+    setActionStatus(`Dispatching '${commandName}' to Google Apps Script backend engine...`);
+    addAuditLog(commandName, 'pending', `Transmitting command payload: ${JSON.stringify(params)}`);
+
+    const activeUrl = webAppUrl.trim();
+    if (!activeUrl) {
+      setActionStatus(`⚠️ No Web App URL configured. Please enter your Google Apps Script Web App Deployment URL in the Endpoint panel.`);
+      addAuditLog(commandName, 'failed', 'Missing Google Apps Script deployment URL.');
+      setLoadingAction(null);
+      return;
+    }
+
+    try {
+      // 1. Send via POST with text/plain (bypasses browser CORS preflight blocks!)
+      const payload = JSON.stringify({
+        pin: '33028',
+        action: commandName,
+        data: params,
+      });
+
+      const res = await fetch(activeUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: payload,
+      });
+
+      if (res.ok) {
+        try {
+          const jsonRes = await res.json();
+          if (jsonRes.success) {
+            setActionStatus(`✅ Success: '${commandName}' executed on Google Sheet backend!`);
+            addAuditLog(commandName, 'success', jsonRes.message || 'Operation executed successfully on Google Sheets.');
+          } else {
+            setActionStatus(`⚠️ Script returned: ${jsonRes.message || jsonRes.error || 'Check Audit Log'}`);
+            addAuditLog(commandName, 'failed', jsonRes.message || jsonRes.error || 'Backend reported warning.');
+          }
+        } catch {
+          setActionStatus(`✅ Command '${commandName}' dispatched successfully to Google Apps Script.`);
+          addAuditLog(commandName, 'success', 'Dispatched to Google Apps Script endpoint.');
+        }
+      } else {
+        throw new Error(`HTTP status ${res.status}`);
+      }
+    } catch {
+      // 2. Fallback to GET with URL query parameters
+      try {
+        const queryParams = new URLSearchParams({
+          action: commandName,
+          pin: '33028',
+          ...params,
+        });
+
+        await fetch(`${activeUrl}?${queryParams.toString()}`, {
+          method: 'GET',
+          mode: 'no-cors',
+        });
+        setActionStatus(`✅ Signal '${commandName}' transmitted to Google Apps Script Web App.`);
+        addAuditLog(commandName, 'success', 'Transmitted via fallback signal.');
+      } catch (getErr: any) {
+        setActionStatus(`❌ Error transmitting to Google Apps Script: ${getErr.message}`);
+        addAuditLog(commandName, 'failed', getErr.message);
+      }
+    } finally {
+      setLoadingAction(null);
+    }
+  };
 
   // New Voucher Save Handler (persists locally and dispatches to Google Apps Script Web App)
   const handleSaveNewVoucherFromModal = async (savedVoucher: MasterVoucher, isAmend: boolean) => {
@@ -83,13 +241,13 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
         updated = [savedVoucher, ...prev];
       }
       try {
-        localStorage.setItem('gvtiw_live_vouchers_v1', JSON.stringify(updated));
+        localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
       } catch {}
       return updated;
     });
 
     // 2. Dispatch to Live Google Apps Script backend engine
-    // Field names strictly aligned with processVoucherDialog(data) in v3.14
     await triggerAppScriptCommand('submitNewVoucher', {
       mode: isAmend ? 'amend' : 'new',
       srNo: isAmend ? savedVoucher.srNo : null,
@@ -115,27 +273,73 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
     setVoucherToAmend(null);
   };
 
+  // Strict LIFO Deletion Handler (Google Sheet script aligned)
+  const handleDeleteVoucherBySr = async (targetSrNo: number) => {
+    const targetVoucher = vouchers.find((v) => v.srNo === targetSrNo);
+
+    if (!targetVoucher) {
+      alert(`⚠️ Voucher with Sr.# ${targetSrNo} not found in the local cash book registry.`);
+      return;
+    }
+
+    if (targetSrNo !== maxExistingSrNo) {
+      alert(
+        `⚠️ STRICT LIFO CASH BOOK SEQUENCE RULE:\n\nOnly the latest voucher (Sr. #${maxExistingSrNo}) can be deleted first as per Google Sheet cash book sequential integrity rules.\n\nVoucher #${targetSrNo} cannot be deleted out of sequence.`
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `⚠️ PERMANENT VOUCHER DELETION (STRICT LIFO RULE):\n\nAre you sure you want to permanently DELETE Voucher #${targetVoucher.srNo} (${targetVoucher.voucherNo})?\n\n• Payee: ${targetVoucher.payeeName}\n• Net Cheque: Rs. ${Number(targetVoucher.chequeAmountNet || 0).toLocaleString()}\n• Account Head: ${targetVoucher.accountHead}\n• Bank Ledger: ${targetVoucher.bankAccount}\n\nThis will remove the voucher from the registry, reverse financial ledger deductions, and dispatch the deletion command to Google Apps Script backend.`
+    );
+
+    if (!confirmed) return;
+
+    // 1. Remove from vouchers state and update localStorage
+    const updated = vouchers.filter((v) => v.srNo !== targetSrNo);
+    setVouchers(updated);
+    try {
+      localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
+      let deletedSerials = [];
+      const delRaw = localStorage.getItem('gvtiw_deleted_serials_v3');
+      if (delRaw) deletedSerials = JSON.parse(delRaw);
+      deletedSerials.push(targetSrNo);
+      localStorage.setItem('gvtiw_deleted_serials_v3', JSON.stringify(deletedSerials));
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
+    } catch {}
+
+    if (voucherToAmend?.srNo === targetSrNo) {
+      setVoucherToAmend(null);
+      setIsNewVoucherModalOpen(false);
+    }
+
+    // 2. Dispatch to Google Apps Script Web App
+    await triggerAppScriptCommand('deleteLastVoucher', {
+      srNo: targetSrNo,
+      voucherNo: targetVoucher.voucherNo,
+      bankAccount: targetVoucher.bankAccount,
+      accountHead: targetVoucher.accountHead,
+      chequeAmountNet: targetVoucher.chequeAmountNet,
+    });
+
+    setActionStatus(`✅ Voucher #${targetSrNo} (${targetVoucher.voucherNo}) successfully deleted and synchronized.`);
+    addAuditLog('deleteLastVoucher', 'success', `Voucher #${targetSrNo} (${targetVoucher.voucherNo}) permanently removed.`);
+  };
+
   const handleOpenAmendBySr = () => {
     const sr = parseInt(actionParamSr.trim());
+    if (isNaN(sr) || sr <= 0) {
+      alert('Please enter a valid numeric Serial Number.');
+      return;
+    }
     const found = vouchers.find((v) => v.srNo === sr);
     if (found) {
       setVoucherToAmend(found);
       setIsNewVoucherModalOpen(true);
     } else {
-      alert(`Voucher with Sr.# ${sr} not found in local registry.`);
+      alert(`⚠️ Voucher with Sr.# ${sr} does not exist in the active cash book registry (it may have been deleted or not yet created).`);
     }
   };
-
-  // Bank Charge Form State
-  const [bcAccount, setBcAccount] = useState<BankAccountKey>('NS');
-  const [bcAmount, setBcAmount] = useState<number>(0);
-  const [bcDate, setBcDate] = useState(new Date().toISOString().split('T')[0]);
-  const [bcMemo, setBcMemo] = useState('Quarterly Bank Ledger / SMS Charges');
-
-  // Execution Status
-  const [actionStatus, setActionStatus] = useState<string | null>(null);
-  const [loadingAction, setLoadingAction] = useState<string | null>(null);
-  const [actionParamSr, setActionParamSr] = useState('1');
 
   // Verify PIN
   const handleUnlock = (e: React.FormEvent) => {
@@ -144,8 +348,10 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
       setIsUnlocked(true);
       sessionStorage.setItem('gvtiw_admin_session', 'unlocked');
       setPinError(null);
+      addAuditLog('ADMIN_AUTH', 'success', 'Admin session unlocked successfully.');
     } else {
       setPinError('Invalid Security PIN. Access denied.');
+      addAuditLog('ADMIN_AUTH', 'failed', 'Invalid PIN attempt recorded.');
     }
   };
 
@@ -153,6 +359,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
     setIsUnlocked(false);
     sessionStorage.removeItem('gvtiw_admin_session');
     setPinInput('');
+    addAuditLog('ADMIN_AUTH', 'success', 'Admin session manually locked.');
   };
 
   const handleSaveNewPin = (e: React.FormEvent) => {
@@ -168,6 +375,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
     setStoredPin(newPin);
     localStorage.setItem('gvtiw_admin_custom_pin', newPin);
     setPinChangeMsg('✅ Security PIN updated successfully!');
+    addAuditLog('PIN_UPDATE', 'success', 'Admin master PIN updated.');
     setTimeout(() => {
       setIsPinSettingsOpen(false);
       setPinChangeMsg(null);
@@ -189,86 +397,24 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
       if (res.ok) {
         const data = await res.json();
         setConnTestStatus(`🟢 Connected: ${data.status || 'Active'} (${data.version || 'v3.14'})`);
+        addAuditLog('CONN_TEST', 'success', `Connected to backend version: ${data.version || 'v3.14'}`);
       } else {
         setConnTestStatus(`⚠️ Server responded with HTTP ${res.status}. Verify deployment is set to "Anyone".`);
+        addAuditLog('CONN_TEST', 'failed', `HTTP ${res.status}`);
       }
     } catch {
-      // Fallback test via no-cors
       try {
         await fetch(webAppUrl.trim(), { method: 'GET', mode: 'no-cors' });
         setConnTestStatus('🟢 Endpoint reached (CORS restricted, but operational).');
+        addAuditLog('CONN_TEST', 'success', 'Endpoint reachable.');
       } catch (e: any) {
         setConnTestStatus(`❌ Connection failed: ${e.message}`);
+        addAuditLog('CONN_TEST', 'failed', e.message);
       }
     } finally {
       setIsTestingConn(false);
     }
   };
-
-  // Trigger Google Apps Script Web App Command (POST + GET Fallback)
-  const triggerAppScriptCommand = async (commandName: string, params: Record<string, any> = {}) => {
-    setLoadingAction(commandName);
-    setActionStatus(`Dispatching '${commandName}' to Google Apps Script backend engine...`);
-
-    const activeUrl = webAppUrl.trim();
-    if (!activeUrl) {
-      setActionStatus(`⚠️ No Web App URL configured. Please enter your Google Apps Script Web App Deployment URL in the Endpoint panel.`);
-      setLoadingAction(null);
-      return;
-    }
-
-    try {
-      // 1. Send via POST with text/plain (bypasses browser CORS preflight blocks!)
-      // Ensure PIN 33028 is sent to match Google Apps Script authentication
-      const payload = JSON.stringify({
-        pin: '33028',
-        action: commandName,
-        data: params,
-      });
-
-      const res = await fetch(activeUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: payload,
-      });
-
-      if (res.ok) {
-        try {
-          const jsonRes = await res.json();
-          if (jsonRes.success) {
-            setActionStatus(`✅ Success: '${commandName}' executed on Google Sheet backend!`);
-          } else {
-            setActionStatus(`⚠️ Script returned: ${jsonRes.message || jsonRes.error || 'Check Audit Log'}`);
-          }
-        } catch {
-          setActionStatus(`✅ Command '${commandName}' dispatched successfully to Google Apps Script.`);
-        }
-      } else {
-        throw new Error(`HTTP status ${res.status}`);
-      }
-    } catch {
-      // 2. Fallback to GET with URL query parameters
-      try {
-        const queryParams = new URLSearchParams({
-          action: commandName,
-          pin: '33028',
-          ...params,
-        });
-
-        await fetch(`${activeUrl}?${queryParams.toString()}`, {
-          method: 'GET',
-          mode: 'no-cors',
-        });
-        setActionStatus(`✅ Signal '${commandName}' transmitted to Google Apps Script Web App.`);
-      } catch (getErr: any) {
-        setActionStatus(`❌ Error transmitting to Google Apps Script: ${getErr.message}`);
-      }
-    } finally {
-      setLoadingAction(null);
-    }
-  };
-
-// handleSubmitNewVoucher replaced by handleSaveNewVoucherFromModal
 
   // Submit Bank Charge (aligned with saveBankChargeServer)
   const handleSubmitBankCharge = async (e: React.FormEvent) => {
@@ -291,22 +437,24 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
   if (!isUnlocked) {
     return (
       <div className="max-w-md mx-auto py-12 px-4">
-        <div className={`p-8 rounded-3xl border shadow-2xl text-center space-y-6 ${
-          darkMode ? 'bg-[#0B132B] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-        }`}>
-          <div className="w-16 h-16 rounded-2xl bg-blue-500/20 text-blue-400 border border-blue-400/30 flex items-center justify-center mx-auto shadow-inner">
-            <Lock className="w-8 h-8 text-amber-400" />
+        <div
+          className={`p-8 rounded-3xl border shadow-2xl text-center space-y-6 ${
+            darkMode ? 'bg-[#0B132B] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+          }`}
+        >
+          <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 flex items-center justify-center mx-auto shadow-inner">
+            <Lock className="w-8 h-8 text-amber-500" />
           </div>
 
           <div>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase font-mono tracking-wider bg-rose-500/20 text-rose-300 border border-rose-400/30">
-              Restricted Security Area
+            <span className="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase font-mono tracking-wider bg-rose-500/15 text-rose-500 border border-rose-500/30">
+              Restricted Executive Hub
             </span>
-            <h2 className="text-xl font-black uppercase tracking-tight mt-2">
+            <h2 className="text-xl font-black tracking-tight mt-2.5">
               Admin & Operations Authentication
             </h2>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Public visitors have Read-Only access. Enter your authorized Security PIN to unlock writing, editing, and backup triggers.
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
+              Institute Code 33028 — Authorized personnel only. Enter your administrative PIN to access live Google Apps Script controls, LIFO deletion, and budget allocation settings.
             </p>
           </div>
 
@@ -324,8 +472,8 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
                 placeholder="Enter Security PIN"
                 className={`w-full pl-10 pr-10 py-3 text-center text-sm font-mono tracking-widest font-extrabold rounded-xl border outline-none transition-all ${
                   darkMode
-                    ? 'bg-slate-900 border-slate-700 text-amber-300 focus:border-blue-400'
-                    : 'bg-slate-50 border-slate-300 text-blue-950 focus:border-blue-600'
+                    ? 'bg-slate-900 border-slate-700 text-amber-300 focus:border-indigo-400'
+                    : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-indigo-600'
                 }`}
                 autoFocus
               />
@@ -339,7 +487,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
             </div>
 
             {pinError && (
-              <p className="text-xs text-rose-400 font-bold flex items-center justify-center gap-1">
+              <p className="text-xs text-rose-500 font-bold flex items-center justify-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 {pinError}
               </p>
@@ -347,10 +495,10 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
 
             <button
               type="submit"
-              className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-blue-600/30 transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-indigo-600/30 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
-              <Unlock className="w-4 h-4 text-amber-300" />
-              <span>Unlock Admin Operations</span>
+              <Unlock className="w-4 h-4 text-emerald-300" />
+              <span>Unlock Executive Operations</span>
             </button>
           </form>
         </div>
@@ -359,267 +507,619 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
   }
 
   // -------------------------------------------------------------
-  // 2. UNLOCKED VIEW (Complete Admin Hub)
+  // 2. UNLOCKED VIEW (Complete Corporate Admin Hub)
   // -------------------------------------------------------------
   return (
     <div className="space-y-6">
-      
-      {/* Top Banner with Actions */}
-      <div className={`p-5 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
-        darkMode ? 'bg-[#0B132B] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-sm'
-      }`}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-400/30 flex items-center justify-center">
-            <ShieldCheck className="w-6 h-6" />
+      {/* ------------------------------------------------------------- */}
+      {/* Top Header: Institutional Identity & Quick Controls            */}
+      {/* ------------------------------------------------------------- */}
+      <div
+        className={`p-5 rounded-2xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm ${
+          darkMode ? 'bg-[#0B132B] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+        }`}
+      >
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-600/20 to-purple-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow-inner">
+            <ShieldCheck className="w-7 h-7 text-indigo-400" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase font-mono tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
-                Authorized Admin Session
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase font-mono tracking-wider bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                🟢 Live Administrative Session
               </span>
-              <span className="text-xs text-slate-400 font-mono">Institute: 33028</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-mono font-bold">
+                Institute: 33028 (GVTIW Samanabad Faisalabad)
+              </span>
+              <span className="text-xs text-indigo-500 font-mono font-bold">
+                FY 2026–2027
+              </span>
             </div>
-            <h2 className="text-base sm:text-lg font-black uppercase text-slate-100 mt-0.5">
-              Live Google Apps Script Operations Hub (v3.14)
+            <h2 className="text-base sm:text-lg font-black uppercase text-slate-900 dark:text-white mt-0.5">
+              Google Apps Script Operations & Cash Book Governance Hub
             </h2>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap ml-auto md:ml-0">
           <button
             onClick={() => setIsPinSettingsOpen(true)}
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs rounded-xl flex items-center gap-1.5 border border-slate-700 transition-all cursor-pointer"
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-xl flex items-center gap-1.5 border border-slate-300 dark:border-slate-700 transition-all cursor-pointer"
           >
-            <Settings className="w-3.5 h-3.5 text-amber-400" />
+            <Settings className="w-3.5 h-3.5 text-amber-500" />
             <span>Change PIN</span>
           </button>
-          
+
           <a
             href={webAppUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 border border-slate-700 transition-all"
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 font-bold text-xs rounded-xl flex items-center gap-1.5 border border-slate-300 dark:border-slate-700 transition-all"
           >
-            <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
-            <span>Open Web App</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>Web App</span>
           </a>
 
           <button
             onClick={handleLock}
-            className="px-3.5 py-2 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white font-bold text-xs rounded-xl flex items-center gap-1.5 border border-rose-500/30 transition-all cursor-pointer"
+            className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-300 font-bold text-xs rounded-xl flex items-center gap-1.5 border border-rose-200 dark:border-rose-800/60 transition-all cursor-pointer"
           >
             <Lock className="w-3.5 h-3.5" />
-            <span>Lock Session</span>
+            <span>Lock</span>
           </button>
         </div>
       </div>
 
-      {/* Web App Deployment URL & Live Connection Config */}
-      <div className={`p-4 rounded-2xl border space-y-3 ${
-        darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-300 shadow-sm'
-      }`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h4 className="font-extrabold text-xs uppercase tracking-wide flex items-center gap-1.5 text-white">
-              <span>🔗</span> Google Apps Script Web App Deployment Endpoint
-            </h4>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Required for two-way synchronization: writes new entries and bank charges directly to live Google Sheets.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleTestConnection}
-            disabled={isTestingConn}
-            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer flex items-center gap-1 shrink-0"
-          >
-            <Zap className="w-3.5 h-3.5" />
-            <span>{isTestingConn ? 'Testing...' : 'Test Backend Connection'}</span>
-          </button>
-        </div>
+      {/* ------------------------------------------------------------- */}
+      {/* Executive Navigation Tabs                                      */}
+      {/* ------------------------------------------------------------- */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 overflow-x-auto pb-1 text-xs">
+        <button
+          onClick={() => setActiveTab('vouchers')}
+          className={`px-4 py-2.5 rounded-t-xl font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'vouchers'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Vouchers & LIFO Deletion</span>
+        </button>
 
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={webAppUrl}
-            onChange={(e) => {
-              setWebAppUrl(e.target.value);
-              localStorage.setItem('gvtiw_admin_web_app_url', e.target.value);
-            }}
-            placeholder="https://script.google.com/macros/s/.../exec"
-            className={`flex-1 px-3 py-2 text-xs font-mono rounded-lg border outline-none ${
-              darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-300 text-slate-900'
-            }`}
-          />
-        </div>
+        <button
+          onClick={() => setActiveTab('sync')}
+          className={`px-4 py-2.5 rounded-t-xl font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'sync'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Zap className="w-4 h-4" />
+          <span>Google Apps Script Sync</span>
+        </button>
 
-        {connTestStatus && (
-          <div className="text-[11px] font-mono px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-300">
-            {connTestStatus}
-          </div>
-        )}
+        <button
+          onClick={() => setActiveTab('backup')}
+          className={`px-4 py-2.5 rounded-t-xl font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'backup'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Database className="w-4 h-4" />
+          <span>Deep Backup & Recovery</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('matrix')}
+          className={`px-4 py-2.5 rounded-t-xl font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'matrix'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span>Master Accounts Matrix</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('terminal')}
+          className={`px-4 py-2.5 rounded-t-xl font-extrabold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+            activeTab === 'terminal'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+          }`}
+        >
+          <Terminal className="w-4 h-4" />
+          <span>Live Audit Log ({auditLogs.length})</span>
+        </button>
       </div>
 
       {/* Action Notification Box */}
       {actionStatus && (
-        <div className="p-4 rounded-xl bg-blue-950/60 border border-blue-500/40 text-blue-200 text-xs font-mono flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{actionStatus}</span>
+        <div className="p-3.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-900 dark:text-indigo-200 text-xs font-mono flex items-center justify-between gap-2 shadow-xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span>{actionStatus}</span>
+          </div>
+          <button
+            onClick={() => setActionStatus(null)}
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------{/* TAB 1: VOUCHERS & LIFO DELETION OPERATIONS                     */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'vouchers' && (
+        <div className="space-y-6">
+          
+          {/* Primary Operations Matrix */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            {/* 1. New Voucher Entry */}
+            <div
+              className={`p-5 rounded-2xl border space-y-3 shadow-md flex flex-col justify-between ${
+                darkMode ? 'bg-indigo-950/40 border-indigo-500/30 text-white' : 'bg-indigo-50 border-indigo-200 shadow-sm'
+              }`}
+            >
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase">
+                  <FilePlus className="w-5 h-5" />
+                  <span>New Voucher</span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+                  Launch the standardized v3.14 entry dialogue with dynamic calculations.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setVoucherToAmend(null);
+                  setIsNewVoucherModalOpen(true);
+                }}
+                className="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold rounded-xl flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer mt-4"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>New Voucher Entry</span>
+              </button>
+            </div>
+
+            {/* 2. Clear Voucher */}
+            <div
+              className={`p-5 rounded-2xl border space-y-3 flex flex-col justify-between ${
+                darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-white border-slate-300 shadow-sm'
+              }`}
+            >
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">
+                  <RotateCcw className="w-5 h-5" />
+                  <span>Clear Form</span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+                  Clear the Google Sheet voucher form cells for the next entry.
+                </p>
+              </div>
+              <button
+                onClick={() => triggerAppScriptCommand('clearVoucherFormForNextEntry')}
+                className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer mt-4"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Clear Voucher Form</span>
+              </button>
+            </div>
+
+            {/* 3. Amend Voucher */}
+            <div
+              className={`p-5 rounded-2xl border space-y-3 flex flex-col justify-between ${
+                darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-white border-slate-300 shadow-sm'
+              }`}
+            >
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-500 uppercase">
+                  <Play className="w-5 h-5" />
+                  <span>Amend Voucher</span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+                  Edit an existing voucher by Serial Number.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 mt-4">
+                <input
+                  type="number"
+                  min="1"
+                  value={actionParamSr}
+                  onChange={(e) => setActionParamSr(e.target.value)}
+                  placeholder="Sr.#"
+                  className={`w-20 px-2 py-2 text-xs rounded-xl border outline-none font-mono font-bold text-center ${
+                    darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+                <button
+                  onClick={handleOpenAmendBySr}
+                  className="flex-1 py-2 px-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all shadow-sm"
+                >
+                  <Play className="w-3.5 h-3.5" />
+                  <span>Amend</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 4. Delete Voucher (LIFO) */}
+            <div
+              className={`p-5 rounded-2xl border space-y-3 flex flex-col justify-between ${
+                darkMode ? 'bg-rose-950/20 border-rose-900/50 text-white' : 'bg-rose-50 border-rose-200 shadow-sm'
+              }`}
+            >
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold text-rose-500 uppercase">
+                  <Trash2 className="w-5 h-5" />
+                  <span>Delete Voucher</span>
+                </div>
+                <p className="text-[11px] text-rose-500/80 dark:text-rose-400 mt-2">
+                  Strict LIFO Rule: You can only delete the latest generated voucher.
+                </p>
+              </div>
+              <div className="mt-4">
+                {maxExistingSrNo ? (
+                  <button
+                    onClick={() => triggerAppScriptCommand('deleteLastVoucherLIFO', { srNo: maxExistingSrNo })}
+                    className="w-full py-2.5 px-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl flex items-center justify-between shadow-md transition-all cursor-pointer group"
+                  >
+                    <span>🗑️ Delete Sr. #{maxExistingSrNo}</span>
+                    <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  </button>
+                ) : (
+                  <div className="p-3 rounded-xl bg-white/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-400 italic">
+                    No active vouchers.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Secondary Operations Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* Direct Bank Operations */}
+            <div
+              className={`p-5 rounded-2xl border space-y-3 ${
+                darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-white border-slate-300 shadow-sm'
+              }`}
+            >
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-500 uppercase">
+                <Building className="w-4 h-4" />
+                <span>Direct Bank Operations</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Record bank charges, statement reconciliations, and re-post ledgers.
+              </p>
+              <div className="space-y-2 pt-1 text-xs">
+                <button
+                  onClick={() => setIsBankChargeModalOpen(true)}
+                  className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
+                >
+                  <span>🏦 Record Direct Bank Charge</span>
+                  <Building className="w-3.5 h-3.5 text-amber-400" />
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    value={actionParamSr}
+                    onChange={(e) => setActionParamSr(e.target.value)}
+                    placeholder="Sr.#"
+                    className={`w-20 px-2 py-2 text-xs rounded-xl border outline-none font-mono font-bold text-center ${
+                      darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                  <button
+                    onClick={() => triggerAppScriptCommand('rePostCashbook', { srNo: actionParamSr })}
+                    className="flex-1 py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
+                  >
+                    <span>🔄 Re-post to Cashbook (by Sr.#)</span>
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Sorting & PDF Exports */}
+            <div
+              className={`p-5 rounded-2xl border space-y-3 ${
+                darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-white border-slate-300 shadow-sm'
+              }`}
+            >
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-500 uppercase">
+                <ArrowUpDown className="w-4 h-4" />
+                <span>Sorting & PDF Exports</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Sort all 6 institutional cashbooks chronologically and generate 2-page A4 PDFs.
+              </p>
+              <div className="space-y-2 pt-1 text-xs">
+                <button
+                  onClick={() => triggerAppScriptCommand('sortCashbookByDate')}
+                  className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
+                >
+                  <span>🔀 Sort Cashbooks Chronologically</span>
+                  <RefreshCw className="w-3.5 h-3.5 text-blue-400" />
+                </button>
+                
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    value={actionParamSr}
+                    onChange={(e) => setActionParamSr(e.target.value)}
+                    placeholder="Sr.#"
+                    className={`w-20 px-2 py-2 text-xs rounded-xl border outline-none font-mono font-bold text-center ${
+                      darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                  <button
+                    onClick={() => triggerAppScriptCommand('exportVoucherPdf', { srNo: actionParamSr })}
+                    className="flex-1 py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
+                  >
+                    <span>🖨️ Export Voucher PDF (Sr. #{actionParamSr})</span>
+                    <Play className="w-3.5 h-3.5 text-emerald-400" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: GOOGLE APPS SCRIPT BACKEND & SYNC                       */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'sync' && (
+        <div className="space-y-6">
+          <div
+            className={`p-5 rounded-2xl border space-y-4 ${
+              darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-white border-slate-300 shadow-sm'
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div>
+                <h4 className="font-extrabold text-xs uppercase tracking-wide flex items-center gap-1.5 text-slate-900 dark:text-white">
+                  <span>🔗</span> Google Apps Script Web App Deployment Endpoint
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Two-way synchronization bridge between this React application and the live Google Sheets Master Ledger.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleTestConnection}
+                disabled={isTestingConn}
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs cursor-pointer flex items-center gap-1.5 shrink-0 shadow-md"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-300" />
+                <span>{isTestingConn ? 'Testing Latency...' : 'Test Backend Connection'}</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={webAppUrl}
+                onChange={(e) => {
+                  setWebAppUrl(e.target.value);
+                  localStorage.setItem('gvtiw_admin_web_app_url', e.target.value);
+                }}
+                placeholder="https://script.google.com/macros/s/.../exec"
+                className={`flex-1 px-3.5 py-2.5 text-xs font-mono rounded-xl border outline-none ${
+                  darkMode
+                    ? 'bg-slate-900 border-slate-700 text-slate-200 focus:border-indigo-400'
+                    : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-indigo-600'
+                }`}
+              />
+            </div>
+
+            {connTestStatus && (
+              <div className="text-[11px] font-mono px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-300">
+                {connTestStatus}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div
+              className={`p-5 rounded-2xl border space-y-3 ${
+                darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-white border-slate-300 shadow-sm'
+              }`}
+            >
+              <h4 className="font-extrabold text-xs uppercase text-indigo-500">
+                Data Maintenance & Cache Refresh
+              </h4>
+              <div className="space-y-2 text-xs">
+                <button
+                  onClick={() => triggerAppScriptCommand('clearVoucherFormForNextEntry')}
+                  className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
+                >
+                  <span>🧹 Clear Voucher Form in Google Sheet</span>
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  onClick={() => triggerAppScriptCommand('refreshAccountHeadsSummary')}
+                  className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
+                >
+                  <span>♻️ Recalculate 38 Account Heads in Google Sheet</span>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <div
+              className={`p-5 rounded-2xl border space-y-3 ${
+                darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-white border-slate-300 shadow-sm'
+              }`}
+            >
+              <h4 className="font-extrabold text-xs uppercase text-emerald-500">
+                Google Sheet Live Architecture Info
+              </h4>
+              <div className="text-[11px] text-slate-400 space-y-1.5 font-mono">
+                <div>• Version: <strong>v3.14 (GVTIW Master Engine)</strong></div>
+                <div>• Institute Code: <strong>33028</strong></div>
+                <div>• Bank CashBooks: <strong>6 Dedicated Ledgers</strong></div>
+                <div>• Account Heads: <strong>38 Chart of Accounts</strong></div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* 3. LIVE OPERATIONS GRID (Categorized Cards)                    */}
+      {/* TAB 3: DEEP BACKUP & RECOVERY                                 */}
       {/* ------------------------------------------------------------- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        
-        {/* Card 1: Voucher Data Operations */}
-        <div className={`p-5 rounded-2xl border space-y-4 ${
-          darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900 shadow-sm'
-        }`}>
-          <div className="flex items-center gap-2 text-xs font-bold text-blue-400 uppercase tracking-wider">
-            <FilePlus className="w-4 h-4" />
-            <span>Voucher Data Management</span>
-          </div>
+      {activeTab === 'backup' && (
+        <div className="space-y-6">
+          <div
+            className={`p-5 rounded-2xl border space-y-4 ${
+              darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-white border-slate-300 shadow-sm'
+            }`}
+          >
+            <div className="flex items-center gap-2 text-xs font-bold text-purple-400 uppercase">
+              <Database className="w-4 h-4" />
+              <span>Full System Deep Backup Engine (7 Dedicated Files)</span>
+            </div>
 
-          <div className="space-y-2 text-xs">
-            <button
-              onClick={() => setIsNewVoucherModalOpen(true)}
-              className="w-full py-2.5 px-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl flex items-center justify-between shadow-md transition-all cursor-pointer"
-            >
-              <span>📝 New Voucher Entry Form</span>
-              <Play className="w-3.5 h-3.5 text-amber-300" />
-            </button>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Creates timestamped snapshots in Google Drive containing all 6 Bank Cashbooks, the Master Voucher Registry, and Account Head allocations.
+            </p>
 
-            <button
-              onClick={() => triggerAppScriptCommand('clearVoucherFormForNextEntry')}
-              className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
-            >
-              <span>🧹 Clear Form for Next Entry</span>
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              onClick={() => triggerAppScriptCommand('refreshAccountHeadsSummary')}
-              className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
-            >
-              <span>♻️ Refresh Account Heads Summary</span>
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Card 2: Voucher Modification & Ledger Posting */}
-        <div className={`p-5 rounded-2xl border space-y-4 ${
-          darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900 shadow-sm'
-        }`}>
-          <div className="flex items-center gap-2 text-xs font-bold text-amber-400 uppercase tracking-wider">
-            <Edit className="w-4 h-4" />
-            <span>Voucher Edit & Ledger Ops</span>
-          </div>
-
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center gap-2 mb-2">
-              <input
-                type="number"
-                min="1"
-                value={actionParamSr}
-                onChange={(e) => setActionParamSr(e.target.value)}
-                placeholder="Sr.#"
-                className={`w-20 px-2.5 py-2 text-xs rounded-lg border outline-none font-mono font-bold text-center ${
-                  darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300'
-                }`}
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
               <button
-                onClick={handleOpenAmendBySr}
-                className="flex-1 py-2 px-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg flex items-center justify-between cursor-pointer transition-all"
-                title="Open v3.14 Amend Form for this Sr.#"
+                onClick={() => triggerAppScriptCommand('runFullSystemDeepBackup')}
+                className="py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl flex items-center justify-between shadow-lg shadow-purple-600/30 transition-all cursor-pointer"
               >
-                <span>✏️ Amend by Sr.#</span>
-                <Play className="w-3.5 h-3.5" />
+                <span>▶️ Run Instant Deep Backup (7 Files)</span>
+                <Play className="w-4 h-4 text-amber-300" />
+              </button>
+
+              <button
+                onClick={() => triggerAppScriptCommand('showRestoreBackupDialog')}
+                className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
+              >
+                <span>⏮️ Restore System Snapshot</span>
+                <RotateCcw className="w-4 h-4" />
               </button>
             </div>
 
-            <button
-              onClick={() => triggerAppScriptCommand('rePostCashbook', { srNo: actionParamSr })}
-              className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
-            >
-              <span>🔄 Re-post to Cashbook (by Sr.#)</span>
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
-
-            <button
-              onClick={() => setIsBankChargeModalOpen(true)}
-              className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
-            >
-              <span>🏦 Record Direct Bank Charge</span>
-              <Building className="w-3.5 h-3.5 text-amber-400" />
-            </button>
-
-            <button
-              onClick={() => triggerAppScriptCommand('sortCashbookByDate')}
-              className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
-              title="Sort all 6 cashbooks chronologically by date"
-            >
-              <span>🔀 Sort Cashbooks by Date</span>
-              <RefreshCw className="w-3.5 h-3.5 text-blue-400" />
-            </button>
-
-            <button
-              onClick={() => triggerAppScriptCommand('exportVoucherPdf', { srNo: actionParamSr })}
-              className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
-              title="Generate 2-page A4 Portrait Voucher PDF in Google Drive"
-            >
-              <span>🖨️ Print Voucher PDF (Sr.#)</span>
-              <Play className="w-3.5 h-3.5 text-emerald-400" />
-            </button>
-          </div>
-        </div>
-
-        {/* Card 3: Deep System Backup & Recovery */}
-        <div className={`p-5 rounded-2xl border space-y-4 ${
-          darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900 shadow-sm'
-        }`}>
-          <div className="flex items-center gap-2 text-xs font-bold text-purple-400 uppercase tracking-wider">
-            <Database className="w-4 h-4" />
-            <span>Deep Backup & Recovery</span>
-          </div>
-
-          <div className="space-y-2 text-xs">
-            <button
-              onClick={() => triggerAppScriptCommand('runFullSystemDeepBackup')}
-              className="w-full py-2.5 px-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl flex items-center justify-between shadow-md transition-all cursor-pointer"
-            >
-              <span>▶️ Run Full System Backup (7 Files)</span>
-              <Play className="w-3.5 h-3.5 text-amber-300" />
-            </button>
-
-            <button
-              onClick={() => triggerAppScriptCommand('showRestoreBackupDialog')}
-              className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl flex items-center justify-between border border-slate-700 transition-all cursor-pointer"
-            >
-              <span>⏮️ Restore System from Backup</span>
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3 pt-2">
               <button
                 onClick={() => triggerAppScriptCommand('enableDailyBackup')}
-                className="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold rounded-xl flex items-center justify-center gap-1 border border-slate-700 transition-all cursor-pointer text-[11px]"
+                className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold rounded-xl flex items-center justify-center gap-1.5 border border-slate-700 transition-all cursor-pointer text-xs"
               >
-                <span>🟢 Enable (4 PM)</span>
+                <span>🟢 Enable Daily 4:00 PM Backup</span>
               </button>
               <button
                 onClick={() => triggerAppScriptCommand('disableDailyBackup')}
-                className="py-2.5 px-2 bg-slate-800 hover:bg-slate-700 text-rose-400 font-bold rounded-xl flex items-center justify-center gap-1 border border-slate-700 transition-all cursor-pointer text-[11px]"
+                className="py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-rose-400 font-bold rounded-xl flex items-center justify-center gap-1.5 border border-slate-700 transition-all cursor-pointer text-xs"
               >
-                <span>🔴 Disable Backup</span>
+                <span>🔴 Disable Automated Backup</span>
               </button>
             </div>
           </div>
         </div>
+      )}
 
-      </div>
+      {/* ------------------------------------------------------------- */}
+      {/* TAB 4: MASTER ACCOUNTS & PAYEES MATRIX                         */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'matrix' && (
+        <div className="space-y-6">
+          {/* Institutional Bank Accounts */}
+          <div
+            className={`p-5 rounded-2xl border space-y-4 ${
+              darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-white border-slate-300 shadow-sm'
+            }`}
+          >
+            <h4 className="font-extrabold text-xs uppercase text-indigo-500">
+              Institutional Bank Ledger Accounts (FY 2026-2027)
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {Object.entries(INSTITUTIONAL_BANK_ACCOUNTS).map(([k, acc]) => (
+                <div
+                  key={k}
+                  className="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-1 text-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-indigo-500">{k}</span>
+                    <span className="text-[10px] font-mono text-slate-400">{acc.accountNo || ''}</span>
+                  </div>
+                  <div className="font-black text-slate-900 dark:text-white truncate" title={acc.fullName}>
+                    {acc.fullName}
+                  </div>
+                  <div className="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                    Opening: Rs. {(acc.openingBalance ?? 0).toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 38 Master Budget Heads */}
+          <div
+            className={`p-5 rounded-2xl border space-y-3 ${
+              darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-white border-slate-300 shadow-sm'
+            }`}
+          >
+            <h4 className="font-extrabold text-xs uppercase text-purple-500">
+              Institutional Chart of Accounts ({MASTER_ACCOUNT_HEADS.length} Heads)
+            </h4>
+            <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 text-xs font-mono">
+              {MASTER_ACCOUNT_HEADS.map((h, i) => (
+                <div key={i} className="py-1.5 flex items-center justify-between text-slate-700 dark:text-slate-300">
+                  <span>{h}</span>
+                  <span className="text-[10px] text-slate-400">Head #{i + 1}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* TAB 5: LIVE AUDIT LOG TERMINAL                                 */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'terminal' && (
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-black border border-slate-800 text-emerald-400 font-mono text-xs space-y-2 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2 text-slate-400 text-[11px]">
+              <div className="flex items-center gap-2">
+                <Terminal className="w-4 h-4 text-emerald-400" />
+                <span>Live Admin Command & Dispatch Audit Trail</span>
+              </div>
+              <span>{auditLogs.length} Events Logged</span>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto space-y-1.5 pr-2">
+              {auditLogs.map((log) => (
+                <div key={log.id} className="flex items-start gap-2 leading-relaxed">
+                  <span className="text-slate-500 shrink-0">[{log.timestamp}]</span>
+                  <span
+                    className={`font-black shrink-0 ${
+                      log.status === 'success'
+                        ? 'text-emerald-400'
+                        : log.status === 'failed'
+                        ? 'text-rose-400'
+                        : 'text-amber-400'
+                    }`}
+                  >
+                    {log.action}:
+                  </span>
+                  <span className="text-slate-300 break-all">{log.details}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* MODAL 1: OFFICIAL V3.14 VOUCHER ENTRY & AMEND FORM           */}
@@ -632,7 +1132,11 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
         }}
         voucherToAmend={voucherToAmend}
         onSaveVoucher={handleSaveNewVoucherFromModal}
+        onDeleteVoucher={handleDeleteVoucherBySr}
         existingVouchers={vouchers}
+        customGvtiwLogo={customGvtiwLogo}
+        customTevtaLogo={customTevtaLogo}
+        customGopLogo={customGopLogo}
       />
 
       {/* ------------------------------------------------------------- */}
@@ -779,7 +1283,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-md"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg shadow-md"
                 >
                   Save PIN
                 </button>
@@ -788,7 +1292,6 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({ darkMode }) => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   INITIAL_MASTER_VOUCHERS,
   INITIAL_CASHBOOK_STATES,
@@ -54,13 +54,28 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   customGopLogo,
 }) => {
   const [activeReportTab, setActiveReportTab] = useState<ReportTab>('CASHBOOK');
-  const [vouchers] = useState<MasterVoucher[]>(() => {
+  const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
     try {
-      const cached = localStorage.getItem('gvtiw_live_vouchers_v1');
+      const cached = localStorage.getItem('gvtiw_live_vouchers_v3');
       if (cached) return JSON.parse(cached);
     } catch {}
     return INITIAL_MASTER_VOUCHERS;
   });
+
+  useEffect(() => {
+    const handleVoucherUpdate = () => {
+      try {
+        const cached = localStorage.getItem('gvtiw_live_vouchers_v3');
+        if (cached) setVouchers(JSON.parse(cached));
+      } catch {}
+    };
+    window.addEventListener('gvtiw_vouchers_updated', handleVoucherUpdate);
+    window.addEventListener('storage', handleVoucherUpdate);
+    return () => {
+      window.removeEventListener('gvtiw_vouchers_updated', handleVoucherUpdate);
+      window.removeEventListener('storage', handleVoucherUpdate);
+    };
+  }, []);
 
   // Common Filters
   const [selectedBank, setSelectedBank] = useState<string>('ALL');

@@ -72,6 +72,58 @@ export function formatCompactPKR(val: number | null | undefined): string {
 }
 
 /**
+ * Format date in standard Pakistani official format (e.g. "05-SEP-2026")
+ */
+export function formatPakistaniDate(dateInput: Date | string | number | null | undefined): string {
+  if (!dateInput || dateInput === 'N/A' || dateInput === '-') return 'N/A';
+  if (typeof dateInput === 'string') {
+    const trimmed = dateInput.trim();
+    if (!trimmed) return 'N/A';
+    // Match DD-MMM-YYYY (e.g. 05-SEP-2026)
+    const matchDmy = trimmed.match(/^(\d{1,2})[-/]([A-Za-z]{3})[-/](\d{4})$/);
+    if (matchDmy) {
+      const day = matchDmy[1].padStart(2, '0');
+      const mon = matchDmy[2].toUpperCase();
+      const yr = matchDmy[3];
+      return `${day}-${mon}-${yr}`;
+    }
+    // Match YYYY-MM-DD (e.g. 2026-09-04)
+    const matchYmd = trimmed.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+    if (matchYmd) {
+      const yr = matchYmd[1];
+      const mNum = parseInt(matchYmd[2], 10);
+      const day = matchYmd[3].padStart(2, '0');
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      const mon = months[mNum - 1] || 'JAN';
+      return `${day}-${mon}-${yr}`;
+    }
+    // Match DD-MM-YYYY (e.g. 04-09-2026)
+    const matchDdmmyyyy = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+    if (matchDdmmyyyy) {
+      const day = matchDdmmyyyy[1].padStart(2, '0');
+      const mNum = parseInt(matchDdmmyyyy[2], 10);
+      const yr = matchDdmmyyyy[3];
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      const mon = months[mNum - 1] || 'JAN';
+      return `${day}-${mon}-${yr}`;
+    }
+  }
+
+  try {
+    const d = typeof dateInput === 'string' || typeof dateInput === 'number' ? new Date(dateInput) : dateInput;
+    if (d && !isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, '0');
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      const mon = months[d.getMonth()];
+      const yr = d.getFullYear();
+      return `${day}-${mon}-${yr}`;
+    }
+  } catch {}
+
+  return String(dateInput).toUpperCase();
+}
+
+/**
  * Format percentage (e.g. 33.3%)
  */
 export function formatPercent(val: number | null | undefined): string {

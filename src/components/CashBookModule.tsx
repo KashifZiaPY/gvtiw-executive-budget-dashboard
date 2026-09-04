@@ -10,6 +10,8 @@ import {
 } from '../data/cashBookData';
 import {
   fetchLiveCashBookFromGoogleSheet,
+  recordCashBookReceipt,
+  deleteCashBookReceipt,
   STORAGE_KEY_LIVE_CASHBOOKS,
   STORAGE_KEY_LIVE_SYNC_TS,
 } from '../lib/apiEngine';
@@ -29,6 +31,9 @@ import {
   ArrowUpRight,
   ShieldCheck,
   FileText,
+  PlusCircle,
+  Trash2,
+  X,
 } from 'lucide-react';
 
 interface CashBookModuleProps {
@@ -64,6 +69,68 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
   const [customToDate, setCustomToDate] = useState('');
   const [selectedVoucherForPAF, setSelectedVoucherForPAF] = useState<MasterVoucher | null>(null);
 
+  // Custom User Recorded Receipt Modal
+  const [showRecordReceiptModal, setShowRecordReceiptModal] = useState(false);
+  const [receiptForm, setReceiptForm] = useState({
+    bankKey: activeAccountKey,
+    date: '15-Aug-2026',
+    particulars: '',
+    paidToBy: '',
+    accountHead: '',
+    chequeNo: '',
+    amount: '',
+  });
+
+  // Keep modal bank key aligned with active tab
+  useEffect(() => {
+    setReceiptForm((prev) => ({ ...prev, bankKey: activeAccountKey }));
+  }, [activeAccountKey]);
+
+  // Handle saving new cashbook receipt
+  const handleSaveReceipt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = parseFloat(receiptForm.amount);
+    if (isNaN(amt) || amt <= 0) {
+      alert('Please enter a valid positive receipt amount in PKR.');
+      return;
+    }
+    if (!receiptForm.particulars.trim()) {
+      alert('Please provide transaction particulars/description.');
+      return;
+    }
+
+    recordCashBookReceipt({
+      bankKey: receiptForm.bankKey,
+      date: receiptForm.date.trim() || '15-Aug-2026',
+      particulars: receiptForm.particulars.trim(),
+      paidToBy: receiptForm.paidToBy.trim() || 'Govt of Punjab / Collection',
+      accountHead: receiptForm.accountHead.trim() || 'Budget Allocation / Fee Deposit',
+      chequeNo: receiptForm.chequeNo.trim() || 'Bank Challan',
+      receipts: amt,
+      vNo: '',
+      voucherSerial: '',
+    });
+
+    setShowRecordReceiptModal(false);
+    setReceiptForm({
+      bankKey: activeAccountKey,
+      date: '15-Aug-2026',
+      particulars: '',
+      paidToBy: '',
+      accountHead: '',
+      chequeNo: '',
+      amount: '',
+    });
+
+    await handleSyncLive();
+  };
+
+  const handleDeleteReceipt = async (receiptId: string) => {
+    if (!window.confirm('Are you sure you want to remove this custom recorded receipt?')) return;
+    deleteCashBookReceipt(receiptId);
+    await handleSyncLive();
+  };
+
   // Instant Live Synchronization with Google Sheets
   const handleSyncLive = async () => {
     setIsSyncing(true);
@@ -87,6 +154,19 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
 
   useEffect(() => {
     handleSyncLive();
+
+    const handleVoucherUpdate = () => {
+      try {
+        const cached = localStorage.getItem('gvtiw_live_vouchers_v3');
+        if (cached) setLiveVouchers(JSON.parse(cached));
+      } catch {}
+    };
+    window.addEventListener('gvtiw_vouchers_updated', handleVoucherUpdate);
+    window.addEventListener('storage', handleVoucherUpdate);
+    return () => {
+      window.removeEventListener('gvtiw_vouchers_updated', handleVoucherUpdate);
+      window.removeEventListener('storage', handleVoucherUpdate);
+    };
   }, []);
 
   const currentAccount = cashBookStates[activeAccountKey];
@@ -417,6 +497,24 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <button
+              onClick={() => {
+                setReceiptForm({
+                  bankKey: activeAccountKey,
+                  date: '15-Aug-2026',
+                  particulars: '',
+                  paidToBy: '',
+                  accountHead: '',
+                  chequeNo: '',
+                  amount: '',
+                });
+                setShowRecordReceiptModal(true);
+              }}
+              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+            >
+              <PlusCircle className="w-3.5 h-3.5 text-emerald-200" />
+              <span>Record Receipt</span>
+            </button>
+            <button
               onClick={handleExportCSV}
               className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 border border-white/20 shadow-xs transition-all cursor-pointer"
             >
@@ -436,7 +534,9 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         {/* Financial Flow Strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-4 border-t border-white/10 text-xs font-mono">
           <div className="bg-black/30 p-3 rounded-xl border border-white/10">
-            <span className="text-[10px] text-slate-400 block uppercase font-bold">1. Opening Balance</span>
+            <span className="text-[10px] text-slate-400 block uppercase font-bold">
+              {activeAccountKey === 'AA' ? '1. Opening Assigned Ceiling' : '1. Opening Cash Balance'}
+            </span>
             <span className="text-base font-black text-blue-300">
               {formatPKR(currentAccount.openingBalance, false)}
             </span>
@@ -445,7 +545,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           <div className="bg-black/30 p-3 rounded-xl border border-white/10">
             <span className="text-[10px] text-slate-400 block uppercase font-bold flex items-center gap-1">
               <ArrowDownLeft className="w-3 h-3 text-emerald-400" />
-              2. Total Receipts
+              {activeAccountKey === 'AA' ? '2. Budget Allocation Ceiling' : '2. Total Receipts'}
             </span>
             <span className="text-base font-black text-emerald-400">
               {currentAccount.totalReceipts > 0 ? formatPKR(currentAccount.totalReceipts, false) : '0.00'}
@@ -455,7 +555,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           <div className="bg-black/30 p-3 rounded-xl border border-white/10">
             <span className="text-[10px] text-slate-400 block uppercase font-bold flex items-center gap-1">
               <ArrowUpRight className="w-3 h-3 text-rose-400" />
-              3. Total Payments
+              {activeAccountKey === 'AA' ? '3. District Sanctions / Bills' : '3. Total Cheque Payments'}
             </span>
             <span className="text-base font-black text-rose-400">
               {currentAccount.totalPayments > 0 ? formatPKR(currentAccount.totalPayments, false) : '0.00'}
@@ -463,12 +563,37 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           </div>
 
           <div className="bg-black/30 p-3 rounded-xl border border-amber-400/30">
-            <span className="text-[10px] text-amber-300 block uppercase font-black">4. Net Closing Balance</span>
+            <span className="text-[10px] text-amber-300 block uppercase font-black">
+              {activeAccountKey === 'AA' ? '4. Available Budget Ceiling' : '4. Net Bank Closing Balance'}
+            </span>
             <span className="text-base font-black text-amber-300">
               {formatPKR(currentAccount.closingBalance, false)}
             </span>
           </div>
         </div>
+
+        {/* Informative Guidance Banner for AAA vs NS */}
+        {activeAccountKey === 'AA' ? (
+          <div className="mt-4 p-3 rounded-xl bg-teal-950/60 border border-teal-500/40 text-[11px] text-teal-200 flex items-start gap-2">
+            <span className="text-base">ℹ️</span>
+            <div>
+              <strong className="text-teal-100 font-bold block mb-0.5">Assan Assignment Account (AAA) - District Director Ceiling Register</strong>
+              <span>
+                Maintained at NBP by District Director Office TEVTA Fsd. Institute submits bill sanctions (e.g. FESCO, PTCL utilities) against this allocated budget quota. These funds are drawn directly by DDO and do not alter the Institute's BOP Non-Salary bank balance.
+              </span>
+            </div>
+          </div>
+        ) : activeAccountKey === 'NS' ? (
+          <div className="mt-4 p-3 rounded-xl bg-blue-950/60 border border-blue-500/40 text-[11px] text-blue-200 flex items-start gap-2">
+            <span className="text-base">🏦</span>
+            <div>
+              <strong className="text-blue-100 font-bold block mb-0.5">Non-Salary Bank Account (BOP A/C: 6580006795600014) - Physical Cashbook</strong>
+              <span>
+                Physical institutional cashbook reflecting actual cheques issued from GVTI Samanabad Cheque Book. Opening Cash: PKR 2,387,207.00 minus payments (PKR 643,972.00) gives actual closing bank balance of PKR 1,743,235.00.
+              </span>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* ------------------------------------------------------------- */}
@@ -629,24 +754,49 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
 
                       {/* V# */}
                       <td className="py-3 px-2 text-center font-mono font-bold text-blue-400 border-r border-slate-700/50">
-                        {entry.vNo}
+                        {entry.entryType === 'RECEIPT' && !entry.vNo ? (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            REC
+                          </span>
+                        ) : (
+                          entry.vNo || '—'
+                        )}
                       </td>
 
                       {/* Particulars */}
                       <td className="py-3 px-4 border-r border-slate-700/50">
-                        <span className={`font-medium block leading-snug ${isTaxEntry ? 'text-rose-400 font-semibold' : darkMode ? 'text-white' : 'text-slate-900'}`}>
-                          {entry.particulars}
-                        </span>
-                        {entry.voucherSerial && (
-                          <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
-                            Ref: {entry.voucherSerial}
-                          </span>
-                        )}
+                        <div className="flex items-start gap-2">
+                          {entry.entryType === 'RECEIPT' && (
+                            <span className="shrink-0 mt-0.5 px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                              RECEIPT
+                            </span>
+                          )}
+                          <div>
+                            <span
+                              className={`font-medium block leading-snug ${
+                                isTaxEntry
+                                  ? 'text-rose-400 font-semibold'
+                                  : entry.entryType === 'RECEIPT'
+                                  ? 'text-emerald-300 font-semibold'
+                                  : darkMode
+                                  ? 'text-white'
+                                  : 'text-slate-900'
+                              }`}
+                            >
+                              {entry.particulars}
+                            </span>
+                            {entry.voucherSerial && (
+                              <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                                Ref: {entry.voucherSerial}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </td>
 
                       {/* Paid To / By */}
                       <td className="py-3 px-3 font-bold border-r border-slate-700/50">
-                        <span className={darkMode ? 'text-slate-200' : 'text-slate-800'}>
+                        <span className={entry.entryType === 'RECEIPT' ? 'text-emerald-300 font-semibold' : darkMode ? 'text-slate-200' : 'text-slate-800'}>
                           {entry.paidToBy}
                         </span>
                       </td>
@@ -678,7 +828,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                         {formatPKR(entry.runningBalance, false)}
                       </td>
 
-                      {/* PAF Action Button */}
+                      {/* PAF Action Button / Receipt Deletion */}
                       <td className="py-3 px-2 text-center">
                         {entry.voucherSerial ? (
                           <button
@@ -686,6 +836,14 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                             className="px-2.5 py-1 bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white font-bold rounded-lg text-[10px] transition-all cursor-pointer"
                           >
                             View PAF
+                          </button>
+                        ) : entry.id.startsWith('CUSTOM-REC-') ? (
+                          <button
+                            onClick={() => handleDeleteReceipt(entry.id)}
+                            title="Delete custom receipt"
+                            className="p-1.5 text-rose-400 hover:text-white hover:bg-rose-600 rounded-lg transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         ) : (
                           <span className="text-slate-600 font-mono text-[10px]">—</span>
@@ -728,6 +886,205 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           customTevtaLogo={customTevtaLogo}
           customGopLogo={customGopLogo}
         />
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 6. RECORD CASHBOOK RECEIPT MODAL                                */}
+      {/* ------------------------------------------------------------- */}
+      {showRecordReceiptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+          <div
+            className={`w-full max-w-xl rounded-2xl border shadow-2xl overflow-hidden transition-all animate-in fade-in zoom-in-95 duration-200 ${
+              darkMode ? 'bg-[#0B1528] border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
+            }`}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700/60 bg-emerald-950/40">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <PlusCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">Record CashBook Receipt</h3>
+                  <p className="text-xs text-emerald-300/80 font-mono">
+                    Post budget allocation, grant, or student fee receipt directly to ledger
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowRecordReceiptModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveReceipt} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Bank Account Selection */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">
+                    Bank Ledger Account <span className="text-rose-400">*</span>
+                  </label>
+                  <select
+                    value={receiptForm.bankKey}
+                    onChange={(e) => setReceiptForm({ ...receiptForm, bankKey: e.target.value as BankAccountKey })}
+                    className={`w-full px-3 py-2 text-xs rounded-xl border font-bold outline-none cursor-pointer transition-all ${
+                      darkMode
+                        ? 'bg-slate-900 border-slate-700 text-white focus:border-emerald-500'
+                        : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-emerald-600'
+                    }`}
+                  >
+                    {Object.values(INSTITUTIONAL_BANK_ACCOUNTS).map((acc) => (
+                      <option key={acc.code} value={acc.code}>
+                        {acc.shortName} ({acc.accountNo})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Date */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">
+                    Transaction Date <span className="text-rose-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={receiptForm.date}
+                    onChange={(e) => setReceiptForm({ ...receiptForm, date: e.target.value })}
+                    placeholder="e.g. 15-Aug-2026"
+                    className={`w-full px-3 py-2 text-xs rounded-xl border font-mono outline-none transition-all ${
+                      darkMode
+                        ? 'bg-slate-900 border-slate-700 text-white focus:border-emerald-500'
+                        : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-emerald-600'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Amount (PKR) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1">
+                  Receipt Amount (PKR) <span className="text-rose-400">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">
+                    PKR
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    value={receiptForm.amount}
+                    onChange={(e) => setReceiptForm({ ...receiptForm, amount: e.target.value })}
+                    placeholder="0.00"
+                    className={`w-full pl-12 pr-4 py-2.5 text-base font-black font-mono rounded-xl border outline-none transition-all ${
+                      darkMode
+                        ? 'bg-slate-900 border-slate-700 text-emerald-400 focus:border-emerald-500'
+                        : 'bg-slate-50 border-slate-300 text-emerald-700 focus:border-emerald-600'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Particulars */}
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1">
+                  Particulars / Description <span className="text-rose-400">*</span>
+                </label>
+                <textarea
+                  rows={2}
+                  required
+                  value={receiptForm.particulars}
+                  onChange={(e) => setReceiptForm({ ...receiptForm, particulars: e.target.value })}
+                  placeholder="e.g. 1st Quarter Non-Salary Budget Allocation Grant FY 2026-27 or Student Fee Collection"
+                  className={`w-full px-3 py-2 text-xs rounded-xl border outline-none transition-all ${
+                    darkMode
+                      ? 'bg-slate-900 border-slate-700 text-white focus:border-emerald-500'
+                      : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-emerald-600'
+                  }`}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Received From / Paid By */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">
+                    Received From / Deposited By
+                  </label>
+                  <input
+                    type="text"
+                    value={receiptForm.paidToBy}
+                    onChange={(e) => setReceiptForm({ ...receiptForm, paidToBy: e.target.value })}
+                    placeholder="e.g. Govt of Punjab / Trainees"
+                    className={`w-full px-3 py-2 text-xs rounded-xl border outline-none transition-all ${
+                      darkMode
+                        ? 'bg-slate-900 border-slate-700 text-white focus:border-emerald-500'
+                        : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-emerald-600'
+                    }`}
+                  />
+                </div>
+
+                {/* Cheque / Challan / Ref No */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">
+                    Challan / Cheque / Reference #
+                  </label>
+                  <input
+                    type="text"
+                    value={receiptForm.chequeNo}
+                    onChange={(e) => setReceiptForm({ ...receiptForm, chequeNo: e.target.value })}
+                    placeholder="e.g. BOP Challan / AAA Grant"
+                    className={`w-full px-3 py-2 text-xs rounded-xl border font-mono outline-none transition-all ${
+                      darkMode
+                        ? 'bg-slate-900 border-slate-700 text-white focus:border-emerald-500'
+                        : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-emerald-600'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Account Head */}
+              <div>
+                <label className="block text-xs font-bold text-slate-400 mb-1">
+                  Budget Account Head / Category
+                </label>
+                <input
+                  type="text"
+                  value={receiptForm.accountHead}
+                  onChange={(e) => setReceiptForm({ ...receiptForm, accountHead: e.target.value })}
+                  placeholder="e.g. A03933-SERVICE CHARGES or A00000PF-PUPIL FUND"
+                  className={`w-full px-3 py-2 text-xs rounded-xl border font-mono outline-none transition-all ${
+                    darkMode
+                      ? 'bg-slate-900 border-slate-700 text-white focus:border-emerald-500'
+                      : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-emerald-600'
+                  }`}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-700/60">
+                <button
+                  type="button"
+                  onClick={() => setShowRecordReceiptModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 text-xs font-black rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/40 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Record & Post to Ledger</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
     </div>
