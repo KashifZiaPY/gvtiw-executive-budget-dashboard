@@ -290,16 +290,37 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
         "GOVT. VOCATIONAL TRAINING INSTITUTE FOR WOMEN SAMANABAD, FAISALABAD"
       )}
 
-      {/* Rows 8 to 16: Voucher Meta & Vendor Information with Light Grey Heading Style */}
-      <div className="relative z-10 border-2 border-slate-900 text-[10.5px] print:text-[9.5px] mb-1.5 divide-y divide-slate-400 bg-white/80 backdrop-blur-none">
-        <div className="grid grid-cols-12">
-          <span className="col-span-4 font-bold text-slate-800 bg-slate-100 py-0.5 px-2.5 border-r border-slate-400 uppercase">
-            Sr. / Voucher# :
+      {/* Prominent Separate Voucher # Header with Quick Reference Audit Indicators all clustered on the Right for Thumb Counting */}
+      <div className="relative z-10 flex items-center justify-end gap-1.5 sm:gap-2 mb-1.5 print:mb-1">
+        {/* Dim Quick Reference Labels for counting/sorting hard vouchers (Shifted right alongside Voucher #) */}
+        <div className="flex items-center gap-1 sm:gap-1.5 text-[9px] print:text-[8px] font-mono select-none">
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-slate-300 bg-slate-50/90 print:bg-white shadow-2xs">
+            <span className="text-[8px] print:text-[7px] uppercase font-sans font-bold text-slate-400 tracking-wider">NET CHEQUE#</span>
+            <span className="font-semibold text-slate-800">{voucher.chequeNoNet}</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-slate-300 bg-slate-50/90 print:bg-white shadow-2xs">
+            <span className="text-[8px] print:text-[7px] uppercase font-sans font-bold text-slate-400 tracking-wider">NET AMOUNT</span>
+            <span className="font-semibold text-slate-800">Rs. {Number(voucher.chequeAmountNet).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-slate-300 bg-slate-50/90 print:bg-white shadow-2xs">
+            <span className="text-[8px] print:text-[7px] uppercase font-sans font-bold text-slate-400 tracking-wider">NET DATE</span>
+            <span className="font-semibold text-slate-800">{voucher.chequeDate || voucher.billDate}</span>
+          </div>
+        </div>
+
+        {/* Prominent Right-Extreme Voucher # with light grey highlight and rounded border */}
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-slate-900 rounded-md bg-slate-200 print:bg-slate-200 shadow-xs shrink-0">
+          <span className="text-[10px] print:text-[9px] font-black uppercase text-slate-900 tracking-wider">
+            VOUCHER # :
           </span>
-          <span className="col-span-8 font-black text-slate-950 font-mono text-xs py-0.5 px-2.5">
+          <span className="text-xs sm:text-sm print:text-xs font-black font-mono text-slate-950 tracking-tight">
             {voucher.voucherNo}
           </span>
         </div>
+      </div>
+
+      {/* Rows 8 to 16: Voucher Meta & Vendor Information with Light Grey Heading Style */}
+      <div className="relative z-10 border-2 border-slate-900 text-[10.5px] print:text-[9.5px] mb-1.5 divide-y divide-slate-400 bg-white/80 backdrop-blur-none">
         <div className="grid grid-cols-12">
           <span className="col-span-4 font-bold text-slate-800 bg-slate-100 py-0.5 px-2.5 border-r border-slate-400 uppercase">
             DATE :
