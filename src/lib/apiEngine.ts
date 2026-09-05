@@ -925,11 +925,9 @@ export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
       ],
       NS: [],
       PF: [
-        { id: 'PF-R1', date: '15-Jul-2026', month: 'July', particulars: 'Transfer / Collection of Student Pupil Fund Share from TEVTA Fee Collection A/C (6580027832200011)', paidToBy: 'TEVTA Fee Collection / Trainees', head: 'A00000PF-PUPIL FUND', chq: 'Online BOP Transfer', amount: 77717 },
+        { id: 'PF-R1', date: '03-Sep-2026', month: 'September', particulars: 'Transfer / Collection of Student Pupil Fund Share from TEVTA Fee Collection A/C (6580027832200011) via Cheque 8060940614', paidToBy: 'TEVTA Fee Collection / Trainees', head: 'A00000PF-PUPIL FUND', chq: '8060940614', amount: 77717 },
       ],
-      FC: [
-        { id: 'FC-R1', date: '15-Jul-2026', month: 'July', particulars: 'Admission & Tuition Fee Collection Session 2026-2027 from Enrolled Trainees', paidToBy: 'Enrolled Students / Trainees', head: 'A00000TFC-TEVTA FEE COL.', chq: 'Bank Challans', amount: 77717 },
-      ],
+      FC: [],
       SC: [],
       SEC: [],
     };
@@ -1173,3 +1171,90 @@ export function deleteCashBookReceipt(id: string): void {
   const receipts = getStoredUserReceipts().filter((r) => r.id !== id);
   saveStoredUserReceipts(receipts);
 }
+
+export function sanitizeCashBookStates(
+  states: Record<BankAccountKey, CashBookAccountState>
+): Record<BankAccountKey, CashBookAccountState> {
+  if (!states) return INITIAL_CASHBOOK_STATES;
+  const sanitized: Record<BankAccountKey, CashBookAccountState> = JSON.parse(JSON.stringify(states));
+
+  // Ensure Fee Collection (FC) has proper opening balance and no bogus FC-R1
+  if (sanitized.FC) {
+    if (!sanitized.FC.openingBalance || sanitized.FC.openingBalance === 0) {
+      sanitized.FC.openingBalance = 77717.0;
+    }
+    if (sanitized.FC.meta) {
+      sanitized.FC.meta.openingBalance = sanitized.FC.openingBalance;
+    }
+    if (sanitized.FC.entries) {
+      sanitized.FC.entries = sanitized.FC.entries.filter(
+        (e: any) => e.id !== 'FC-R1' && !(e.particulars && e.particulars.includes('Admission & Tuition Fee Collection Session 2026-2027'))
+      );
+    }
+    let bal = sanitized.FC.openingBalance;
+    let totPay = 0;
+    let totRec = 0;
+    for (let i = 0; i < sanitized.FC.entries.length; i++) {
+      const e = sanitized.FC.entries[i];
+      e.srNo = i + 1;
+      if (e.entryType === 'RECEIPT') {
+        totRec += e.receipts;
+        bal += e.receipts;
+      } else {
+        totPay += e.payments;
+        bal -= e.payments;
+      }
+      e.runningBalance = Math.round(bal * 100) / 100;
+    }
+    sanitized.FC.totalReceipts = Math.round(totRec * 100) / 100;
+    sanitized.FC.totalPayments = Math.round(totPay * 100) / 100;
+    sanitized.FC.closingBalance = Math.round(bal * 100) / 100;
+    sanitized.FC.reconciledBankBalance = sanitized.FC.closingBalance;
+  }
+
+  return sanitized;
+}
+
+export function updateBankAccountOpeningBalance(
+  bankKey: BankAccountKey,
+  newOpening: number
+): Record<BankAccountKey, CashBookAccountState> {
+  let currentStates: Record<BankAccountKey, CashBookAccountState> = INITIAL_CASHBOOK_STATES;
+  try {
+    const cached = localStorage.getItem(STORAGE_KEY_LIVE_CASHBOOKS);
+    if (cached) {
+      currentStates = JSON.parse(cached);
+    }
+  } catch {}
+
+  if (currentStates[bankKey]) {
+    currentStates[bankKey].openingBalance = newOpening;
+    if (currentStates[bankKey].meta) {
+      currentStates[bankKey].meta.openingBalance = newOpening;
+    }
+    let bal = newOpening;
+    let totPay = 0;
+    let totRec = 0;
+    for (const e of currentStates[bankKey].entries) {
+      if (e.entryType === 'RECEIPT') {
+        totRec += e.receipts;
+        bal += e.receipts;
+      } else {
+        totPay += e.payments;
+        bal -= e.payments;
+      }
+      e.runningBalance = Math.round(bal * 100) / 100;
+    }
+    currentStates[bankKey].totalReceipts = Math.round(totRec * 100) / 100;
+    currentStates[bankKey].totalPayments = Math.round(totPay * 100) / 100;
+    currentStates[bankKey].closingBalance = Math.round(bal * 100) / 100;
+    currentStates[bankKey].reconciledBankBalance = Math.round(bal * 100) / 100;
+
+    try {
+      localStorage.setItem(STORAGE_KEY_LIVE_CASHBOOKS, JSON.stringify(currentStates));
+      window.dispatchEvent(new Event('gvtiw_cashbooks_updated'));
+    } catch {}
+  }
+  return currentStates;
+}
+

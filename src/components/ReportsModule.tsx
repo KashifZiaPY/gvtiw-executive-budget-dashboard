@@ -5,10 +5,35 @@ import {
   INSTITUTIONAL_BANK_ACCOUNTS,
   BankAccountKey,
   MasterVoucher,
+  CashBookAccountState,
 } from '../data/cashBookData';
 import { MASTER_PAYEE_LIST, MASTER_ACCOUNT_HEADS } from '../data/voucherMasterLists';
+import { AccountHead } from '../types';
+import { INITIAL_ACCOUNTS } from '../data/initialData';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { formatPKR } from '../lib/formatters';
+import {
+  CashBookStatementView,
+} from './CashBookStatementView';
+import {
+  HeadExpenditureStatementView,
+} from './HeadExpenditureStatementView';
+import {
+  generateCashBookStatementData,
+  generateHeadExpenditureStatementData,
+  generateOfficialStatementPrintHtml,
+  formatCurrency2Decimals,
+  CashBookStatementData,
+  HeadExpenditureStatementData,
+  CashBookStatementRow,
+  resolveBankKeyFromAccount,
+  formatGeneratedTimestamp,
+  buildPeriodLabel,
+} from '../lib/reportingEngine';
+import {
+  sanitizeCashBookStates,
+  updateBankAccountOpeningBalance,
+} from '../lib/apiEngine';
 import {
   FileSpreadsheet,
   Building,
@@ -28,6 +53,9 @@ import {
   TrendingUp,
   DollarSign,
   Filter,
+  Edit3,
+  X,
+  Sparkles,
 } from 'lucide-react';
 
 interface ReportsModuleProps {
@@ -62,18 +90,47 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     return INITIAL_MASTER_VOUCHERS;
   });
 
+  const [cashBookStates, setCashBookStates] = useState<Record<BankAccountKey, CashBookAccountState>>(() => {
+    try {
+      const cached = localStorage.getItem('gvtiw_live_cashbooks_v3') || localStorage.getItem('gvtiw_live_cashbook_states_v3');
+      if (cached) return sanitizeCashBookStates(JSON.parse(cached));
+    } catch {}
+    return sanitizeCashBookStates(INITIAL_CASHBOOK_STATES);
+  });
+
+  const [accountsStore, setAccountsStore] = useState<AccountHead[]>(() => {
+    try {
+      const cached = localStorage.getItem('gvtiw_live_accounts_v3');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return INITIAL_ACCOUNTS;
+  });
+
   useEffect(() => {
-    const handleVoucherUpdate = () => {
+    const handleUpdates = () => {
       try {
-        const cached = localStorage.getItem('gvtiw_live_vouchers_v3');
-        if (cached) setVouchers(JSON.parse(cached));
+        const cachedV = localStorage.getItem('gvtiw_live_vouchers_v3');
+        if (cachedV) setVouchers(JSON.parse(cachedV));
+      } catch {}
+      try {
+        const cachedCb = localStorage.getItem('gvtiw_live_cashbooks_v3') || localStorage.getItem('gvtiw_live_cashbook_states_v3');
+        if (cachedCb) setCashBookStates(sanitizeCashBookStates(JSON.parse(cachedCb)));
+      } catch {}
+      try {
+        const cachedAcc = localStorage.getItem('gvtiw_live_accounts_v3');
+        if (cachedAcc) setAccountsStore(JSON.parse(cachedAcc));
       } catch {}
     };
-    window.addEventListener('gvtiw_vouchers_updated', handleVoucherUpdate);
-    window.addEventListener('storage', handleVoucherUpdate);
+
+    window.addEventListener('gvtiw_vouchers_updated', handleUpdates);
+    window.addEventListener('gvtiw_cashbooks_updated', handleUpdates);
+    window.addEventListener('gvtiw_accounts_updated', handleUpdates);
+    window.addEventListener('storage', handleUpdates);
     return () => {
-      window.removeEventListener('gvtiw_vouchers_updated', handleVoucherUpdate);
-      window.removeEventListener('storage', handleVoucherUpdate);
+      window.removeEventListener('gvtiw_vouchers_updated', handleUpdates);
+      window.removeEventListener('gvtiw_cashbooks_updated', handleUpdates);
+      window.removeEventListener('gvtiw_accounts_updated', handleUpdates);
+      window.removeEventListener('storage', handleUpdates);
     };
   }, []);
 
@@ -84,10 +141,17 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
   // Tab-Specific Filters
   const [selectedHead, setSelectedHead] = useState<string>('ALL');
+  const [headSearchQuery, setHeadSearchQuery] = useState<string>('');
+  const [selectedHeadCategory, setSelectedHeadCategory] = useState<string>('ALL');
   const [selectedPayee, setSelectedPayee] = useState<string>('ALL');
   const [chequeQuery, setChequeQuery] = useState<string>('');
   const [minAmount, setMinAmount] = useState<string>('');
   const [maxAmount, setMaxAmount] = useState<string>('');
+
+  // Opening Balance CFO Audit & Verification State
+  const [showOpeningAuditModal, setShowOpeningAuditModal] = useState(false);
+  const [editingOpeningBank, setEditingOpeningBank] = useState<BankAccountKey | null>(null);
+  const [openingInputVal, setOpeningInputVal] = useState<string>('');
 
   // Print Center
   const [voucherSrInput, setVoucherSrInput] = useState('1');
@@ -115,7 +179,38 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     }
   };
 
-  // Base Date & Bank Filter for Vouchers
+  // Authoritative Cash Book Statement Data
+  const cashBookStatementData = useMemo(() => {
+    return generateCashBookStatementData(
+      vouchers,
+      cashBookStates,
+      selectedBank,
+      fromDate,
+      toDate
+    );
+  }, [vouchers, cashBookStates, selectedBank, fromDate, toDate]);
+
+  // Authoritative Head Expenditure Statement Data
+  const headExpenditureStatementData = useMemo(() => {
+    return generateHeadExpenditureStatementData(
+      vouchers,
+      accountsStore,
+      selectedHead,
+      selectedBank,
+      fromDate,
+      toDate,
+      headSearchQuery
+    );
+  }, [vouchers, accountsStore, selectedHead, selectedBank, fromDate, toDate, headSearchQuery]);
+
+  // Handle Opening Balance Adjustment
+  const handleSaveOpeningBalance = (bankKey: BankAccountKey, val: number) => {
+    const updated = updateBankAccountOpeningBalance(bankKey, val);
+    setCashBookStates({ ...updated });
+    setEditingOpeningBank(null);
+  };
+
+  // Base Date & Bank Filter for General Vouchers (PAYEE, CHEQUE, AMOUNT)
   const filteredVouchers = useMemo(() => {
     return vouchers.filter((v) => {
       // Bank filter
@@ -175,124 +270,97 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   const totalWht = useMemo(() => filteredVouchers.reduce((s, v) => s + v.incomeTaxAmount, 0), [filteredVouchers]);
   const totalPra = useMemo(() => filteredVouchers.reduce((s, v) => s + v.praAmount, 0), [filteredVouchers]);
 
-  // Print Report Handler
-  const handlePrintReport = (reportTitle: string) => {
+  // OFFICIAL PRINT: CASH BOOK STATEMENT
+  const handlePrintCashBook = (data: CashBookStatementData) => {
     const printWin = window.open('', '_blank');
     if (!printWin) {
       window.print();
       return;
     }
 
-    const rowsHtml = filteredVouchers.map((v, i) => `
-      <tr>
-        <td style="text-align:center; padding: 4px; border: 1px solid #cbd5e1;">${i + 1}</td>
-        <td style="padding: 4px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: bold;">${v.voucherNo}</td>
-        <td style="padding: 4px; border: 1px solid #cbd5e1; white-space: nowrap;">${v.chequeDate || v.billDate}</td>
-        <td style="padding: 4px; border: 1px solid #cbd5e1; font-weight: bold;">${v.payeeName}</td>
-        <td style="padding: 4px; border: 1px solid #cbd5e1; font-size: 10px;">${v.accountHead}</td>
-        <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: center; font-family: monospace;">${v.chequeNoNet}</td>
-        <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right;">${Number(v.billAmountGross).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-        <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right; color: #be123c;">${v.incomeTaxAmount > 0 ? Number(v.incomeTaxAmount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
-        <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right; color: #b45309;">${v.praAmount > 0 ? Number(v.praAmount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
-        <td style="padding: 4px; border: 1px solid #cbd5e1; text-align: right; font-weight: bold; color: #047857;">${Number(v.chequeAmountNet).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-      </tr>
-    `).join('');
+    const kpiCards = [
+      {
+        label: data.isConsolidated ? 'CONSOLIDATED OPENING (B/D)' : 'OPENING BALANCE (B/D)',
+        amount: data.openingBalance,
+        color: '#003399',
+        bgColor: '#eff6ff',
+        borderColor: '#93c5fd',
+      },
+      {
+        label: 'TOTAL RECEIPTS (+)',
+        amount: data.totalReceipts,
+        color: '#15803d',
+        bgColor: '#f0fdf4',
+        borderColor: '#86efac',
+      },
+      {
+        label: 'TOTAL PAYMENTS (-)',
+        amount: data.totalPayments,
+        color: '#dc2626',
+        bgColor: '#fef2f2',
+        borderColor: '#fca5a5',
+      },
+      {
+        label: data.isConsolidated ? 'CONSOLIDATED CLOSING (C/D)' : 'NET CLOSING BALANCE (C/D)',
+        amount: data.closingBalance,
+        color: '#0b2545',
+        bgColor: '#f8fafc',
+        borderColor: '#cbd5e1',
+      },
+    ];
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${reportTitle}</title>
-          <style>
-            @page { size: A4 landscape; margin: 8mm; }
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; font-size: 10px; }
-            .header-box { text-align: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; margin-bottom: 12px; }
-            .header-box h1 { font-size: 16px; margin: 0; text-transform: uppercase; font-weight: 900; }
-            .header-box h2 { font-size: 12px; margin: 3px 0 0 0; text-transform: uppercase; color: #1e3a8a; font-weight: 800; }
-            .meta-strip { display: flex; justify-content: space-between; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; margin-bottom: 10px; font-weight: bold; }
-            .metrics-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; text-align: center; }
-            .metric-card { border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; background-color: #f8fafc; }
-            .metric-card span { display: block; font-size: 9px; text-transform: uppercase; color: #64748b; font-weight: bold; }
-            .metric-card strong { font-size: 12px; font-family: monospace; }
-            table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
-            th { background-color: #0f172a; color: #ffffff; padding: 5px 4px; text-align: left; font-size: 9px; text-transform: uppercase; border: 1px solid #0f172a; }
-            .sig-box { margin-top: 35px; display: flex; justify-content: space-between; page-break-inside: avoid; }
-            .sig-col { text-align: center; width: 28%; border-top: 1px solid #475569; padding-top: 6px; }
-            .sig-col strong { display: block; font-size: 10px; }
-            .sig-col span { font-size: 9px; color: #475569; }
-          </style>
-        </head>
-        <body>
-          <div class="header-box">
-            <p style="margin: 0; font-size: 9px; font-weight: bold; color: #475569;">GOVERNMENT OF PUNJAB • TEVTA</p>
-            <h1>GOVT. VOCATIONAL TRAINING INSTITUTE (W) SAMANABAD, FAISALABAD</h1>
-            <h2>${reportTitle}</h2>
-            <p style="margin: 2px 0 0 0; font-size: 9px; color: #64748b; font-family: monospace;">Institute Code: 33028 • Financial Year 2026-27</p>
-          </div>
+    const tableHeaders = [
+      'SR#',
+      'DATE',
+      'ACCT',
+      'VOUCHER #',
+      'PAID TO / BY',
+      'ACCOUNT HEAD',
+      'PARTICULAR / NARRATION',
+      'CHEQUE #',
+      'RECEIPTS (RS.)',
+      'PAYMENTS (RS.)',
+      'BALANCE (RS.)',
+    ];
 
-          <div class="meta-strip">
-            <div><span>Bank Filter: </span>${selectedBank}</div>
-            <div><span>Period: </span>${fromDate || 'Beginning'} to ${toDate || 'Present'}</div>
-            <div><span>Total Records: </span>${filteredVouchers.length}</div>
-            <div><span>Generated: </span>${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-          </div>
-
-          <div class="metrics-strip">
-            <div class="metric-card">
-              <span>Gross Claimed</span>
-              <strong style="color: #0f172a;">Rs. ${Number(totalGross).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
-            </div>
-            <div class="metric-card">
-              <span>Income Tax Withheld</span>
-              <strong style="color: #be123c;">Rs. ${Number(totalWht).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
-            </div>
-            <div class="metric-card">
-              <span>PRA Tax Withheld</span>
-              <strong style="color: #b45309;">Rs. ${Number(totalPra).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
-            </div>
-            <div class="metric-card" style="background-color: #ecfdf5; border-color: #10b981;">
-              <span style="color: #065f46;">Net Disbursed</span>
-              <strong style="color: #047857;">Rs. ${Number(totalNet).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
-            </div>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 25px; text-align: center;">Sr#</th>
-                <th style="width: 80px;">Voucher#</th>
-                <th style="width: 65px;">Date</th>
-                <th>Payee / Vendor</th>
-                <th>Budget Account Head</th>
-                <th style="width: 65px; text-align: center;">Cheque#</th>
-                <th style="width: 75px; text-align: right;">Gross (Rs.)</th>
-                <th style="width: 65px; text-align: right;">WHT (Rs.)</th>
-                <th style="width: 65px; text-align: right;">PRA (Rs.)</th>
-                <th style="width: 80px; text-align: right;">Net Paid (Rs.)</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml}
-            </tbody>
-          </table>
-
-          <div class="sig-box">
-            <div class="sig-col">
-              <strong>Kashif Zia</strong>
-              <span>Prepared by: Accountant</span>
-            </div>
-            <div class="sig-col">
-              <strong>ANEEBA JAMIL</strong>
-              <span>Checked by: CO-Signatory</span>
-            </div>
-            <div class="sig-col">
-              <strong>SHAZIA KHADIM</strong>
-              <span>Approved by: Acting Principal / DDO</span>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
+    const html = generateOfficialStatementPrintHtml({
+      reportType: 'CASHBOOK',
+      title: data.title,
+      subtitle: data.subtitle,
+      accountOrHeadInfo: data.accountNoText,
+      generatedTimestamp: data.generatedTimestamp,
+      periodLabel: data.periodLabel,
+      totalTransactionsCount: data.totalTransactionsCount,
+      kpiCards,
+      tableHeaders,
+      isGrouped: data.isConsolidated,
+      openingRow: {
+        date: '01-Jul-2026',
+        acct: data.isConsolidated ? 'ALL' : data.groups[0]?.accountKey || 'NS',
+        description: data.isConsolidated
+          ? 'CONSOLIDATED OPENING BALANCE BROUGHT FORWARD (b/d)'
+          : 'OPENING BALANCE BROUGHT FORWARD (b/d)',
+        balance: data.openingBalance,
+      },
+      groups: data.groups.map((g) => ({
+        headerTitle: `${g.accountKey === 'NS' ? '🏛️' : g.accountKey === 'PF' ? '👥' : '📋'} ${g.meta.shortName} (${g.accountKey}) CASH BOOK — Account No: ${g.meta.accountNo} • Opening: Rs. ${formatCurrency2Decimals(g.openingBalance)}`,
+        rows: g.rows,
+        subtotalReceipts: g.totalReceipts,
+        subtotalPayments: g.totalPayments,
+        subtotalBalance: g.closingBalance,
+      })),
+      grandTotals: {
+        receipts: data.totalReceipts,
+        payments: data.totalPayments,
+      },
+      closingRow: {
+        label: 'CLOSING BALANCE CARRIED FORWARD (c/d):',
+        formulaText: '[Opening + Receipts - Payments]',
+        balance: data.closingBalance,
+      },
+      customGvtiwLogo,
+      customTevtaLogo,
+    });
 
     printWin.document.open();
     printWin.document.write(html);
@@ -303,7 +371,463 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     }, 400);
   };
 
-  // Export CSV
+  // OFFICIAL PRINT: HEAD EXPENDITURE STATEMENT
+  const handlePrintHeadExpenditure = (data: HeadExpenditureStatementData) => {
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      window.print();
+      return;
+    }
+
+    const kpiCards = [
+      {
+        label: 'BUDGET ALLOCATION (OPENING B/D)',
+        amount: data.budgetAllocationOpening,
+        color: '#003399',
+        bgColor: '#eff6ff',
+        borderColor: '#93c5fd',
+      },
+      {
+        label: 'TOTAL RECEIPTS / REAPPR (+)',
+        amount: data.receiptsReappr,
+        color: '#15803d',
+        bgColor: '#f0fdf4',
+        borderColor: '#86efac',
+      },
+      {
+        label: 'TOTAL EXPENDITURE (-)',
+        amount: data.totalExpenditure,
+        color: '#dc2626',
+        bgColor: '#fef2f2',
+        borderColor: '#fca5a5',
+      },
+      {
+        label: 'NET UNSPENT CLOSING (C/D)',
+        amount: data.closingUnspentBalance,
+        color: '#0b2545',
+        bgColor: '#f8fafc',
+        borderColor: '#cbd5e1',
+      },
+    ];
+
+    const tableHeaders = [
+      'SR#',
+      'DATE',
+      'ACCT',
+      'VOUCHER #',
+      'PAID TO / BY',
+      'ACCOUNT HEAD',
+      'PARTICULAR / NARRATION',
+      'CHEQUE #',
+      'RECEIPTS (RS.)',
+      'EXPENDITURE (RS.)',
+      'UNSPENT BUDGET (RS.)',
+    ];
+
+    const html = generateOfficialStatementPrintHtml({
+      reportType: 'HEAD',
+      title: data.title,
+      subtitle: data.subtitle,
+      accountOrHeadInfo: data.headCodeText,
+      generatedTimestamp: data.generatedTimestamp,
+      periodLabel: data.periodLabel,
+      totalTransactionsCount: data.totalTransactionsCount,
+      kpiCards,
+      tableHeaders,
+      isGrouped: data.isGroupedAllHeads,
+      openingRow: {
+        date: '01-Jul-2026',
+        acct: data.isGroupedAllHeads ? 'ALL' : 'HEAD',
+        description: data.isGroupedAllHeads
+          ? 'CONSOLIDATED BUDGET ALLOCATION BROUGHT FORWARD (b/d)'
+          : 'SANCTIONED BUDGET ALLOCATION BROUGHT FORWARD (b/d)',
+        balance: data.budgetAllocationOpening,
+      },
+      groups: data.groups.map((g) => ({
+        headerTitle: `📋 ${g.headCode} — ${g.headName} • Sanctioned Allocation: Rs. ${formatCurrency2Decimals(g.allocationOpening)}`,
+        rows: g.rows,
+        subtotalReceipts: g.receiptsReappr,
+        subtotalPayments: g.totalExpenditure,
+        subtotalBalance: g.closingUnspentBalance,
+      })),
+      grandTotals: {
+        receipts: data.receiptsReappr,
+        payments: data.totalExpenditure,
+      },
+      closingRow: {
+        label: 'CLOSING UNSPENT BUDGET CARRIED FORWARD (c/d):',
+        formulaText: '[Allocation + Receipts - Expenditure]',
+        balance: data.closingUnspentBalance,
+      },
+      customGvtiwLogo,
+      customTevtaLogo,
+    });
+
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
+    setTimeout(() => {
+      printWin.focus();
+      printWin.print();
+    }, 400);
+  };
+
+  // OFFICIAL PRINT: GENERAL REPORTS (PAYEE, CHEQUE, AMOUNT)
+  const handlePrintGeneralReport = (reportTitle: string) => {
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      window.print();
+      return;
+    }
+
+    const kpiCards = [
+      {
+        label: 'GROSS CLAIMED',
+        amount: totalGross,
+        color: '#0f172a',
+        bgColor: '#f8fafc',
+        borderColor: '#cbd5e1',
+      },
+      {
+        label: 'WHT INCOME TAX',
+        amount: totalWht,
+        color: '#be123c',
+        bgColor: '#fef2f2',
+        borderColor: '#fca5a5',
+      },
+      {
+        label: 'PRA SALES TAX',
+        amount: totalPra,
+        color: '#b45309',
+        bgColor: '#fffbeb',
+        borderColor: '#fde68a',
+      },
+      {
+        label: 'NET PAID (CHEQUES)',
+        amount: totalNet,
+        color: '#047857',
+        bgColor: '#ecfdf5',
+        borderColor: '#a7f3d0',
+      },
+    ];
+
+    const tableHeaders = [
+      'SR#',
+      'DATE',
+      'ACCT',
+      'VOUCHER #',
+      'PAYEE / VENDOR',
+      'BUDGET ACCOUNT HEAD',
+      'PARTICULAR / NARRATION',
+      'CHEQUE #',
+      'WHT (RS.)',
+      'PRA (RS.)',
+      'NET PAID (RS.)',
+    ];
+
+    const rows: CashBookStatementRow[] = filteredVouchers.map((v, i) => ({
+      id: `GEN-V${v.srNo}`,
+      srNo: i + 1,
+      date: v.chequeDate || v.billDate,
+      accountKey: resolveBankKeyFromAccount(v.bankAccount),
+      voucherNo: v.voucherNo,
+      paidToBy: v.payeeName,
+      accountHead: v.accountHead,
+      particulars: v.description,
+      chequeNo: v.chequeNoNet || '—',
+      receipts: v.incomeTaxAmount,
+      payments: v.praAmount,
+      balance: v.chequeAmountNet,
+    }));
+
+    const html = generateOfficialStatementPrintHtml({
+      reportType: 'GENERAL',
+      title: reportTitle.toUpperCase(),
+      subtitle: 'Institutional Disbursement & Tax Audit Record',
+      accountOrHeadInfo: `Bank Filter: ${selectedBank} • Records: ${filteredVouchers.length}`,
+      generatedTimestamp: formatGeneratedTimestamp(),
+      periodLabel: buildPeriodLabel(fromDate, toDate),
+      totalTransactionsCount: filteredVouchers.length,
+      kpiCards,
+      tableHeaders,
+      isGrouped: false,
+      groups: [
+        {
+          headerTitle: `${reportTitle} Transactions`,
+          rows,
+        },
+      ],
+      grandTotals: {
+        receipts: totalGross,
+        payments: totalNet,
+      },
+      closingRow: {
+        label: 'NET DISBURSED AMOUNT (TOTAL):',
+        formulaText: '[Gross Claimed - Withheld Taxes]',
+        balance: totalNet,
+      },
+      customGvtiwLogo,
+      customTevtaLogo,
+    });
+
+    printWin.document.open();
+    printWin.document.write(html);
+    printWin.document.close();
+    setTimeout(() => {
+      printWin.focus();
+      printWin.print();
+    }, 400);
+  };
+
+  // EXPORT CSV: CASH BOOK STATEMENT
+  const handleExportCashBookCSV = (data: CashBookStatementData) => {
+    const headers = [
+      'Sr No',
+      'Date',
+      'Account',
+      'Voucher No',
+      'Paid To / By',
+      'Account Head',
+      'Particulars / Narration',
+      'Cheque No',
+      'Receipts (Rs.)',
+      'Payments (Rs.)',
+      'Balance (Rs.)',
+    ];
+
+    const rows: any[] = [];
+
+    // Opening row
+    rows.push([
+      '—',
+      '01-Jul-2026',
+      data.isConsolidated ? 'ALL' : data.groups[0]?.accountKey || 'NS',
+      '—',
+      data.isConsolidated ? 'CONSOLIDATED OPENING BALANCE (b/d)' : 'OPENING BALANCE BROUGHT FORWARD (b/d)',
+      '—',
+      'Opening Balance brought forward',
+      '—',
+      '0.00',
+      '0.00',
+      data.openingBalance.toFixed(2),
+    ]);
+
+    let sr = 1;
+    for (const g of data.groups) {
+      if (data.isConsolidated) {
+        rows.push([
+          '—',
+          '—',
+          g.accountKey,
+          '—',
+          `*** ${g.meta.shortName} (${g.accountKey}) CASH BOOK - Acc No: ${g.meta.accountNo} ***`,
+          '—',
+          `Opening: Rs. ${g.openingBalance.toFixed(2)}`,
+          '—',
+          '—',
+          '—',
+          '—',
+        ]);
+      }
+      for (const r of g.rows) {
+        rows.push([
+          sr++,
+          r.date,
+          r.accountKey,
+          `"${r.voucherNo}"`,
+          `"${r.paidToBy}"`,
+          `"${r.accountHead}"`,
+          `"${(r.particulars || '').replace(/"/g, '""')}"`,
+          `"${r.chequeNo}"`,
+          r.receipts.toFixed(2),
+          r.payments.toFixed(2),
+          r.balance.toFixed(2),
+        ]);
+      }
+      if (data.isConsolidated) {
+        rows.push([
+          '—',
+          '—',
+          g.accountKey,
+          '—',
+          `SUBTOTAL - ${g.meta.shortName} (${g.accountKey})`,
+          '—',
+          '—',
+          '—',
+          g.totalReceipts.toFixed(2),
+          g.totalPayments.toFixed(2),
+          g.closingBalance.toFixed(2),
+        ]);
+      }
+    }
+
+    // Grand totals
+    rows.push([
+      '—',
+      '—',
+      'ALL',
+      '—',
+      'GRAND TOTALS (Rs.)',
+      '—',
+      '—',
+      '—',
+      data.totalReceipts.toFixed(2),
+      data.totalPayments.toFixed(2),
+      '—',
+    ]);
+
+    // Closing balance
+    rows.push([
+      '—',
+      '—',
+      'ALL',
+      '—',
+      'CLOSING BALANCE CARRIED FORWARD (c/d)',
+      '—',
+      '[Opening + Receipts - Payments]',
+      '—',
+      '—',
+      '—',
+      data.closingBalance.toFixed(2),
+    ]);
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `GVTIW_CashBook_Statement_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // EXPORT CSV: HEAD EXPENDITURE STATEMENT
+  const handleExportHeadCSV = (data: HeadExpenditureStatementData) => {
+    const headers = [
+      'Sr No',
+      'Date',
+      'Account',
+      'Voucher No',
+      'Vendor / Paid To',
+      'Account Head',
+      'Particulars / Narration',
+      'Cheque No',
+      'Receipts (Rs.)',
+      'Expenditure (Rs.)',
+      'Remaining Unspent Budget (Rs.)',
+    ];
+
+    const rows: any[] = [];
+
+    // Opening row
+    rows.push([
+      '—',
+      '01-Jul-2026',
+      data.isGroupedAllHeads ? 'ALL' : 'HEAD',
+      '—',
+      data.isGroupedAllHeads ? 'CONSOLIDATED BUDGET ALLOCATION (b/d)' : 'SANCTIONED BUDGET ALLOCATION (b/d)',
+      '—',
+      'Sanctioned Budget Allocation for FY 2026-27',
+      '—',
+      '0.00',
+      '0.00',
+      data.budgetAllocationOpening.toFixed(2),
+    ]);
+
+    let sr = 1;
+    for (const g of data.groups) {
+      if (data.isGroupedAllHeads) {
+        rows.push([
+          '—',
+          '—',
+          g.headCode,
+          '—',
+          `*** ${g.headCode} - ${g.headName} ***`,
+          '—',
+          `Allocation: Rs. ${g.allocationOpening.toFixed(2)}`,
+          '—',
+          '—',
+          '—',
+          '—',
+        ]);
+      }
+      for (const r of g.rows) {
+        rows.push([
+          sr++,
+          r.date,
+          r.accountKey,
+          `"${r.voucherNo}"`,
+          `"${r.paidToBy}"`,
+          `"${r.accountHead}"`,
+          `"${(r.particulars || '').replace(/"/g, '""')}"`,
+          `"${r.chequeNo}"`,
+          r.receipts.toFixed(2),
+          r.payments.toFixed(2),
+          r.balance.toFixed(2),
+        ]);
+      }
+      if (data.isGroupedAllHeads) {
+        rows.push([
+          '—',
+          '—',
+          g.headCode,
+          '—',
+          `SUBTOTAL - ${g.headCode}`,
+          '—',
+          '—',
+          '—',
+          g.receiptsReappr.toFixed(2),
+          g.totalExpenditure.toFixed(2),
+          g.closingUnspentBalance.toFixed(2),
+        ]);
+      }
+    }
+
+    // Grand totals
+    rows.push([
+      '—',
+      '—',
+      'ALL',
+      '—',
+      'GRAND TOTALS (Rs.)',
+      '—',
+      '—',
+      '—',
+      data.receiptsReappr.toFixed(2),
+      data.totalExpenditure.toFixed(2),
+      '—',
+    ]);
+
+    // Closing unspent balance
+    rows.push([
+      '—',
+      '—',
+      'ALL',
+      '—',
+      'CLOSING UNSPENT BUDGET CARRIED FORWARD (c/d)',
+      '—',
+      '[Allocation + Receipts - Expenditure]',
+      '—',
+      '—',
+      '—',
+      data.closingUnspentBalance.toFixed(2),
+    ]);
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `GVTIW_Head_Expenditure_Statement_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Export General CSV
   const handleExportCSV = (reportName: string) => {
     const headers = [
       'Sr No',
@@ -382,9 +906,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           >
             <div className="flex items-center gap-1.5 font-bold text-xs">
               <FileSpreadsheet className="w-4 h-4 text-blue-400" />
-              <span>Cashbook Report</span>
+              <span>Cashbook Statement</span>
             </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">Consolidated & Bank-Wise</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Consolidated &amp; Bank-Wise</p>
           </button>
 
           <button
@@ -495,16 +1019,54 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 2. REPORT FILTERS & CONTROLS STRIP (Only for Transaction Tabs) */}
+      {/* 1.5 CFO OPENING BALANCES VERIFICATION STRIP                     */}
+      {/* ------------------------------------------------------------- */}
+      <div className={`p-3 rounded-xl border flex items-center justify-between flex-wrap gap-3 text-xs ${
+        darkMode ? 'bg-slate-900/90 border-slate-700' : 'bg-slate-50 border-slate-300 shadow-xs'
+      }`}>
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+          <span className="font-extrabold uppercase tracking-wide text-slate-700 dark:text-slate-200 text-[11px]">
+            Audited Opening Balances (FY 2026-27):
+          </span>
+          <div className="hidden lg:flex items-center gap-2 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+            <span>NS: <strong className="text-blue-600 dark:text-blue-400">Rs. {formatCurrency2Decimals(cashBookStates.NS?.openingBalance || 2387207)}</strong></span>
+            <span>•</span>
+            <span>PF: <strong className="text-emerald-600 dark:text-emerald-400">Rs. {formatCurrency2Decimals(cashBookStates.PF?.openingBalance || 408588)}</strong></span>
+            <span>•</span>
+            <span className="bg-purple-100 dark:bg-purple-950/80 px-1.5 py-0.5 rounded border border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-200">
+              FC: <strong className="font-bold">Rs. {formatCurrency2Decimals(cashBookStates.FC?.openingBalance || 77717)}</strong>
+            </span>
+            <span>•</span>
+            <span>SEC: <strong className="text-amber-600 dark:text-amber-400">Rs. {formatCurrency2Decimals(cashBookStates.SEC?.openingBalance || 357709)}</strong></span>
+            <span>•</span>
+            <span>SC: <strong className="text-sky-600 dark:text-sky-400">Rs. {formatCurrency2Decimals(cashBookStates.SC?.openingBalance || 251567)}</strong></span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowOpeningAuditModal(true)}
+          className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
+        >
+          <Edit3 className="w-3.5 h-3.5 text-amber-300" />
+          <span>Audit & Confirm Balances</span>
+        </button>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* 2. REPORT FILTERS & CONTROLS STRIP                             */}
       {/* ------------------------------------------------------------- */}
       {['CASHBOOK', 'HEAD', 'PAYEE', 'CHEQUE', 'AMOUNT'].includes(activeReportTab) && (
         <div className={`p-4 rounded-xl border space-y-3 ${
           darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-300 shadow-sm'
         }`}>
+          {/* Main Controls Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
             {/* Bank Filter */}
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Bank Account</label>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+                {activeReportTab === 'CASHBOOK' ? 'Cash Book / Bank Account' : 'Bank Account Filter'}
+              </label>
               <select
                 value={selectedBank}
                 onChange={(e) => setSelectedBank(e.target.value)}
@@ -512,20 +1074,20 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                   darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                 }`}
               >
-                <option value="ALL">🌐 All Cashbooks (Consolidated)</option>
-                <option value="Non Salary">Non-Salary (NS)</option>
-                <option value="Pupil Funds">Pupil Funds (PF)</option>
-                <option value="Fee Collection">Fee Collection (FC)</option>
-                <option value="Securities">Securities (SEC)</option>
-                <option value="Short Course">Short Course (SC)</option>
-                <option value="AAA">AAA Account (NBP)</option>
+                <option value="ALL">🌐 All Cashbooks (Consolidated Grouped)</option>
+                <option value="Non Salary">Non-Salary (NS) — BOP 6580006795600014</option>
+                <option value="Pupil Funds">Pupil Funds (PF) — BOP 6580027832200022</option>
+                <option value="Fee Collection">Fee Collection (FC) — BOP 6580027832200011</option>
+                <option value="Securities">Securities (SEC) — BOP 6580027832200044</option>
+                <option value="Short Course">Short Course (SC) — BOP 6580027832200033</option>
+                <option value="AAA">AAA Account (AA) — NBP AAA0000000000000</option>
               </select>
             </div>
 
             {/* Account Head Filter (when in HEAD tab) */}
             {activeReportTab === 'HEAD' && (
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Account Head</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Budget Account Head</label>
                 <select
                   value={selectedHead}
                   onChange={(e) => setSelectedHead(e.target.value)}
@@ -533,10 +1095,22 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                     darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 >
-                  <option value="ALL">📋 All Account Heads</option>
-                  {MASTER_ACCOUNT_HEADS.map((h, i) => (
-                    <option key={i} value={h}>{h}</option>
-                  ))}
+                  <option value="ALL">📋 All Budget Heads (Grouped by Head)</option>
+                  {accountsStore
+                    .filter((h) => {
+                      if (!headSearchQuery) return true;
+                      const q = headSearchQuery.toLowerCase();
+                      return (
+                        h.code.toLowerCase().includes(q) ||
+                        h.head.toLowerCase().includes(q) ||
+                        (h.category && h.category.toLowerCase().includes(q))
+                      );
+                    })
+                    .map((h, i) => (
+                      <option key={i} value={h.head}>
+                        {h.code} — {h.head}
+                      </option>
+                    ))}
                 </select>
               </div>
             )}
@@ -668,10 +1242,266 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             </div>
           </div>
 
-          {/* Action Bar */}
-          <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800 flex-wrap gap-2">
+          {/* HEAD TAB SPECIAL: SEARCH & MATCH FILTER BAR */}
+          {activeReportTab === 'HEAD' && (
+            <div className={`p-3 rounded-lg border flex flex-col md:flex-row items-stretch md:items-center gap-2.5 ${
+              darkMode ? 'bg-slate-950/60 border-slate-700/80' : 'bg-blue-50/50 border-blue-200'
+            }`}>
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-blue-500" />
+                <input
+                  type="text"
+                  value={headSearchQuery}
+                  onChange={(e) => setHeadSearchQuery(e.target.value)}
+                  placeholder="Match search head: e.g. A03902, Electricity, NAVTTC, Fee, Cook, Repair..."
+                  className={`w-full pl-8 pr-7 py-1.5 rounded-lg border text-xs font-bold outline-none ${
+                    darkMode ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                  }`}
+                />
+                {headSearchQuery && (
+                  <button
+                    onClick={() => setHeadSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Quick Head Presets */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+                <span className="text-[10px] font-bold text-slate-400 shrink-0">Quick Filter:</span>
+                <button
+                  onClick={() => { setHeadSearchQuery(''); setSelectedHead('ALL'); }}
+                  className={`px-2 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap ${
+                    !headSearchQuery && selectedHead === 'ALL'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'
+                  }`}
+                >
+                  All Heads (38)
+                </button>
+                <button
+                  onClick={() => { setHeadSearchQuery('NAVTTC'); setSelectedHead('ALL'); }}
+                  className={`px-2 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap ${
+                    headSearchQuery === 'NAVTTC'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'
+                  }`}
+                >
+                  NAVTTC
+                </button>
+                <button
+                  onClick={() => { setHeadSearchQuery('A03'); setSelectedHead('ALL'); }}
+                  className={`px-2 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap ${
+                    headSearchQuery === 'A03'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'
+                  }`}
+                >
+                  Non-Salary (A03)
+                </button>
+                <button
+                  onClick={() => { setHeadSearchQuery('FEE'); setSelectedHead('ALL'); }}
+                  className={`px-2 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap ${
+                    headSearchQuery === 'FEE'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'
+                  }`}
+                >
+                  Fee Collection
+                </button>
+                <button
+                  onClick={() => { setHeadSearchQuery('PUPIL'); setSelectedHead('ALL'); }}
+                  className={`px-2 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap ${
+                    headSearchQuery === 'PUPIL'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'
+                  }`}
+                >
+                  Pupil Funds
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 1.6 CFO OPENING BALANCES VERIFICATION & ADJUSTMENT MODAL        */}
+      {/* ------------------------------------------------------------- */}
+      {showOpeningAuditModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className={`w-full max-w-2xl rounded-2xl border shadow-2xl p-6 space-y-4 ${
+            darkMode ? 'bg-[#0B132B] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+          }`}>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                <h3 className="text-base font-black uppercase tracking-wide">
+                  CFO Audit: Institutional Bank Opening Balances
+                </h3>
+              </div>
+              <button
+                onClick={() => { setShowOpeningAuditModal(false); setEditingOpeningBank(null); }}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              Review and confirm the exact opening balance brought forward (b/d) for each institutional bank account as of <strong>01-Jul-2026</strong>. All cashbook statements, running balances, and sub-totals will rebalance immediately.
+            </p>
+
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              {(['NS', 'PF', 'FC', 'SEC', 'SC', 'AA'] as BankAccountKey[]).map((key) => {
+                const meta = INSTITUTIONAL_BANK_ACCOUNTS[key];
+                const currentVal = cashBookStates[key]?.openingBalance ?? meta.openingBalance;
+                const isEditing = editingOpeningBank === key;
+
+                return (
+                  <div
+                    key={key}
+                    className={`p-3.5 rounded-xl border flex items-center justify-between flex-wrap gap-3 ${
+                      key === 'FC'
+                        ? darkMode ? 'bg-purple-950/40 border-purple-800' : 'bg-purple-50/80 border-purple-300'
+                        : darkMode ? 'bg-slate-900/80 border-slate-700' : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs">{meta.shortName} ({meta.code})</span>
+                        <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                          {meta.accountNo}
+                        </span>
+                        {key === 'FC' && (
+                          <span className="px-1.5 py-0.2 text-[9px] font-black uppercase rounded bg-purple-200 text-purple-900 dark:bg-purple-900 dark:text-purple-200">
+                            Fee Collection
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                        {meta.fullName} • {meta.bankName}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {isEditing ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            value={openingInputVal}
+                            onChange={(e) => setOpeningInputVal(e.target.value)}
+                            className={`w-32 p-1.5 rounded-lg border font-mono font-bold text-xs outline-none ${
+                              darkMode ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-slate-300 text-slate-900'
+                            }`}
+                          />
+                          <button
+                            onClick={() => handleSaveOpeningBalance(key, parseFloat(openingInputVal) || 0)}
+                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg cursor-pointer"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingOpeningBank(null)}
+                            className="px-2 py-1.5 bg-slate-400 hover:bg-slate-500 text-white font-bold text-xs rounded-lg cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-sm text-slate-900 dark:text-white">
+                            Rs. {formatCurrency2Decimals(currentVal)}
+                          </span>
+                          <button
+                            onClick={() => {
+                              setEditingOpeningBank(key);
+                              setOpeningInputVal(String(currentVal));
+                            }}
+                            className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-500/10 cursor-pointer"
+                            title="Edit opening balance"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          {key === 'FC' && (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleSaveOpeningBalance('FC', 77717)}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded cursor-pointer ${
+                                  currentVal === 77717 ? 'bg-purple-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                                }`}
+                              >
+                                77,717
+                              </button>
+                              <button
+                                onClick={() => handleSaveOpeningBalance('FC', 77714)}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded cursor-pointer ${
+                                  currentVal === 77714 ? 'bg-purple-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                                }`}
+                              >
+                                77,714
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+              <button
+                onClick={() => { setShowOpeningAuditModal(false); setEditingOpeningBank(null); }}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
+              >
+                Close & Apply to Reports
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 3. REPORT DATA DISPLAY: CASHBOOK STATEMENT TAB                */}
+      {/* ------------------------------------------------------------- */}
+      {activeReportTab === 'CASHBOOK' && (
+        <CashBookStatementView
+          data={cashBookStatementData}
+          darkMode={darkMode}
+          customGvtiwLogo={customGvtiwLogo}
+          customTevtaLogo={customTevtaLogo}
+          onPrint={() => handlePrintCashBook(cashBookStatementData)}
+          onExportCSV={() => handleExportCashBookCSV(cashBookStatementData)}
+        />
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 4. REPORT DATA DISPLAY: HEAD EXPENDITURE STATEMENT TAB        */}
+      {/* ------------------------------------------------------------- */}
+      {activeReportTab === 'HEAD' && (
+        <HeadExpenditureStatementView
+          data={headExpenditureStatementData}
+          darkMode={darkMode}
+          customGvtiwLogo={customGvtiwLogo}
+          customTevtaLogo={customTevtaLogo}
+          onPrint={() => handlePrintHeadExpenditure(headExpenditureStatementData)}
+          onExportCSV={() => handleExportHeadCSV(headExpenditureStatementData)}
+        />
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 5. TABS: GENERAL TRANSACTION LISTS (PAYEE, CHEQUE, AMOUNT)    */}
+      {/* ------------------------------------------------------------- */}
+      {['PAYEE', 'CHEQUE', 'AMOUNT'].includes(activeReportTab) && (
+        <div className="space-y-4">
+          {/* Action strip */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <span className="text-xs font-mono text-slate-400 font-bold">
-              Showing {filteredVouchers.length} Transactions
+              Showing {filteredVouchers.length} Filtered Transactions
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -682,7 +1512,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 <span>Export CSV</span>
               </button>
               <button
-                onClick={() => handlePrintReport(`${activeReportTab} Financial Statement`)}
+                onClick={() => handlePrintGeneralReport(`${activeReportTab} Transaction Statement`)}
                 className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg flex items-center gap-1 shadow-md cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5 text-amber-300" />
@@ -690,16 +1520,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               </button>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* ------------------------------------------------------------- */}
-      {/* 3. REPORT DATA DISPLAY                                        */}
-      {/* ------------------------------------------------------------- */}
-
-      {/* TABS: TRANSACTION REPORTS (CASHBOOK, HEAD, PAYEE, CHEQUE, AMOUNT) */}
-      {['CASHBOOK', 'HEAD', 'PAYEE', 'CHEQUE', 'AMOUNT'].includes(activeReportTab) && (
-        <div className="space-y-4">
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
@@ -732,7 +1553,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           <div className={`rounded-xl border overflow-hidden shadow-lg ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200'}`}>
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left border-collapse min-w-[950px]">
-                <thead className="bg-slate-900 text-white font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-800">
+                <thead className="bg-[#0b2545] text-white font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-2 text-center w-12 border-r border-slate-800">Sr.#</th>
                     <th className="py-2.5 px-3 border-r border-slate-800 w-28">Voucher#</th>
@@ -791,7 +1612,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {(Object.keys(INSTITUTIONAL_BANK_ACCOUNTS) as BankAccountKey[]).map((key) => {
               const meta = INSTITUTIONAL_BANK_ACCOUNTS[key];
-              const state = INITIAL_CASHBOOK_STATES[key];
+              const state = cashBookStates[key] || INITIAL_CASHBOOK_STATES[key];
 
               return (
                 <div
@@ -921,3 +1742,4 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     </div>
   );
 };
+
