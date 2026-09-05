@@ -6,7 +6,7 @@ export const REPORT_TITLE = 'EXECUTIVE BUDGET POSITION & FINANCIAL MANAGEMENT DA
 export const FINANCIAL_YEAR = 'FINANCIAL YEAR 2026-27';
 export const DEV_WATERMARK = 'Developed by MKZ for Institute:33028 (v3.4)';
 export const SOURCE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1wU3zS6BSrCJuFqio8Az7sKkCcwuTOSeJ8GRW7FhCRls/edit?gid=240736415#gid=240736415';
-export const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwe-6OGK3AcRp8KEpSRgEYzbdikHKY32W3TAnmfnBrTXmE-28nxqsLp5kcz9t7Mzz3WvA/exec';
+export const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
 export const DEFAULT_GVTIW_LOGO = '/gvtiw-logo.jpg';
 export const DEFAULT_TEVTA_LOGO = '/tevta-logo.png';
 export const DEFAULT_GOP_LOGO = '/gop-logo.png';

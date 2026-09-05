@@ -840,12 +840,31 @@ export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
       throw new Error('No voucher entries found in Google Sheet response.');
     }
 
-    // Live Google Sheet is the authoritative single source of truth for vouchers.
-    parsedVouchers.sort((a, b) => a.srNo - b.srNo);
+    // Filter out locally deleted vouchers pending Google Sheet backend sync
+    let deletedSerials = new Set<number>();
+    try {
+      const delRaw = localStorage.getItem('gvtiw_deleted_serials_v3');
+      if (delRaw) {
+        const arr = JSON.parse(delRaw);
+        if (Array.isArray(arr)) arr.forEach((s: any) => deletedSerials.add(Number(s)));
+      }
+    } catch {}
+
+    const activeVouchers = parsedVouchers.filter((v) => !deletedSerials.has(v.srNo));
+    activeVouchers.sort((a, b) => a.srNo - b.srNo);
+
+    // If Google Sheet has permanently removed deleted rows, prune our local deleted serials list
+    if (deletedSerials.size > 0) {
+      const sheetSrNos = new Set(parsedVouchers.map((v) => v.srNo));
+      const remainingDeleted = Array.from(deletedSerials).filter((sr) => sheetSrNos.has(sr));
+      try {
+        localStorage.setItem('gvtiw_deleted_serials_v3', JSON.stringify(remainingDeleted));
+      } catch {}
+    }
 
     // Persist live synchronized vouchers to local cache and notify active UI modules
     try {
-      localStorage.setItem(STORAGE_KEY_LIVE_VOUCHERS, JSON.stringify(parsedVouchers));
+      localStorage.setItem(STORAGE_KEY_LIVE_VOUCHERS, JSON.stringify(activeVouchers));
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
       }
@@ -972,7 +991,7 @@ export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
       return 'July';
     };
 
-    for (const v of parsedVouchers) {
+    for (const v of activeVouchers) {
       const bankKey = BANK_NAME_TO_KEY[v.bankAccount];
       if (!bankKey || !newStates[bankKey]) continue;
 

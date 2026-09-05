@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { MasterVoucher, INITIAL_MASTER_VOUCHERS, INSTITUTIONAL_BANK_ACCOUNTS, BankAccountKey } from '../data/cashBookData';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { VoucherEntryModal } from './VoucherEntryModal';
+import { CorporateDeleteVoucherModal } from './CorporateDeleteVoucherModal';
 import { formatPKR } from '../lib/formatters';
 import {
   Search,
@@ -64,6 +65,11 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
   const [voucherToAmend, setVoucherToAmend] = useState<MasterVoucher | null>(null);
 
+  // Corporate Delete Modal States
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [voucherToDelete, setVoucherToDelete] = useState<MasterVoucher | null>(null);
+  const [isDeletingVoucher, setIsDeletingVoucher] = useState(false);
+
   const handleOpenNewEntry = () => {
     setVoucherToAmend(null);
     setIsEntryModalOpen(true);
@@ -90,24 +96,106 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
     const targetVoucher = vouchers.find((v) => v.srNo === srNo);
     if (!targetVoucher) return;
 
-    const confirmed = window.confirm(
-      `⚠️ PERMANENT VOUCHER DELETION (STRICT LIFO RULE):\n\nAre you sure you want to permanently delete Voucher #${targetVoucher.srNo} (${targetVoucher.voucherNo})?\n\n• Payee: ${targetVoucher.payeeName}\n• Net Cheque: Rs. ${Number(targetVoucher.chequeAmountNet).toLocaleString()}\n• Account Head: ${targetVoucher.accountHead}\n• Bank Ledger: ${targetVoucher.bankAccount}\n\nThis will reverse all financial ledger entries and restore budget balance.`
-    );
-    if (!confirmed) return;
+    setVoucherToDelete(targetVoucher);
+    setIsDeleteModalOpen(true);
+  };
 
-    setVouchers((prev) => {
-      const updated = prev.filter((v) => v.srNo !== srNo);
+  const executeCorporateDelete = async () => {
+    if (!voucherToDelete) return;
+    const targetSrNo = voucherToDelete.srNo;
+    const targetVoucher = voucherToDelete;
+
+    setIsDeletingVoucher(true);
+
+    // 1. Remove from vouchers state and update localStorage
+    const updated = vouchers.filter((v) => v.srNo !== targetSrNo);
+    setVouchers(updated);
+    try {
+      localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
+      let deletedSerials: number[] = [];
+      const delRaw = localStorage.getItem('gvtiw_deleted_serials_v3');
+      if (delRaw) {
+        try {
+          const parsed = JSON.parse(delRaw);
+          if (Array.isArray(parsed)) deletedSerials = parsed;
+        } catch {}
+      }
+      if (!deletedSerials.includes(targetSrNo)) {
+        deletedSerials.push(targetSrNo);
+      }
+      localStorage.setItem('gvtiw_deleted_serials_v3', JSON.stringify(deletedSerials));
+
+      // Reverse expenditure on account head in local store if present
       try {
-        localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
-        if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
+        const accRaw = localStorage.getItem('gvtiw_accounts_store_v30');
+        if (accRaw) {
+          const accList = JSON.parse(accRaw);
+          if (Array.isArray(accList)) {
+            const headCode = targetVoucher.accountHead.split('-')[0].trim();
+            const acc = accList.find((a: any) => a.code === headCode || targetVoucher.accountHead.includes(a.code));
+            if (acc) {
+              const amtToDeduct = targetVoucher.billAmtExclTax || targetVoucher.billAmountGross || targetVoucher.chequeAmountNet || 0;
+              acc.payments = Math.max(0, acc.payments - amtToDeduct);
+              acc.balance = acc.opening + (acc.reappr || 0) + (acc.receipts || 0) - acc.payments;
+              localStorage.setItem('gvtiw_accounts_store_v30', JSON.stringify(accList));
+            }
+          }
+        }
       } catch {}
-      return updated;
-    });
 
-    if (voucherToAmend?.srNo === srNo) {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
+        window.dispatchEvent(new Event('storage'));
+      }
+    } catch {}
+
+    if (voucherToAmend?.srNo === targetSrNo) {
       setVoucherToAmend(null);
       setIsEntryModalOpen(false);
     }
+
+    // 2. Dispatch deleteLastVoucher to Google Apps Script Web App
+    try {
+      const webAppUrl =
+        localStorage.getItem('gvtiw_admin_web_app_url') ||
+        'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
+
+      const qp = new URLSearchParams({
+        pin: '33028',
+        action: 'deleteLastVoucher',
+        command: 'deleteLastVoucher',
+        srNo: String(targetSrNo),
+        voucherNo: targetVoucher.voucherNo,
+        bankAccount: targetVoucher.bankAccount,
+        accountHead: targetVoucher.accountHead,
+        chequeAmountNet: String(targetVoucher.chequeAmountNet),
+      });
+
+      const getRes = await fetch(`${webAppUrl}?${qp.toString()}`, { method: 'GET' });
+      if (!getRes.ok) {
+        // Fallback to text/plain POST
+        await fetch(webAppUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            pin: '33028',
+            action: 'deleteLastVoucher',
+            srNo: targetSrNo,
+            voucherNo: targetVoucher.voucherNo,
+            bankAccount: targetVoucher.bankAccount,
+            accountHead: targetVoucher.accountHead,
+            chequeAmountNet: targetVoucher.chequeAmountNet,
+          }),
+        });
+      }
+    } catch {}
+
+    // Smooth pause for animation cycle
+    await new Promise((r) => setTimeout(r, 800));
+
+    setIsDeletingVoucher(false);
+    setIsDeleteModalOpen(false);
+    setVoucherToDelete(null);
   };
 
   const handleSaveVoucher = (savedVoucher: MasterVoucher, isAmend: boolean) => {
@@ -532,6 +620,24 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
         customGvtiwLogo={customGvtiwLogo}
         customTevtaLogo={customTevtaLogo}
         customGopLogo={customGopLogo}
+      />
+
+      {/* ------------------------------------------------------------- */}
+      {/* 6. MODAL: CORPORATE LIFO VOUCHER PURGE & BUSY DIALOG          */}
+      {/* ------------------------------------------------------------- */}
+      <CorporateDeleteVoucherModal
+        isOpen={isDeleteModalOpen}
+        isDeleting={isDeletingVoucher}
+        voucher={voucherToDelete}
+        onConfirm={executeCorporateDelete}
+        onClose={() => {
+          if (!isDeletingVoucher) {
+            setIsDeleteModalOpen(false);
+            setVoucherToDelete(null);
+          }
+        }}
+        customGvtiwLogo={customGvtiwLogo || undefined}
+        darkMode={darkMode}
       />
 
     </div>
