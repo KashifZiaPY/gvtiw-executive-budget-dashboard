@@ -61,6 +61,8 @@ import {
 import { MASTER_ACCOUNT_HEADS, MASTER_PAYEE_LIST } from '../data/voucherMasterLists';
 import { VoucherEntryModal } from './VoucherEntryModal';
 import { CorporateDeleteVoucherModal } from './CorporateDeleteVoucherModal';
+import { CorporateVoucherSuccessModal } from './CorporateVoucherSuccessModal';
+import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { formatPKR } from '../lib/formatters';
 import { OFFICIAL_GOOGLE_APPS_SCRIPT_V315 } from '../data/googleAppsScriptCode';
 
@@ -196,6 +198,18 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   } | null>(null);
 
   const [confirmClearModalOpen, setConfirmClearModalOpen] = useState(false);
+
+  // Corporate Voucher Success & Audit Dialogue State
+  const [voucherSuccessModalData, setVoucherSuccessModalData] = useState<{
+    voucher: MasterVoucher;
+    isAmend: boolean;
+    isBankCharge?: boolean;
+    cloudSyncSuccess?: boolean;
+    cloudMessage?: string;
+  } | null>(null);
+
+  // Payment Approval Form (PAF) Print Modal State
+  const [voucherForPAF, setVoucherForPAF] = useState<MasterVoucher | null>(null);
 
   // -------------------------------------------------------------
   // 6. BANK CHARGE FORM STATE
@@ -866,8 +880,19 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       return updated;
     });
 
-    // 2. Dispatch to Google Sheets backend
-    await triggerAppScriptCommand(
+    // 2. Immediately close entry form and present executive Corporate Voucher Success dialogue
+    setIsNewVoucherModalOpen(false);
+    setVoucherToAmend(null);
+
+    setVoucherSuccessModalData({
+      voucher: savedVoucher,
+      isAmend: isAmend,
+      cloudSyncSuccess: true,
+      cloudMessage: 'Transaction committed to master ledger. Synchronizing with Google Sheets CashBook...',
+    });
+
+    // 3. Dispatch to Google Sheets backend (with suppressPopup: true to avoid generic alert modal)
+    const res = await triggerAppScriptCommand(
       'submitNewVoucher',
       {
         mode: isAmend ? 'amend' : 'new',
@@ -892,11 +917,20 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       {
         busyTitle: isAmend ? 'Updating Voucher in Google Sheets...' : 'Posting Voucher to Google Sheets...',
         busyMessage: `Recording entry in master Vouchers sheet & CashBook (${savedVoucher.bankAccount})...`,
+        suppressPopup: true,
       }
     );
 
-    setIsNewVoucherModalOpen(false);
-    setVoucherToAmend(null);
+    // 4. Update the Corporate Voucher Success dialogue with backend response
+    setVoucherSuccessModalData((prev) =>
+      prev
+        ? {
+            ...prev,
+            cloudSyncSuccess: res.success,
+            cloudMessage: res.message || (res.success ? 'Official Google Sheets CashBook & Master Vouchers synchronized.' : undefined),
+          }
+        : null
+    );
   };
 
   // -------------------------------------------------------------
@@ -1129,13 +1163,15 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         return updated;
       });
 
-      setPopupModal({
-        isOpen: true,
-        type: 'success',
-        title: 'Bank Charge Successfully Recorded',
-        message: `Bank Charge of Rs. ${formatPKR(bcAmount)} successfully posted to ${bcAccount} (${INSTITUTIONAL_BANK_ACCOUNTS[bcAccount]?.shortName}) CashBook.\n\nAssigned Head: ${mappedAccountHead}\nVoucher No: ${generatedVoucherNo} • Serial: #${nextSr}`,
-      });
+      setIsBankChargeModalOpen(false);
       setBcAmount(0);
+      setVoucherSuccessModalData({
+        voucher: newV,
+        isAmend: false,
+        isBankCharge: true,
+        cloudSyncSuccess: true,
+        cloudMessage: `Bank Charge of Rs. ${formatPKR(bcAmount)} successfully posted to ${bcAccount} (${INSTITUTIONAL_BANK_ACCOUNTS[bcAccount]?.shortName}) CashBook. Assigned Head: ${mappedAccountHead}`,
+      });
     } else {
       setPopupModal({
         isOpen: true,
@@ -3572,6 +3608,41 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         customGvtiwLogo={customGvtiwLogo}
         darkMode={darkMode}
       />
+
+      {/* ------------------------------------------------------------- */}
+      {/* 21.9 CORPORATE VOUCHER SUCCESS & AUDIT DIALOGUE                */}
+      {/* ------------------------------------------------------------- */}
+      <CorporateVoucherSuccessModal
+        isOpen={Boolean(voucherSuccessModalData)}
+        voucher={voucherSuccessModalData?.voucher || null}
+        isAmend={voucherSuccessModalData?.isAmend || false}
+        isBankCharge={voucherSuccessModalData?.isBankCharge || false}
+        cloudSyncSuccess={voucherSuccessModalData?.cloudSyncSuccess ?? true}
+        cloudMessage={voucherSuccessModalData?.cloudMessage}
+        onClose={() => setVoucherSuccessModalData(null)}
+        onPrintPAF={(v) => setVoucherForPAF(v)}
+        onNewEntry={() => {
+          setVoucherSuccessModalData(null);
+          setVoucherToAmend(null);
+          setIsNewVoucherModalOpen(true);
+        }}
+        customGvtiwLogo={customGvtiwLogo}
+        darkMode={darkMode}
+      />
+
+      {/* ------------------------------------------------------------- */}
+      {/* 21.10 PAYMENT APPROVAL FORM (PAF) MODAL (A4 PRINT & EXPORT)    */}
+      {/* ------------------------------------------------------------- */}
+      {voucherForPAF && (
+        <PaymentApprovalForm
+          voucher={voucherForPAF}
+          onClose={() => setVoucherForPAF(null)}
+          isModal={true}
+          customGvtiwLogo={customGvtiwLogo}
+          customTevtaLogo={customTevtaLogo}
+          customGopLogo={customGopLogo}
+        />
+      )}
     </div>
   );
 };

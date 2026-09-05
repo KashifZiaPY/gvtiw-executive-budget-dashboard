@@ -4,6 +4,7 @@ import { MASTER_PAYEE_LIST, MASTER_ACCOUNT_HEADS, PayeeRecord } from '../data/vo
 import { INITIAL_ACCOUNTS } from '../data/initialData';
 import { MiniCalculatorPopover } from './MiniCalculatorPopover';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
+import { CorporateVoucherSuccessModal } from './CorporateVoucherSuccessModal';
 import {
   X,
   CheckCircle,
@@ -773,137 +774,40 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in duration-150">
       
       {/* ------------------------------------------------------------- */}
-      {/* 1. SUCCESS SUMMARY POPUP DIALOG (With Print PAF & ESC Close)  */}
+      {/* 1. CORPORATE VOUCHER SUCCESS DIALOGUE (With Print PAF & ESC)   */}
       {/* ------------------------------------------------------------- */}
       {successSummary ? (
-        <div className="bg-white dark:bg-[#0c1322] text-slate-900 dark:text-slate-100 w-full max-w-lg rounded-2xl shadow-2xl border-2 border-emerald-500 overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200">
-          <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white px-6 py-4 flex items-center justify-between border-b border-emerald-700">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300">
-                <CheckCircle className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-400/20 text-emerald-300 font-extrabold">
-                  {successSummary.isAmend ? 'Amendment Certified' : 'Voucher Certified & Posted'}
-                </span>
-                <h3 className="text-base font-black tracking-tight text-white mt-0.5">
-                  Voucher #{successSummary.srNo} Authorization Summary
-                </h3>
-              </div>
-            </div>
-            <button
-              onClick={handleCloseSuccessPopup}
-              className="p-1.5 rounded-xl hover:bg-white/10 text-emerald-200 hover:text-white transition-all cursor-pointer"
-              title="Close summary (Esc)"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="p-6 space-y-4 text-xs font-sans">
-            {/* Voucher Badge Banner */}
-            <div className="p-4 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] uppercase font-mono font-bold text-emerald-700 dark:text-emerald-400 block">
-                  Official Voucher Number
-                </span>
-                <span className="text-xl font-mono font-black text-emerald-950 dark:text-emerald-200 tracking-tight">
-                  {successSummary.voucherNo}
-                </span>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] uppercase font-mono font-bold text-slate-500 dark:text-slate-400 block">
-                  Bank Account Ledger
-                </span>
-                <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
-                  {successSummary.bankAccount}
-                </span>
-              </div>
-            </div>
-
-            {/* Breakdown List */}
-            <div className="space-y-2.5 divide-y divide-slate-100 dark:divide-slate-800">
-              <div className="pt-2 flex justify-between items-center">
-                <span className="text-slate-500 dark:text-slate-400 font-medium">Beneficiary / Payee:</span>
-                <span className="font-bold text-slate-900 dark:text-white">{successSummary.payeeName}</span>
-              </div>
-              <div className="pt-2 flex justify-between items-center">
-                <span className="text-slate-500 dark:text-slate-400 font-medium">Account Head:</span>
-                <span className="font-mono font-bold text-purple-700 dark:text-purple-300 text-[11px] max-w-[260px] truncate text-right">
-                  {successSummary.accountHead}
-                </span>
-              </div>
-              <div className="pt-2 flex justify-between items-center">
-                <span className="text-slate-500 dark:text-slate-400 font-medium">Cheque Number:</span>
-                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{successSummary.chequeNo}</span>
-              </div>
-              <div className="pt-2 flex justify-between items-center">
-                <span className="text-slate-500 dark:text-slate-400 font-medium">Gross Invoiced:</span>
-                <span className="font-mono font-bold text-slate-900 dark:text-white">
-                  Rs. {successSummary.grossBill.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-              <div className="pt-2 flex justify-between items-center">
-                <span className="font-extrabold text-emerald-800 dark:text-emerald-300">Net Cheque Disbursed:</span>
-                <span className="font-mono font-black text-emerald-700 dark:text-emerald-300 text-sm">
-                  Rs. {successSummary.netCheque.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-            </div>
-
-            <p className="text-[11px] text-slate-400 text-center font-mono pt-1">
-              Press <kbd className="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-bold text-slate-600 dark:text-slate-300">ESC</kbd> or use action buttons below:
-            </p>
-
-            {/* Action Buttons: 1. Print PAF Voucher, 2. Enter Another Voucher, 3. Close & Return */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-              <button
-                type="button"
-                onClick={() => setPrintVoucherPAF(successSummary.savedVoucherObj)}
-                className="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-lg shadow-indigo-600/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Print PAF</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setSuccessSummary(null);
-                  setPayeeName('');
-                  setPayeeSearch('');
-                  setNtnCnic('');
-                  setBillNo('');
-                  setBillDate(todayISO);
-                  setBillAmtExclTax('');
-                  setSaleTax('');
-                  setPraTaxOnBill('');
-                  setChequeNoNet('');
-                  setChequeDate(todayISO);
-                  setChequeAmtNet('');
-                  setIsManualNetOverride(false);
-                  setChequeNoIncomeTax('');
-                  setIncomeTaxAmt('');
-                  setChequeNoPra('');
-                  setPraTaxAmt('');
-                  setDescription('');
-                  setErrorMsg(null);
-                }}
-                className="w-full py-2.5 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-extrabold text-xs shadow-md transition-all cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <PlusCircle className="w-4 h-4" />
-                <span>+ New Entry</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleCloseSuccessPopup}
-                className="w-full py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-extrabold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 border border-slate-700"
-              >
-                <Check className="w-4 h-4 text-emerald-400" />
-                <span>Done &amp; Close</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <CorporateVoucherSuccessModal
+          isOpen={true}
+          voucher={successSummary.savedVoucherObj}
+          isAmend={successSummary.isAmend}
+          cloudSyncSuccess={true}
+          cloudMessage="Voucher authorized and successfully committed to master financial ledger."
+          onClose={handleCloseSuccessPopup}
+          onPrintPAF={(v) => setPrintVoucherPAF(v)}
+          onNewEntry={() => {
+            setSuccessSummary(null);
+            setPayeeName('');
+            setPayeeSearch('');
+            setNtnCnic('');
+            setBillNo('');
+            setBillDate(todayISO);
+            setBillAmtExclTax('');
+            setSaleTax('');
+            setPraTaxOnBill('');
+            setChequeNoNet('');
+            setChequeDate(todayISO);
+            setChequeAmtNet('');
+            setIsManualNetOverride(false);
+            setChequeNoIncomeTax('');
+            setIncomeTaxAmt('');
+            setChequeNoPra('');
+            setPraTaxAmt('');
+            setDescription('');
+            setErrorMsg(null);
+          }}
+          customGvtiwLogo={customGvtiwLogo}
+        />
       ) : (
         /* ------------------------------------------------------------- */
         /* 2. MAIN VOUCHER ENTRY & AMEND FORM                            */
