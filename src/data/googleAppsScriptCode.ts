@@ -971,15 +971,15 @@ function handleApiRequest_(pin, action, data) {
       var disRes = disableDailyBackup();
       return ContentService.createTextOutput(JSON.stringify(disRes)).setMimeType(ContentService.MimeType.JSON);
     }
-    else if (action === "checkBackupStatus") {
+    else if (action === "checkBackupStatus" || action === "backupStatus" || action === "getBackupStatus") {
       var statRes = checkBackupStatus();
       return ContentService.createTextOutput(JSON.stringify(statRes)).setMimeType(ContentService.MimeType.JSON);
     }
-    else if (action === "restoreSystemFromBackup") {
+    else if (action === "restoreSystemFromBackup" || action === "restoreBackup") {
       var restRes = restoreSystemFromBackup(data.backupPoint);
       return ContentService.createTextOutput(JSON.stringify(restRes)).setMimeType(ContentService.MimeType.JSON);
     }
-    else if (action === "sortCashbookByDate") {
+    else if (action === "sortCashbookByDate" || action === "sortCashbooksByDate") {
       Object.keys(BANK_ACCOUNTS).forEach(function (bankKey) {
         try {
           var acct = BANK_ACCOUNTS[bankKey];

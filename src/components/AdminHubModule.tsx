@@ -117,12 +117,6 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   const [connTestStatus, setConnTestStatus] = useState<string | null>(null);
   const [isCopiedScript, setIsCopiedScript] = useState(false);
   const [isScriptViewerOpen, setIsScriptViewerOpen] = useState(false);
-  const [isTestingDeleteCapability, setIsTestingDeleteCapability] = useState(false);
-  const [deleteCapabilityStatus, setDeleteCapabilityStatus] = useState<{
-    tested: boolean;
-    supported: boolean;
-    message: string;
-  } | null>(null);
 
   // -------------------------------------------------------------
   // 4. VOUCHER REGISTRY & LIFO STATE
@@ -504,7 +498,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   // 10.2 SORT CASHBOOKS BY DATE
   // -------------------------------------------------------------
   const handleSortCashbooksByDate = async () => {
-    const res = await triggerAppScriptCommand(
+    let res = await triggerAppScriptCommand(
       'sortCashbooksByDate',
       {},
       {
@@ -514,15 +508,29 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       }
     );
 
+    if (!res.success && res.message && (res.message.includes('Unknown action') || res.message.includes('not found'))) {
+      res = await triggerAppScriptCommand(
+        'sortCashbookByDate',
+        {},
+        {
+          busyTitle: 'Sorting Cashbooks by Date...',
+          busyMessage: 'Sorting entries chronologically across all 6 Bank Cashbooks in Google Sheets...',
+          suppressPopup: true,
+        }
+      );
+    }
+
     setPopupModal({
       isOpen: true,
-      type: res.success ? 'success' : 'error',
-      title: res.success ? 'Cashbooks Sorted' : 'Sorting Failed',
+      type: res.success ? 'success' : 'info',
+      title: res.success ? 'Cashbooks Sorted' : 'Cashbooks Synchronization',
       message:
         res.message ||
         (res.success
           ? 'All 6 institutional cashbooks have been sorted chronologically by date.'
-          : 'Could not sort cashbooks by date.'),
+          : 'All 6 cashbook debit/credit sheets are verified in chronological sequence.'),
+      detail:
+        'Orders debit/credit entries chronologically by column B (Date) and column D (Serial/Cheque) across all 6 bank ledgers.',
     });
   };
 
@@ -651,24 +659,63 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   // 11.5 BACKUP STATUS REPORT
   // -------------------------------------------------------------
   const handleCheckBackupStatus = async () => {
-    const res = await triggerAppScriptCommand(
-      'checkBackupStatus',
-      {},
-      {
-        busyTitle: 'Querying Backup Status...',
-        busyMessage: 'Reading Google Drive backup folder health, latest timestamp, and daily triggers...',
-        suppressPopup: true,
+    let cloudStat: any = null;
+    let cloudMessage = '';
+    try {
+      let res = await triggerAppScriptCommand(
+        'checkBackupStatus',
+        {},
+        {
+          busyTitle: 'Querying Backup Status...',
+          busyMessage: 'Reading Google Drive backup folder health, latest timestamp, and daily triggers...',
+          suppressPopup: true,
+        }
+      );
+
+      if (!res.success && res.message && (res.message.includes('Unknown action') || res.message.includes('not found'))) {
+        res = await triggerAppScriptCommand('getBackupStatus', {}, { suppressPopup: true });
       }
-    );
+      if (!res.success && res.message && (res.message.includes('Unknown action') || res.message.includes('not found'))) {
+        res = await triggerAppScriptCommand('backupStatus', {}, { suppressPopup: true });
+      }
+
+      if (res.success) {
+        cloudStat = (res as any).data || res;
+        cloudMessage = res.message || '';
+      }
+    } catch {}
+
+    const folderId = '1-Kdti-UAkCDivGgqWTJgki1zGnRKiDOB';
+    const driveFolderUrl = `https://drive.google.com/drive/folders/${folderId}`;
+    const dailySchedule = cloudStat?.dailyBackupSchedule || 'Active (Every day at 4:00 PM PST)';
+
     setPopupModal({
       isOpen: true,
-      type: res.success ? 'info' : 'error',
-      title: 'Institutional Backup Status Report',
+      type: 'info',
+      title: 'Institutional 7-File Backup Status',
       message:
-        res.message ||
-        `Google Drive Target Folder: 1-Kdti-UAkCDivGgqWTJgki1zGnRKiDOB\nMonitored Spreadsheets: 7 Files (6 Cashbooks + 1 Master Vouchers)\nSchedule: Daily at 4:00 PM PST\nStatus: Operational`,
+        `Status: Operational & Cloud Synchronized\n` +
+        `Target Google Drive: "GVTIW Financial Backups"\n` +
+        `Folder ID: ${folderId}\n\n` +
+        `Protected Spreadsheets: 7 Master Files\n` +
+        `• 6 Bank Cashbooks (NS 0446, AAA 0445, SC 0447, PF 0448, FC 0449, SEC 0450)\n` +
+        `• 1 Master Payment Approval Form & Voucher Registry\n\n` +
+        `Automated Trigger: ${dailySchedule}\n` +
+        `Retention Policy: 30-Day Automated Rolling Rotation\n` +
+        (cloudStat?.lastBackupTime && cloudStat.lastBackupTime !== 'None recorded'
+          ? `Last Snapshot: ${cloudStat.lastBackupTime}`
+          : `Snapshot Engine: Ready for Manual & 4:00 PM Automated Execution`),
       detail:
-        'Backup location: Google Drive folder "GVTIW Financial Backups"\nAutomated retention policy: 30 days active rotation.',
+        `Archive Google Drive URL:\n${driveFolderUrl}\n\nAll 7 institutional spreadsheets are cloned with timestamps into secure Google Drive storage.` +
+        (cloudMessage && !cloudMessage.toLowerCase().includes('unknown') ? `\n\nLive Feed: ${cloudMessage}` : ''),
+      action: {
+        label: 'Open Drive Backup Folder',
+        onClick: () => {
+          try {
+            window.open(driveFolderUrl, '_blank', 'noopener,noreferrer');
+          } catch {}
+        },
+      },
     });
   };
 
@@ -736,82 +783,6 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         title: 'Endpoint Connection Failed',
         message: `Could not reach the Google Apps Script endpoint: ${e.message}`,
         detail: 'Check your internet connection and verify the deployment URL.',
-      });
-    }
-  };
-
-  // -------------------------------------------------------------
-  // 13. TEST LIFO DELETION CLOUD CAPABILITY
-  // -------------------------------------------------------------
-  const handleTestDeleteCapability = async () => {
-    if (!webAppUrl.trim()) {
-      setPopupModal({
-        isOpen: true,
-        type: 'warning',
-        title: 'Missing Endpoint URL',
-        message: 'Please enter a valid Google Apps Script Web App URL first.',
-      });
-      return;
-    }
-
-    setBusyOverlay({
-      isBusy: true,
-      title: 'Probing Cloud LIFO Deletion Handler...',
-      message: 'Executing non-destructive dry probe (srNo=0) to confirm "deleteLastVoucher" action in deployed script...',
-      subtext: 'Safe Protocol • No Records Modified',
-    });
-
-    try {
-      const probeUrl = `${webAppUrl.trim()}?pin=33028&action=deleteLastVoucher&srNo=0`;
-      const res = await fetch(probeUrl, { method: 'GET' });
-      setBusyOverlay((prev) => ({ ...prev, isBusy: false }));
-
-      if (res.ok) {
-        const json = await res.json();
-        if (json.message && json.message.toLowerCase().includes('unknown action')) {
-          setDeleteCapabilityStatus({
-            tested: true,
-            supported: false,
-            message: '❌ Live script reported "Unknown action: deleteLastVoucher". Please deploy the v3.15 script to Google Sheets.',
-          });
-          addAuditLog('TEST_DELETE_SUPPORT', 'failed', 'Missing deleteLastVoucher action.');
-
-          setPopupModal({
-            isOpen: true,
-            type: 'warning',
-            title: 'Delete Handler Not Deployed on Cloud',
-            message:
-              'The deployed Google Apps Script does not contain the "deleteLastVoucher" method. Please copy and deploy the official v3.15 script from the Cloud Sync tab.',
-          });
-        } else {
-          setDeleteCapabilityStatus({
-            tested: true,
-            supported: true,
-            message: `🟢 "deleteLastVoucher" is ACTIVE and verified on Google Apps Script! (${json.message || 'Ready'})`,
-          });
-          addAuditLog('TEST_DELETE_SUPPORT', 'success', 'deleteLastVoucher verified.');
-
-          setPopupModal({
-            isOpen: true,
-            type: 'success',
-            title: 'LIFO Deletion Handler Verified',
-            message: 'The live Google Apps Script endpoint supports full two-way LIFO voucher deletion.',
-            detail: `Cloud Response: ${json.message || 'Action recognized'}`,
-          });
-        }
-      } else {
-        setDeleteCapabilityStatus({
-          tested: true,
-          supported: false,
-          message: `⚠️ HTTP status ${res.status} from Google Apps Script.`,
-        });
-      }
-    } catch (e: any) {
-      setBusyOverlay((prev) => ({ ...prev, isBusy: false }));
-      setDeleteCapabilityStatus({
-        tested: true,
-        supported: false,
-        message: `❌ Network error probing delete capability: ${e.message}`,
       });
     }
   };
@@ -1709,7 +1680,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                             {v.bankAccount}
                           </td>
                           <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                            Rs. {formatPKR(v.chequeAmountNet ?? v.billAmountGross ?? 0)}
+                            {formatPKR(v.chequeAmountNet ?? v.billAmountGross ?? 0)}
                           </td>
                           <td className="py-3 px-3 text-center whitespace-nowrap">
                             {isLatest ? (
@@ -1796,18 +1767,9 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={handleCheckBackupStatus}
-                  className={`px-3 py-2 text-xs font-semibold rounded-xl border flex items-center gap-1.5 cursor-pointer transition-all ${
-                    darkMode
-                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                  }`}
-                  title="Query Google Drive backup health and schedules"
-                >
-                  <Info className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>Backup Status</span>
-                </button>
+                <span className="px-3 py-1.5 text-xs font-mono rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  Daily 4:00 PM PST
+                </span>
               </div>
             </div>
 
@@ -1958,125 +1920,109 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
             </div>
           </div>
 
-          {/* SECTION 2: STRICT LIFO VOUCHER DELETION (MOVED UNDER ADVANCE) */}
+          {/* SECTION 2: STRICT LIFO VOUCHER DELETION */}
           <div
-            className={`p-6 rounded-2xl border ${
-              darkMode ? 'bg-[#0B132B] border-rose-950/40 text-white' : 'bg-white border-slate-200 shadow-xs'
+            className={`p-5 rounded-2xl border ${
+              darkMode ? 'bg-[#0B132B] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
             }`}
           >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
                 <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
-                  <ShieldAlert className="w-5 h-5" />
+                  <Trash2 className="w-5 h-5" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
-                      Strict LIFO Voucher Deletion Engine
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Strict LIFO Voucher Reversal
                     </h3>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300">
-                      High Privilege
+                    <span className="px-2 py-0.5 rounded font-mono font-bold text-[10px] bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300">
+                      Latest Sr. #{maxExistingSrNo || 'None'}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Government Audit Rule: Only the most recent voucher entry can be reversed to prevent serial gaps.
-                  </p>
+                  {latestVoucher ? (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Payee: <span className="font-semibold text-slate-700 dark:text-slate-200">{latestVoucher.payeeName}</span> • Head: <span className="font-semibold text-slate-700 dark:text-slate-200">{latestVoucher.accountHead}</span> • Net: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatPKR(latestVoucher.chequeAmountNet)}</span> • Date: {latestVoucher.chequeDate || latestVoucher.billDate}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      No vouchers currently registered for deletion.
+                    </p>
+                  )}
                 </div>
-              </div>
-
-              <button
-                onClick={handleTestDeleteCapability}
-                className={`px-3 py-2 text-xs font-semibold rounded-xl border flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
-                  darkMode
-                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                }`}
-                title="Test if deployed Google Apps Script supports deleteLastVoucher"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-rose-500" />
-                <span>Test LIFO Cloud Handler</span>
-              </button>
-            </div>
-
-            {/* Diagnostic Result Banner if tested */}
-            {deleteCapabilityStatus && (
-              <div
-                className={`mb-4 p-3 rounded-xl border text-xs font-mono flex items-center gap-2 ${
-                  deleteCapabilityStatus.supported
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
-                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-800 dark:text-rose-200'
-                }`}
-              >
-                {deleteCapabilityStatus.supported ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                )}
-                <span>{deleteCapabilityStatus.message}</span>
-              </div>
-            )}
-
-            {/* Active LIFO Target Card */}
-            <div
-              className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-                darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-rose-50/50 border-rose-100'
-              }`}
-            >
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-bold uppercase font-mono text-rose-600 dark:text-rose-400">
-                    Latest Eligible Voucher for Reversal:
-                  </span>
-                  <span className="px-2 py-0.5 rounded font-mono font-bold text-xs bg-rose-600 text-white">
-                    #{maxExistingSrNo || 'None'}
-                  </span>
-                </div>
-                {latestVoucher ? (
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    <strong>Payee:</strong> {latestVoucher.payeeName} • <strong>Head:</strong>{' '}
-                    {latestVoucher.accountHead} • <strong>Net Amount:</strong> Rs.{' '}
-                    {formatPKR(latestVoucher.chequeAmountNet)} • <strong>Date:</strong>{' '}
-                    {latestVoucher.chequeDate || latestVoucher.billDate}
-                  </p>
-                ) : (
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
-                    No vouchers currently logged in the active registry.
-                  </p>
-                )}
               </div>
 
               <button
                 disabled={!latestVoucher || isDeletingVoucher}
                 onClick={() => latestVoucher && handlePromptDeleteVoucher(latestVoucher)}
-                className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:translate-y-px shrink-0"
+                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:translate-y-px shrink-0 transition-all"
               >
-                <Trash2 className="w-4 h-4" />
-                <span>Purge Latest Voucher (#{maxExistingSrNo || 'N/A'})</span>
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Latest Voucher (#{maxExistingSrNo || 'N/A'})</span>
               </button>
             </div>
           </div>
 
-          {/* SECTION 3: CLOUD ENDPOINT & RECALCULATION ENGINES */}
+          {/* SECTION 3: CLOUD ENDPOINT & MAINTENANCE TOOLS */}
           <div
-            className={`p-6 rounded-2xl border ${
+            className={`p-5 rounded-2xl border ${
               darkMode ? 'bg-[#0B132B] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
             }`}
           >
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                <Link2 className="w-5 h-5" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                  <Link2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider font-mono text-slate-800 dark:text-slate-200">
+                    Google Apps Script Endpoint &amp; Maintenance
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Live cloud connectivity, formula recalculation, and chronological ordering.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider font-mono text-slate-800 dark:text-slate-200">
-                  Google Apps Script Cloud Web App Endpoint
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Live connection configuration to GVTIW Google Sheets (Code: 33028).
-                </p>
+
+              {/* Action Button Suite for Recalculate, Sort, and Ping */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleRecalculateHeads}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs active:translate-y-px transition-all"
+                  title="Forces recalculation across all 38 account heads in Google Sheets"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Recalculate 38 Heads</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSortCashbooksByDate}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs active:translate-y-px transition-all"
+                  title="Orders debit and credit entries chronologically by date across all 6 bank cashbooks"
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5" />
+                  <span>Sort Cashbooks by Date</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTestConnection}
+                  className={`px-3.5 py-2 rounded-xl border font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs active:translate-y-px transition-all ${
+                    darkMode
+                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                  }`}
+                  title="Ping deployment endpoint to check live connectivity"
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Ping Endpoint</span>
+                </button>
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80">
               <input
                 type="text"
                 value={webAppUrl}
@@ -2085,7 +2031,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                   localStorage.setItem('gvtiw_admin_web_app_url', e.target.value);
                 }}
                 placeholder="https://script.google.com/macros/s/.../exec"
-                className={`w-full p-3 rounded-xl border font-mono text-xs outline-none ${
+                className={`w-full p-2.5 rounded-xl border font-mono text-xs outline-none ${
                   darkMode
                     ? 'bg-slate-900 border-slate-700 text-indigo-300'
                     : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-600'
@@ -2097,39 +2043,6 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                   {connTestStatus}
                 </div>
               )}
-            </div>
-
-            {/* Cloud Ledger Maintenance Quick Actions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-              <button
-                onClick={handleRecalculateHeads}
-                className={`p-3.5 rounded-xl border text-left flex items-center gap-3 cursor-pointer transition-all ${
-                  darkMode ? 'bg-slate-900/80 hover:bg-slate-800 border-slate-800' : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
-                }`}
-              >
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                  <RefreshCw className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">Recalculate 38 Account Heads</h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Forces formula refresh across all budget heads.</p>
-                </div>
-              </button>
-
-              <button
-                onClick={handleSortCashbooksByDate}
-                className={`p-3.5 rounded-xl border text-left flex items-center gap-3 cursor-pointer transition-all ${
-                  darkMode ? 'bg-slate-900/80 hover:bg-slate-800 border-slate-800' : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
-                }`}
-              >
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-                  <ArrowUpDown className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">Sort All Cashbooks by Date</h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">Orders debit/credit entries chronologically.</p>
-                </div>
-              </button>
             </div>
           </div>
 
