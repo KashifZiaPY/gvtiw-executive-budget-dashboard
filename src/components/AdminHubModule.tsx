@@ -101,9 +101,9 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   const [showPin, setShowPin] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
 
-  // Stored Custom PIN (defaults to institutional code 33028)
+  // Stored Custom PIN
   const [storedPin, setStoredPin] = useState<string>(() => {
-    return localStorage.getItem('gvtiw_admin_custom_pin') || '33028';
+    return localStorage.getItem('gvtiw_admin_custom_pin') || '';
   });
   const [isPinSettingsOpen, setIsPinSettingsOpen] = useState(false);
   const [newPin, setNewPin] = useState('');
@@ -296,7 +296,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       timestamp: new Date().toLocaleTimeString(),
       action: 'SYSTEM_BOOT',
       status: 'success',
-      details: 'Admin Operations Hub v3.15 initialized for GVTIW Samanabad (Code: 33028).',
+      details: 'Admin Operations Hub v3.15 initialized for GVTIW Samanabad.',
     },
   ]);
 
@@ -313,7 +313,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
   // -------------------------------------------------------------
   // 8. ROBUST GOOGLE APPS SCRIPT COMMAND DISPATCHER
-  // (With Automatic 33028 Authorization Fallback & Institutional Busy Screen)
+  // (With Institutional Busy Screen)
   // -------------------------------------------------------------
   const triggerAppScriptCommand = async (
     commandName: string,
@@ -331,7 +331,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       isBusy: true,
       title: options.busyTitle || `Processing '${normalizedCommand}'...`,
       message: options.busyMessage || 'Communicating with GVTIW Google Apps Script Cloud Engine...',
-      subtext: 'Institute Code: 33028 • Faisalabad',
+      subtext: 'GVTIW Samanabad • Faisalabad',
     });
 
     addAuditLog(normalizedCommand, 'pending', `Payload: ${JSON.stringify(params)}`);
@@ -400,25 +400,8 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     };
 
     try {
-      const currentPin = (storedPin || '33028').trim();
+      const currentPin = (storedPin || '').trim();
       let callResult = await executeCall(currentPin);
-
-      // Check if unauthorized PIN error was reported
-      const isUnauthorized =
-        callResult.json &&
-        !callResult.json.success &&
-        callResult.json.message &&
-        callResult.json.message.toLowerCase().includes('unauthorized');
-
-      // Auto-retry with institutional default 33028 if custom PIN failed
-      if (isUnauthorized && currentPin !== '33028') {
-        callResult = await executeCall('33028');
-        if (callResult.json && callResult.json.success) {
-          // Sync stored PIN back to 33028 automatically
-          setStoredPin('33028');
-          localStorage.setItem('gvtiw_admin_custom_pin', '33028');
-        }
-      }
 
       setBusyOverlay((prev) => ({ ...prev, isBusy: false }));
 
@@ -447,15 +430,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 type: 'warning',
                 title: 'Security PIN Authorization Alert',
                 message:
-                  'Google Apps Script reported: "Unauthorized Security PIN". The default institutional PIN for GVTIW Samanabad is 33028. Would you like to reset your active PIN to 33028?',
-                action: {
-                  label: 'Reset PIN to 33028 & Retry',
-                  onClick: () => {
-                    setStoredPin('33028');
-                    localStorage.setItem('gvtiw_admin_custom_pin', '33028');
-                    triggerAppScriptCommand(commandName, params, options);
-                  },
-                },
+                  'Google Apps Script reported: "Unauthorized Security PIN". Please verify your Security PIN in PIN Settings.',
               });
             } else {
               setPopupModal({
@@ -813,7 +788,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       isBusy: true,
       title: 'Pinging Google Apps Script Web App...',
       message: 'Validating live deployment, CORS accessibility, and version string...',
-      subtext: 'Institute: 33028 • Samanabad, Faisalabad',
+      subtext: 'GVTIW Samanabad • Faisalabad',
     });
 
     try {
@@ -867,33 +842,10 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   // 14. VOUCHER CREATION & AMENDMENT DISPATCH
   // -------------------------------------------------------------
   const handleSaveVoucher = async (savedVoucher: MasterVoucher, isAmend: boolean) => {
-    // 1. Update local registry
-    setVouchers((prev) => {
-      let updated: MasterVoucher[];
-      if (isAmend) {
-        updated = prev.map((v) => (v.srNo === savedVoucher.srNo ? savedVoucher : v));
-      } else {
-        updated = [savedVoucher, ...prev];
-      }
-      try {
-        localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
-        if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
-      } catch {}
-      return updated;
-    });
-
-    // 2. Immediately close entry form and present executive Corporate Voucher Success dialogue
     setIsNewVoucherModalOpen(false);
     setVoucherToAmend(null);
 
-    setVoucherSuccessModalData({
-      voucher: savedVoucher,
-      isAmend: isAmend,
-      cloudSyncSuccess: true,
-      cloudMessage: 'Transaction committed to master ledger. Synchronizing with Google Sheets CashBook...',
-    });
-
-    // 3. Dispatch to Google Sheets backend (with suppressPopup: true to avoid generic alert modal)
+    // 1. Dispatch to Google Sheets backend
     const res = await triggerAppScriptCommand(
       'submitNewVoucher',
       {
@@ -923,16 +875,37 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       }
     );
 
-    // 4. Update the Corporate Voucher Success dialogue with backend response
-    setVoucherSuccessModalData((prev) =>
-      prev
-        ? {
-            ...prev,
-            cloudSyncSuccess: res.success,
-            cloudMessage: res.message || (res.success ? 'Official Google Sheets CashBook & Master Vouchers synchronized.' : undefined),
-          }
-        : null
-    );
+    // 2. Only show success dialogue and commit local state if backend returned success
+    if (res.success) {
+      setVouchers((prev) => {
+        let updated: MasterVoucher[];
+        if (isAmend) {
+          updated = prev.map((v) => (v.srNo === savedVoucher.srNo ? savedVoucher : v));
+        } else {
+          updated = [savedVoucher, ...prev];
+        }
+        try {
+          localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
+          if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
+        } catch {}
+        return updated;
+      });
+
+      setVoucherSuccessModalData({
+        voucher: savedVoucher,
+        isAmend: isAmend,
+        cloudSyncSuccess: true,
+        cloudMessage: res.message || 'Official Google Sheets CashBook & Master Vouchers synchronized.',
+      });
+    } else {
+      setVoucherSuccessModalData(null);
+      setPopupModal({
+        isOpen: true,
+        type: 'error',
+        title: isAmend ? 'Voucher Amendment Failed' : 'Voucher Save Failed',
+        message: res.message || 'The Google Sheets backend rejected this transaction or reported an authorization failure.',
+      });
+    }
   };
 
   // -------------------------------------------------------------
@@ -1270,7 +1243,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanInput = pinInput.trim();
-    if (cleanInput === storedPin || cleanInput === '33028') {
+    if (cleanInput && cleanInput === storedPin) {
       setIsUnlocked(true);
       sessionStorage.setItem('gvtiw_admin_session', 'unlocked');
       setPinError(null);
@@ -1311,12 +1284,11 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     }, 1500);
   };
 
-  const handleResetPinToDefault = () => {
-    const defaultPin = '33028';
-    setStoredPin(defaultPin);
-    localStorage.setItem('gvtiw_admin_custom_pin', defaultPin);
-    setPinChangeMsg('✅ PIN reset to institutional default (33028).');
-    addAuditLog('PIN_RESET', 'success', 'Admin PIN reset to default 33028.');
+  const handleClearPin = () => {
+    setStoredPin('');
+    localStorage.removeItem('gvtiw_admin_custom_pin');
+    setPinChangeMsg('PIN configuration cleared.');
+    addAuditLog('PIN_CLEAR', 'success', 'Admin custom PIN cleared.');
     setTimeout(() => {
       setIsPinSettingsOpen(false);
       setPinChangeMsg(null);
@@ -1385,10 +1357,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
               Govt. Vocational Training Institute (W) Samanabad, Faisalabad
               <br />
-              <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
-                Institute Code: 33028
-              </span>{' '}
-              • Punjab TEVTA
+              Punjab TEVTA
             </p>
           </div>
 
@@ -1403,7 +1372,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                   setPinInput(e.target.value);
                   setPinError(null);
                 }}
-                placeholder="Enter Security PIN (Default: 33028)"
+                placeholder="Enter Security PIN"
                 className={`w-full pl-10 pr-10 py-3 text-center text-sm font-mono tracking-widest font-bold rounded-xl border outline-none transition-all ${
                   darkMode
                     ? 'bg-slate-900 border-slate-700 text-amber-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20'
@@ -1480,7 +1449,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                   Live Synchronized (v3.15)
                 </span>
                 <span className="text-xs text-slate-500 dark:text-slate-400 font-mono font-bold">
-                  Institute Code: <strong className="text-indigo-600 dark:text-indigo-400">33028</strong>
+                  Govt. Vocational Training Institute (W)
                 </span>
                 <span className="text-xs text-slate-400 dark:text-slate-500 font-mono hidden sm:inline">
                   • Samanabad, Faisalabad
@@ -1518,7 +1487,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
               title="Manage Administrative PIN"
             >
               <KeyRound className="w-3.5 h-3.5 text-amber-500" />
-              <span>PIN: {storedPin === '33028' ? '33028 (Default)' : 'Custom'}</span>
+              <span>PIN: {storedPin ? 'Configured' : 'Not Set'}</span>
             </button>
 
             {/* Lock Session Button */}
@@ -2961,7 +2930,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/40 text-indigo-300 font-mono text-[10px] font-extrabold uppercase mb-2">
             <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping inline-block" />
-            <span>GVTIW Samanabad Faisalabad • Code: 33028</span>
+            <span>GVTIW Samanabad Faisalabad</span>
           </div>
 
           <h4 className="text-base sm:text-lg font-bold text-white tracking-wide mb-1">
@@ -3003,7 +2972,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
               </div>
               <div className="space-y-1 flex-1">
                 <div className="text-[10px] uppercase font-mono font-bold tracking-wider text-slate-400">
-                  Institutional Audit Notice • 33028
+                  Institutional Audit Notice
                 </div>
                 <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
                   {popupModal.title}
@@ -3129,13 +3098,12 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
             >
               <span className="text-slate-500 dark:text-slate-400 font-medium">Active PIN Status:</span>
               <span className="font-mono font-bold text-indigo-600 dark:text-amber-400">
-                {storedPin === '33028' ? 'Default Institute PIN (33028)' : `Custom PIN: ${storedPin}`}
+                {storedPin ? `Active PIN: ${storedPin}` : 'No PIN Configured'}
               </span>
             </div>
 
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-              Note: The Google Apps Script Cloud Web App defaults to institutional code{' '}
-              <strong className="font-mono text-indigo-600 dark:text-indigo-400">33028</strong>.
+              Note: The Google Apps Script Cloud Web App authenticates transactions using your master Security PIN.
             </p>
 
             <form onSubmit={handleSaveNewPin} className="space-y-3 text-xs">
@@ -3182,10 +3150,10 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
               <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
-                  onClick={handleResetPinToDefault}
-                  className="px-3 py-2 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                  onClick={handleClearPin}
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold cursor-pointer transition-colors"
                 >
-                  Reset to 33028
+                  Clear PIN
                 </button>
 
                 <div className="flex gap-2">
