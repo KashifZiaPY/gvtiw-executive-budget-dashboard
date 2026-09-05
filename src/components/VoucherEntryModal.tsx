@@ -949,33 +949,73 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
             </div>
           )}
 
-          {/* Executive Header */}
-          <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-indigo-950/50 select-none">
+          {/* Executive Header (TEVTA Logo Left, Proper Institute & Owner Center, GVTIW Logo Right) */}
+          <div className="bg-gradient-to-r from-indigo-950 via-indigo-900 to-slate-900 text-white px-5 sm:px-6 py-4 flex items-center justify-between gap-3 border-b border-indigo-950/60 select-none">
+            {/* Left: TEVTA Logo */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-amber-300 font-mono text-lg shadow-inner">
-                {isAmend ? '✏️' : '📝'}
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 uppercase">
-                    {isAmend ? 'AMENDMENT MODE' : 'OFFICIAL ENTRY'}
-                  </span>
-                  <span className="text-xs text-indigo-200 font-mono font-medium">Govt. Certified v3.14</span>
-                </div>
-                <h3 className="text-base sm:text-lg font-black tracking-tight text-white mt-0.5">
-                  {isAmend
-                    ? `Amend Voucher #${voucherToAmend?.srNo} — ${voucherToAmend?.voucherNo}`
-                    : 'New Voucher Entry & Payment Authorization'}
-                </h3>
+              <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center shrink-0 shadow-md border border-white/20 overflow-hidden">
+                <img
+                  src={customTevtaLogo || '/tevta-logo.png'}
+                  alt="TEVTA Punjab"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    const el = e.target as HTMLElement;
+                    el.style.display = 'none';
+                    if (el.parentElement) {
+                      el.parentElement.innerHTML = '<span class="text-[10px] font-bold font-mono text-emerald-800">TEVTA</span>';
+                    }
+                  }}
+                />
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-all cursor-pointer border border-transparent hover:border-white/10"
-              title="Close form (Esc)"
-            >
-              <X className="w-5 h-5" />
-            </button>
+
+            {/* Center: Proper Institute Name, Form Title & Owner Text */}
+            <div className="flex-1 text-center px-2">
+              <h2 className="text-sm sm:text-base font-extrabold tracking-tight text-white leading-tight">
+                Government Vocational Training Institute (W), Samanabad, Faisalabad
+              </h2>
+              <div className="flex items-center justify-center gap-2 mt-0.5 flex-wrap">
+                <h3 className="text-xs sm:text-sm font-bold text-amber-300">
+                  {isAmend
+                    ? `Amend Voucher #${voucherToAmend?.srNo} (${voucherToAmend?.voucherNo})`
+                    : 'New Voucher Entry & Payment Authorization'}
+                </h3>
+                {isAmend && (
+                  <span className="text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/40 uppercase">
+                    Amendment Mode
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] font-mono text-indigo-200/90 mt-0.5">
+                System developed by MKZ v3.14
+              </div>
+            </div>
+
+            {/* Right: GVTIW Logo & Close Button */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white p-1 flex items-center justify-center shrink-0 shadow-md border border-white/20 overflow-hidden">
+                <img
+                  src={customGvtiwLogo || '/gvtiw-logo.jpg'}
+                  alt="GVTIW Logo"
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    const el = e.target as HTMLElement;
+                    el.style.display = 'none';
+                    if (el.parentElement) {
+                      el.parentElement.innerHTML = '<span class="text-[10px] font-bold font-mono text-indigo-900">GVTIW</span>';
+                    }
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-all cursor-pointer border border-transparent hover:border-white/10"
+                title="Close form (Esc)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Scrollable Form Body */}
