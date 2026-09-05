@@ -3,7 +3,9 @@ import {
   BankAccountMetadata,
   INSTITUTIONAL_BANK_ACCOUNTS,
   INITIAL_CASHBOOK_STATES,
+  AUTHENTIC_CASHBOOK_RECEIPTS,
   CashBookAccountState,
+  CashBookEntry,
   MasterVoucher,
 } from '../data/cashBookData';
 import { AccountHead } from '../types';
@@ -483,6 +485,7 @@ export function generateCashBookStatementData(
 /**
  * GENERATE HEAD EXPENDITURE STATEMENT DATA
  * Supporting single budget head view and grouped all heads view
+ * Reconciles both Sanctioned Budget Allocations, Receipts/Grants, and Payments
  */
 export function generateHeadExpenditureStatementData(
   vouchers: MasterVoucher[],
@@ -491,7 +494,8 @@ export function generateHeadExpenditureStatementData(
   selectedBank: string,
   fromDate?: string,
   toDate?: string,
-  searchQuery?: string
+  searchQuery?: string,
+  cashBookStates?: Record<BankAccountKey, CashBookAccountState>
 ): HeadExpenditureStatementData {
   const isGroupedAllHeads = selectedHead === 'ALL';
   const fromTs = fromDate ? parseDateToTimestamp(fromDate) : 0;
@@ -526,12 +530,75 @@ export function generateHeadExpenditureStatementData(
   let grandExpenditure = 0;
   let totalTxCount = 0;
 
+  // Collect all receipts across bank states or fallback
+  const allAvailableReceipts: Array<{
+    id: string;
+    date: string;
+    month: string;
+    vNo?: string;
+    voucherSerial?: string;
+    particulars: string;
+    paidToBy: string;
+    head: string;
+    chequeNo: string;
+    receipts: number;
+    accountKey: BankAccountKey;
+  }> = [];
+
+  const bankKeysToScan: BankAccountKey[] = ['NS', 'PF', 'FC', 'SEC', 'SC', 'AA'];
+
+  for (const bKey of bankKeysToScan) {
+    if (cashBookStates && cashBookStates[bKey]?.entries && cashBookStates[bKey].entries.length > 0) {
+      for (const e of cashBookStates[bKey].entries) {
+        if (e.entryType === 'RECEIPT' && e.receipts > 0) {
+          allAvailableReceipts.push({
+            id: e.id,
+            date: e.date,
+            month: e.month || 'July',
+            vNo: e.vNo,
+            voucherSerial: e.voucherSerial,
+            particulars: e.particulars || '',
+            paidToBy: e.paidToBy || '',
+            head: e.accountHead || '',
+            chequeNo: e.chequeNo || '',
+            receipts: e.receipts,
+            accountKey: bKey,
+          });
+        }
+      }
+    } else {
+      // Fallback to authentic baseline receipts
+      const recs = AUTHENTIC_CASHBOOK_RECEIPTS[bKey] || [];
+      for (const r of recs) {
+        allAvailableReceipts.push({
+          id: r.id,
+          date: r.date,
+          month: r.month,
+          vNo: r.vNo,
+          voucherSerial: r.voucherSerial,
+          particulars: r.particulars || '',
+          paidToBy: r.paidToBy || '',
+          head: r.head || '',
+          chequeNo: r.chq || '',
+          receipts: r.amount,
+          accountKey: bKey,
+        });
+      }
+    }
+  }
+
   for (const acc of targetHeads) {
-    // Collect all vouchers matching this head & bank
+    const accCodeUpper = acc.code.toUpperCase().trim();
+    const accHeadUpper = acc.head.toUpperCase().trim();
+    const headTitleOnly = (acc.head.includes('-') ? acc.head.split('-')[1] : acc.head).toUpperCase().trim();
+
+    // 1. Collect all payment vouchers matching this head & bank
     const allHeadVouchers = vouchers.filter((v) => {
+      const vHeadUpper = (v.accountHead || '').toUpperCase().trim();
       const matchHead =
-        v.accountHead.toLowerCase() === acc.head.toLowerCase() ||
-        v.accountHead.toUpperCase().startsWith(acc.code.toUpperCase());
+        vHeadUpper === accHeadUpper ||
+        vHeadUpper.startsWith(accCodeUpper) ||
+        (accCodeUpper.length >= 4 && vHeadUpper.includes(accCodeUpper));
       if (!matchHead) return false;
 
       if (selectedBank !== 'ALL' && !v.bankAccount.includes(selectedBank)) {
@@ -540,58 +607,154 @@ export function generateHeadExpenditureStatementData(
       return true;
     });
 
-    allHeadVouchers.sort((a, b) => {
-      const ta = parseDateToTimestamp(a.chequeDate || a.billDate);
-      const tb = parseDateToTimestamp(b.chequeDate || b.billDate);
-      return ta - tb;
+    // 2. Collect all receipts matching this head
+    const allHeadReceipts = allAvailableReceipts.filter((r) => {
+      const rHeadUpper = (r.head || '').toUpperCase().trim();
+      const rPartUpper = (r.particulars || '').toUpperCase().trim();
+
+      const matchDirect =
+        rHeadUpper === accHeadUpper ||
+        rHeadUpper.startsWith(accCodeUpper) ||
+        (accCodeUpper.length >= 4 && rHeadUpper.includes(accCodeUpper));
+
+      const matchParticulars = accCodeUpper.length >= 4 && rPartUpper.includes(accCodeUpper);
+
+      const matchTitleKeyword = headTitleOnly.length >= 4 && (rHeadUpper.includes(headTitleOnly) || rPartUpper.includes(headTitleOnly));
+
+      const matchBankSpecific =
+        (acc.code === 'A00000PF' && (r.accountKey === 'PF' || rPartUpper.includes('PUPIL'))) ||
+        (acc.code === 'A00000SC' && (r.accountKey === 'SC' || rPartUpper.includes('SHORT COURSE'))) ||
+        (acc.code === 'A00000SS' && (r.accountKey === 'SEC' || rPartUpper.includes('SECURITY'))) ||
+        (acc.code === 'A00000TFC' && (r.accountKey === 'FC' || rPartUpper.includes('FEE'))) ||
+        (acc.code === 'A00000AA' && r.accountKey === 'AA');
+
+      // Bank account filter condition for receipts
+      if (selectedBank !== 'ALL') {
+        const targetBankKey = resolveBankKeyFromAccount(selectedBank);
+        // If bank is NS or AA, allow AA and NS receipts for Non-Salary heads
+        const isNonSalaryHead = acc.code.startsWith('A03') || acc.code.startsWith('A13') || acc.code.startsWith('A01');
+        if (isNonSalaryHead && (targetBankKey === 'NS' || targetBankKey === 'AA')) {
+          // Allow AAA ceiling receipts
+        } else if (r.accountKey !== targetBankKey) {
+          return false;
+        }
+      }
+
+      return matchDirect || matchParticulars || matchTitleKeyword || matchBankSpecific;
     });
 
-    // Separate into pre-period and in-period
+    // 3. Separate into pre-period and in-period
     let prePeriodExpenditure = 0;
-    const inPeriodVouchers: MasterVoucher[] = [];
+    let prePeriodReceipts = 0;
 
+    interface UnifiedTx {
+      id: string;
+      date: string;
+      accountKey: string;
+      voucherNo: string;
+      paidToBy: string;
+      accountHead: string;
+      particulars: string;
+      chequeNo: string;
+      receipts: number;
+      payments: number;
+      entryType: 'RECEIPT' | 'PAYMENT';
+      timestamp: number;
+    }
+
+    const inPeriodTransactions: UnifiedTx[] = [];
+
+    // Process Receipts
+    for (const r of allHeadReceipts) {
+      const rTs = parseDateToTimestamp(r.date);
+      if (fromTs > 0 && rTs < fromTs) {
+        prePeriodReceipts += r.receipts;
+      } else if (rTs <= toTs) {
+        inPeriodTransactions.push({
+          id: `HEAD-${acc.code}-REC-${r.id || Math.random().toString(36).substring(2, 7)}`,
+          date: r.date,
+          accountKey: r.accountKey,
+          voucherNo: r.vNo || r.voucherSerial || 'RECEIPT',
+          paidToBy: r.paidToBy || 'Govt. / TEVTA / Trainees',
+          accountHead: acc.head,
+          particulars: r.particulars,
+          chequeNo: r.chequeNo || '—',
+          receipts: r.receipts,
+          payments: 0,
+          entryType: 'RECEIPT',
+          timestamp: rTs,
+        });
+      }
+    }
+
+    // Process Payments
     for (const v of allHeadVouchers) {
-      const vDateStr = v.chequeDate || v.billDate;
+      const vDateStr = v.chequeDate || v.billDate || '03-Jul-2026';
       const vTs = parseDateToTimestamp(vDateStr);
       const amt = v.billAmountGross || v.chequeAmountNet || 0;
 
       if (fromTs > 0 && vTs < fromTs) {
         prePeriodExpenditure += amt;
       } else if (vTs <= toTs) {
-        inPeriodVouchers.push(v);
+        const bankKey = resolveBankKeyFromAccount(v.bankAccount);
+        inPeriodTransactions.push({
+          id: `HEAD-${acc.code}-V${v.srNo}`,
+          date: vDateStr,
+          accountKey: bankKey,
+          voucherNo: v.voucherNo || `VR-2026/${v.srNo}`,
+          paidToBy: v.payeeName,
+          accountHead: v.accountHead || acc.head,
+          particulars: v.description,
+          chequeNo: v.chequeNoNet || '—',
+          receipts: 0,
+          payments: amt,
+          entryType: 'PAYMENT',
+          timestamp: vTs,
+        });
       }
     }
 
-    const allocation = acc.opening;
-    const additions = (acc.reappr || 0) + (acc.receipts || 0);
-    const totalBudgetCeiling = allocation + additions;
-    const effectiveOpeningAllocation = totalBudgetCeiling - prePeriodExpenditure;
+    // Sort unified transactions chronologically
+    inPeriodTransactions.sort((a, b) => {
+      if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+      // If same date, receipts credit before payments debit
+      if (a.entryType === 'RECEIPT' && b.entryType === 'PAYMENT') return -1;
+      if (a.entryType === 'PAYMENT' && b.entryType === 'RECEIPT') return 1;
+      return 0;
+    });
+
+    const allocation = acc.opening || 0;
+    const effectiveOpeningAllocation = allocation + prePeriodReceipts - prePeriodExpenditure;
     let runningBudget = effectiveOpeningAllocation;
-    let inPeriodExpenditure = 0;
+    let inPeriodReceiptsSum = 0;
+    let inPeriodExpenditureSum = 0;
 
     const groupRows: CashBookStatementRow[] = [];
 
-    for (let i = 0; i < inPeriodVouchers.length; i++) {
-      const v = inPeriodVouchers[i];
-      const amt = v.billAmountGross || v.chequeAmountNet || 0;
-      inPeriodExpenditure += amt;
-      runningBudget = runningBudget - amt;
+    for (let i = 0; i < inPeriodTransactions.length; i++) {
+      const tx = inPeriodTransactions[i];
+      if (tx.entryType === 'RECEIPT') {
+        inPeriodReceiptsSum += tx.receipts;
+        runningBudget += tx.receipts;
+      } else {
+        inPeriodExpenditureSum += tx.payments;
+        runningBudget -= tx.payments;
+      }
 
-      const bankKey = resolveBankKeyFromAccount(v.bankAccount);
       const row: CashBookStatementRow = {
-        id: `HEAD-${acc.code}-V${v.srNo}`,
+        id: tx.id,
         srNo: i + 1,
-        date: v.chequeDate || v.billDate || '03-Jul-2026',
-        accountKey: bankKey,
-        voucherNo: v.voucherNo || `V#${v.srNo}`,
-        paidToBy: v.payeeName,
-        accountHead: v.accountHead,
-        particulars: v.description,
-        chequeNo: v.chequeNoNet || '—',
-        receipts: 0,
-        payments: amt,
+        date: tx.date,
+        accountKey: tx.accountKey,
+        voucherNo: tx.voucherNo,
+        paidToBy: tx.paidToBy,
+        accountHead: tx.accountHead,
+        particulars: tx.particulars,
+        chequeNo: tx.chequeNo,
+        receipts: tx.receipts,
+        payments: tx.payments,
         balance: Math.round(runningBudget * 100) / 100,
-        entryType: 'PAYMENT',
+        entryType: tx.entryType,
       };
       groupRows.push(row);
       allRows.push(row);
@@ -600,25 +763,31 @@ export function generateHeadExpenditureStatementData(
     const closingUnspent = Math.round(runningBudget * 100) / 100;
 
     // In grouped mode, include heads with allocation or in-period/pre-period activity
-    if (!isGroupedAllHeads || groupRows.length > 0 || Math.abs(allocation) > 0 || prePeriodExpenditure > 0) {
+    if (
+      !isGroupedAllHeads ||
+      groupRows.length > 0 ||
+      Math.abs(allocation) > 0 ||
+      prePeriodExpenditure > 0 ||
+      prePeriodReceipts > 0
+    ) {
       groups.push({
         headCode: acc.code,
         headName: acc.head,
         allocationOpening: Math.round(effectiveOpeningAllocation * 100) / 100,
-        receiptsReappr: Math.round(additions * 100) / 100,
-        totalExpenditure: Math.round(inPeriodExpenditure * 100) / 100,
+        receiptsReappr: Math.round(inPeriodReceiptsSum * 100) / 100,
+        totalExpenditure: Math.round(inPeriodExpenditureSum * 100) / 100,
         closingUnspentBalance: closingUnspent,
         rows: groupRows,
       });
 
       grandAllocation += effectiveOpeningAllocation;
-      grandReceiptsReappr += additions;
-      grandExpenditure += inPeriodExpenditure;
+      grandReceiptsReappr += inPeriodReceiptsSum;
+      grandExpenditure += inPeriodExpenditureSum;
       totalTxCount += groupRows.length;
     }
   }
 
-  const grandClosing = Math.round((grandAllocation - grandExpenditure) * 100) / 100;
+  const grandClosing = Math.round((grandAllocation + grandReceiptsReappr - grandExpenditure) * 100) / 100;
 
   let title = 'HEAD-WISE EXPENDITURE STATEMENT';
   let subtitle = searchQuery ? `Filtered by Search: "${searchQuery}"` : 'All Sanctioned Budget Heads (Grouped by Head of Account)';

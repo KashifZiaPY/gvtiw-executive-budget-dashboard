@@ -19,6 +19,10 @@ import {
   HeadExpenditureStatementView,
 } from './HeadExpenditureStatementView';
 import {
+  SearchableCombobox,
+  ComboboxOption,
+} from './SearchableCombobox';
+import {
   generateCashBookStatementData,
   generateHeadExpenditureStatementData,
   generateOfficialStatementPrintHtml,
@@ -136,6 +140,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
   // Common Filters
   const [selectedBank, setSelectedBank] = useState<string>('ALL');
+  const [bankSearchQuery, setBankSearchQuery] = useState<string>('');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
 
@@ -199,9 +204,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       selectedBank,
       fromDate,
       toDate,
-      headSearchQuery
+      headSearchQuery,
+      cashBookStates
     );
-  }, [vouchers, accountsStore, selectedHead, selectedBank, fromDate, toDate, headSearchQuery]);
+  }, [vouchers, accountsStore, selectedHead, selectedBank, fromDate, toDate, headSearchQuery, cashBookStates]);
 
   // Handle Opening Balance Adjustment
   const handleSaveOpeningBalance = (bankKey: BankAccountKey, val: number) => {
@@ -209,6 +215,160 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     setCashBookStates({ ...updated });
     setEditingOpeningBank(null);
   };
+
+  // Bank Combobox Options & Categories
+  const bankCategories = [
+    { label: 'All', value: 'ALL', count: 7 },
+    { label: 'BOP Accounts', value: 'BOP', count: 5 },
+    { label: 'NBP / Treasury', value: 'NBP', count: 1 },
+  ];
+
+  const bankComboboxOptions: ComboboxOption[] = useMemo(() => [
+    {
+      value: 'ALL',
+      label: 'All Cashbooks (Consolidated Grouped)',
+      code: 'ALL',
+      subtitle: 'Consolidated report across all 6 institutional bank accounts',
+      icon: '🌐',
+      badge: 'ALL',
+      badgeColor: 'bg-blue-600 text-white',
+      category: 'ALL',
+    },
+    {
+      value: 'Non Salary',
+      label: 'Non-Salary (NS) — BOP',
+      code: 'NS',
+      subtitle: 'BOP A/C: 6580006795600014 (Samanabad)',
+      icon: '🏛️',
+      badge: 'BOP',
+      badgeColor: 'bg-emerald-600 text-white',
+      category: 'BOP',
+    },
+    {
+      value: 'Pupil Funds',
+      label: 'Pupil Funds (PF) — BOP',
+      code: 'PF',
+      subtitle: 'BOP A/C: 6580027832200022 (Samanabad)',
+      icon: '👥',
+      badge: 'BOP',
+      badgeColor: 'bg-purple-600 text-white',
+      category: 'BOP',
+    },
+    {
+      value: 'Fee Collection',
+      label: 'Fee Collection (FC) — BOP',
+      code: 'FC',
+      subtitle: 'BOP A/C: 6580027832200011 (Samanabad)',
+      icon: '💳',
+      badge: 'BOP',
+      badgeColor: 'bg-indigo-600 text-white',
+      category: 'BOP',
+    },
+    {
+      value: 'Securities',
+      label: 'Securities (SEC) — BOP',
+      code: 'SEC',
+      subtitle: 'BOP A/C: 6580027832200044 (Samanabad)',
+      icon: '🛡️',
+      badge: 'BOP',
+      badgeColor: 'bg-amber-600 text-white',
+      category: 'BOP',
+    },
+    {
+      value: 'Short Course',
+      label: 'Short Course (SC) — BOP',
+      code: 'SC',
+      subtitle: 'BOP A/C: 6580027832200033 (Samanabad)',
+      icon: '🎓',
+      badge: 'BOP',
+      badgeColor: 'bg-teal-600 text-white',
+      category: 'BOP',
+    },
+    {
+      value: 'AAA',
+      label: 'AAA Account (AA) — NBP Treasury',
+      code: 'AA',
+      subtitle: 'NBP A/C: AAA0000000000000 (District Treasury)',
+      icon: '⚡',
+      badge: 'NBP',
+      badgeColor: 'bg-rose-600 text-white',
+      category: 'NBP',
+    },
+  ], []);
+
+  // Head Combobox Options & Categories
+  const headCategories = useMemo(() => {
+    const counts: Record<string, number> = { ALL: accountsStore.length + 1 };
+    accountsStore.forEach((h) => {
+      const cat = h.category || 'Other';
+      counts[cat] = (counts[cat] || 0) + 1;
+    });
+    return [
+      { label: 'All Heads', value: 'ALL', count: counts['ALL'] },
+      { label: 'Non-Salary (A03)', value: 'Non Salary', count: counts['Non Salary'] || 14 },
+      { label: 'NAVTTC', value: 'NAVTTC', count: counts['NAVTTC'] || 13 },
+      { label: 'Own Fund', value: 'Own Fund', count: counts['Own Fund'] || 4 },
+      { label: 'Salary', value: 'Salary', count: counts['Salary'] || 1 },
+    ];
+  }, [accountsStore]);
+
+  const headComboboxOptions: ComboboxOption[] = useMemo(() => {
+    const allOpt: ComboboxOption = {
+      value: 'ALL',
+      label: 'All Budget Heads (Grouped by Head)',
+      code: 'ALL',
+      subtitle: 'Comprehensive statement across all sanctioned budget heads',
+      icon: '📋',
+      badge: 'ALL',
+      badgeColor: 'bg-blue-600 text-white',
+      category: 'ALL',
+    };
+
+    const headOpts: ComboboxOption[] = accountsStore.map((h) => {
+      let badgeColor = 'bg-slate-700 text-white';
+      if (h.category === 'Non Salary') badgeColor = 'bg-emerald-700 text-white';
+      else if (h.category === 'NAVTTC') badgeColor = 'bg-blue-700 text-white';
+      else if (h.category === 'Own Fund' || h.head.includes('FEE') || h.head.includes('PUPIL')) badgeColor = 'bg-purple-700 text-white';
+
+      return {
+        value: h.head,
+        label: h.head,
+        code: h.code,
+        subtitle: `Category: ${h.category || 'Standard'} • Sanctioned Opening: Rs. ${formatCurrency2Decimals(h.opening || 0)}`,
+        category: h.category || 'Other',
+        badge: h.category || 'HEAD',
+        badgeColor,
+        icon: '📑',
+      };
+    });
+
+    return [allOpt, ...headOpts];
+  }, [accountsStore]);
+
+  // Payee Combobox Options
+  const payeeComboboxOptions: ComboboxOption[] = useMemo(() => {
+    const allOpt: ComboboxOption = {
+      value: 'ALL',
+      label: 'All Payees & Vendors',
+      code: 'ALL',
+      subtitle: 'Display transactions for all registered suppliers & payees',
+      icon: '👥',
+      badge: 'ALL',
+      badgeColor: 'bg-blue-600 text-white',
+    };
+
+    const opts: ComboboxOption[] = MASTER_PAYEE_LIST.map((p, idx) => ({
+      value: p.name,
+      label: p.name,
+      code: `V-${String(idx + 1).padStart(3, '0')}`,
+      subtitle: `NTN: ${p.ntn || '—'} • CNIC: ${p.cnic || '—'}`,
+      badge: 'VENDOR',
+      badgeColor: 'bg-slate-700 text-white',
+      icon: '🏢',
+    }));
+
+    return [allOpt, ...opts];
+  }, []);
 
   // Base Date & Bank Filter for General Vouchers (PAYEE, CHEQUE, AMOUNT)
   const filteredVouchers = useMemo(() => {
@@ -1057,80 +1217,112 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       {/* 2. REPORT FILTERS & CONTROLS STRIP                             */}
       {/* ------------------------------------------------------------- */}
       {['CASHBOOK', 'HEAD', 'PAYEE', 'CHEQUE', 'AMOUNT'].includes(activeReportTab) && (
-        <div className={`p-4 rounded-xl border space-y-3 ${
+        <div className={`p-4 rounded-xl border space-y-3.5 ${
           darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-300 shadow-sm'
         }`}>
           {/* Main Controls Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            {/* Bank Filter */}
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                {activeReportTab === 'CASHBOOK' ? 'Cash Book / Bank Account' : 'Bank Account Filter'}
-              </label>
-              <select
+            {/* 1. Bank Account Searchable Combobox */}
+            <div className="space-y-1.5">
+              <SearchableCombobox
+                id="bank-account-combobox"
+                label={activeReportTab === 'CASHBOOK' ? 'Cash Book / Bank Account' : 'Bank Account Filter'}
+                placeholder="Select Bank Account..."
+                searchPlaceholder="Search bank, account #, or code..."
+                options={bankComboboxOptions}
                 value={selectedBank}
-                onChange={(e) => setSelectedBank(e.target.value)}
-                className={`w-full p-2 rounded-lg border font-bold outline-none ${
-                  darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                }`}
-              >
-                <option value="ALL">🌐 All Cashbooks (Consolidated Grouped)</option>
-                <option value="Non Salary">Non-Salary (NS) — BOP 6580006795600014</option>
-                <option value="Pupil Funds">Pupil Funds (PF) — BOP 6580027832200022</option>
-                <option value="Fee Collection">Fee Collection (FC) — BOP 6580027832200011</option>
-                <option value="Securities">Securities (SEC) — BOP 6580027832200044</option>
-                <option value="Short Course">Short Course (SC) — BOP 6580027832200033</option>
-                <option value="AAA">AAA Account (AA) — NBP AAA0000000000000</option>
-              </select>
+                onChange={(val) => {
+                  setSelectedBank(val);
+                }}
+                darkMode={darkMode}
+                categories={bankCategories}
+              />
+
+              {/* Quick Bank Chips */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 pt-0.5 scrollbar-none">
+                {[
+                  { label: 'ALL', val: 'ALL' },
+                  { label: 'NS', val: 'Non Salary' },
+                  { label: 'PF', val: 'Pupil Funds' },
+                  { label: 'FC', val: 'Fee Collection' },
+                  { label: 'SEC', val: 'Securities' },
+                  { label: 'SC', val: 'Short Course' },
+                  { label: 'AAA', val: 'AAA' },
+                ].map((chip) => (
+                  <button
+                    key={chip.val}
+                    type="button"
+                    onClick={() => setSelectedBank(chip.val)}
+                    className={`px-1.5 py-0.5 text-[9px] font-mono font-bold rounded cursor-pointer transition-colors ${
+                      selectedBank === chip.val
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Account Head Filter (when in HEAD tab) */}
+            {/* 2. Budget Account Head Searchable Combobox (when in HEAD tab) */}
             {activeReportTab === 'HEAD' && (
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Budget Account Head</label>
-                <select
+              <div className="space-y-1.5">
+                <SearchableCombobox
+                  id="budget-head-combobox"
+                  label="Budget Account Head"
+                  placeholder="Select Budget Account Head..."
+                  searchPlaceholder="Search e.g. A03303, Electricity, Printing, NAVTTC..."
+                  options={headComboboxOptions}
                   value={selectedHead}
-                  onChange={(e) => setSelectedHead(e.target.value)}
-                  className={`w-full p-2 rounded-lg border font-bold outline-none ${
-                    darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
-                >
-                  <option value="ALL">📋 All Budget Heads (Grouped by Head)</option>
-                  {accountsStore
-                    .filter((h) => {
-                      if (!headSearchQuery) return true;
-                      const q = headSearchQuery.toLowerCase();
-                      return (
-                        h.code.toLowerCase().includes(q) ||
-                        h.head.toLowerCase().includes(q) ||
-                        (h.category && h.category.toLowerCase().includes(q))
-                      );
-                    })
-                    .map((h, i) => (
-                      <option key={i} value={h.head}>
-                        {h.code} — {h.head}
-                      </option>
-                    ))}
-                </select>
+                  onChange={(val) => {
+                    setSelectedHead(val);
+                    setHeadSearchQuery('');
+                  }}
+                  darkMode={darkMode}
+                  categories={headCategories}
+                />
+
+                {/* Quick Head Presets */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-0.5 pt-0.5 scrollbar-none">
+                  {[
+                    { label: 'ALL', val: 'ALL' },
+                    { label: 'Electricity (A03303)', val: 'A03303-ELECTRICITY CHARGES' },
+                    { label: 'Printing (A03902)', val: 'A03902-PRINTING AND PUBLICATION' },
+                    { label: 'Service Charges', val: 'A03933-SERVICE CHARGES' },
+                    { label: 'NAVTTC (A03970)', val: 'A03970-OTHERS(NAVTTC)' },
+                    { label: 'Admission Fee', val: 'A012-ADMISSION FEE' },
+                  ].map((chip, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedHead(chip.val)}
+                      className={`px-1.5 py-0.5 text-[9px] font-bold rounded cursor-pointer whitespace-nowrap transition-colors ${
+                        selectedHead === chip.val
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
             {/* Payee Filter (when in PAYEE tab) */}
             {activeReportTab === 'PAYEE' && (
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Payee / Supplier</label>
-                <select
+              <div className="space-y-1.5">
+                <SearchableCombobox
+                  id="payee-combobox"
+                  label="Payee / Supplier Filter"
+                  placeholder="Select Payee / Vendor..."
+                  searchPlaceholder="Search supplier or payee name..."
+                  options={payeeComboboxOptions}
                   value={selectedPayee}
-                  onChange={(e) => setSelectedPayee(e.target.value)}
-                  className={`w-full p-2 rounded-lg border font-bold outline-none ${
-                    darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
-                >
-                  <option value="ALL">👥 All Payees</option>
-                  {MASTER_PAYEE_LIST.map((p, i) => (
-                    <option key={i} value={p.name}>{p.name}</option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedPayee(val)}
+                  darkMode={darkMode}
+                />
               </div>
             )}
 
@@ -1241,89 +1433,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               </div>
             </div>
           </div>
-
-          {/* HEAD TAB SPECIAL: SEARCH & MATCH FILTER BAR */}
-          {activeReportTab === 'HEAD' && (
-            <div className={`p-3 rounded-lg border flex flex-col md:flex-row items-stretch md:items-center gap-2.5 ${
-              darkMode ? 'bg-slate-950/60 border-slate-700/80' : 'bg-blue-50/50 border-blue-200'
-            }`}>
-              <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-blue-500" />
-                <input
-                  type="text"
-                  value={headSearchQuery}
-                  onChange={(e) => setHeadSearchQuery(e.target.value)}
-                  placeholder="Match search head: e.g. A03902, Electricity, NAVTTC, Fee, Cook, Repair..."
-                  className={`w-full pl-8 pr-7 py-1.5 rounded-lg border text-xs font-bold outline-none ${
-                    darkMode ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
-                  }`}
-                />
-                {headSearchQuery && (
-                  <button
-                    onClick={() => setHeadSearchQuery('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              {/* Quick Head Presets */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-                <span className="text-[10px] font-bold text-slate-400 shrink-0">Quick Filter:</span>
-                <button
-                  onClick={() => { setHeadSearchQuery(''); setSelectedHead('ALL'); }}
-                  className={`px-2 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap ${
-                    !headSearchQuery && selectedHead === 'ALL'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'
-                  }`}
-                >
-                  All Heads (38)
-                </button>
-                <button
-                  onClick={() => { setHeadSearchQuery('NAVTTC'); setSelectedHead('ALL'); }}
-                  className={`px-2 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap ${
-                    headSearchQuery === 'NAVTTC'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'
-                  }`}
-                >
-                  NAVTTC
-                </button>
-                <button
-                  onClick={() => { setHeadSearchQuery('A03'); setSelectedHead('ALL'); }}
-                  className={`px-2 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap ${
-                    headSearchQuery === 'A03'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'
-                  }`}
-                >
-                  Non-Salary (A03)
-                </button>
-                <button
-                  onClick={() => { setHeadSearchQuery('FEE'); setSelectedHead('ALL'); }}
-                  className={`px-2 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap ${
-                    headSearchQuery === 'FEE'
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'
-                  }`}
-                >
-                  Fee Collection
-                </button>
-                <button
-                  onClick={() => { setHeadSearchQuery('PUPIL'); setSelectedHead('ALL'); }}
-                  className={`px-2 py-1 text-[10px] font-bold rounded cursor-pointer whitespace-nowrap ${
-                    headSearchQuery === 'PUPIL'
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300'
-                  }`}
-                >
-                  Pupil Funds
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

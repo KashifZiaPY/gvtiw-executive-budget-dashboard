@@ -185,6 +185,46 @@ export const INSTITUTIONAL_BANK_ACCOUNTS: Record<BankAccountKey, BankAccountMeta
   }
 };
 
+export const AUTHENTIC_CASHBOOK_RECEIPTS: Record<
+  BankAccountKey,
+  Array<{
+    id: string;
+    date: string;
+    month: string;
+    vNo?: string;
+    voucherSerial?: string;
+    particulars: string;
+    paidToBy: string;
+    head: string;
+    chq: string;
+    amount: number;
+  }>
+> = {
+  AA: [
+    { id: 'AA-R1', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03902-PRINTING CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03902-PRINTING CHARGES', chq: 'AAA-Ceiling', amount: 8393 },
+    { id: 'AA-R2', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03933-SERVICE CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03933-SERVICE CHARGES', chq: 'AAA-Ceiling', amount: 142852 },
+    { id: 'AA-R3', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A13101-REPAIR OF MACHINERY)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A13101-REPAIR OF MACHINERY & EQUIPMENT', chq: 'AAA-Ceiling', amount: 6212 },
+    { id: 'AA-R4', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A13201-REPAIR OF FURNITURE)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A13201-REPAIR OF FURNITURE & FIXTURE', chq: 'AAA-Ceiling', amount: 11820 },
+    { id: 'AA-R5', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03303-ELECTRICITY CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03303-ELECTRICITY CHARGES', chq: 'AAA-Ceiling', amount: 247435 },
+    { id: 'AA-R6', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03301-GAS CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03301-GAS CHARGES', chq: 'AAA-Ceiling', amount: 1500 },
+    { id: 'AA-R7', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03302-WATER CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03302-WATER CHARGES', chq: 'AAA-Ceiling', amount: 6000 },
+    { id: 'AA-R8', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03202-TELEPHONE & TRUNK)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03202-TELEPHONE & TRUNK CHARGES', chq: 'AAA-Ceiling', amount: 25000 },
+    { id: 'AA-R9', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03201-POSTAGE & TELEGRAPH)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03201-POSTAGE & TELEGRAPH', chq: 'AAA-Ceiling', amount: 4000 },
+    { id: 'AA-R10', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A01274-MEDICAL CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A01274-MEDICAL CHARGES', chq: 'AAA-Ceiling', amount: 12000 },
+    { id: 'AA-R11', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03304-HOT & COLD CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03304-HOT & COLD CHARGES', chq: 'AAA-Ceiling', amount: 6000 },
+    { id: 'AA-R12', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03901-STATIONERY CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03901-STATIONERY CHARGES', chq: 'AAA-Ceiling', amount: 12000 },
+    { id: 'AA-R13', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03905-NEWSPAPERS & PERIODICALS)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03905-NEWSPAPERS PERIODICALS & BOOKS', chq: 'AAA-Ceiling', amount: 1000 },
+    { id: 'AA-R14', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03907-ADVERTISING & PUBLICITY)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03907-ADVERTISING & PUBLICITY', chq: 'AAA-Ceiling', amount: 24619 },
+  ],
+  NS: [],
+  PF: [
+    { id: 'PF-R1', date: '03-Sep-2026', month: 'September', particulars: 'Transfer / Collection of Student Pupil Fund Share from TEVTA Fee Collection A/C (6580027832200011) via Cheque 8060940614', paidToBy: 'TEVTA Fee Collection / Trainees', head: 'A00000PF-PUPIL FUND', chq: '8060940614', amount: 77717 },
+  ],
+  FC: [],
+  SC: [],
+  SEC: [],
+};
+
 export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
   {
     "srNo": 1,
