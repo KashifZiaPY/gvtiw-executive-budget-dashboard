@@ -72,6 +72,11 @@ interface AdminHubModuleProps {
   customGvtiwLogo?: string | null;
   customTevtaLogo?: string | null;
   customGopLogo?: string | null;
+  isUnlocked?: boolean;
+  onUnlock?: () => void;
+  onLock?: () => void;
+  storedPin?: string;
+  setStoredPin?: (pin: string) => void;
 }
 
 const DEFAULT_WEB_APP_EXEC_URL =
@@ -90,21 +95,33 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   customGvtiwLogo,
   customTevtaLogo,
   customGopLogo,
+  isUnlocked: isUnlockedProp,
+  onUnlock: onUnlockProp,
+  onLock: onLockProp,
+  storedPin: storedPinProp,
+  setStoredPin: setStoredPinProp,
 }) => {
   // -------------------------------------------------------------
   // 1. AUTHENTICATION & LOCK STATE
   // -------------------------------------------------------------
-  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
+  const [internalUnlocked, setInternalUnlocked] = useState<boolean>(() => {
     return sessionStorage.getItem('gvtiw_admin_session') === 'unlocked';
   });
+  const isUnlocked = isUnlockedProp !== undefined ? isUnlockedProp : internalUnlocked;
+
   const [pinInput, setPinInput] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
 
   // Stored Custom PIN
-  const [storedPin, setStoredPin] = useState<string>(() => {
+  const [internalStoredPin, setInternalStoredPin] = useState<string>(() => {
     return localStorage.getItem('gvtiw_admin_custom_pin') || '';
   });
+  const storedPin = storedPinProp !== undefined ? storedPinProp : internalStoredPin;
+  const setStoredPin = (val: string) => {
+    setInternalStoredPin(val);
+    if (setStoredPinProp) setStoredPinProp(val);
+  };
   const [isPinSettingsOpen, setIsPinSettingsOpen] = useState(false);
   const [newPin, setNewPin] = useState('');
   const [confirmNewPin, setConfirmNewPin] = useState('');
@@ -1244,7 +1261,8 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     e.preventDefault();
     const cleanInput = pinInput.trim();
     if (cleanInput && cleanInput === storedPin) {
-      setIsUnlocked(true);
+      if (onUnlockProp) onUnlockProp();
+      setInternalUnlocked(true);
       sessionStorage.setItem('gvtiw_admin_session', 'unlocked');
       setPinError(null);
       addAuditLog('ADMIN_AUTH', 'success', 'Admin session unlocked successfully.');
@@ -1255,7 +1273,8 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   };
 
   const handleLock = () => {
-    setIsUnlocked(false);
+    if (onLockProp) onLockProp();
+    setInternalUnlocked(false);
     sessionStorage.removeItem('gvtiw_admin_session');
     setPinInput('');
     addAuditLog('ADMIN_AUTH', 'success', 'Admin session locked.');

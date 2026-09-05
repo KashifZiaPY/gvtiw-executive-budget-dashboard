@@ -17,6 +17,7 @@ import { VoucherModule } from './components/VoucherModule';
 import { PaymentApprovalForm } from './components/PaymentApprovalForm';
 import { ReportsModule } from './components/ReportsModule';
 import { AdminHubModule } from './components/AdminHubModule';
+import { PinLockScreen } from './components/PinLockScreen';
 import { INITIAL_MASTER_VOUCHERS } from './data/cashBookData';
 import { Loader2, AlertTriangle, LayoutDashboard, BookOpen, Receipt, FileSpreadsheet, Lock } from 'lucide-react';
 import { fetchDashboardPayload } from './lib/apiEngine';
@@ -152,6 +153,24 @@ export default function App() {
 
   // Print Modal
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  // Shared Admin & Voucher PIN Authentication State
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
+    return typeof window !== 'undefined' && sessionStorage.getItem('gvtiw_admin_session') === 'unlocked';
+  });
+  const [storedPin, setStoredPin] = useState<string>(() => {
+    return (typeof window !== 'undefined' && localStorage.getItem('gvtiw_admin_custom_pin')) || '';
+  });
+
+  const handleUnlock = useCallback(() => {
+    setIsUnlocked(true);
+    sessionStorage.setItem('gvtiw_admin_session', 'unlocked');
+  }, []);
+
+  const handleLock = useCallback(() => {
+    setIsUnlocked(false);
+    sessionStorage.removeItem('gvtiw_admin_session');
+  }, []);
 
   // Fetch Dashboard State from High-Performance Backend or Autonomous Engine
   const fetchDashboardData = useCallback(async (isSilent = false) => {
@@ -317,7 +336,7 @@ export default function App() {
               <span>Digital CashBooks (6 A/C)</span>
             </button>
 
-            {/* Tab 3: Voucher Explorer */}
+            {/* Tab 3: Voucher Explorer (PIN Protected) */}
             <button
               onClick={() => setActiveModule('VOUCHERS')}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
@@ -332,6 +351,7 @@ export default function App() {
             >
               <Receipt className="w-4 h-4 text-amber-300" />
               <span>Voucher Matrix</span>
+              {!isUnlocked && <Lock className="w-3 h-3 text-amber-400/80 ml-0.5" />}
             </button>
 
             {/* Tab 4: Reports & Statements Hub */}
@@ -422,12 +442,22 @@ export default function App() {
 
         {activeModule === 'VOUCHERS' && (
           <section aria-label="Master Voucher Matrix">
-            <VoucherModule
-              darkMode={darkMode}
-              customGvtiwLogo={customGvtiwLogo}
-              customTevtaLogo={customTevtaLogo}
-              customGopLogo={customGopLogo}
-            />
+            {!isUnlocked ? (
+              <PinLockScreen
+                darkMode={darkMode}
+                customGvtiwLogo={customGvtiwLogo}
+                storedPin={storedPin}
+                onUnlock={handleUnlock}
+                title="Voucher Matrix Authentication"
+              />
+            ) : (
+              <VoucherModule
+                darkMode={darkMode}
+                customGvtiwLogo={customGvtiwLogo}
+                customTevtaLogo={customTevtaLogo}
+                customGopLogo={customGopLogo}
+              />
+            )}
           </section>
         )}
 
@@ -450,6 +480,11 @@ export default function App() {
                 customGvtiwLogo={customGvtiwLogo}
                 customTevtaLogo={customTevtaLogo}
                 customGopLogo={customGopLogo}
+                isUnlocked={isUnlocked}
+                onUnlock={handleUnlock}
+                onLock={handleLock}
+                storedPin={storedPin}
+                setStoredPin={setStoredPin}
               />
             </section>
           </ModuleErrorBoundary>
