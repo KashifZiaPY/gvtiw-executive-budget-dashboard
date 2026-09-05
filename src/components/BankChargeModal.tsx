@@ -204,7 +204,7 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
         amount,
         date,
         memo: memo.trim() || 'Bank Charges / SMS / FED Charges',
-        accountHead: selectedHead || mappedAccountHead,
+        accountHead: mappedAccountHead,
         isAmend,
         srNo: isAmend ? voucherToAmend?.srNo : nextSr,
         voucherNo: displayVoucherNo,
@@ -311,47 +311,29 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
               </label>
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/40">
                 {accountKey === 'NS' || accountKey === 'AA'
-                  ? '🏛️ Standard Bank Head'
+                  ? '🏛️ Non-Salary / AAA (A03101 Only)'
                   : `📑 Dedicated ${INSTITUTIONAL_BANK_ACCOUNTS[accountKey]?.shortName || accountKey}`}
               </span>
             </div>
 
-            {accountKey === 'NS' || accountKey === 'AA' ? (
-              <div className="space-y-1">
-                <select
-                  value={selectedHead}
-                  onChange={(e) => setSelectedHead(e.target.value)}
-                  disabled={isSubmitting}
-                  className={`w-full p-2.5 rounded-xl border outline-none font-mono font-bold transition-all ${
-                    darkMode
-                      ? 'bg-slate-800/90 border-slate-700 text-amber-300 focus:border-amber-500'
-                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-amber-600 focus:bg-white'
-                  }`}
-                >
-                  <option value="A03101-BANK CHARGES">A03101-BANK CHARGES (Standard Head)</option>
-                  {MASTER_ACCOUNT_HEADS.filter((h) => h !== 'A03101-BANK CHARGES').map((h) => (
-                    <option key={h} value={h}>
-                      {h}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                  ✓ Official rule: Non-Salary (NS) and AAA debit under <strong>A03101-BANK CHARGES</strong>.
-                </p>
-              </div>
-            ) : (
-              <div className="p-3 rounded-xl border bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 font-mono flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-slate-900 dark:text-white text-xs">{selectedHead}</div>
-                  <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Dedicated institutional head locked as per Google Sheets source rules.
-                  </div>
+            <div className="p-3 rounded-xl border bg-slate-50 dark:bg-slate-800/70 border-slate-200 dark:border-slate-700 font-mono flex items-center justify-between">
+              <div>
+                <div className="font-bold text-slate-900 dark:text-white text-xs flex items-center gap-2">
+                  <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-black border border-amber-500/20">
+                    {mappedAccountHead.split('-')[0]}
+                  </span>
+                  <span>{mappedAccountHead}</span>
                 </div>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 shrink-0">
-                  Rule Locked
-                </span>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                  {accountKey === 'NS' || accountKey === 'AA'
+                    ? '✓ Official rule: Strictly restricted to A03101-BANK CHARGES only.'
+                    : `✓ Dedicated institutional fund head locked for ${INSTITUTIONAL_BANK_ACCOUNTS[accountKey]?.shortName}.`}
+                </div>
               </div>
-            )}
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 shrink-0 border border-emerald-300/30">
+                Rule Enforced
+              </span>
+            </div>
           </div>
 
           {/* Amount (PKR) */}
