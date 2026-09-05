@@ -159,9 +159,10 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
       const webAppUrl =
         localStorage.getItem('gvtiw_admin_web_app_url') ||
         'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
+      const activePin = localStorage.getItem('gvtiw_admin_custom_pin') || '33028';
 
       const qp = new URLSearchParams({
-        pin: '33028',
+        pin: activePin,
         action: 'deleteLastVoucher',
         command: 'deleteLastVoucher',
         srNo: String(targetSrNo),
@@ -178,7 +179,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
-            pin: '33028',
+            pin: activePin,
             action: 'deleteLastVoucher',
             srNo: targetSrNo,
             voucherNo: targetVoucher.voucherNo,
