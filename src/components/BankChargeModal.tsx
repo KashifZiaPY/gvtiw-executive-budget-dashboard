@@ -100,7 +100,6 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
   const [amount, setAmount] = useState<number>(0);
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [memo, setMemo] = useState<string>('Bank Charges / SMS / FED Charges');
-  const [selectedHead, setSelectedHead] = useState<string>('A03101-BANK CHARGES');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -142,26 +141,19 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
           new Date().toISOString().split('T')[0]
       );
       setMemo(voucherToAmend.description || 'Bank Charges / SMS / FED Charges');
-      setSelectedHead(voucherToAmend.accountHead || mappedAccountHead);
     } else {
       // NEW RECORD MODE: Clean default values
       setAccountKey('NS');
       setAmount(0);
       setDate(new Date().toISOString().split('T')[0]);
       setMemo('Bank Charges / SMS / FED Charges');
-      setSelectedHead('A03101-BANK CHARGES');
     }
     setErrorMsg(null);
-  }, [isOpen, voucherToAmend, mappedAccountHead]);
+  }, [isOpen, voucherToAmend]);
 
-  // Handle bank account switch in new mode or when allowed
+  // Handle bank account switch
   const handleAccountChange = (newAcc: BankAccountKey) => {
     setAccountKey(newAcc);
-    if (newAcc === 'PF') setSelectedHead('A00000PF-PUPIL FUND');
-    else if (newAcc === 'SC') setSelectedHead('A00000SC-SHORT COURSE');
-    else if (newAcc === 'SEC') setSelectedHead('A00000SS-STUDENT SEC.');
-    else if (newAcc === 'FC') setSelectedHead('A00000TFC-TEVTA FEE COL.');
-    else setSelectedHead('A03101-BANK CHARGES');
   };
 
   // Keyboard shortcut: ESC to close
@@ -422,7 +414,7 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
             </div>
             <div className="flex justify-between items-center text-[11px]">
               <span className="text-slate-500 dark:text-slate-400">Target Head:</span>
-              <span className="font-bold truncate max-w-[240px]">{selectedHead}</span>
+              <span className="font-bold truncate max-w-[240px]">{mappedAccountHead}</span>
             </div>
             <div className="flex justify-between items-center text-[11px]">
               <span className="text-slate-500 dark:text-slate-400">Disbursement Mode:</span>
