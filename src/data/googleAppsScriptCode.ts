@@ -89,6 +89,19 @@ var BANK_ACCOUNTS = {
 };
 
 // ============================================================
+// MASTER PASSWORD RETRIEVER (MAIN SHEET C24)
+// ============================================================
+function getMasterPassword_() {
+  try {
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("MAIN SHEET");
+    var val = sh.getRange("C24").getValue();
+    return val ? String(val).trim() : '';
+  } catch (err) {
+    return '';
+  }
+}
+
+// ============================================================
 // SAFE NUMBER FORMATTING (Handles Google Sheets Typed Columns)
 // ============================================================
 function setNumberFormatSafe_(range, formatStr) {
@@ -874,10 +887,10 @@ function doPost(e) {
 }
 
 function handleApiRequest_(pin, action, data) {
-  // 1. PIN Security Authentication (33028)
+  // 1. PIN Security Authentication (MAIN SHEET C24)
   var cleanPin = pin ? String(pin).trim() : '';
-  var adminPin = PropertiesService.getScriptProperties().getProperty("ADMIN_PIN") || "33028";
-  if (cleanPin !== "33028" && cleanPin !== String(adminPin).trim()) {
+  var masterPassword = getMasterPassword_();
+  if (!masterPassword || cleanPin !== masterPassword) {
     return ContentService.createTextOutput(JSON.stringify({
       success: false,
       message: "Unauthorized Security PIN"

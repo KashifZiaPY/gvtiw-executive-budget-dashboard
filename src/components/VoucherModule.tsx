@@ -299,12 +299,15 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
 
       const requestPayload = {
         pin: activePin,
-        action: isAmend ? 'amendVoucher' : 'recordBankCharge',
-        command: isAmend ? 'amendVoucher' : 'recordBankCharge',
-        voucher: newVoucherObj,
-        entry: payload,
-        isAmend,
-        origSrNo: srNo,
+        action: 'recordDirectBankCharge',
+        mode: isAmend ? 'amend' : 'new',
+        srNo: isAmend ? srNo : null,
+        bank: bankFullName,
+        bankAccount: bankFullName,
+        date: date,
+        amt: amount,
+        amount: amount,
+        narr: memo || 'Bank Charges / SMS / FED Charges',
       };
 
       await fetch(webAppUrl, {
