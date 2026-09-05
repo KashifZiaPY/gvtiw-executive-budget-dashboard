@@ -1743,6 +1743,9 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                 <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
                   Press <kbd className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border">ESC</kbd> to cancel
                 </span>
+                <span className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 font-semibold hidden md:inline">
+                  • System developed by MKZ v3.14
+                </span>
                 {isAmend && voucherToAmend && onDeleteVoucher && (
                   <button
                     type="button"

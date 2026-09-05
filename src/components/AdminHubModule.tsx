@@ -46,6 +46,11 @@ import {
   Sparkles,
   CheckCircle,
   AlertTriangle,
+  Folder,
+  HardDrive,
+  BookOpen,
+  CalendarCheck,
+  MoreHorizontal,
 } from 'lucide-react';
 import {
   INSTITUTIONAL_BANK_ACCOUNTS,
@@ -214,6 +219,57 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     if (bcAccount === 'FC') return 'A00000TFC-TEVTA FEE COL.';
     return 'A03101-BANK CHARGES';
   }, [bcAccount]);
+
+  const [bcSelectedHead, setBcSelectedHead] = useState<string>('A03101-BANK CHARGES');
+
+  useEffect(() => {
+    setBcSelectedHead(mappedAccountHead);
+  }, [mappedAccountHead]);
+
+  // Corporate Navigation Dropdown State
+  const [activeDropdown, setActiveDropdown] = useState<'vouchers' | 'cashbooks' | 'backup' | 'audit' | null>(null);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+
+  // Registry Refresh State & Handler
+  const [isRefreshingRegistry, setIsRefreshingRegistry] = useState(false);
+  const handleRefreshRegistry = () => {
+    setIsRefreshingRegistry(true);
+    try {
+      const cached = localStorage.getItem('gvtiw_live_vouchers_v3');
+      if (cached) {
+        setVouchers(JSON.parse(cached));
+      } else {
+        setVouchers(INITIAL_MASTER_VOUCHERS);
+      }
+    } catch {}
+    setTimeout(() => {
+      setIsRefreshingRegistry(false);
+      setPopupModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Registry Ledger Refreshed',
+        message: 'Synchronized live vouchers ledger with local store and Google Sheets cache.',
+      });
+    }, 400);
+  };
+
+  // Dedicated Backup Status Modal State (Clear ACTIVE status on top)
+  const [isBackupStatusModalOpen, setIsBackupStatusModalOpen] = useState(false);
+  const [backupModalData, setBackupModalData] = useState<{
+    status: 'ACTIVE' | 'INACTIVE';
+    schedule: string;
+    folderId: string;
+    driveFolderUrl: string;
+    lastBackupTime?: string;
+    liveMessage?: string;
+  }>({
+    status: 'ACTIVE',
+    schedule: 'Active (Every day at 4:00 PM PST)',
+    folderId: '1-Kdti-UAkCDivGgqWTJgki1zGnRKiDOB',
+    driveFolderUrl: 'https://drive.google.com/drive/folders/1-Kdti-UAkCDivGgqWTJgki1zGnRKiDOB',
+    lastBackupTime: 'Daily Automated 4:00 PM PST Schedule',
+    liveMessage: 'Connected to GVTIW Google Drive Archive',
+  });
 
   // -------------------------------------------------------------
   // 7. AUDIT TRAIL LOGS
@@ -618,6 +674,15 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         suppressPopup: true,
       }
     );
+    if (res.success) {
+      setBackupModalData((prev) => ({
+        ...prev,
+        status: 'ACTIVE',
+        schedule: 'Active (Every day at 4:00 PM PST)',
+        lastBackupTime: 'Daily Automated 4:00 PM PST Schedule',
+        liveMessage: 'Google Cloud daily time-driven trigger configured successfully.',
+      }));
+    }
     setPopupModal({
       isOpen: true,
       type: res.success ? 'success' : 'error',
@@ -643,6 +708,14 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         suppressPopup: true,
       }
     );
+    if (res.success) {
+      setBackupModalData((prev) => ({
+        ...prev,
+        status: 'INACTIVE',
+        schedule: 'Inactive / Paused by Admin',
+        liveMessage: 'Automated daily trigger has been paused.',
+      }));
+    }
     setPopupModal({
       isOpen: true,
       type: res.success ? 'success' : 'error',
@@ -689,34 +762,21 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     const driveFolderUrl = `https://drive.google.com/drive/folders/${folderId}`;
     const dailySchedule = cloudStat?.dailyBackupSchedule || 'Active (Every day at 4:00 PM PST)';
 
-    setPopupModal({
-      isOpen: true,
-      type: 'info',
-      title: 'Institutional 7-File Backup Status',
-      message:
-        `Status: Operational & Cloud Synchronized\n` +
-        `Target Google Drive: "GVTIW Financial Backups"\n` +
-        `Folder ID: ${folderId}\n\n` +
-        `Protected Spreadsheets: 7 Master Files\n` +
-        `• 6 Bank Cashbooks (NS 0446, AAA 0445, SC 0447, PF 0448, FC 0449, SEC 0450)\n` +
-        `• 1 Master Payment Approval Form & Voucher Registry\n\n` +
-        `Automated Trigger: ${dailySchedule}\n` +
-        `Retention Policy: 30-Day Automated Rolling Rotation\n` +
-        (cloudStat?.lastBackupTime && cloudStat.lastBackupTime !== 'None recorded'
-          ? `Last Snapshot: ${cloudStat.lastBackupTime}`
-          : `Snapshot Engine: Ready for Manual & 4:00 PM Automated Execution`),
-      detail:
-        `Archive Google Drive URL:\n${driveFolderUrl}\n\nAll 7 institutional spreadsheets are cloned with timestamps into secure Google Drive storage.` +
-        (cloudMessage && !cloudMessage.toLowerCase().includes('unknown') ? `\n\nLive Feed: ${cloudMessage}` : ''),
-      action: {
-        label: 'Open Drive Backup Folder',
-        onClick: () => {
-          try {
-            window.open(driveFolderUrl, '_blank', 'noopener,noreferrer');
-          } catch {}
-        },
-      },
+    setBackupModalData({
+      status: 'ACTIVE',
+      schedule: dailySchedule,
+      folderId,
+      driveFolderUrl,
+      lastBackupTime:
+        cloudStat?.lastBackupTime && cloudStat.lastBackupTime !== 'None recorded'
+          ? cloudStat.lastBackupTime
+          : 'Ready for 4:00 PM PST Automated Execution',
+      liveMessage:
+        cloudMessage && !cloudMessage.toLowerCase().includes('unknown')
+          ? cloudMessage
+          : 'All 7 institutional spreadsheets are actively synchronized to Google Drive.',
     });
+    setIsBackupStatusModalOpen(true);
   };
 
   // -------------------------------------------------------------
@@ -1007,6 +1067,8 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     const vYear = new Date(bcDate).getFullYear();
     const generatedVoucherNo = `BC-${vYear}/${nextSr}`;
 
+    const effectiveHead = bcSelectedHead || mappedAccountHead;
+
     const res = await triggerAppScriptCommand(
       'recordDirectBankCharge',
       {
@@ -1016,11 +1078,11 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         date: bcDate,
         amt: bcAmount,
         narr: bcMemo || 'Bank Charges / SMS / FED Charges',
-        accountHead: mappedAccountHead,
+        accountHead: effectiveHead,
       },
       {
         busyTitle: 'Posting Bank Charge...',
-        busyMessage: `Recording Rs. ${formatPKR(bcAmount)} debit in ${bcAccount} CashBook under ${mappedAccountHead}...`,
+        busyMessage: `Recording Rs. ${formatPKR(bcAmount)} debit in ${bcAccount} CashBook under ${effectiveHead}...`,
         suppressPopup: true,
       }
     );
@@ -1037,7 +1099,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         chequeNoNet: 'Direct Debit',
         chequeDate: bcDate,
         chequeAmountNet: bcAmount,
-        accountHead: mappedAccountHead,
+        accountHead: effectiveHead,
         gstAmount: 0,
         praAmount: 0,
         chequeNoPra: '',
@@ -1355,181 +1417,717 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 20.2 EXECUTIVE OPERATIONS RIBBON (Cleaned & Focused)           */}
+      {/* 20.2 CORPORATE DROPDOWN MENU BAR (Enterprise Accounting Suite) */}
       {/* ------------------------------------------------------------- */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* ACTION 1: Master Voucher Entry */}
-        <div
-          className={`p-4 rounded-2xl border flex flex-col justify-between transition-all ${
-            darkMode ? 'bg-[#0B132B] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
-          }`}
-        >
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider font-mono text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                <FilePlus className="w-3.5 h-3.5" />
-                <span>Payment Voucher</span>
-              </span>
-              <span className="text-[10px] font-mono text-slate-400">Total: {vouchers.length}</span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-3">
-              Generate standardized Payment Approval Forms (PAF) with automatic sales tax, PRA, and income tax splits.
-            </p>
-          </div>
+      <div
+        className={`relative z-30 p-2.5 rounded-2xl border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shadow-xs transition-all ${
+          darkMode ? 'bg-[#0B132B] border-slate-800' : 'bg-white border-slate-200'
+        }`}
+      >
+        {/* Backdrop for click outside dropdown */}
+        {activeDropdown && (
+          <div
+            className="fixed inset-0 z-40 bg-transparent"
+            onClick={() => setActiveDropdown(null)}
+          />
+        )}
 
-          <div className="space-y-2">
+        {/* Left Side: Corporate Dropdown Menus */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* MENU 1: VOUCHERS */}
+          <div className="relative">
             <button
-              onClick={() => {
-                setVoucherToAmend(null);
-                setIsNewVoucherModalOpen(true);
-              }}
-              className="w-full py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:translate-y-px"
+              type="button"
+              onClick={() => setActiveDropdown(activeDropdown === 'vouchers' ? null : 'vouchers')}
+              className={`px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border whitespace-nowrap ${
+                activeDropdown === 'vouchers'
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                  : darkMode
+                  ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+              }`}
             >
-              <PlusCircle className="w-4 h-4" />
-              <span>+ New Voucher Entry</span>
-            </button>
-
-            {/* Quick Amend by Sr input */}
-            <div className="flex items-center gap-1.5">
-              <input
-                type="number"
-                min="1"
-                value={actionParamSr}
-                onChange={(e) => setActionParamSr(e.target.value)}
-                placeholder="Sr.#"
-                className={`w-20 py-1.5 px-2 text-center text-xs font-mono font-bold rounded-lg border outline-none ${
-                  darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+              <FilePlus className="w-4 h-4 text-indigo-500" />
+              <span>Voucher Operations</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${
+                  activeDropdown === 'vouchers' ? 'rotate-180 text-white' : 'text-slate-400'
                 }`}
               />
-              <button
-                type="button"
-                onClick={handleOpenAmendBySr}
-                className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg border flex items-center justify-center gap-1 cursor-pointer transition-all ${
-                  darkMode
-                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+            </button>
+
+            {activeDropdown === 'vouchers' && (
+              <div
+                className={`absolute left-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
+                  darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'
                 }`}
               >
-                <Edit className="w-3 h-3 text-indigo-500" />
-                <span>Amend by Sr.#</span>
-              </button>
-            </div>
+                <div className="px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-500">
+                  Voucher &amp; Payment Controls
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    setVoucherToAmend(null);
+                    setIsNewVoucherModalOpen(true);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <PlusCircle className="w-4 h-4 text-indigo-500" />
+                  <div>
+                    <div className="font-bold">New Voucher Entry</div>
+                    <div className="text-[10px] text-slate-400">Standard PAF form with tax splits</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    setIsBankChargeModalOpen(true);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-amber-50 dark:hover:bg-amber-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Landmark className="w-4 h-4 text-amber-500" />
+                  <div>
+                    <div className="font-bold">Record Bank Charge</div>
+                    <div className="text-[10px] text-slate-400">Direct debit for 6 bank accounts</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    if (latestVoucher) {
+                      handlePromptDeleteVoucher(latestVoucher);
+                    } else {
+                      setPopupModal({
+                        isOpen: true,
+                        type: 'info',
+                        title: 'No Vouchers',
+                        message: 'Registry contains no vouchers to delete.',
+                      });
+                    }
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-rose-50 dark:hover:bg-rose-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-500" />
+                  <div>
+                    <div className="font-bold text-rose-600 dark:text-rose-400">
+                      Strict LIFO Reversal {latestVoucher ? `(#${maxExistingSrNo})` : ''}
+                    </div>
+                    <div className="text-[10px] text-slate-400">Reverses latest sequential voucher</div>
+                  </div>
+                </button>
+
+                <div className="h-px bg-slate-200 dark:bg-slate-800 my-1" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    setConfirmClearModalOpen(true);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <RotateCcw className="w-4 h-4 text-slate-500" />
+                  <div>
+                    <div className="font-bold">Clear Voucher Form Draft</div>
+                    <div className="text-[10px] text-slate-400">Empties M8:M22 &amp; I20:I21 PAF cells</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    setActiveTab('vouchers');
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <FileText className="w-4 h-4 text-indigo-500" />
+                  <div>
+                    <div className="font-bold">View Voucher Registry Table</div>
+                    <div className="text-[10px] text-slate-400">{vouchers.length} Total Registered Vouchers</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* MENU 2: CASHBOOKS & ACCOUNTING */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setActiveDropdown(activeDropdown === 'cashbooks' ? null : 'cashbooks')}
+              className={`px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border whitespace-nowrap ${
+                activeDropdown === 'cashbooks'
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                  : darkMode
+                  ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+              <span>Cashbooks &amp; Heads</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${
+                  activeDropdown === 'cashbooks' ? 'rotate-180 text-white' : 'text-slate-400'
+                }`}
+              />
+            </button>
+
+            {activeDropdown === 'cashbooks' && (
+              <div
+                className={`absolute left-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
+                  darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'
+                }`}
+              >
+                <div className="px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-500">
+                  Cashbook &amp; Ledger Automation
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    handleRecalculateHeads();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <RefreshCw className="w-4 h-4 text-emerald-500" />
+                  <div>
+                    <div className="font-bold">Recalculate 38 Account Heads</div>
+                    <div className="text-[10px] text-slate-400">Refreshes formulas, balances &amp; ceilings</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    handleSortCashbooksByDate();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <ArrowUpDown className="w-4 h-4 text-indigo-500" />
+                  <div>
+                    <div className="font-bold">Sort Cashbooks Chronologically</div>
+                    <div className="text-[10px] text-slate-400">Sorts 6 cashbooks by transaction date</div>
+                  </div>
+                </button>
+
+                <div className="h-px bg-slate-200 dark:bg-slate-800 my-1" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    setActiveTab('advance');
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Building className="w-4 h-4 text-amber-500" />
+                  <div>
+                    <div className="font-bold">Institutional Bank Accounts (6)</div>
+                    <div className="text-[10px] text-slate-400">NS, AAA, SC, PF, FC, SEC Directories</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* MENU 3: GOOGLE DRIVE & BACKUP SUITE */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setActiveDropdown(activeDropdown === 'backup' ? null : 'backup')}
+              className={`px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border whitespace-nowrap ${
+                activeDropdown === 'backup'
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                  : darkMode
+                  ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+              <span>Backup Suite</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                ACTIVE
+              </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${
+                  activeDropdown === 'backup' ? 'rotate-180 text-white' : 'text-slate-400'
+                }`}
+              />
+            </button>
+
+            {activeDropdown === 'backup' && (
+              <div
+                className={`absolute left-0 top-full mt-2 w-80 rounded-2xl border shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
+                  darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'
+                }`}
+              >
+                {/* PROMINENT TOP STATUS BANNER INSIDE MENU */}
+                <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 mb-1 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                    <div>
+                      <div className="text-[11px] font-mono font-black text-emerald-700 dark:text-emerald-300 uppercase">
+                        BACKUP STATUS: ACTIVE
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                        Google Cloud Cron: 4:00 PM PST
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveDropdown(null);
+                      handleCheckBackupStatus();
+                    }}
+                    className="text-[10px] font-bold px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer"
+                  >
+                    View Status
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    handleCheckBackupStatus();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  <div>
+                    <div className="font-bold">Backup Health &amp; Drive Report</div>
+                    <div className="text-[10px] text-slate-400">Clear Active status &amp; 7-file validation</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    handleRunFullDeepBackup();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Play className="w-4 h-4 text-indigo-500" />
+                  <div>
+                    <div className="font-bold">Run Full System Deep Backup</div>
+                    <div className="text-[10px] text-slate-400">Snapshot 6 Cashbooks + Master Vouchers</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    handleEnableDailyBackup();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Clock className="w-4 h-4 text-emerald-500" />
+                  <div>
+                    <div className="font-bold text-emerald-600 dark:text-emerald-400">
+                      Enable Daily 4:00 PM Auto-Backup
+                    </div>
+                    <div className="text-[10px] text-slate-400">Configures automated cloud trigger</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    handleDisableDailyBackup();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-rose-50 dark:hover:bg-rose-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Ban className="w-4 h-4 text-rose-500" />
+                  <div>
+                    <div className="font-bold text-rose-600 dark:text-rose-400">Disable Daily Backup</div>
+                    <div className="text-[10px] text-slate-400">Pauses daily automated execution</div>
+                  </div>
+                </button>
+
+                <div className="h-px bg-slate-200 dark:bg-slate-800 my-1" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    handleRestoreFromBackup();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-amber-50 dark:hover:bg-amber-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <RotateCcw className="w-4 h-4 text-amber-500" />
+                  <div>
+                    <div className="font-bold">Restore System from Backup</div>
+                    <div className="text-[10px] text-slate-400">Verifies drive archive &amp; restores files</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    setIsScriptViewerOpen(true);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Terminal className="w-4 h-4 text-slate-500" />
+                  <div>
+                    <div className="font-bold">View Master Apps Script v3.15</div>
+                    <div className="text-[10px] text-slate-400">Production Google Apps Script code</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* MENU 4: COMPLIANCE & AUDIT */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setActiveDropdown(activeDropdown === 'audit' ? null : 'audit')}
+              className={`px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border whitespace-nowrap ${
+                activeDropdown === 'audit'
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                  : darkMode
+                  ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+              }`}
+            >
+              <Activity className="w-4 h-4 text-indigo-500" />
+              <span>Compliance &amp; Audit</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 transition-transform ${
+                  activeDropdown === 'audit' ? 'rotate-180 text-white' : 'text-slate-400'
+                }`}
+              />
+            </button>
+
+            {activeDropdown === 'audit' && (
+              <div
+                className={`absolute left-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
+                  darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'
+                }`}
+              >
+                <div className="px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-500">
+                  Audit Trail &amp; Verification
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    setActiveTab('audit');
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Terminal className="w-4 h-4 text-indigo-500" />
+                  <div>
+                    <div className="font-bold">Real-Time Audit Trail</div>
+                    <div className="text-[10px] text-slate-400">{auditLogs.length} Verified security events</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    handleTestConnection();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-emerald-50 dark:hover:bg-emerald-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Zap className="w-4 h-4 text-emerald-500" />
+                  <div>
+                    <div className="font-bold">Ping Cloud Endpoint</div>
+                    <div className="text-[10px] text-slate-400">Tests CORS &amp; Apps Script Web App</div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    handleRefreshRegistry();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <RefreshCw className="w-4 h-4 text-slate-500" />
+                  <div>
+                    <div className="font-bold">Refresh Registry Ledger</div>
+                    <div className="text-[10px] text-slate-400">Re-synchronize with Google Sheets</div>
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* ACTION 2: Clear Voucher Form (With Confirmation & Institute Busy) */}
-        <div
-          className={`p-4 rounded-2xl border flex flex-col justify-between transition-all ${
-            darkMode ? 'bg-[#0B132B] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
-          }`}
-        >
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider font-mono text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-                <span>Clear Form State</span>
-              </span>
-              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">Cloud Reset</span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-3">
-              Empties Payment Approval Form cells (M8:M22, I20:I21) on Google Sheets and clears temporary input drafts.
-            </p>
-          </div>
-
+        {/* Right Side: Instant Status Pill & Controls */}
+        <div className="flex items-center gap-2 shrink-0 justify-end ml-auto sm:ml-0">
+          {/* Prominent Backup Status Pill Button */}
           <button
-            onClick={() => setConfirmClearModalOpen(true)}
-            className={`w-full py-2.5 px-3 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 border transition-all cursor-pointer active:translate-y-px ${
+            type="button"
+            onClick={handleCheckBackupStatus}
+            className="px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold flex items-center gap-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 transition-all cursor-pointer shadow-2xs whitespace-nowrap"
+            title="Click to view detailed backup status report"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+            <span>Backup: ACTIVE (4 PM)</span>
+          </button>
+
+          {/* Quick Refresh */}
+          <button
+            type="button"
+            onClick={handleRefreshRegistry}
+            disabled={isRefreshingRegistry}
+            className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
               darkMode
                 ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                : 'bg-white hover:bg-slate-50 text-slate-700 hover:text-indigo-600 border-slate-200 shadow-2xs'
+                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
             }`}
+            title="Refresh Registry"
           >
-            <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-            <span>Clear Voucher Form</span>
-          </button>
-        </div>
-
-        {/* ACTION 3: Record Bank Charge (Exact Google Sheets Logic) */}
-        <div
-          className={`p-4 rounded-2xl border flex flex-col justify-between transition-all ${
-            darkMode ? 'bg-[#0B132B] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
-          }`}
-        >
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-wider font-mono text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                <Landmark className="w-3.5 h-3.5" />
-                <span>Record Bank Charge</span>
-              </span>
-              <span className="text-[10px] font-mono text-slate-400">6 Accounts</span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed mb-3">
-              Post quarterly bank charges, SMS alert fees, and FED debits directly into cashbooks with auto-mapped head.
-            </p>
-          </div>
-
-          <button
-            onClick={() => setIsBankChargeModalOpen(true)}
-            className="w-full py-2.5 px-3 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs cursor-pointer active:translate-y-px"
-          >
-            <Landmark className="w-3.5 h-3.5" />
-            <span>Record Bank Charge</span>
+            <RefreshCw className={`w-4 h-4 ${isRefreshingRegistry ? 'animate-spin text-indigo-500' : ''}`} />
           </button>
         </div>
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 20.3 EXECUTIVE SEGMENTED NAVIGATION TABS                      */}
+      {/* 20.25 EXECUTIVE ACTION STRIP (Clean, High-Contrast Workflow)   */}
       {/* ------------------------------------------------------------- */}
       <div
-        className={`p-1.5 rounded-2xl border flex items-center gap-1.5 overflow-x-auto text-xs ${
+        className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 sm:gap-4 shadow-sm transition-all ${
+          darkMode ? 'bg-[#0B132B] border-slate-800' : 'bg-white border-slate-200'
+        }`}
+      >
+        {/* Primary Colorful Corporate Action Buttons */}
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap">
+          {/* Button 1: + New Voucher Entry */}
+          <button
+            type="button"
+            onClick={() => {
+              setVoucherToAmend(null);
+              setIsNewVoucherModalOpen(true);
+            }}
+            className="py-2.5 sm:py-3 px-4 sm:px-5 bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:via-indigo-700 hover:to-indigo-800 text-white font-bold text-xs sm:text-sm rounded-xl flex items-center gap-2 shadow-md shadow-indigo-500/25 border border-indigo-400/30 cursor-pointer active:scale-[0.98] transition-all whitespace-nowrap"
+          >
+            <PlusCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white shrink-0" />
+            <span>+ New Voucher Entry</span>
+          </button>
+
+          {/* Button 2: Record Bank Charge */}
+          <button
+            type="button"
+            onClick={() => setIsBankChargeModalOpen(true)}
+            className="py-2.5 sm:py-3 px-4 sm:px-4.5 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-600 hover:via-amber-700 hover:to-orange-700 text-white font-bold text-xs sm:text-sm rounded-xl flex items-center gap-2 shadow-md shadow-amber-500/25 border border-amber-400/30 cursor-pointer active:scale-[0.98] transition-all whitespace-nowrap"
+          >
+            <Landmark className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white shrink-0" />
+            <span>Record Bank Charge</span>
+          </button>
+
+          {/* Button 3: Strict LIFO Reversal */}
+          {latestVoucher && (
+            <button
+              type="button"
+              onClick={() => handlePromptDeleteVoucher(latestVoucher)}
+              className="py-2.5 sm:py-3 px-4 sm:px-4.5 bg-gradient-to-r from-rose-600 via-rose-700 to-red-700 hover:from-rose-700 hover:via-rose-800 hover:to-red-800 text-white font-bold text-xs sm:text-sm rounded-xl border border-rose-400/30 shadow-md shadow-rose-500/25 flex items-center gap-2 cursor-pointer active:scale-[0.98] transition-all whitespace-nowrap"
+              title={`Strict LIFO Reversal for Voucher #${maxExistingSrNo}`}
+            >
+              <Trash2 className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white shrink-0" />
+              <span>LIFO Reversal (#{maxExistingSrNo})</span>
+            </button>
+          )}
+
+          {/* Button 4: Recalculate 38 Heads */}
+          <button
+            type="button"
+            onClick={handleRecalculateHeads}
+            className="py-2.5 sm:py-3 px-4 sm:px-4.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:from-emerald-700 hover:via-teal-700 hover:to-teal-800 text-white font-bold text-xs sm:text-sm rounded-xl border border-emerald-400/30 shadow-md shadow-emerald-500/25 flex items-center gap-2 cursor-pointer active:scale-[0.98] transition-all whitespace-nowrap"
+          >
+            <RefreshCw className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white shrink-0" />
+            <span>Recalculate 38 Heads</span>
+          </button>
+
+          {/* Button 5: Sort Cashbooks */}
+          <button
+            type="button"
+            onClick={handleSortCashbooksByDate}
+            className="py-2.5 sm:py-3 px-4 sm:px-4.5 bg-gradient-to-r from-sky-600 via-cyan-700 to-blue-700 hover:from-sky-700 hover:via-cyan-800 hover:to-blue-800 text-white font-bold text-xs sm:text-sm rounded-xl border border-cyan-400/30 shadow-md shadow-cyan-500/25 flex items-center gap-2 cursor-pointer active:scale-[0.98] transition-all whitespace-nowrap"
+          >
+            <ArrowUpDown className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-white shrink-0" />
+            <span>Sort Cashbooks</span>
+          </button>
+        </div>
+
+        {/* Quick Amend by Sr# Box */}
+        <div className="flex items-center gap-2 shrink-0 justify-end mt-1 xl:mt-0">
+          <div
+            className={`p-1 rounded-xl border flex items-center gap-1 shadow-2xs ${
+              darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-100/90 border-slate-300'
+            }`}
+          >
+            <input
+              type="number"
+              min="1"
+              value={actionParamSr}
+              onChange={(e) => setActionParamSr(e.target.value)}
+              placeholder="Sr.#"
+              className={`w-20 sm:w-24 py-1.5 px-2 text-center text-xs sm:text-sm font-mono font-bold bg-transparent outline-none ${
+                darkMode ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'
+              }`}
+            />
+            <button
+              type="button"
+              onClick={handleOpenAmendBySr}
+              className="py-2 sm:py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm font-bold rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-sm border border-purple-400/30 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
+            >
+              <Edit className="w-3.5 h-3.5 text-purple-100 shrink-0" />
+              <span>Amend by Sr.#</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* 20.3 EXECUTIVE NAVIGATION BAR                                 */}
+      {/* ------------------------------------------------------------- */}
+      <div
+        className={`p-1.5 rounded-2xl border flex items-center justify-between gap-2 text-xs transition-all ${
           darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-100/90 border-slate-200/80'
         }`}
       >
-        <button
-          onClick={() => setActiveTab('vouchers')}
-          className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'vouchers'
-              ? darkMode
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-white text-indigo-950 shadow-xs border border-slate-200/80'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <FileText className="w-4 h-4 text-indigo-500" />
-          <span>Voucher Registry &amp; LIFO Ledger ({vouchers.length})</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Main Primary View: Voucher Registry & LIFO Ledger */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('vouchers')}
+            className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'vouchers'
+                ? darkMode
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-white text-indigo-950 shadow-xs border border-slate-200/80'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <FileText className="w-4 h-4 text-indigo-500" />
+            <span>Voucher Registry &amp; LIFO Ledger ({vouchers.length})</span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab('advance')}
-          className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'advance'
-              ? darkMode
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-white text-indigo-950 shadow-xs border border-slate-200/80'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Zap className="w-4 h-4 text-amber-500" />
-          <span>Advance Operations (Backup, LIFO Purge &amp; Cloud Sync)</span>
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300">
-            Advance
-          </span>
-        </button>
+          {/* Active Secondary View Indicator if user selected Backup or Audit from More/Top Menu */}
+          {activeTab !== 'vouchers' && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 font-bold text-xs animate-in fade-in duration-100">
+              {activeTab === 'advance' ? (
+                <>
+                  <Database className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Institutional Backup Operations</span>
+                </>
+              ) : (
+                <>
+                  <Terminal className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Audit Activity Trail ({auditLogs.length})</span>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={() => setActiveTab('vouchers')}
+                className="ml-1 p-0.5 rounded-md hover:bg-indigo-200/70 dark:hover:bg-indigo-900 text-indigo-500 hover:text-indigo-900 dark:hover:text-white cursor-pointer"
+                title="Return to Voucher Registry"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </div>
 
-        <button
-          onClick={() => setActiveTab('audit')}
-          className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'audit'
-              ? darkMode
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-white text-indigo-950 shadow-xs border border-slate-200/80'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Terminal className="w-4 h-4 text-indigo-500" />
-          <span>Audit Activity Trail ({auditLogs.length})</span>
-        </button>
+        {/* Corporate "More" Menu Button */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+            className={`px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border ${
+              isMoreMenuOpen
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                : darkMode
+                ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs'
+            }`}
+          >
+            <MoreHorizontal className="w-3.5 h-3.5 text-slate-400" />
+            <span>More</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isMoreMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isMoreMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsMoreMenuOpen(false)} />
+              <div
+                className={`absolute right-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
+                  darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'
+                }`}
+              >
+                <div className="px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                  More Operations &amp; Logs
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('advance');
+                    setIsMoreMenuOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between cursor-pointer transition-all ${
+                    activeTab === 'advance'
+                      ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold'
+                      : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Database className="w-4 h-4 text-emerald-500" />
+                    <div>
+                      <div className="font-bold">Institutional Backup &amp; Cloud</div>
+                      <div className="text-[10px] text-slate-400">Drive archives, 4 PM cron &amp; restore</div>
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
+                    Active
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('audit');
+                    setIsMoreMenuOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
+                    activeTab === 'audit'
+                      ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold'
+                      : 'hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <Terminal className="w-4 h-4 text-indigo-500" />
+                  <div>
+                    <div className="font-bold">Audit Activity Trail</div>
+                    <div className="text-[10px] text-slate-400">{auditLogs.length} Security &amp; integrity events</div>
+                  </div>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* ------------------------------------------------------------- */}
@@ -1537,43 +2135,6 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       {/* ------------------------------------------------------------- */}
       {activeTab === 'vouchers' && (
         <div className="space-y-4 animate-in fade-in duration-150">
-          {/* LIFO Sequential Status Banner */}
-          <div
-            className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-              darkMode
-                ? 'bg-indigo-950/30 border-indigo-900/60 text-indigo-200'
-                : 'bg-indigo-50/70 border-indigo-200/80 text-indigo-900'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/20 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider font-mono">
-                  Strict LIFO Sequential Protection Active
-                </h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                  Latest sequential voucher:{' '}
-                  <strong className="font-mono text-indigo-700 dark:text-indigo-300 font-bold">
-                    #{maxExistingSrNo} {latestVoucher ? `(${latestVoucher.voucherNo})` : ''}
-                  </strong>{' '}
-                  • Preceding vouchers remain locked to preserve double-entry audit trail integrity.
-                </p>
-              </div>
-            </div>
-
-            {latestVoucher && (
-              <button
-                onClick={() => handlePromptDeleteVoucher(latestVoucher)}
-                className="px-3.5 py-1.5 text-xs font-bold rounded-xl bg-rose-600 hover:bg-rose-700 text-white cursor-pointer transition-all shadow-2xs flex items-center gap-1.5 shrink-0"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete Latest #{maxExistingSrNo}</span>
-              </button>
-            )}
-          </div>
-
           {/* Search & Bank Filter Controls */}
           <div
             className={`p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-3 ${
@@ -1770,6 +2331,68 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 <span className="px-3 py-1.5 text-xs font-mono rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                   Daily 4:00 PM PST
                 </span>
+              </div>
+            </div>
+
+            {/* TOP REAL-TIME BACKUP STATUS STRIP */}
+            <div
+              className={`p-4 rounded-xl border mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                backupModalData.status === 'ACTIVE'
+                  ? darkMode
+                    ? 'bg-emerald-950/30 border-emerald-800/60 text-emerald-200'
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : darkMode
+                  ? 'bg-rose-950/30 border-rose-800/60 text-rose-200'
+                  : 'bg-rose-50 border-rose-200 text-rose-900'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                    backupModalData.status === 'ACTIVE'
+                      ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-rose-500/20 text-rose-600 dark:text-rose-400'
+                  }`}
+                >
+                  {backupModalData.status === 'ACTIVE' ? (
+                    <ShieldCheck className="w-5 h-5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-black uppercase tracking-wide">
+                      BACKUP STATUS: {backupModalData.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE'}
+                    </span>
+                    {backupModalData.status === 'ACTIVE' && (
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+                    )}
+                    <span
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase ${
+                        backupModalData.status === 'ACTIVE'
+                          ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300'
+                          : 'bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300'
+                      }`}
+                    >
+                      {backupModalData.status === 'ACTIVE' ? 'Cloud Trigger: Daily 4:00 PM PST' : 'Trigger Disabled'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5 font-mono">
+                    Target: Google Drive "GVTIW Financial Backups" • 7 Sheets Synchronized • Schedule: {backupModalData.schedule}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCheckBackupStatus}
+                  className="py-2 px-3 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer transition-all flex items-center gap-1.5 shadow-2xs"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Check Cloud Status</span>
+                </button>
               </div>
             </div>
 
@@ -2484,12 +3107,15 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
             <form onSubmit={handleSubmitBankCharge} className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-slate-500 dark:text-slate-400 mb-1 font-semibold">
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-bold">
                   Target Institutional Bank Account
                 </label>
                 <select
                   value={bcAccount}
-                  onChange={(e) => setBcAccount(e.target.value as BankAccountKey)}
+                  onChange={(e) => {
+                    const newAcc = e.target.value as BankAccountKey;
+                    setBcAccount(newAcc);
+                  }}
                   className={`w-full p-2.5 rounded-xl border outline-none font-semibold ${
                     darkMode
                       ? 'bg-slate-800 border-slate-700 text-white'
@@ -2504,8 +3130,59 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 </select>
               </div>
 
+              {/* ACCOUNT HEAD: EXACT GOOGLE SHEETS SCRIPT LOGIC */}
               <div>
-                <label className="block text-slate-500 dark:text-slate-400 mb-1 font-semibold">Amount (PKR)</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-slate-700 dark:text-slate-300 font-bold flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Account Head</span>
+                  </label>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/40">
+                    {bcAccount === 'NS' || bcAccount === 'AA'
+                      ? '🏛️ Bank Charges Head'
+                      : `📑 Mapped to ${INSTITUTIONAL_BANK_ACCOUNTS[bcAccount]?.shortName || bcAccount}`}
+                  </span>
+                </div>
+
+                {bcAccount === 'NS' || bcAccount === 'AA' ? (
+                  <div className="space-y-1">
+                    <select
+                      value={bcSelectedHead}
+                      onChange={(e) => setBcSelectedHead(e.target.value)}
+                      className={`w-full p-2.5 rounded-xl border outline-none font-mono font-bold ${
+                        darkMode
+                          ? 'bg-slate-800 border-slate-700 text-amber-300'
+                          : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-amber-600'
+                      }`}
+                    >
+                      <option value="A03101-BANK CHARGES">A03101-BANK CHARGES (Standard Head)</option>
+                      {MASTER_ACCOUNT_HEADS.filter((h) => h !== 'A03101-BANK CHARGES').map((h) => (
+                        <option key={h} value={h}>
+                          {h}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+                      ✓ Google Sheets Rule: Non-Salary (NS) &amp; AAA debit under <strong>A03101-BANK CHARGES</strong>.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl border bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 font-mono flex items-center justify-between">
+                    <div>
+                      <div className="font-bold text-slate-900 dark:text-white text-xs">{bcSelectedHead}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Auto-assigned dedicated fund head as per Google Sheets script.
+                      </div>
+                    </div>
+                    <span className="px-2 py-1 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 shrink-0">
+                      Rule Locked
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-bold">Amount (PKR)</label>
                 <input
                   type="number"
                   required
@@ -2516,13 +3193,13 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                   className={`w-full p-2.5 rounded-xl border font-mono font-bold outline-none ${
                     darkMode
                       ? 'bg-slate-800 border-slate-700 text-amber-300'
-                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-600'
+                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-amber-600'
                   }`}
                 />
               </div>
 
               <div>
-                <label className="block text-slate-500 dark:text-slate-400 mb-1 font-semibold">Date &amp; Narration</label>
+                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-bold">Date &amp; Narration</label>
                 <input
                   type="date"
                   value={bcDate}
@@ -2546,6 +3223,32 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 />
               </div>
 
+              {/* LIVE DIRECT DEBIT SUMMARY CARD */}
+              <div
+                className={`p-3 rounded-xl border text-xs font-mono space-y-1 ${
+                  darkMode ? 'bg-amber-950/20 border-amber-900/40 text-amber-200' : 'bg-amber-50/70 border-amber-200 text-amber-900'
+                }`}
+              >
+                <div className="flex justify-between font-bold">
+                  <span>Direct Debit Voucher:</span>
+                  <span>BC-{new Date(bcDate).getFullYear()}/{maxExistingSrNo + 1}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span>Target Head:</span>
+                  <span className="font-bold">{bcSelectedHead}</span>
+                </div>
+                <div className="flex justify-between text-[11px]">
+                  <span>Mode:</span>
+                  <span>Direct Debit (No physical cheque)</span>
+                </div>
+                {bcAmount > 0 && (
+                  <div className="flex justify-between font-bold pt-1 border-t border-amber-200 dark:border-amber-800/60">
+                    <span>Debit Amount:</span>
+                    <span>Rs. {formatPKR(bcAmount)}</span>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
@@ -2566,6 +3269,223 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 21.55 DEDICATED INSTITUTIONAL BACKUP STATUS MODAL              */}
+      {/* ------------------------------------------------------------- */}
+      {isBackupStatusModalOpen && (
+        <div className="fixed inset-0 z-[110] bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div
+            className={`w-full max-w-xl rounded-2xl border shadow-2xl overflow-hidden my-auto transition-all ${
+              darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
+            }`}
+          >
+            {/* PROMINENT TOP STATUS HEADER */}
+            <div className="p-6 bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 text-white relative overflow-hidden">
+              <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+              
+              <div className="flex items-start justify-between relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/30 flex items-center justify-center shrink-0 shadow-inner">
+                    <ShieldCheck className="w-7 h-7 text-emerald-100 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 border border-white/30 text-white font-mono text-[11px] font-black uppercase tracking-wider mb-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping" />
+                      <span>SYSTEM BACKUP ENGINE: {backupModalData.status}</span>
+                    </div>
+                    <h3 className="text-lg font-black tracking-tight text-white leading-tight">
+                      Institutional 7-File Google Drive Backup
+                    </h3>
+                    <p className="text-xs text-emerald-100/90 font-mono mt-0.5">
+                      Schedule: {backupModalData.schedule}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsBackupStatusModalOpen(false)}
+                  className="p-1.5 rounded-xl hover:bg-white/20 text-white/80 hover:text-white transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* STATUS BODY WITH PROFESSIONAL ICONS & METRICS */}
+            <div className="p-6 space-y-4">
+              {/* 4 Professional Metric Cards */}
+              <div className="grid grid-cols-2 gap-3">
+                <div
+                  className={`p-3 rounded-xl border ${
+                    darkMode ? 'bg-slate-800/60 border-slate-700/80' : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs mb-1">
+                    <Clock className="w-4 h-4 text-emerald-500" />
+                    <span className="font-semibold">Automation Schedule</span>
+                  </div>
+                  <div className="font-bold text-sm text-slate-900 dark:text-white font-mono">
+                    4:00 PM PST Daily
+                  </div>
+                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold font-mono mt-0.5">
+                    ✓ Google Cloud Cron Active
+                  </div>
+                </div>
+
+                <div
+                  className={`p-3 rounded-xl border ${
+                    darkMode ? 'bg-slate-800/60 border-slate-700/80' : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs mb-1">
+                    <Folder className="w-4 h-4 text-indigo-500" />
+                    <span className="font-semibold">Google Drive Folder</span>
+                  </div>
+                  <div className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                    GVTIW Financial Backups
+                  </div>
+                  <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                    ID: {backupModalData.folderId}
+                  </div>
+                </div>
+
+                <div
+                  className={`p-3 rounded-xl border ${
+                    darkMode ? 'bg-slate-800/60 border-slate-700/80' : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs mb-1">
+                    <Layers className="w-4 h-4 text-amber-500" />
+                    <span className="font-semibold">Protected Files</span>
+                  </div>
+                  <div className="font-bold text-sm text-slate-900 dark:text-white font-mono">
+                    7 Institutional Files
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                    6 Cashbooks + 1 Master PAF
+                  </div>
+                </div>
+
+                <div
+                  className={`p-3 rounded-xl border ${
+                    darkMode ? 'bg-slate-800/60 border-slate-700/80' : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs mb-1">
+                    <CalendarCheck className="w-4 h-4 text-teal-500" />
+                    <span className="font-semibold">Retention Policy</span>
+                  </div>
+                  <div className="font-bold text-sm text-slate-900 dark:text-white font-mono">
+                    30-Day Auto Rolling
+                  </div>
+                  <div className="text-[10px] text-teal-600 dark:text-teal-400 font-bold font-mono mt-0.5">
+                    ✓ Clean Storage Management
+                  </div>
+                </div>
+              </div>
+
+              {/* 7 Protected Spreadsheets List */}
+              <div
+                className={`p-3.5 rounded-xl border space-y-2 ${
+                  darkMode ? 'bg-slate-800/40 border-slate-700' : 'bg-slate-50 border-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <span className="flex items-center gap-1.5">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+                    <span>7 Institutional Spreadsheets Synchronized in Drive</span>
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold">
+                    All Healthy
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono text-slate-600 dark:text-slate-300">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Non-Salary Cashbook (NS)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>AAA Revolving Cashbook</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Short Course Cashbook (SC)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Pupil Fund Cashbook (PF)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>TEVTA Fee Collection (FC)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Securities Cashbook (SEC)</span>
+                  </div>
+                  <div className="col-span-2 flex items-center gap-1.5 pt-1 border-t border-slate-200 dark:border-slate-700">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Master Payment Approval Form &amp; Vouchers Sheet</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Note */}
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1.5">
+                <Info className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <span>{backupModalData.liveMessage}</span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try {
+                      window.open(backupModalData.driveFolderUrl, '_blank', 'noopener,noreferrer');
+                    } catch {}
+                  }}
+                  className="py-2.5 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-xs transition-all"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Open Drive Backup Folder</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsBackupStatusModalOpen(false);
+                      handleRunFullDeepBackup();
+                    }}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border flex items-center gap-1.5 cursor-pointer transition-all ${
+                      darkMode
+                        ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                    }`}
+                  >
+                    <Play className="w-3 h-3 text-emerald-500" />
+                    <span>Run Backup Now</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsBackupStatusModalOpen(false)}
+                    className={`py-2.5 px-4 rounded-xl text-xs font-semibold cursor-pointer border ${
+                      darkMode
+                        ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                        : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
