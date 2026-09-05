@@ -3,6 +3,7 @@ import { MasterVoucher, INITIAL_MASTER_VOUCHERS, INSTITUTIONAL_BANK_ACCOUNTS, Ba
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { VoucherEntryModal } from './VoucherEntryModal';
 import { CorporateDeleteVoucherModal } from './CorporateDeleteVoucherModal';
+import { BankChargeModal, isBankChargeVoucher, BankChargeSavePayload } from './BankChargeModal';
 import { formatPKR } from '../lib/formatters';
 import {
   Search,
@@ -20,6 +21,7 @@ import {
   PlusCircle,
   Edit3,
   Trash2,
+  Landmark,
 } from 'lucide-react';
 
 interface VoucherModuleProps {
@@ -65,6 +67,10 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
   const [voucherToAmend, setVoucherToAmend] = useState<MasterVoucher | null>(null);
 
+  // Bank Charge Modal States
+  const [isBankChargeModalOpen, setIsBankChargeModalOpen] = useState(false);
+  const [bcVoucherToAmend, setBcVoucherToAmend] = useState<MasterVoucher | null>(null);
+
   // Corporate Delete Modal States
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [voucherToDelete, setVoucherToDelete] = useState<MasterVoucher | null>(null);
@@ -75,9 +81,27 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
     setIsEntryModalOpen(true);
   };
 
+  const handleOpenNewBankCharge = () => {
+    setBcVoucherToAmend(null);
+    setIsBankChargeModalOpen(true);
+  };
+
+  const handleInitiateAmend = (v: MasterVoucher) => {
+    if (isBankChargeVoucher(v)) {
+      setBcVoucherToAmend(v);
+      setVoucherToAmend(null);
+      setIsEntryModalOpen(false);
+      setIsBankChargeModalOpen(true);
+    } else {
+      setBcVoucherToAmend(null);
+      setVoucherToAmend(v);
+      setIsBankChargeModalOpen(false);
+      setIsEntryModalOpen(true);
+    }
+  };
+
   const handleOpenAmend = (v: MasterVoucher) => {
-    setVoucherToAmend(v);
-    setIsEntryModalOpen(true);
+    handleInitiateAmend(v);
   };
 
   // Strict LIFO Rule: Max Sr No
@@ -213,6 +237,82 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
       } catch {}
       return updated;
     });
+  };
+
+  const handleSaveBankCharge = async (payload: BankChargeSavePayload) => {
+    const { accountKey, bankFullName, amount, date, memo, accountHead, isAmend, srNo, voucherNo } = payload;
+    const targetSrNo = isAmend && srNo ? srNo : maxExistingSrNo + 1;
+    const year = new Date(date).getFullYear();
+    const targetVoucherNo =
+      isAmend && (voucherNo || bcVoucherToAmend?.voucherNo)
+        ? (voucherNo || bcVoucherToAmend?.voucherNo!)
+        : `BC-${year}/${targetSrNo}`;
+
+    const newVoucherObj: MasterVoucher = {
+      srNo: targetSrNo,
+      voucherNo: targetVoucherNo,
+      payeeName: 'BANK CHARGES',
+      ntnCnic: 'N/A',
+      billNo: 'DIRECT DEBIT',
+      billDate: date,
+      accountHead: accountHead,
+      billAmountGross: amount,
+      billAmtExclTax: amount,
+      chequeNoNet: 'DIRECT DEBIT',
+      chequeDate: date,
+      chequeAmountNet: amount,
+      gstAmount: 0,
+      praAmount: 0,
+      chequeNoPra: '0',
+      incomeTaxAmount: 0,
+      chequeNoIncomeTax: '0',
+      description: memo ? memo.trim() : 'Bank Service Charges & Govt Taxes (Direct Debit)',
+      entryStatus: 'ACTIVE',
+      timestamp: new Date().toISOString(),
+      bankAccount: bankFullName || `Bank Account (${accountKey})`,
+      preEntryBalance: 0,
+    };
+
+    setVouchers((prev) => {
+      let updated: MasterVoucher[];
+      if (isAmend) {
+        updated = prev.map((v) => (v.srNo === targetSrNo ? newVoucherObj : v));
+      } else {
+        updated = [newVoucherObj, ...prev];
+      }
+      try {
+        localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
+      } catch {}
+      return updated;
+    });
+
+    setIsBankChargeModalOpen(false);
+    setBcVoucherToAmend(null);
+
+    // Sync with Google Apps Script Web App
+    try {
+      const webAppUrl =
+        localStorage.getItem('gvtiw_admin_web_app_url') ||
+        'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
+      const activePin = localStorage.getItem('gvtiw_admin_custom_pin') || '33028';
+
+      const requestPayload = {
+        pin: activePin,
+        action: isAmend ? 'amendVoucher' : 'recordBankCharge',
+        command: isAmend ? 'amendVoucher' : 'recordBankCharge',
+        voucher: newVoucherObj,
+        entry: payload,
+        isAmend,
+        origSrNo: srNo,
+      };
+
+      await fetch(webAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(requestPayload),
+      });
+    } catch {}
   };
 
   // Sorting
@@ -412,13 +512,20 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
             <option value="Securities">Securities Account</option>
           </select>
 
-          {/* Export CSV */}
+          {/* Actions: New Voucher & Direct Bank Charge */}
           <button
             onClick={handleOpenNewEntry}
-            className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+            className="px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer whitespace-nowrap"
           >
             <PlusCircle className="w-4 h-4 text-emerald-300" />
             <span>New Voucher Entry</span>
+          </button>
+          <button
+            onClick={handleOpenNewBankCharge}
+            className="px-3.5 py-2 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer whitespace-nowrap"
+          >
+            <Landmark className="w-4 h-4 text-amber-100" />
+            <span>Record Bank Charge</span>
           </button>
           <button
             onClick={handleExportCSV}
@@ -563,12 +670,20 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
                             <span>PAF</span>
                           </button>
                           <button
-                            onClick={() => handleOpenAmend(v)}
-                            className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-[10px] rounded-lg shadow-xs flex items-center gap-1 transition-all cursor-pointer"
-                            title="Amend / Edit Voucher in v3.14 Form"
+                            onClick={() => handleInitiateAmend(v)}
+                            className={`px-2.5 py-1.5 text-white font-bold text-[10px] rounded-lg shadow-xs flex items-center gap-1 transition-all cursor-pointer ${
+                              isBankChargeVoucher(v)
+                                ? 'bg-amber-600 hover:bg-amber-700'
+                                : 'bg-indigo-600 hover:bg-indigo-500'
+                            }`}
+                            title={
+                              isBankChargeVoucher(v)
+                                ? `Amend Bank Charge #${v.srNo} (Direct Debit Dialogue)`
+                                : `Amend Voucher #${v.srNo}`
+                            }
                           >
                             <Edit3 className="w-3 h-3 text-white" />
-                            <span>Amend</span>
+                            <span>{isBankChargeVoucher(v) ? 'Amend Charge' : 'Amend'}</span>
                           </button>
                           {v.srNo === maxExistingSrNo && (
                             <button
@@ -621,6 +736,22 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
         customGvtiwLogo={customGvtiwLogo}
         customTevtaLogo={customTevtaLogo}
         customGopLogo={customGopLogo}
+        onSwitchToBankChargeAmend={handleInitiateAmend}
+      />
+
+      {/* ------------------------------------------------------------- */}
+      {/* 5.5 MODAL: DIRECT BANK CHARGE ENTRY & AMEND FORM              */}
+      {/* ------------------------------------------------------------- */}
+      <BankChargeModal
+        isOpen={isBankChargeModalOpen}
+        onClose={() => {
+          setIsBankChargeModalOpen(false);
+          setBcVoucherToAmend(null);
+        }}
+        voucherToAmend={bcVoucherToAmend}
+        maxExistingSrNo={maxExistingSrNo}
+        onSaveBankCharge={handleSaveBankCharge}
+        darkMode={darkMode}
       />
 
       {/* ------------------------------------------------------------- */}

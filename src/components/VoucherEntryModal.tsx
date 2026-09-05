@@ -5,6 +5,7 @@ import { INITIAL_ACCOUNTS } from '../data/initialData';
 import { MiniCalculatorPopover } from './MiniCalculatorPopover';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { CorporateVoucherSuccessModal } from './CorporateVoucherSuccessModal';
+import { isBankChargeVoucher } from './BankChargeModal';
 import {
   X,
   CheckCircle,
@@ -40,6 +41,7 @@ interface VoucherEntryModalProps {
   customGvtiwLogo?: string | null;
   customTevtaLogo?: string | null;
   customGopLogo?: string | null;
+  onSwitchToBankChargeAmend?: (voucher: MasterVoucher) => void;
 }
 
 // Institutional Bank Options (v3.14 Aligned)
@@ -171,6 +173,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   customGvtiwLogo,
   customTevtaLogo,
   customGopLogo,
+  onSwitchToBankChargeAmend,
 }) => {
   const isAmend = Boolean(voucherToAmend);
   const todayISO = new Date().toISOString().slice(0, 10);
@@ -316,6 +319,14 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     }
 
     if (voucherToAmend) {
+      // 🏛️ LOGICAL OFFICER DIRECT ROUTING:
+      // If the voucher requested for amendment is a Bank Charge, intercept and switch to Bank Charge Dialogue
+      if (isBankChargeVoucher(voucherToAmend) && onSwitchToBankChargeAmend) {
+        onSwitchToBankChargeAmend(voucherToAmend);
+        onClose();
+        return;
+      }
+
       setPayeeName(voucherToAmend.payeeName || '');
       setPayeeSearch(voucherToAmend.payeeName || '');
       setNtnCnic(voucherToAmend.ntnCnic || 'N/A');
@@ -925,6 +936,33 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
           {/* Scrollable Form Body */}
           <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-5 text-xs font-sans">
             
+            {/* 🏛️ LOGICAL OFFICER BANK CHARGE NOTICE */}
+            {isAmend && voucherToAmend && isBankChargeVoucher(voucherToAmend) && (
+              <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 flex items-center justify-between gap-3 font-semibold animate-in fade-in">
+                <div className="flex items-center gap-2.5">
+                  <Landmark className="w-5 h-5 text-amber-600 shrink-0" />
+                  <div>
+                    <div className="font-bold">Direct Bank Charge Voucher Detected (#{voucherToAmend.srNo})</div>
+                    <div className="text-[11px] text-amber-700 dark:text-amber-300">
+                      This record ({voucherToAmend.voucherNo}) is an automated Direct Debit entry without physical cheques.
+                    </div>
+                  </div>
+                </div>
+                {onSwitchToBankChargeAmend && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSwitchToBankChargeAmend(voucherToAmend);
+                      onClose();
+                    }}
+                    className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl cursor-pointer shrink-0 shadow-xs"
+                  >
+                    Open Bank Charge Dialogue
+                  </button>
+                )}
+              </div>
+            )}
+
             {errorMsg && (
               <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 flex items-center gap-2.5 font-bold animate-shake">
                 <AlertCircle className="w-5 h-5 shrink-0 text-rose-500" />

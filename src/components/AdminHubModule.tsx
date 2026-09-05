@@ -63,6 +63,7 @@ import { VoucherEntryModal } from './VoucherEntryModal';
 import { CorporateDeleteVoucherModal } from './CorporateDeleteVoucherModal';
 import { CorporateVoucherSuccessModal } from './CorporateVoucherSuccessModal';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
+import { BankChargeModal, isBankChargeVoucher, BankChargeSavePayload } from './BankChargeModal';
 import { formatPKR } from '../lib/formatters';
 import { OFFICIAL_GOOGLE_APPS_SCRIPT_V315 } from '../data/googleAppsScriptCode';
 
@@ -215,6 +216,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   // 6. BANK CHARGE FORM STATE
   // -------------------------------------------------------------
   const [isBankChargeModalOpen, setIsBankChargeModalOpen] = useState(false);
+  const [bcVoucherToAmend, setBcVoucherToAmend] = useState<MasterVoucher | null>(null);
   const [bcAccount, setBcAccount] = useState<BankAccountKey>('NS');
   const [bcAmount, setBcAmount] = useState<number>(0);
   const [bcDate, setBcDate] = useState(new Date().toISOString().split('T')[0]);
@@ -1049,7 +1051,27 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   };
 
   // -------------------------------------------------------------
-  // 16. AMEND BY SERIAL NUMBER
+  // 15.1 UNIFIED LOGICAL AMENDMENT ROUTER
+  // If serial is related to bank charges, open Bank Charge Amend dialogue.
+  // Otherwise, open regular Voucher Entry / Amend dialogue.
+  // -------------------------------------------------------------
+  const handleInitiateAmend = (v: MasterVoucher) => {
+    if (isBankChargeVoucher(v)) {
+      // 🏛️ LOGICAL OFFICER ROUTING:
+      // If serial is related to bank charges, open the dedicated Bank Charge Amend dialogue!
+      setVoucherToAmend(null);
+      setBcVoucherToAmend(v);
+      setIsBankChargeModalOpen(true);
+    } else {
+      // Regular voucher amend
+      setBcVoucherToAmend(null);
+      setVoucherToAmend(v);
+      setIsNewVoucherModalOpen(true);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // 16. AMEND BY SERIAL NUMBER (WITH CONDITIONAL ROUTING)
   // -------------------------------------------------------------
   const handleOpenAmendBySr = () => {
     const sr = parseInt(actionParamSr.trim());
@@ -1064,8 +1086,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     }
     const found = vouchers.find((v) => v.srNo === sr);
     if (found) {
-      setVoucherToAmend(found);
-      setIsNewVoucherModalOpen(true);
+      handleInitiateAmend(found);
       setActionParamSr('');
     } else {
       setPopupModal({
@@ -1078,107 +1099,168 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   };
 
   // -------------------------------------------------------------
-  // 17. RECORD DIRECT BANK CHARGE
+  // 17. RECORD / AMEND DIRECT BANK CHARGE HANDLER
   // -------------------------------------------------------------
-  const handleSubmitBankCharge = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (bcAmount <= 0) {
-      setPopupModal({
-        isOpen: true,
-        type: 'warning',
-        title: 'Invalid Amount',
-        message: 'Please enter a valid bank charge amount greater than Rs. 0.',
-      });
-      return;
-    }
-
-    const bankFullName =
-      INSTITUTIONAL_BANK_ACCOUNTS[bcAccount]?.fullName || 'Payment of Non Salary Expenditures For 2026-2027';
+  const handleSaveBankCharge = async (payload: BankChargeSavePayload) => {
+    const { accountKey, bankFullName, amount, date, memo, accountHead, isAmend, srNo, voucherNo } = payload;
 
     setIsBankChargeModalOpen(false);
 
-    const nextSr = maxExistingSrNo + 1;
-    const vYear = new Date(bcDate).getFullYear();
-    const generatedVoucherNo = `BC-${vYear}/${nextSr}`;
+    if (isAmend && bcVoucherToAmend) {
+      // AMENDING AN EXISTING BANK CHARGE RECORD
+      const targetSrNo = srNo || bcVoucherToAmend.srNo;
+      const effectiveVoucherNo = voucherNo || bcVoucherToAmend.voucherNo;
 
-    const effectiveHead = bcSelectedHead || mappedAccountHead;
+      const res = await triggerAppScriptCommand(
+        'submitNewVoucher',
+        {
+          mode: 'amend',
+          srNo: targetSrNo,
+          bankHead: bankFullName,
+          payeeName: 'Bank Charges',
+          billNo: 'BC',
+          billDate: date,
+          billAmtExclTax: amount,
+          saleTax: 0,
+          praTaxOnBill: 0,
+          chequeNoNet: 'Direct Debit',
+          chequeDateNet: date,
+          chequeAmtNet: amount,
+          chequeNoIncomeTax: '0',
+          incomeTaxAmt: 0,
+          chequeNoPRATax: '0',
+          praTaxAmt: 0,
+          accountHead: accountHead,
+          narration: memo,
+        },
+        {
+          busyTitle: 'Amending Bank Charge in Google Sheets...',
+          busyMessage: `Updating Bank Charge Serial #${targetSrNo} in ${accountKey} CashBook under ${accountHead}...`,
+          suppressPopup: true,
+        }
+      );
 
-    const res = await triggerAppScriptCommand(
-      'recordDirectBankCharge',
-      {
-        mode: 'new',
-        srNo: nextSr,
-        bank: bankFullName,
-        date: bcDate,
-        amt: bcAmount,
-        narr: bcMemo || 'Bank Charges / SMS / FED Charges',
-        accountHead: effectiveHead,
-      },
-      {
-        busyTitle: 'Posting Bank Charge...',
-        busyMessage: `Recording Rs. ${formatPKR(bcAmount)} debit in ${bcAccount} CashBook under ${effectiveHead}...`,
-        suppressPopup: true,
-      }
-    );
-
-    if (res.success) {
-      // Immediately reflect bank charge voucher in the live ledger
-      const newV: MasterVoucher = {
-        srNo: nextSr,
-        voucherNo: generatedVoucherNo,
-        payeeName: 'Bank Charges / Direct Debit',
-        ntnCnic: 'N/A',
-        billNo: 'BC',
-        billDate: bcDate,
-        chequeNoNet: 'Direct Debit',
-        chequeDate: bcDate,
-        chequeAmountNet: bcAmount,
-        accountHead: effectiveHead,
-        gstAmount: 0,
-        praAmount: 0,
-        chequeNoPra: '',
-        incomeTaxAmount: 0,
-        chequeNoIncomeTax: '',
-        billAmountGross: bcAmount,
-        description: bcMemo || 'Bank Charges / SMS / FED Charges',
-        entryStatus: 'POSTED',
-        timestamp: new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
+      const updatedV: MasterVoucher = {
+        ...bcVoucherToAmend,
         bankAccount: bankFullName,
-        billAmtExclTax: bcAmount,
-        praTaxOnBill: 0,
-        preEntryBalance: 0,
+        billAmtExclTax: amount,
+        billAmountGross: amount,
+        chequeAmountNet: amount,
+        billDate: date,
+        chequeDate: date,
+        accountHead: accountHead,
+        description: memo,
+        timestamp:
+          new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }) + ' (Amended)',
       };
 
       setVouchers((prev) => {
-        const updated = [newV, ...prev];
+        const updated = prev.map((v) => (v.srNo === targetSrNo ? updatedV : v));
         try {
           localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
+          if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
         } catch {}
         return updated;
       });
 
-      setIsBankChargeModalOpen(false);
-      setBcAmount(0);
+      setBcVoucherToAmend(null);
+
       setVoucherSuccessModalData({
-        voucher: newV,
-        isAmend: false,
+        voucher: updatedV,
+        isAmend: true,
         isBankCharge: true,
-        cloudSyncSuccess: true,
-        cloudMessage: `Bank Charge of Rs. ${formatPKR(bcAmount)} successfully posted to ${bcAccount} (${INSTITUTIONAL_BANK_ACCOUNTS[bcAccount]?.shortName}) CashBook. Assigned Head: ${mappedAccountHead}`,
+        cloudSyncSuccess: res.success,
+        cloudMessage: `Bank Charge Voucher #${targetSrNo} (${effectiveVoucherNo}) successfully amended in Google Sheets & ${accountKey} CashBook.`,
       });
     } else {
-      setPopupModal({
-        isOpen: true,
-        type: 'error',
-        title: 'Bank Charge Failed',
-        message: res.message || 'Could not record the bank charge in Google Sheets.',
-      });
+      // RECORDING A NEW DIRECT BANK CHARGE RECORD
+      const targetSr = srNo || maxExistingSrNo + 1;
+      const vYear = new Date(date).getFullYear();
+      const generatedVoucherNo = voucherNo || `BC-${vYear}/${targetSr}`;
+
+      const res = await triggerAppScriptCommand(
+        'recordDirectBankCharge',
+        {
+          mode: 'new',
+          srNo: targetSr,
+          bank: bankFullName,
+          date: date,
+          amt: amount,
+          narr: memo,
+          accountHead: accountHead,
+        },
+        {
+          busyTitle: 'Posting Bank Charge...',
+          busyMessage: `Recording Rs. ${formatPKR(amount)} debit in ${accountKey} CashBook under ${accountHead}...`,
+          suppressPopup: true,
+        }
+      );
+
+      if (res.success) {
+        const newV: MasterVoucher = {
+          srNo: targetSr,
+          voucherNo: generatedVoucherNo,
+          payeeName: 'Bank Charges / Direct Debit',
+          ntnCnic: 'N/A',
+          billNo: 'BC',
+          billDate: date,
+          chequeNoNet: 'Direct Debit',
+          chequeDate: date,
+          chequeAmountNet: amount,
+          accountHead: accountHead,
+          gstAmount: 0,
+          praAmount: 0,
+          chequeNoPra: '',
+          incomeTaxAmount: 0,
+          chequeNoIncomeTax: '',
+          billAmountGross: amount,
+          description: memo,
+          entryStatus: 'POSTED',
+          timestamp: new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+          bankAccount: bankFullName,
+          billAmtExclTax: amount,
+          praTaxOnBill: 0,
+          preEntryBalance: 0,
+        };
+
+        setVouchers((prev) => {
+          const updated = [newV, ...prev];
+          try {
+            localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
+            if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
+          } catch {}
+          return updated;
+        });
+
+        setBcVoucherToAmend(null);
+
+        setVoucherSuccessModalData({
+          voucher: newV,
+          isAmend: false,
+          isBankCharge: true,
+          cloudSyncSuccess: true,
+          cloudMessage: `Bank Charge of Rs. ${formatPKR(amount)} successfully posted to ${accountKey} (${INSTITUTIONAL_BANK_ACCOUNTS[accountKey]?.shortName}) CashBook. Assigned Head: ${accountHead}`,
+        });
+      } else {
+        setPopupModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Bank Charge Failed',
+          message: res.message || 'Could not record the bank charge in Google Sheets.',
+        });
+      }
     }
   };
 
@@ -1479,7 +1561,10 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
             {/* Button 2: Record Bank Charge */}
             <button
               type="button"
-              onClick={() => setIsBankChargeModalOpen(true)}
+              onClick={() => {
+                setBcVoucherToAmend(null);
+                setIsBankChargeModalOpen(true);
+              }}
               className="py-2.5 px-3.5 sm:px-4 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-600 hover:via-amber-700 hover:to-orange-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md shadow-amber-500/20 border border-amber-400/30 cursor-pointer active:scale-[0.98] transition-all whitespace-nowrap shrink-0"
             >
               <Landmark className="w-4 h-4 text-white shrink-0" />
@@ -1620,6 +1705,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                   type="button"
                   onClick={() => {
                     setActiveDropdown(null);
+                    setBcVoucherToAmend(null);
                     setIsBankChargeModalOpen(true);
                   }}
                   className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-amber-50 dark:hover:bg-amber-950/60 flex items-center gap-2 cursor-pointer transition-all"
@@ -2297,12 +2383,17 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                           <td className="py-3 px-3 text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
-                                onClick={() => {
-                                  setVoucherToAmend(v);
-                                  setIsNewVoucherModalOpen(true);
-                                }}
-                                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 cursor-pointer"
-                                title={`Amend Voucher #${v.srNo}`}
+                                onClick={() => handleInitiateAmend(v)}
+                                className={`p-1.5 rounded-lg border cursor-pointer transition-all ${
+                                  isBankChargeVoucher(v)
+                                    ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 text-amber-700 dark:text-amber-300'
+                                    : 'border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
+                                }`}
+                                title={
+                                  isBankChargeVoucher(v)
+                                    ? `Amend Bank Charge #${v.srNo} (Direct Debit Dialogue)`
+                                    : `Amend Voucher #${v.srNo}`
+                                }
                               >
                                 <Edit className="w-3.5 h-3.5" />
                               </button>
@@ -3123,195 +3214,19 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* 21.5 DIRECT BANK CHARGE MODAL                                  */}
+      {/* 21.5 DEDICATED DIRECT BANK CHARGE MODAL (NEW & AMEND MODES)   */}
       {/* ------------------------------------------------------------- */}
-      {isBankChargeModalOpen && (
-        <div className="fixed inset-0 z-[110] bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div
-            className={`w-full max-w-lg rounded-2xl border shadow-2xl p-6 space-y-4 my-auto transition-all ${
-              darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
-            }`}
-          >
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Landmark className="w-5 h-5 text-amber-500" />
-                <h3 className="font-bold text-sm uppercase tracking-wide">Record Direct Bank Charge</h3>
-              </div>
-              <button
-                onClick={() => setIsBankChargeModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1 rounded-lg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitBankCharge} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-bold">
-                  Target Institutional Bank Account
-                </label>
-                <select
-                  value={bcAccount}
-                  onChange={(e) => {
-                    const newAcc = e.target.value as BankAccountKey;
-                    setBcAccount(newAcc);
-                  }}
-                  className={`w-full p-2.5 rounded-xl border outline-none font-semibold ${
-                    darkMode
-                      ? 'bg-slate-800 border-slate-700 text-white'
-                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-600'
-                  }`}
-                >
-                  {Object.entries(INSTITUTIONAL_BANK_ACCOUNTS).map(([k, acc]) => (
-                    <option key={k} value={k}>
-                      {acc.shortName} — {acc.accountNo}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* ACCOUNT HEAD: EXACT GOOGLE SHEETS SCRIPT LOGIC */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-slate-700 dark:text-slate-300 font-bold flex items-center gap-1.5">
-                    <BookOpen className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Account Head</span>
-                  </label>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300/40">
-                    {bcAccount === 'NS' || bcAccount === 'AA'
-                      ? '🏛️ Bank Charges Head'
-                      : `📑 Mapped to ${INSTITUTIONAL_BANK_ACCOUNTS[bcAccount]?.shortName || bcAccount}`}
-                  </span>
-                </div>
-
-                {bcAccount === 'NS' || bcAccount === 'AA' ? (
-                  <div className="space-y-1">
-                    <select
-                      value={bcSelectedHead}
-                      onChange={(e) => setBcSelectedHead(e.target.value)}
-                      className={`w-full p-2.5 rounded-xl border outline-none font-mono font-bold ${
-                        darkMode
-                          ? 'bg-slate-800 border-slate-700 text-amber-300'
-                          : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-amber-600'
-                      }`}
-                    >
-                      <option value="A03101-BANK CHARGES">A03101-BANK CHARGES (Standard Head)</option>
-                      {MASTER_ACCOUNT_HEADS.filter((h) => h !== 'A03101-BANK CHARGES').map((h) => (
-                        <option key={h} value={h}>
-                          {h}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                      ✓ Google Sheets Rule: Non-Salary (NS) &amp; AAA debit under <strong>A03101-BANK CHARGES</strong>.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-xl border bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 font-mono flex items-center justify-between">
-                    <div>
-                      <div className="font-bold text-slate-900 dark:text-white text-xs">{bcSelectedHead}</div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        Auto-assigned dedicated fund head as per Google Sheets script.
-                      </div>
-                    </div>
-                    <span className="px-2 py-1 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200 shrink-0">
-                      Rule Locked
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-bold">Amount (PKR)</label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={bcAmount || ''}
-                  onChange={(e) => setBcAmount(Number(e.target.value))}
-                  placeholder="e.g. 550"
-                  className={`w-full p-2.5 rounded-xl border font-mono font-bold outline-none ${
-                    darkMode
-                      ? 'bg-slate-800 border-slate-700 text-amber-300'
-                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-amber-600'
-                  }`}
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 dark:text-slate-300 mb-1 font-bold">Date &amp; Narration</label>
-                <input
-                  type="date"
-                  value={bcDate}
-                  onChange={(e) => setBcDate(e.target.value)}
-                  className={`w-full p-2.5 rounded-xl border outline-none mb-2 ${
-                    darkMode
-                      ? 'bg-slate-800 border-slate-700 text-white'
-                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-600'
-                  }`}
-                />
-                <input
-                  type="text"
-                  value={bcMemo}
-                  onChange={(e) => setBcMemo(e.target.value)}
-                  placeholder="Bank Charge Narration (e.g. SMS Alert Charges / FED)"
-                  className={`w-full p-2.5 rounded-xl border outline-none ${
-                    darkMode
-                      ? 'bg-slate-800 border-slate-700 text-white'
-                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-600'
-                  }`}
-                />
-              </div>
-
-              {/* LIVE DIRECT DEBIT SUMMARY CARD */}
-              <div
-                className={`p-3 rounded-xl border text-xs font-mono space-y-1 ${
-                  darkMode ? 'bg-amber-950/20 border-amber-900/40 text-amber-200' : 'bg-amber-50/70 border-amber-200 text-amber-900'
-                }`}
-              >
-                <div className="flex justify-between font-bold">
-                  <span>Direct Debit Voucher:</span>
-                  <span>BC-{new Date(bcDate).getFullYear()}/{maxExistingSrNo + 1}</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span>Target Head:</span>
-                  <span className="font-bold">{bcSelectedHead}</span>
-                </div>
-                <div className="flex justify-between text-[11px]">
-                  <span>Mode:</span>
-                  <span>Direct Debit (No physical cheque)</span>
-                </div>
-                {bcAmount > 0 && (
-                  <div className="flex justify-between font-bold pt-1 border-t border-amber-200 dark:border-amber-800/60">
-                    <span>Debit Amount:</span>
-                    <span>Rs. {formatPKR(bcAmount)}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsBankChargeModalOpen(false)}
-                  className={`px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer border ${
-                    darkMode
-                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
-                      : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
-                  }`}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer active:translate-y-px"
-                >
-                  Post Bank Charge
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <BankChargeModal
+        isOpen={isBankChargeModalOpen}
+        onClose={() => {
+          setIsBankChargeModalOpen(false);
+          setBcVoucherToAmend(null);
+        }}
+        voucherToAmend={bcVoucherToAmend}
+        maxExistingSrNo={maxExistingSrNo}
+        onSaveBankCharge={handleSaveBankCharge}
+        darkMode={darkMode}
+      />
 
       {/* ------------------------------------------------------------- */}
       {/* 21.55 DEDICATED INSTITUTIONAL BACKUP STATUS MODAL              */}
@@ -3589,6 +3504,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         customGvtiwLogo={customGvtiwLogo}
         customTevtaLogo={customTevtaLogo}
         customGopLogo={customGopLogo}
+        onSwitchToBankChargeAmend={handleInitiateAmend}
       />
 
       {/* ------------------------------------------------------------- */}
