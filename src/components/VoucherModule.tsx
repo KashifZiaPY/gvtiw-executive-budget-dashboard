@@ -515,21 +515,6 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
             <option value="Securities">Securities Account</option>
           </select>
 
-          {/* Actions: New Voucher & Direct Bank Charge */}
-          <button
-            onClick={handleOpenNewEntry}
-            className="px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer whitespace-nowrap"
-          >
-            <PlusCircle className="w-4 h-4 text-emerald-300" />
-            <span>New Voucher Entry</span>
-          </button>
-          <button
-            onClick={handleOpenNewBankCharge}
-            className="px-3.5 py-2 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer whitespace-nowrap"
-          >
-            <Landmark className="w-4 h-4 text-amber-100" />
-            <span>Record Bank Charge</span>
-          </button>
           <button
             onClick={handleExportCSV}
             className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 border border-slate-700 shadow-xs transition-all cursor-pointer"
