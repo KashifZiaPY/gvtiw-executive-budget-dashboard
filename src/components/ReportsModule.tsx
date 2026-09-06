@@ -430,10 +430,11 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   ]);
 
   // Aggregates for Filtered Data
-  const totalGross = useMemo(() => filteredVouchers.reduce((s, v) => s + v.billAmountGross, 0), [filteredVouchers]);
-  const totalNet = useMemo(() => filteredVouchers.reduce((s, v) => s + v.chequeAmountNet, 0), [filteredVouchers]);
-  const totalWht = useMemo(() => filteredVouchers.reduce((s, v) => s + v.incomeTaxAmount, 0), [filteredVouchers]);
-  const totalPra = useMemo(() => filteredVouchers.reduce((s, v) => s + v.praAmount, 0), [filteredVouchers]);
+  const totalGross = useMemo(() => filteredVouchers.reduce((s, v) => s + (v.billAmountGross || 0), 0), [filteredVouchers]);
+  const totalGst = useMemo(() => filteredVouchers.reduce((s, v) => s + (v.gstAmount || 0), 0), [filteredVouchers]);
+  const totalNet = useMemo(() => filteredVouchers.reduce((s, v) => s + (v.chequeAmountNet || 0), 0), [filteredVouchers]);
+  const totalWht = useMemo(() => filteredVouchers.reduce((s, v) => s + (v.incomeTaxAmount || 0), 0), [filteredVouchers]);
+  const totalPra = useMemo(() => filteredVouchers.reduce((s, v) => s + (v.praAmount || 0), 0), [filteredVouchers]);
 
   // OFFICIAL PRINT: CASH BOOK STATEMENT
   const handlePrintCashBook = (data: CashBookStatementData) => {
@@ -645,95 +646,233 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       return;
     }
 
-    const kpiCards = [
-      {
-        label: 'GROSS CLAIMED',
-        amount: totalGross,
-        color: '#0f172a',
-        bgColor: '#f8fafc',
-        borderColor: '#cbd5e1',
-      },
-      {
-        label: 'WHT INCOME TAX',
-        amount: totalWht,
-        color: '#be123c',
-        bgColor: '#fef2f2',
-        borderColor: '#fca5a5',
-      },
-      {
-        label: 'PRA SALES TAX',
-        amount: totalPra,
-        color: '#b45309',
-        bgColor: '#fffbeb',
-        borderColor: '#fde68a',
-      },
-      {
-        label: 'NET PAID (CHEQUES)',
-        amount: totalNet,
-        color: '#047857',
-        bgColor: '#ecfdf5',
-        borderColor: '#a7f3d0',
-      },
-    ];
+    const gvtiwLogoSrc = customGvtiwLogo || '/gvtiw-logo.png';
+    const tevtaLogoSrc = customTevtaLogo || '/tevta-logo.png';
 
-    const tableHeaders = [
-      'SR#',
-      'DATE',
-      'ACCT',
-      'VOUCHER #',
-      'PAYEE / VENDOR',
-      'BUDGET ACCOUNT HEAD',
-      'PARTICULAR / NARRATION',
-      'CHEQUE #',
-      'WHT (RS.)',
-      'PRA (RS.)',
-      'NET PAID (RS.)',
-    ];
+    const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>${reportTitle} — GVTI(W) Samanabad</title>
+        <style>
+          @page { size: A4 landscape; margin: 6mm; }
+          * { box-sizing: border-box; }
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            color: #0f172a;
+            margin: 0;
+            padding: 8px;
+            font-size: 8.5px;
+            background-color: #ffffff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .report-header-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2.5px solid #0b2545;
+            padding-bottom: 6px;
+            margin-bottom: 8px;
+          }
+          .logo-container {
+            width: 55px;
+            height: 55px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .logo-container img {
+            max-width: 52px;
+            max-height: 52px;
+            object-fit: contain;
+          }
+          .header-text-block {
+            text-align: center;
+            flex: 1;
+            padding: 0 10px;
+          }
+          .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+          }
+          .kpi-card {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 5px 8px;
+            text-align: center;
+            background-color: #f8fafc;
+          }
+          .kpi-card span {
+            display: block;
+            font-size: 8px;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: #475569;
+          }
+          .kpi-card strong {
+            display: block;
+            font-size: 11.5px;
+            font-family: monospace;
+            font-weight: 900;
+            margin-top: 2px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8px;
+          }
+          th {
+            background-color: #0b2545;
+            color: #ffffff;
+            padding: 5px 4px;
+            font-weight: 800;
+            text-transform: uppercase;
+            border: 1px solid #0b2545;
+            font-size: 7.5px;
+            letter-spacing: 0.3px;
+          }
+          td {
+            padding: 3.5px 4px;
+            border: 1px solid #cbd5e1;
+            vertical-align: middle;
+          }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .font-mono { font-family: monospace; }
+          .font-bold { font-weight: bold; }
+          .font-black { font-weight: 900; }
+        </style>
+      </head>
+      <body>
+        <div class="report-header-wrap">
+          <div class="logo-container">
+            <img src="${gvtiwLogoSrc}" alt="GVTIW Logo" onerror="this.style.display='none'" />
+          </div>
+          <div class="header-text-block">
+            <h1 style="font-size: 13px; font-weight: 900; color: #0b2545; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">
+              GOVT. VOCATIONAL TRAINING INSTITUTE (W) SAMANABAD, FAISALABAD
+            </h1>
+            <h2 style="font-size: 10.5px; font-weight: 800; color: #1e3a8a; margin: 2px 0 0 0; text-transform: uppercase;">
+              ${reportTitle.toUpperCase()} — TAX &amp; DISBURSEMENT RECORD
+            </h2>
+            <div style="display: flex; justify-content: center; gap: 15px; margin-top: 3px; font-size: 8px; color: #475569;">
+              <span><strong>Bank Account:</strong> ${selectedBank}</span>
+              <span><strong>Period:</strong> ${buildPeriodLabel(fromDate, toDate)}</span>
+              <span><strong>Generated:</strong> ${formatGeneratedTimestamp()}</span>
+              <span><strong>Total Records:</strong> ${filteredVouchers.length}</span>
+            </div>
+          </div>
+          <div class="logo-container">
+            <img src="${tevtaLogoSrc}" alt="TEVTA Logo" onerror="this.style.display='none'" />
+          </div>
+        </div>
 
-    const rows: CashBookStatementRow[] = filteredVouchers.map((v, i) => ({
-      id: `GEN-V${v.srNo}`,
-      srNo: i + 1,
-      date: v.chequeDate || v.billDate,
-      accountKey: resolveBankKeyFromAccount(v.bankAccount),
-      voucherNo: v.voucherNo,
-      paidToBy: v.payeeName,
-      accountHead: v.accountHead,
-      particulars: v.description,
-      chequeNo: v.chequeNoNet || '—',
-      receipts: v.incomeTaxAmount,
-      payments: v.praAmount,
-      balance: v.chequeAmountNet,
-    }));
+        <div class="kpi-grid">
+          <div class="kpi-card" style="border-color: #cbd5e1; background-color: #f8fafc;">
+            <span>Gross Bill Amount</span>
+            <strong style="color: #0f172a;">Rs. ${formatCurrency2Decimals(totalGross)}</strong>
+          </div>
+          <div class="kpi-card" style="border-color: #ddd6fe; background-color: #f5f3ff;">
+            <span>GST Sales Tax</span>
+            <strong style="color: #7c3aed;">Rs. ${formatCurrency2Decimals(totalGst)}</strong>
+          </div>
+          <div class="kpi-card" style="border-color: #fca5a5; background-color: #fef2f2;">
+            <span>WHT Income Tax</span>
+            <strong style="color: #be123c;">Rs. ${formatCurrency2Decimals(totalWht)}</strong>
+          </div>
+          <div class="kpi-card" style="border-color: #fde68a; background-color: #fffbeb;">
+            <span>PRA Sales Tax</span>
+            <strong style="color: #b45309;">Rs. ${formatCurrency2Decimals(totalPra)}</strong>
+          </div>
+          <div class="kpi-card" style="border-color: #a7f3d0; background-color: #ecfdf5;">
+            <span>Net Paid (Cheques)</span>
+            <strong style="color: #047857;">Rs. ${formatCurrency2Decimals(totalNet)}</strong>
+          </div>
+        </div>
 
-    const html = generateOfficialStatementPrintHtml({
-      reportType: 'GENERAL',
-      title: reportTitle.toUpperCase(),
-      subtitle: 'Institutional Disbursement & Tax Audit Record',
-      accountOrHeadInfo: `Bank Filter: ${selectedBank} • Records: ${filteredVouchers.length}`,
-      generatedTimestamp: formatGeneratedTimestamp(),
-      periodLabel: buildPeriodLabel(fromDate, toDate),
-      totalTransactionsCount: filteredVouchers.length,
-      kpiCards,
-      tableHeaders,
-      isGrouped: false,
-      groups: [
-        {
-          headerTitle: `${reportTitle} Transactions`,
-          rows,
-        },
-      ],
-      grandTotals: {
-        receipts: totalGross,
-        payments: totalNet,
-      },
-      closingRow: {
-        label: 'NET DISBURSED AMOUNT (TOTAL):',
-        formulaText: '[Gross Claimed - Withheld Taxes]',
-        balance: totalNet,
-      },
-      customGvtiwLogo,
-      customTevtaLogo,
-    });
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 25px;" class="text-center">SR#</th>
+              <th style="width: 75px;">VOUCHER#</th>
+              <th style="width: 60px;">DATE</th>
+              <th>PAYEE / VENDOR</th>
+              <th style="width: 65px;">BILL/INV #</th>
+              <th style="width: 55px;">BILL DATE</th>
+              <th style="width: 75px;" class="text-right">GROSS BILL (RS.)</th>
+              <th style="width: 65px;" class="text-right">GST (RS.)</th>
+              <th>BUDGET ACCOUNT HEAD</th>
+              <th style="width: 60px;" class="text-center">CHEQUE#</th>
+              <th style="width: 60px;" class="text-right">WHT (RS.)</th>
+              <th style="width: 60px;" class="text-right">PRA (RS.)</th>
+              <th style="width: 75px;" class="text-right">NET PAID (RS.)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredVouchers.map((v, i) => `
+              <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td class="text-center font-mono" style="color: #64748b;">${i + 1}</td>
+                <td class="font-mono font-bold" style="color: #1d4ed8; white-space: nowrap;">${v.voucherNo}</td>
+                <td class="font-mono" style="white-space: nowrap;">${v.chequeDate || v.billDate}</td>
+                <td class="font-bold" style="color: #0f172a;">${v.payeeName}</td>
+                <td class="font-mono" style="color: #334155;">${v.billNo || '—'}</td>
+                <td class="font-mono" style="color: #64748b;">${v.billDate || '—'}</td>
+                <td class="text-right font-mono font-bold" style="color: #0f172a;">${formatCurrency2Decimals(v.billAmountGross)}</td>
+                <td class="text-right font-mono" style="color: #7c3aed;">${v.gstAmount > 0 ? formatCurrency2Decimals(v.gstAmount) : '—'}</td>
+                <td style="color: #334155; font-size: 7.5px;">${v.accountHead}</td>
+                <td class="text-center font-mono" style="font-size: 7.5px;">${v.chequeNoNet || '—'}</td>
+                <td class="text-right font-mono" style="color: #be123c;">${v.incomeTaxAmount > 0 ? formatCurrency2Decimals(v.incomeTaxAmount) : '—'}</td>
+                <td class="text-right font-mono" style="color: #b45309;">${v.praAmount > 0 ? formatCurrency2Decimals(v.praAmount) : '—'}</td>
+                <td class="text-right font-mono font-black" style="color: #047857;">${formatCurrency2Decimals(v.chequeAmountNet)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr style="background-color: #e2e8f0; font-weight: bold; border-top: 2px solid #0b2545;">
+              <td colspan="4" class="text-right font-black" style="padding: 6px; text-transform: uppercase;">
+                GRAND TOTALS (${filteredVouchers.length} RECORDS):
+              </td>
+              <td class="text-center" style="color: #64748b;">—</td>
+              <td class="text-center" style="color: #64748b;">—</td>
+              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9px;">
+                ${formatCurrency2Decimals(totalGross)}
+              </td>
+              <td class="text-right font-mono font-black" style="color: #7c3aed; font-size: 9px;">
+                ${formatCurrency2Decimals(totalGst)}
+              </td>
+              <td class="text-center" style="color: #64748b;">—</td>
+              <td class="text-center" style="color: #64748b;">—</td>
+              <td class="text-right font-mono font-black" style="color: #be123c; font-size: 9px;">
+                ${formatCurrency2Decimals(totalWht)}
+              </td>
+              <td class="text-right font-mono font-black" style="color: #b45309; font-size: 9px;">
+                ${formatCurrency2Decimals(totalPra)}
+              </td>
+              <td class="text-right font-mono font-black" style="color: #047857; font-size: 9.5px;">
+                ${formatCurrency2Decimals(totalNet)}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div style="display: flex; justify-content: space-between; margin-top: 25px; padding: 0 20px; text-align: center; font-size: 8px;">
+          <div style="border-top: 1px solid #94a3b8; width: 140px; padding-top: 4px;">
+            <strong>Accountant / Cashier</strong>
+          </div>
+          <div style="border-top: 1px solid #94a3b8; width: 140px; padding-top: 4px;">
+            <strong>Audit &amp; Accounts Officer</strong>
+          </div>
+          <div style="border-top: 1px solid #94a3b8; width: 140px; padding-top: 4px;">
+            <strong>Principal / DDO</strong>
+          </div>
+        </div>
+      </body>
+    </html>
+    `;
 
     printWin.document.open();
     printWin.document.write(html);
@@ -1001,12 +1140,14 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       'Payee Name',
       'NTN/CNIC',
       'Bill No',
+      'Bill Date',
+      'Gross Bill Amount',
+      'GST Amount',
       'Account Head',
-      'Bill Gross',
       'Cheque No Net',
-      'Cheque Net Amount',
-      'Income Tax Amount',
+      'Income Tax Amount (WHT)',
       'PRA Amount',
+      'Cheque Net Amount',
       'Bank Account',
       'Narration',
     ];
@@ -1018,14 +1159,36 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       `"${v.payeeName}"`,
       `"${v.ntnCnic}"`,
       `"${v.billNo}"`,
-      `"${v.accountHead}"`,
+      `"${v.billDate}"`,
       v.billAmountGross,
+      v.gstAmount || 0,
+      `"${v.accountHead}"`,
       `"${v.chequeNoNet}"`,
-      v.chequeAmountNet,
       v.incomeTaxAmount,
       v.praAmount,
+      v.chequeAmountNet,
       `"${v.bankAccount}"`,
       `"${v.description.replace(/"/g, '""')}"`,
+    ]);
+
+    // Grand totals row
+    rows.push([
+      '—',
+      '—',
+      '—',
+      '"GRAND TOTALS (Rs.)"',
+      '—',
+      '—',
+      '—',
+      totalGross,
+      totalGst,
+      '—',
+      '—',
+      totalWht,
+      totalPra,
+      totalNet,
+      '—',
+      '—',
     ]);
 
     const csvContent =
@@ -1636,11 +1799,17 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </div>
 
           {/* Summary Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
               <span className="text-[10px] text-slate-400 font-bold uppercase block">Gross Claimed</span>
               <span className="text-base font-black font-mono text-slate-900 dark:text-white">
                 {formatPKR(totalGross, false)}
+              </span>
+            </div>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-purple-900/60 bg-purple-950/20' : 'bg-purple-50 border-purple-200 shadow-xs'}`}>
+              <span className="text-[10px] text-purple-700 dark:text-purple-400 font-bold uppercase block">GST Sales Tax</span>
+              <span className="text-base font-black font-mono text-purple-600 dark:text-purple-400">
+                {formatPKR(totalGst, false)}
               </span>
             </div>
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
@@ -1655,7 +1824,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 {formatPKR(totalPra, false)}
               </span>
             </div>
-            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-emerald-800 bg-emerald-950/20' : 'bg-emerald-50 border-emerald-200'}`}>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-emerald-800 bg-emerald-950/20' : 'bg-emerald-50 border-emerald-200 shadow-xs'}`}>
               <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase block">Net Paid (Cheques)</span>
               <span className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400">
                 {formatPKR(totalNet, false)}
@@ -1666,26 +1835,29 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           {/* Detailed Table */}
           <div className={`rounded-xl border overflow-hidden shadow-lg ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200'}`}>
             <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left border-collapse min-w-[950px]">
+              <table className="w-full text-xs text-left border-collapse min-w-[1200px]">
                 <thead className="bg-[#0b2545] text-white font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-2 text-center w-12 border-r border-slate-800">Sr.#</th>
                     <th className="py-2.5 px-3 border-r border-slate-800 w-28">Voucher#</th>
                     <th className="py-2.5 px-3 border-r border-slate-800 w-24">Date</th>
                     <th className="py-2.5 px-3 border-r border-slate-800">Payee / Vendor</th>
+                    <th className="py-2.5 px-2.5 border-r border-slate-800 w-24">Bill/Invoice #</th>
+                    <th className="py-2.5 px-2.5 border-r border-slate-800 w-24">Bill Date</th>
+                    <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28">Gross Bill Amount (Rs.)</th>
+                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-24 text-purple-300">GST (Rs.)</th>
                     <th className="py-2.5 px-3 border-r border-slate-800">Budget Account Head</th>
                     <th className="py-2.5 px-2 text-center border-r border-slate-800 w-24">Cheque#</th>
-                    <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28">Gross (Rs.)</th>
-                    <th className="py-2.5 px-2 text-right border-r border-slate-800 w-20">WHT</th>
-                    <th className="py-2.5 px-2 text-right border-r border-slate-800 w-20">PRA</th>
-                    <th className="py-2.5 px-3 text-right w-28">Net Paid (Rs.)</th>
+                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-20 text-rose-300">WHT (Rs.)</th>
+                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-20 text-amber-300">PRA (Rs.)</th>
+                    <th className="py-2.5 px-3 text-right w-28 text-emerald-300">Net Paid (Rs.)</th>
                     <th className="py-2.5 px-2 text-center w-16">PAF</th>
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
                   {filteredVouchers.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-10 text-center text-slate-500 italic">
+                      <td colSpan={14} className="py-10 text-center text-slate-500 italic">
                         No transactions found matching the selected report filters.
                       </td>
                     </tr>
@@ -1696,12 +1868,15 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                         <td className="py-2 px-3 font-mono font-bold text-blue-400 border-r border-slate-800/50">{v.voucherNo}</td>
                         <td className="py-2 px-3 font-mono text-slate-400 border-r border-slate-800/50">{v.chequeDate || v.billDate}</td>
                         <td className="py-2 px-3 font-bold border-r border-slate-800/50">{v.payeeName}</td>
+                        <td className="py-2 px-2.5 font-mono text-slate-300 border-r border-slate-800/50">{v.billNo || '—'}</td>
+                        <td className="py-2 px-2.5 font-mono text-slate-400 border-r border-slate-800/50">{v.billDate || '—'}</td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100 border-r border-slate-800/50">{formatPKR(v.billAmountGross, false)}</td>
+                        <td className="py-2 px-2.5 text-right font-mono text-purple-600 dark:text-purple-400 border-r border-slate-800/50">{v.gstAmount > 0 ? formatPKR(v.gstAmount, false) : '-'}</td>
                         <td className="py-2 px-3 text-[11px] font-mono text-slate-300 border-r border-slate-800/50">{v.accountHead}</td>
-                        <td className="py-2 px-2 text-center font-mono border-r border-slate-800/50">{v.chequeNoNet}</td>
-                        <td className="py-2 px-3 text-right font-mono font-bold border-r border-slate-800/50">{formatPKR(v.billAmountGross, false)}</td>
-                        <td className="py-2 px-2 text-right font-mono text-rose-400 border-r border-slate-800/50">{v.incomeTaxAmount > 0 ? formatPKR(v.incomeTaxAmount, false) : '-'}</td>
-                        <td className="py-2 px-2 text-right font-mono text-amber-400 border-r border-slate-800/50">{v.praAmount > 0 ? formatPKR(v.praAmount, false) : '-'}</td>
-                        <td className="py-2 px-3 text-right font-mono font-black text-emerald-400">{formatPKR(v.chequeAmountNet, false)}</td>
+                        <td className="py-2 px-2 text-center font-mono border-r border-slate-800/50">{v.chequeNoNet || '—'}</td>
+                        <td className="py-2 px-2.5 text-right font-mono text-rose-500 dark:text-rose-400 border-r border-slate-800/50">{v.incomeTaxAmount > 0 ? formatPKR(v.incomeTaxAmount, false) : '-'}</td>
+                        <td className="py-2 px-2.5 text-right font-mono text-amber-500 dark:text-amber-400 border-r border-slate-800/50">{v.praAmount > 0 ? formatPKR(v.praAmount, false) : '-'}</td>
+                        <td className="py-2 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 border-r border-slate-800/50">{formatPKR(v.chequeAmountNet, false)}</td>
                         <td className="py-2 px-2 text-center">
                           <button
                             onClick={() => setSelectedVoucherForPAF(v)}
@@ -1714,6 +1889,35 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                     ))
                   )}
                 </tbody>
+                {filteredVouchers.length > 0 && (
+                  <tfoot className={`border-t-2 font-bold ${darkMode ? 'border-slate-700 bg-slate-900/90 text-white' : 'border-slate-300 bg-slate-100 text-slate-900'}`}>
+                    <tr>
+                      <td colSpan={4} className="py-3 px-3 text-right uppercase text-[11px] font-black tracking-wider text-slate-700 dark:text-slate-200 border-r border-slate-300 dark:border-slate-800/50">
+                        Grand Totals ({filteredVouchers.length} Records):
+                      </td>
+                      <td className="py-3 px-2 text-center text-slate-400 border-r border-slate-300 dark:border-slate-800/50">—</td>
+                      <td className="py-3 px-2 text-center text-slate-400 border-r border-slate-300 dark:border-slate-800/50">—</td>
+                      <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white text-xs border-r border-slate-300 dark:border-slate-800/50">
+                        {formatPKR(totalGross, false)}
+                      </td>
+                      <td className="py-3 px-2.5 text-right font-mono font-black text-purple-600 dark:text-purple-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
+                        {formatPKR(totalGst, false)}
+                      </td>
+                      <td className="py-3 px-2 text-center text-slate-400 border-r border-slate-300 dark:border-slate-800/50">—</td>
+                      <td className="py-3 px-2 text-center text-slate-400 border-r border-slate-300 dark:border-slate-800/50">—</td>
+                      <td className="py-3 px-2.5 text-right font-mono font-black text-rose-500 dark:text-rose-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
+                        {formatPKR(totalWht, false)}
+                      </td>
+                      <td className="py-3 px-2.5 text-right font-mono font-black text-amber-500 dark:text-amber-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
+                        {formatPKR(totalPra, false)}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
+                        {formatPKR(totalNet, false)}
+                      </td>
+                      <td className="py-3 px-2 text-center text-slate-400">—</td>
+                    </tr>
+                  </tfoot>
+                )}
               </table>
             </div>
           </div>
