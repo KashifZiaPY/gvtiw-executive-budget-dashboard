@@ -1281,18 +1281,13 @@ export function sanitizeCashBookStates(
   if (!states) return INITIAL_CASHBOOK_STATES;
   const sanitized: Record<BankAccountKey, CashBookAccountState> = JSON.parse(JSON.stringify(states));
 
-  // Ensure Fee Collection (FC) has proper opening balance and no bogus FC-R1
+  // Ensure Fee Collection (FC) has proper opening balance
   if (sanitized.FC) {
     if (!sanitized.FC.openingBalance || sanitized.FC.openingBalance === 0) {
       sanitized.FC.openingBalance = 77717.0;
     }
     if (sanitized.FC.meta) {
       sanitized.FC.meta.openingBalance = sanitized.FC.openingBalance;
-    }
-    if (sanitized.FC.entries) {
-      sanitized.FC.entries = sanitized.FC.entries.filter(
-        (e: any) => e.id !== 'FC-R1' && !(e.particulars && e.particulars.includes('Admission & Tuition Fee Collection Session 2026-2027'))
-      );
     }
     let bal = sanitized.FC.openingBalance;
     let totPay = 0;
