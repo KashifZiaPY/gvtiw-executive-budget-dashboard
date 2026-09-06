@@ -430,6 +430,14 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   ]);
 
   // Aggregates for Filtered Data
+  const totalBillExclTax = useMemo(
+    () => filteredVouchers.reduce((s, v) => s + (Number(v.billAmtExclTax || v.billAmountGross) || 0), 0),
+    [filteredVouchers]
+  );
+  const totalPraOnBill = useMemo(
+    () => filteredVouchers.reduce((s, v) => s + (Number(v.praTaxOnBill) || 0), 0),
+    [filteredVouchers]
+  );
   const totalGross = useMemo(() => filteredVouchers.reduce((s, v) => s + (v.billAmountGross || 0), 0), [filteredVouchers]);
   const totalGst = useMemo(() => filteredVouchers.reduce((s, v) => s + (v.gstAmount || 0), 0), [filteredVouchers]);
   const totalNet = useMemo(() => filteredVouchers.reduce((s, v) => s + (v.chequeAmountNet || 0), 0), [filteredVouchers]);
@@ -814,18 +822,20 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           <thead>
             <tr>
               <th style="width: 25px;" class="text-center">SR#</th>
-              <th style="width: 75px;">VOUCHER#</th>
-              <th style="width: 60px;">DATE</th>
+              <th style="width: 70px;">VOUCHER#</th>
+              <th style="width: 55px;">DATE</th>
               <th>PAYEE / VENDOR</th>
-              <th style="width: 65px;">BILL/INV #</th>
-              <th style="width: 55px;">BILL DATE</th>
-              <th style="width: 75px;" class="text-right">GROSS BILL (RS.)</th>
-              <th style="width: 65px;" class="text-right">GST (RS.)</th>
+              <th style="width: 60px;">BILL/INV #</th>
+              <th style="width: 50px;">BILL DATE</th>
+              <th style="width: 70px;" class="text-right">AMOUNT EXCL. TAX (RS.)</th>
+              <th style="width: 60px;" class="text-right">PRA (BILL) (RS.)</th>
+              <th style="width: 70px;" class="text-right">GROSS BILL (RS.)</th>
+              <th style="width: 60px;" class="text-right">GST (RS.)</th>
               <th>BUDGET ACCOUNT HEAD</th>
-              <th style="width: 60px;" class="text-center">CHEQUE#</th>
-              <th style="width: 60px;" class="text-right">WHT (RS.)</th>
-              <th style="width: 60px;" class="text-right">PRA (RS.)</th>
-              <th style="width: 75px;" class="text-right">NET PAID (RS.)</th>
+              <th style="width: 55px;" class="text-center">CHEQUE#</th>
+              <th style="width: 55px;" class="text-right">WHT (RS.)</th>
+              <th style="width: 55px;" class="text-right">PRA (RS.)</th>
+              <th style="width: 70px;" class="text-right">NET PAID (RS.)</th>
             </tr>
           </thead>
           <tbody>
@@ -837,6 +847,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 <td class="font-bold" style="color: #0f172a;">${v.payeeName}</td>
                 <td class="font-mono" style="color: #334155;">${v.billNo || '—'}</td>
                 <td class="font-mono" style="color: #64748b;">${v.billDate || '—'}</td>
+                <td class="text-right font-mono" style="color: #0f172a;">${formatCurrency2Decimals(Number(v.billAmtExclTax || v.billAmountGross))}</td>
+                <td class="text-right font-mono" style="color: #b45309;">${Number(v.praTaxOnBill) > 0 ? formatCurrency2Decimals(v.praTaxOnBill) : '—'}</td>
                 <td class="text-right font-mono font-bold" style="color: #0f172a;">${formatCurrency2Decimals(v.billAmountGross)}</td>
                 <td class="text-right font-mono" style="color: #7c3aed;">${v.gstAmount > 0 ? formatCurrency2Decimals(v.gstAmount) : '—'}</td>
                 <td style="color: #334155; font-size: 7.5px;">${v.accountHead}</td>
@@ -854,6 +866,12 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               </td>
               <td class="text-center" style="color: #64748b;">—</td>
               <td class="text-center" style="color: #64748b;">—</td>
+              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9px;">
+                ${formatCurrency2Decimals(totalBillExclTax)}
+              </td>
+              <td class="text-right font-mono font-black" style="color: #b45309; font-size: 9px;">
+                ${formatCurrency2Decimals(totalPraOnBill)}
+              </td>
               <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9px;">
                 ${formatCurrency2Decimals(totalGross)}
               </td>
@@ -1155,6 +1173,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       'NTN/CNIC',
       'Bill No',
       'Bill Date',
+      'Amount Excl. Tax',
+      'PRA (Bill)',
       'Gross Bill Amount',
       'GST Amount',
       'Account Head',
@@ -1174,6 +1194,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       `"${v.ntnCnic}"`,
       `"${v.billNo}"`,
       `"${v.billDate}"`,
+      Number(v.billAmtExclTax || v.billAmountGross),
+      v.praTaxOnBill || 0,
       v.billAmountGross,
       v.gstAmount || 0,
       `"${v.accountHead}"`,
@@ -1194,6 +1216,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       '—',
       '—',
       '—',
+      totalBillExclTax,
+      totalPraOnBill,
       totalGross,
       totalGst,
       '—',
@@ -1876,7 +1900,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                     <th className="py-2.5 px-3 border-r border-slate-800">Payee / Vendor</th>
                     <th className="py-2.5 px-2.5 border-r border-slate-800 w-24">Bill/Invoice #</th>
                     <th className="py-2.5 px-2.5 border-r border-slate-800 w-24">Bill Date</th>
-                    <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28">Gross Bill Amount (Rs.)</th>
+                    <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28">Amount Excl. Tax (Rs.)</th>
+                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-24 text-amber-300">PRA (Bill) (Rs.)</th>
+                    <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28">Gross Bill (Rs.)</th>
                     <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-24 text-purple-300">GST (Rs.)</th>
                     <th className="py-2.5 px-3 border-r border-slate-800">Budget Account Head</th>
                     <th className="py-2.5 px-2 text-center border-r border-slate-800 w-24">Cheque#</th>
@@ -1889,7 +1915,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 <tbody className={`divide-y ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
                   {filteredVouchers.length === 0 ? (
                     <tr>
-                      <td colSpan={14} className="py-10 text-center text-slate-500 italic">
+                      <td colSpan={16} className="py-10 text-center text-slate-500 italic">
                         No transactions found matching the selected report filters.
                       </td>
                     </tr>
@@ -1902,6 +1928,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                         <td className="py-2 px-3 font-bold border-r border-slate-800/50">{v.payeeName}</td>
                         <td className="py-2 px-2.5 font-mono text-slate-300 border-r border-slate-800/50">{v.billNo || '—'}</td>
                         <td className="py-2 px-2.5 font-mono text-slate-400 border-r border-slate-800/50">{v.billDate || '—'}</td>
+                        <td className="py-2 px-3 text-right font-mono text-slate-900 dark:text-slate-100 border-r border-slate-800/50">{formatPKR(Number(v.billAmtExclTax || v.billAmountGross), false)}</td>
+                        <td className="py-2 px-2.5 text-right font-mono text-amber-500 dark:text-amber-400 border-r border-slate-800/50">{Number(v.praTaxOnBill) > 0 ? formatPKR(Number(v.praTaxOnBill), false) : '-'}</td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100 border-r border-slate-800/50">{formatPKR(v.billAmountGross, false)}</td>
                         <td className="py-2 px-2.5 text-right font-mono text-purple-600 dark:text-purple-400 border-r border-slate-800/50">{v.gstAmount > 0 ? formatPKR(v.gstAmount, false) : '-'}</td>
                         <td className="py-2 px-3 text-[11px] font-mono text-slate-300 border-r border-slate-800/50">{v.accountHead}</td>
@@ -1929,6 +1957,12 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                       </td>
                       <td className="py-3 px-2 text-center text-slate-400 border-r border-slate-300 dark:border-slate-800/50">—</td>
                       <td className="py-3 px-2 text-center text-slate-400 border-r border-slate-300 dark:border-slate-800/50">—</td>
+                      <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white text-xs border-r border-slate-300 dark:border-slate-800/50">
+                        {formatPKR(totalBillExclTax, false)}
+                      </td>
+                      <td className="py-3 px-2.5 text-right font-mono font-black text-amber-500 dark:text-amber-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
+                        {formatPKR(totalPraOnBill, false)}
+                      </td>
                       <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white text-xs border-r border-slate-300 dark:border-slate-800/50">
                         {formatPKR(totalGross, false)}
                       </td>
