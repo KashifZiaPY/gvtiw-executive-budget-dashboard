@@ -218,10 +218,6 @@ export function buildRawCashBookItems(
     if (st && st.entries) {
       for (const e of st.entries) {
         if (e.entryType === 'RECEIPT' && e.receipts > 0) {
-          // Guard against stale bogus synthetic FC-R1 receipt
-          if (key === 'FC' && (e.id === 'FC-R1' || (e.particulars && e.particulars.includes('Admission & Tuition Fee Collection Session 2026-2027')))) {
-            continue;
-          }
           // Exclude incomplete entries rather than substituting fake fallback values
           if (!e.date?.trim() || !e.particulars?.trim() || !e.accountHead?.trim()) {
             console.warn('[ReportingEngine] Excluding incomplete receipt entry:', e);
