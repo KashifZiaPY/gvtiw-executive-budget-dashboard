@@ -74,7 +74,7 @@ interface AdminHubModuleProps {
   customTevtaLogo?: string | null;
   customGopLogo?: string | null;
   isUnlocked?: boolean;
-  onUnlock?: () => void;
+  onUnlock?: (pin?: string) => void;
   onLock?: () => void;
   storedPin?: string;
   setStoredPin?: (pin: string) => void;
@@ -113,11 +113,10 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   const [pinInput, setPinInput] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
+  const [isVerifyingPin, setIsVerifyingPin] = useState(false);
 
   // Stored Custom PIN
-  const [internalStoredPin, setInternalStoredPin] = useState<string>(() => {
-    return localStorage.getItem('gvtiw_admin_custom_pin') || '';
-  });
+  const [internalStoredPin, setInternalStoredPin] = useState<string>('');
   const storedPin = storedPinProp !== undefined ? storedPinProp : internalStoredPin;
   const setStoredPin = (val: string) => {
     setInternalStoredPin(val);
@@ -1290,18 +1289,55 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   // -------------------------------------------------------------
   // 18. PIN AUTHENTICATION & CHANGE
   // -------------------------------------------------------------
-  const handleUnlock = (e: React.FormEvent) => {
+  const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanInput = pinInput.trim();
-    if (cleanInput && cleanInput === storedPin) {
-      if (onUnlockProp) onUnlockProp();
-      setInternalUnlocked(true);
-      sessionStorage.setItem('gvtiw_admin_session', 'unlocked');
-      setPinError(null);
-      addAuditLog('ADMIN_AUTH', 'success', 'Admin session unlocked successfully.');
-    } else {
+    if (!cleanInput) {
       setPinError('Invalid Security PIN. Access denied.');
-      addAuditLog('ADMIN_AUTH', 'failed', 'Invalid PIN attempt recorded.');
+      addAuditLog('ADMIN_AUTH', 'failed', 'Empty PIN attempt recorded.');
+      return;
+    }
+
+    setIsVerifyingPin(true);
+    setPinError(null);
+
+    try {
+      const postPayload = JSON.stringify({
+        pin: cleanInput,
+        action: 'verifyPassword',
+        command: 'verifyPassword',
+      });
+
+      const response = await fetch(webAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: postPayload,
+      });
+
+      if (!response.ok) {
+        setIsVerifyingPin(false);
+        setPinError('Invalid Security PIN. Access denied.');
+        addAuditLog('ADMIN_AUTH', 'failed', 'Backend server returned non-OK during PIN verification.');
+        return;
+      }
+
+      const json = await response.json();
+      if (json && json.success) {
+        setIsVerifyingPin(false);
+        if (onUnlockProp) onUnlockProp(cleanInput);
+        setInternalUnlocked(true);
+        sessionStorage.setItem('gvtiw_admin_session', 'unlocked');
+        setPinError(null);
+        addAuditLog('ADMIN_AUTH', 'success', 'Admin session unlocked successfully via backend verification.');
+      } else {
+        setIsVerifyingPin(false);
+        setPinError('Invalid Security PIN. Access denied.');
+        addAuditLog('ADMIN_AUTH', 'failed', 'Invalid PIN attempt recorded.');
+      }
+    } catch {
+      setIsVerifyingPin(false);
+      setPinError('Invalid Security PIN. Access denied.');
+      addAuditLog('ADMIN_AUTH', 'failed', 'Network error during PIN verification.');
     }
   };
 
@@ -1451,10 +1487,13 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
             <button
               type="submit"
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow-indigo-600/20 transition-all cursor-pointer flex items-center justify-center gap-2 active:translate-y-px"
+              disabled={isVerifyingPin}
+              className={`w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 active:translate-y-px ${
+                isVerifyingPin ? 'opacity-70 cursor-wait' : 'cursor-pointer'
+              }`}
             >
-              <Unlock className="w-4 h-4 text-white" />
-              <span>Unlock Admin Console</span>
+              <Unlock className={`w-4 h-4 text-white ${isVerifyingPin ? 'animate-spin' : ''}`} />
+              <span>{isVerifyingPin ? 'Verifying PIN...' : 'Unlock Admin Console'}</span>
             </button>
           </form>
 

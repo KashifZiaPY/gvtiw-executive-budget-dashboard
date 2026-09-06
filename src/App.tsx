@@ -158,9 +158,7 @@ export default function App() {
   const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
     return typeof window !== 'undefined' && sessionStorage.getItem('gvtiw_admin_session') === 'unlocked';
   });
-  const [storedPin, setStoredPin] = useState<string>(() => {
-    return (typeof window !== 'undefined' && localStorage.getItem('gvtiw_admin_custom_pin')) || '';
-  });
+  const [storedPin, setStoredPin] = useState<string>('');
 
   // System Backend Sync Status (reflects recent write attempts)
   const [syncStatus, setSyncStatus] = useState<'connected' | 'failed'>('connected');
@@ -176,13 +174,17 @@ export default function App() {
     return () => window.removeEventListener('gvtiw_sync_status_changed', handleSyncStatus);
   }, []);
 
-  const handleUnlock = useCallback(() => {
+  const handleUnlock = useCallback((typedPin?: string) => {
     setIsUnlocked(true);
+    if (typedPin) {
+      setStoredPin(typedPin);
+    }
     sessionStorage.setItem('gvtiw_admin_session', 'unlocked');
   }, []);
 
   const handleLock = useCallback(() => {
     setIsUnlocked(false);
+    setStoredPin('');
     sessionStorage.removeItem('gvtiw_admin_session');
   }, []);
 
@@ -461,7 +463,6 @@ export default function App() {
               <PinLockScreen
                 darkMode={darkMode}
                 customGvtiwLogo={customGvtiwLogo}
-                storedPin={storedPin}
                 onUnlock={handleUnlock}
                 title="Voucher Matrix Authentication"
               />

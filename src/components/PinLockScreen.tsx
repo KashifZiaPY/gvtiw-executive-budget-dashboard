@@ -13,29 +13,66 @@ import {
 interface PinLockScreenProps {
   darkMode: boolean;
   customGvtiwLogo?: string | null;
-  storedPin: string;
-  onUnlock: () => void;
+  onUnlock: (typedPin: string) => void;
   title?: string;
 }
 
 export const PinLockScreen: React.FC<PinLockScreenProps> = ({
   darkMode,
   customGvtiwLogo,
-  storedPin,
   onUnlock,
   title = 'Admin & Operations Authentication',
 }) => {
   const [pinInput, setPinInput] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanInput = pinInput.trim();
-    if (cleanInput && cleanInput === storedPin) {
-      setPinError(null);
-      onUnlock();
-    } else {
+    if (!cleanInput) {
+      setPinError('Invalid Security PIN. Access denied.');
+      return;
+    }
+
+    setIsVerifying(true);
+    setPinError(null);
+
+    try {
+      const webAppUrl =
+        localStorage.getItem('gvtiw_admin_web_app_url') ||
+        'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
+
+      const postPayload = JSON.stringify({
+        pin: cleanInput,
+        action: 'verifyPassword',
+        command: 'verifyPassword',
+      });
+
+      const response = await fetch(webAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: postPayload,
+      });
+
+      if (!response.ok) {
+        setIsVerifying(false);
+        setPinError('Invalid Security PIN. Access denied.');
+        return;
+      }
+
+      const json = await response.json();
+      if (json && json.success) {
+        setIsVerifying(false);
+        setPinError(null);
+        onUnlock(cleanInput);
+      } else {
+        setIsVerifying(false);
+        setPinError('Invalid Security PIN. Access denied.');
+      }
+    } catch {
+      setIsVerifying(false);
       setPinError('Invalid Security PIN. Access denied.');
     }
   };
@@ -117,10 +154,13 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
 
           <button
             type="submit"
-            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow-indigo-600/20 transition-all cursor-pointer flex items-center justify-center gap-2 active:translate-y-px"
+            disabled={isVerifying}
+            className={`w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-sm hover:shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 active:translate-y-px ${
+              isVerifying ? 'opacity-70 cursor-wait' : 'cursor-pointer'
+            }`}
           >
-            <Unlock className="w-4 h-4 text-white" />
-            <span>Unlock Access</span>
+            <Unlock className={`w-4 h-4 text-white ${isVerifying ? 'animate-spin' : ''}`} />
+            <span>{isVerifying ? 'Verifying PIN...' : 'Unlock Access'}</span>
           </button>
         </form>
 
