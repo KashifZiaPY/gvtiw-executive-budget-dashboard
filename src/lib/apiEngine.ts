@@ -761,6 +761,125 @@ import {
 export const MASTER_SPREADSHEET_ID = '1c_3lBJVl74jPl0F5Dg9A_Jpjs1oBc2poDkC5SgfEE-w';
 export const LIVE_VOUCHERS_GVIZ_URL = `https://docs.google.com/spreadsheets/d/${MASTER_SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Vouchers`;
 
+export const CASHBOOK_SPREADSHEET_IDS: Record<BankAccountKey, string> = {
+  NS: '1CJ-IW14fyHSIvux07kxn6HVomfNstYtbkNLPAaXvexY',
+  PF: '1RrWoa4_J5H6zPCEByNbGukj16t9N7u9idR-GOoQbvJM',
+  FC: '1X_d5VGRZs-P-XPsHPPsKiDZ13u52-aNiFRud9-o4GSM',
+  SEC: '1uYF8OS5iiYa_BzDttAg4ldqFaguG6zicFvPLHr7rFe4',
+  SC: '1m19Ofu_0C5fI01tv9mO2ojNeiE7zeDG3WwOWI4i1kdk',
+  AA: '1N00W6ol2-sjjJFiV-ss-8w8m8oaKtJ5ULh6WWH5UyEA',
+};
+
+export interface LiveReceiptEntry {
+  id: string;
+  date: string;
+  month: string;
+  particulars: string;
+  paidToBy: string;
+  head: string;
+  chq: string;
+  amount: number;
+}
+
+export async function fetchLiveReceiptsFromCashBooks(): Promise<Record<BankAccountKey, LiveReceiptEntry[]>> {
+  const result: Record<BankAccountKey, LiveReceiptEntry[]> = {
+    NS: [],
+    PF: [],
+    FC: [],
+    SEC: [],
+    SC: [],
+    AA: [],
+  };
+
+  const getMonthName = (dtStr: string): string => {
+    const lower = (dtStr || '').toLowerCase();
+    if (lower.includes('sep') || lower.includes('-09-') || lower.includes('/09/')) return 'September';
+    if (lower.includes('aug') || lower.includes('-08-') || lower.includes('/08/')) return 'August';
+    if (lower.includes('jul') || lower.includes('-07-') || lower.includes('/07/')) return 'July';
+    if (lower.includes('oct')) return 'October';
+    if (lower.includes('nov')) return 'November';
+    if (lower.includes('dec')) return 'December';
+    return 'July';
+  };
+
+  const getVal = (c: any[], idx: number): string => {
+    if (!c || idx >= c.length || !c[idx]) return '';
+    if (c[idx].f !== undefined && c[idx].f !== null) return String(c[idx].f).trim();
+    if (c[idx].v !== undefined && c[idx].v !== null) return String(c[idx].v).trim();
+    return '';
+  };
+
+  const getNum = (c: any[], idx: number): number => {
+    if (!c || idx >= c.length || !c[idx]) return 0;
+    const val = c[idx].v;
+    const num = typeof val === 'number' ? val : parseFloat(String(val).replace(/,/g, '').trim());
+    return isNaN(num) ? 0 : num;
+  };
+
+  const bankKeys = Object.keys(CASHBOOK_SPREADSHEET_IDS) as BankAccountKey[];
+
+  await Promise.all(
+    bankKeys.map(async (key) => {
+      try {
+        const spreadsheetId = CASHBOOK_SPREADSHEET_IDS[key];
+        const gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=CASH%20BOOK%2026-27`;
+        const res = await fetch(gvizUrl, { cache: 'no-store' });
+        if (!res.ok) return;
+
+        const text = await res.text();
+        const match = text.match(/setResponse\((.*)\);/s);
+        if (!match || !match[1]) return;
+
+        const parsed = JSON.parse(match[1]);
+        const rows = parsed?.table?.rows;
+        if (!Array.isArray(rows)) return;
+
+        const entries: LiveReceiptEntry[] = [];
+        let receiptCounter = 1;
+
+        for (const r of rows) {
+          const c = r?.c || [];
+          if (!c || c.length === 0) continue;
+
+          const date = getVal(c, 1);
+          const receipts = getNum(c, 8);
+          const payments = getNum(c, 9);
+
+          // Skip rows before actual data starts (rows with no date and no receipts/payments value)
+          if (!date && receipts === 0 && payments === 0) continue;
+
+          // Only include a row as a receipt entry if receipts (c[8]) is a number greater than 0
+          if (receipts > 0) {
+            const particulars = getVal(c, 4);
+            const paidToBy = getVal(c, 5);
+            const accountHead = getVal(c, 6);
+            const chequeNo = getVal(c, 7);
+            const month = getMonthName(date);
+
+            entries.push({
+              id: `${key}-R${receiptCounter++}`,
+              date,
+              month,
+              particulars,
+              paidToBy,
+              head: accountHead,
+              chq: chequeNo,
+              amount: receipts,
+            });
+          }
+        }
+
+        result[key] = entries;
+      } catch {
+        // If any GViz request fails, return an empty array for this bank without crashing
+        result[key] = [];
+      }
+    })
+  );
+
+  return result;
+}
+
 export const STORAGE_KEY_LIVE_CASHBOOKS = 'gvtiw_live_cashbook_states_v3';
 export const STORAGE_KEY_LIVE_VOUCHERS = 'gvtiw_live_vouchers_v3';
 export const STORAGE_KEY_LIVE_SYNC_TS = 'gvtiw_live_cashbook_sync_ts_v3';
@@ -891,58 +1010,20 @@ export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
       newStates[key].reconciledBankBalance = newStates[key].openingBalance;
     }
 
-    // Authentic receipts from Google Sheet for all 6 bank cashbooks
-    const AUTHENTIC_CASHBOOK_RECEIPTS: Record<
-      BankAccountKey,
-      Array<{
-        id: string;
-        date: string;
-        month: string;
-        vNo?: string;
-        voucherSerial?: string;
-        particulars: string;
-        paidToBy: string;
-        head: string;
-        chq: string;
-        amount: number;
-      }>
-    > = {
-      AA: [
-        { id: 'AA-R1', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03902-PRINTING CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03902-PRINTING CHARGES', chq: 'AAA-Ceiling', amount: 8393 },
-        { id: 'AA-R2', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03933-SERVICE CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03933-SERVICE CHARGES', chq: 'AAA-Ceiling', amount: 142852 },
-        { id: 'AA-R3', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A13101-REPAIR OF MACHINERY)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A13101-REPAIR OF MACHINERY & EQUIPMENT', chq: 'AAA-Ceiling', amount: 6212 },
-        { id: 'AA-R4', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A13201-REPAIR OF FURNITURE)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A13201-REPAIR OF FURNITURE & FIXTURE', chq: 'AAA-Ceiling', amount: 11820 },
-        { id: 'AA-R5', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03303-ELECTRICITY CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03303-ELECTRICITY CHARGES', chq: 'AAA-Ceiling', amount: 247435 },
-        { id: 'AA-R6', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03301-GAS CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03301-GAS CHARGES', chq: 'AAA-Ceiling', amount: 1500 },
-        { id: 'AA-R7', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03302-WATER CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03302-WATER CHARGES', chq: 'AAA-Ceiling', amount: 6000 },
-        { id: 'AA-R8', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03202-TELEPHONE & TRUNK)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03202-TELEPHONE & TRUNK CHARGES', chq: 'AAA-Ceiling', amount: 25000 },
-        { id: 'AA-R9', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03201-POSTAGE & TELEGRAPH)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03201-POSTAGE & TELEGRAPH', chq: 'AAA-Ceiling', amount: 4000 },
-        { id: 'AA-R10', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A01274-MEDICAL CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A01274-MEDICAL CHARGES', chq: 'AAA-Ceiling', amount: 12000 },
-        { id: 'AA-R11', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03304-HOT & COLD CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03304-HOT & COLD CHARGES', chq: 'AAA-Ceiling', amount: 6000 },
-        { id: 'AA-R12', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03901-STATIONERY CHARGES)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03901-STATIONERY CHARGES', chq: 'AAA-Ceiling', amount: 12000 },
-        { id: 'AA-R13', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03905-NEWSPAPERS & PERIODICALS)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03905-NEWSPAPERS PERIODICALS & BOOKS', chq: 'AAA-Ceiling', amount: 1000 },
-        { id: 'AA-R14', date: '11-Aug-2026', month: 'August', particulars: '1st Qtr Budget Allocation Ceiling Jul-Sep 2026 (A03907-ADVERTISING & PUBLICITY)', paidToBy: 'Govt. of the Punjab / TEVTA Budget Wing', head: 'A03907-ADVERTISING & PUBLICITY', chq: 'AAA-Ceiling', amount: 24619 },
-      ],
-      NS: [],
-      PF: [
-        { id: 'PF-R1', date: '03-Sep-2026', month: 'September', particulars: 'Transfer / Collection of Student Pupil Fund Share from TEVTA Fee Collection A/C (6580027832200011) via Cheque 8060940614', paidToBy: 'TEVTA Fee Collection / Trainees', head: 'A00000PF-PUPIL FUND', chq: '8060940614', amount: 77717 },
-      ],
-      FC: [],
-      SC: [],
-      SEC: [],
-    };
+    // 1. Fetch authentic receipts live from all 6 bank cashbook sheets
+    const liveReceiptsMap = await fetchLiveReceiptsFromCashBooks();
 
-    // 1. Inject default authentic receipts into each bank account
-    for (const key of Object.keys(AUTHENTIC_CASHBOOK_RECEIPTS) as BankAccountKey[]) {
-      const recList = AUTHENTIC_CASHBOOK_RECEIPTS[key] || [];
+    // Inject live receipts into each bank account
+    for (const key of Object.keys(liveReceiptsMap) as BankAccountKey[]) {
+      const recList = liveReceiptsMap[key] || [];
       for (const r of recList) {
         newStates[key].entries.push({
           id: r.id,
           srNo: 0,
           date: r.date,
           month: r.month,
-          vNo: r.vNo || '',
-          voucherSerial: r.voucherSerial || '',
+          vNo: '',
+          voucherSerial: '',
           particulars: r.particulars,
           paidToBy: r.paidToBy,
           accountHead: r.head,
