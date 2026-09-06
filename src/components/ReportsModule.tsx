@@ -11,7 +11,7 @@ import { MASTER_PAYEE_LIST, MASTER_ACCOUNT_HEADS } from '../data/voucherMasterLi
 import { AccountHead } from '../types';
 import { INITIAL_ACCOUNTS } from '../data/initialData';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
-import { formatPKR } from '../lib/formatters';
+import { formatPKR, formatPakistaniDate } from '../lib/formatters';
 import {
   CashBookStatementView,
 } from './CashBookStatementView';
@@ -171,13 +171,18 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       setFromDate(`${y}-${m}-01`);
       setToDate(new Date(y, now.getMonth() + 1, 0).toISOString().slice(0, 10));
     } else if (type === 'lastMonth') {
-      const y = now.getFullYear();
-      const m = String(now.getMonth()).padStart(2, '0');
+      const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const y = prevMonthDate.getFullYear();
+      const m = String(prevMonthDate.getMonth() + 1).padStart(2, '0');
       setFromDate(`${y}-${m}-01`);
-      setToDate(new Date(y, now.getMonth(), 0).toISOString().slice(0, 10));
+      setToDate(new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10));
     } else if (type === 'fy') {
-      setFromDate('2026-07-01');
-      setToDate('2027-06-30');
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth(); // 0 = Jan, 6 = Jul
+      const fyStartYear = currentMonth >= 6 ? currentYear : currentYear - 1;
+      const fyEndYear = fyStartYear + 1;
+      setFromDate(`${fyStartYear}-07-01`);
+      setToDate(`${fyEndYear}-06-30`);
     } else {
       setFromDate('');
       setToDate('');
@@ -495,7 +500,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       tableHeaders,
       isGrouped: data.isConsolidated,
       openingRow: {
-        date: '01-Jul-2026',
+        date: data.fromDate ? formatPakistaniDate(data.fromDate) : '01-Jul-2026',
         acct: data.isConsolidated ? 'ALL' : data.groups[0]?.accountKey || 'NS',
         description: data.isConsolidated
           ? 'CONSOLIDATED OPENING BALANCE BROUGHT FORWARD (b/d)'
@@ -596,7 +601,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       tableHeaders,
       isGrouped: data.isGroupedAllHeads,
       openingRow: {
-        date: '01-Jul-2026',
+        date: data.fromDate ? formatPakistaniDate(data.fromDate) : '01-Jul-2026',
         acct: data.isGroupedAllHeads ? 'ALL' : 'HEAD',
         description: data.isGroupedAllHeads
           ? 'CONSOLIDATED BUDGET ALLOCATION BROUGHT FORWARD (b/d)'

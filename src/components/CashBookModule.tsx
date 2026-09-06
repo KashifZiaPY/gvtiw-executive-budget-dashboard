@@ -16,7 +16,7 @@ import {
   STORAGE_KEY_LIVE_SYNC_TS,
 } from '../lib/apiEngine';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
-import { formatPKR, format12HourDate } from '../lib/formatters';
+import { formatPKR, format12HourDate, formatPakistaniDate } from '../lib/formatters';
 import {
   BookOpen,
   Search,
@@ -366,8 +366,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
             <tbody>
               <tr style="background-color: #f8fafc; font-weight: bold;">
                 <td style="text-align: center; border: 1px solid #cbd5e1;">-</td>
-                <td style="border: 1px solid #cbd5e1;">01-Jul-2026</td>
-                <td style="border: 1px solid #cbd5e1;">July</td>
+                <td style="border: 1px solid #cbd5e1;">${periodFilter === 'CUSTOM' && customFromDate ? formatPakistaniDate(customFromDate) : '01-Jul-2026'}</td>
+                <td style="border: 1px solid #cbd5e1;">${periodFilter === 'CUSTOM' && customFromDate ? '' : 'July'}</td>
                 <td style="text-align: center; border: 1px solid #cbd5e1;">-</td>
                 <td style="border: 1px solid #cbd5e1;" colspan="6">OPENING BALANCE BROUGHT FORWARD (FY 2026-27)</td>
                 <td style="text-align: right; border: 1px solid #cbd5e1; font-family: monospace;">${Number(currentAccount.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
@@ -697,8 +697,12 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
               {/* Opening Balance Row */}
               <tr className={`font-bold ${darkMode ? 'bg-slate-900/60 text-slate-300' : 'bg-slate-100 text-slate-800'}`}>
                 <td className="py-2.5 px-2 text-center font-mono text-slate-500">—</td>
-                <td className="py-2.5 px-3 font-mono">01-Jul-2026</td>
-                <td className="py-2.5 px-2 font-mono">July</td>
+                <td className="py-2.5 px-3 font-mono">
+                  {periodFilter === 'CUSTOM' && customFromDate ? formatPakistaniDate(customFromDate) : '01-Jul-2026'}
+                </td>
+                <td className="py-2.5 px-2 font-mono">
+                  {periodFilter === 'CUSTOM' && customFromDate ? '' : 'July'}
+                </td>
                 <td className="py-2.5 px-2 text-center font-mono">—</td>
                 <td colSpan={3} className="py-2.5 px-4 font-black uppercase text-blue-400">
                   OPENING BALANCE BROUGHT FORWARD (FY 2026-27)

@@ -48,6 +48,8 @@ export interface CashBookStatementData {
   accountNoText: string;
   generatedTimestamp: string;
   periodLabel: string;
+  fromDate?: string;
+  toDate?: string;
   totalTransactionsCount: number;
   openingBalance: number;
   totalReceipts: number;
@@ -74,6 +76,8 @@ export interface HeadExpenditureStatementData {
   headCodeText: string;
   generatedTimestamp: string;
   periodLabel: string;
+  fromDate?: string;
+  toDate?: string;
   totalTransactionsCount: number;
   budgetAllocationOpening: number;
   receiptsReappr: number;
@@ -473,6 +477,8 @@ export function generateCashBookStatementData(
     accountNoText,
     generatedTimestamp: formatGeneratedTimestamp(),
     periodLabel: buildPeriodLabel(fromDate, toDate),
+    fromDate,
+    toDate,
     totalTransactionsCount: totalTxCount,
     openingBalance: roundedGrandOpening,
     totalReceipts: roundedGrandReceipts,
@@ -808,6 +814,8 @@ export function generateHeadExpenditureStatementData(
     headCodeText,
     generatedTimestamp: formatGeneratedTimestamp(),
     periodLabel: buildPeriodLabel(fromDate, toDate),
+    fromDate,
+    toDate,
     totalTransactionsCount: totalTxCount,
     budgetAllocationOpening: Math.round(grandAllocation * 100) / 100,
     receiptsReappr: Math.round(grandReceiptsReappr * 100) / 100,

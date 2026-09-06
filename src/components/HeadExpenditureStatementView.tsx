@@ -3,6 +3,7 @@ import {
   HeadExpenditureStatementData,
   formatCurrency2Decimals,
 } from '../lib/reportingEngine';
+import { formatPakistaniDate } from '../lib/formatters';
 import { InstituteEmblem, TevtaEmblem } from './Emblems';
 import { Printer, Download, BookOpen, Layers } from 'lucide-react';
 
@@ -224,7 +225,7 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
                 —
               </td>
               <td className="py-2 px-3 font-mono border-r border-slate-200 dark:border-slate-800">
-                01-Jul-2026
+                {data.fromDate ? formatPakistaniDate(data.fromDate) : '01-Jul-2026'}
               </td>
               <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-800">
                 <span className="px-2 py-0.5 text-[9px] font-mono font-bold rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200">
