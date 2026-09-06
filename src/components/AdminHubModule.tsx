@@ -65,7 +65,7 @@ import { CorporateVoucherSuccessModal } from './CorporateVoucherSuccessModal';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { BankChargeModal, isBankChargeVoucher, BankChargeSavePayload } from './BankChargeModal';
 import { formatPKR } from '../lib/formatters';
-import { notifySyncStatus, formatSaveErrorMessage } from '../lib/voucherSync';
+import { notifySyncStatus, formatSaveErrorMessage, formatDeleteErrorMessage } from '../lib/voucherSync';
 import { OFFICIAL_GOOGLE_APPS_SCRIPT_V315 } from '../data/googleAppsScriptCode';
 
 interface AdminHubModuleProps {
@@ -175,6 +175,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [voucherToDelete, setVoucherToDelete] = useState<MasterVoucher | null>(null);
   const [isDeletingVoucher, setIsDeletingVoucher] = useState(false);
+  const [deleteErrorMsg, setDeleteErrorMsg] = useState<string | null>(null);
 
   // Strict LIFO rule: Max Sr No in the registry
   const maxExistingSrNo = useMemo(() => {
@@ -953,6 +954,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       });
       return;
     }
+    setDeleteErrorMsg(null);
     setVoucherToDelete(v);
     setIsDeleteModalOpen(true);
   };
@@ -963,8 +965,45 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     const targetSrNo = targetVoucher.srNo;
 
     setIsDeletingVoucher(true);
+    setDeleteErrorMsg(null);
 
-    // 1. Remove from local store
+    // 1. Dispatch deleteLastVoucher to Google Apps Script Web App FIRST
+    const dispatchRes = await triggerAppScriptCommand(
+      'deleteLastVoucher',
+      {
+        srNo: targetSrNo,
+        voucherNo: targetVoucher.voucherNo,
+        bankAccount: targetVoucher.bankAccount,
+        accountHead: targetVoucher.accountHead,
+        chequeAmountNet: targetVoucher.chequeAmountNet,
+      },
+      {
+        busyTitle: `Purging Voucher #${targetSrNo} (${targetVoucher.voucherNo})...`,
+        busyMessage: 'Reversing cashbook credit entry, restoring budget allocation, and clearing spreadsheet row...',
+        suppressPopup: true,
+      }
+    );
+
+    if (!dispatchRes.success) {
+      setIsDeletingVoucher(false);
+      const errMsg = dispatchRes.message || 'Server rejected deletion request.';
+      const lower = errMsg.toLowerCase();
+      let code = (dispatchRes as any).code;
+      if (!code) {
+        if (lower.includes('unauthorized') || lower.includes('pin') || lower.includes('password') || lower.includes('auth')) {
+          code = 'AUTH_FAILED';
+        } else if (lower.includes('quota') || lower.includes('rate limit')) {
+          code = 'QUOTA_EXCEEDED';
+        } else {
+          code = 'SERVER_ERROR';
+        }
+      }
+      setDeleteErrorMsg(formatDeleteErrorMessage({ success: false, code, message: errMsg }));
+      notifySyncStatus('failed');
+      return;
+    }
+
+    // 2. Success: Only mutate local state if Google Apps Script returned success: true
     const updated = vouchers.filter((v) => v.srNo !== targetSrNo);
     setVouchers(updated);
     try {
@@ -1006,42 +1045,23 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       }
     } catch {}
 
-    // 2. Dispatch to Google Apps Script Web App
-    const dispatchRes = await triggerAppScriptCommand(
-      'deleteLastVoucher',
-      {
-        srNo: targetSrNo,
-        voucherNo: targetVoucher.voucherNo,
-        bankAccount: targetVoucher.bankAccount,
-        accountHead: targetVoucher.accountHead,
-        chequeAmountNet: targetVoucher.chequeAmountNet,
-      },
-      {
-        busyTitle: `Purging Voucher #${targetSrNo} (${targetVoucher.voucherNo})...`,
-        busyMessage: 'Reversing cashbook credit entry, restoring budget allocation, and clearing spreadsheet row...',
-        suppressPopup: true,
-      }
-    );
+    if (voucherToAmend?.srNo === targetSrNo) {
+      setVoucherToAmend(null);
+      setIsNewVoucherModalOpen(false);
+    }
 
+    notifySyncStatus('connected');
     setIsDeletingVoucher(false);
     setIsDeleteModalOpen(false);
     setVoucherToDelete(null);
+    setDeleteErrorMsg(null);
 
-    if (dispatchRes.success) {
-      setPopupModal({
-        isOpen: true,
-        type: 'success',
-        title: 'Voucher Purged Successfully',
-        message: `Voucher #${targetSrNo} (${targetVoucher.voucherNo}) has been deleted from both local ledger and Google Sheets CashBook.`,
-      });
-    } else {
-      setPopupModal({
-        isOpen: true,
-        type: 'error',
-        title: 'Deletion Failed',
-        message: dispatchRes.message || 'The Google Sheets backend rejected this transaction or reported an authorization failure.',
-      });
-    }
+    setPopupModal({
+      isOpen: true,
+      type: 'success',
+      title: 'Voucher Purged Successfully',
+      message: `Voucher #${targetSrNo} (${targetVoucher.voucherNo}) has been deleted from both local ledger and Google Sheets CashBook.`,
+    });
   };
 
   // -------------------------------------------------------------
@@ -3514,11 +3534,13 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         isOpen={isDeleteModalOpen}
         isDeleting={isDeletingVoucher}
         voucher={voucherToDelete}
+        errorMsg={deleteErrorMsg}
         onConfirm={executeCorporateDelete}
         onClose={() => {
           if (!isDeletingVoucher) {
             setIsDeleteModalOpen(false);
             setVoucherToDelete(null);
+            setDeleteErrorMsg(null);
           }
         }}
         customGvtiwLogo={customGvtiwLogo}
