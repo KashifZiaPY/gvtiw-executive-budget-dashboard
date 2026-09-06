@@ -823,7 +823,17 @@ export async function fetchLiveReceiptsFromCashBooks(): Promise<Record<BankAccou
       try {
         const spreadsheetId = CASHBOOK_SPREADSHEET_IDS[key];
         const gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=CASH%20BOOK%2026-27`;
+        
+        if (key === 'FC') {
+          console.log('[DEBUG FC] 1. GViz URL:', gvizUrl);
+        }
+
         const res = await fetch(gvizUrl, { cache: 'no-store' });
+        
+        if (key === 'FC') {
+          console.log('[DEBUG FC] 2. HTTP response status:', res.status, res.statusText);
+        }
+
         if (!res.ok) return;
 
         const text = await res.text();
@@ -834,22 +844,31 @@ export async function fetchLiveReceiptsFromCashBooks(): Promise<Record<BankAccou
         const rows = parsed?.table?.rows;
         if (!Array.isArray(rows)) return;
 
+        if (key === 'FC') {
+          console.log('[DEBUG FC] 3. Total rows returned before filtering:', rows.length);
+        }
+
         const entries: LiveReceiptEntry[] = [];
         let receiptCounter = 1;
 
-        for (const r of rows) {
+        for (let rIdx = 0; rIdx < rows.length; rIdx++) {
+          const r = rows[rIdx];
           const c = r?.c || [];
           if (!c || c.length === 0) continue;
 
           const date = getVal(c, 1);
           const receipts = getNum(c, 8);
+          const accountHead = getVal(c, 6);
+
+          if (key === 'FC') {
+            console.log(`[DEBUG FC] 4. Row ${rIdx}: Column B (Date)="${date}", Column G (Account Head)="${accountHead}", Column I (Receipts)=${receipts}, Raw c[1]=`, c[1], 'Raw c[6]=', c[6], 'Raw c[8]=', c[8]);
+          }
 
           // Skip row if it doesn't have BOTH a non-empty date and receipts > 0
           if (!date || receipts <= 0) continue;
 
           const particulars = getVal(c, 4);
           const paidToBy = getVal(c, 5);
-          const accountHead = getVal(c, 6);
           const chequeNo = getVal(c, 7);
           const month = getMonthName(date);
 
@@ -865,8 +884,15 @@ export async function fetchLiveReceiptsFromCashBooks(): Promise<Record<BankAccou
           });
         }
 
+        if (key === 'FC') {
+          console.log('[DEBUG FC] 5. Final count of valid receipt entries after filtering:', entries.length, entries);
+        }
+
         result[key] = entries;
-      } catch {
+      } catch (err) {
+        if (key === 'FC') {
+          console.error('[DEBUG FC] Error fetching or parsing FC sheet:', err);
+        }
         // If any GViz request fails, return an empty array for this bank without crashing
         result[key] = [];
       }
