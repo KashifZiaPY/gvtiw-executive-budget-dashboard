@@ -170,7 +170,7 @@ export function buildPeriodLabel(fromDate?: string, toDate?: string): string {
   if (toDate) {
     return `Up to ${formatPakistaniDate(toDate)}`;
   }
-  return '01-Jul-2026 to 31-Jul-2026';
+  return 'All Dates (Full Cash Book History)';
 }
 
 /**
