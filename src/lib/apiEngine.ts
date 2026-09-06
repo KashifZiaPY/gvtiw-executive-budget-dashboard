@@ -843,30 +843,26 @@ export async function fetchLiveReceiptsFromCashBooks(): Promise<Record<BankAccou
 
           const date = getVal(c, 1);
           const receipts = getNum(c, 8);
-          const payments = getNum(c, 9);
 
-          // Skip rows before actual data starts (rows with no date and no receipts/payments value)
-          if (!date && receipts === 0 && payments === 0) continue;
+          // Skip row if it doesn't have BOTH a non-empty date and receipts > 0
+          if (!date || receipts <= 0) continue;
 
-          // Only include a row as a receipt entry if receipts (c[8]) is a number greater than 0
-          if (receipts > 0) {
-            const particulars = getVal(c, 4);
-            const paidToBy = getVal(c, 5);
-            const accountHead = getVal(c, 6);
-            const chequeNo = getVal(c, 7);
-            const month = getMonthName(date);
+          const particulars = getVal(c, 4);
+          const paidToBy = getVal(c, 5);
+          const accountHead = getVal(c, 6);
+          const chequeNo = getVal(c, 7);
+          const month = getMonthName(date);
 
-            entries.push({
-              id: `${key}-R${receiptCounter++}`,
-              date,
-              month,
-              particulars,
-              paidToBy,
-              head: accountHead,
-              chq: chequeNo,
-              amount: receipts,
-            });
-          }
+          entries.push({
+            id: `${key}-R${receiptCounter++}`,
+            date,
+            month,
+            particulars,
+            paidToBy,
+            head: accountHead,
+            chq: chequeNo,
+            amount: receipts,
+          });
         }
 
         result[key] = entries;

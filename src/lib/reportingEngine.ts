@@ -222,15 +222,21 @@ export function buildRawCashBookItems(
           if (key === 'FC' && (e.id === 'FC-R1' || (e.particulars && e.particulars.includes('Admission & Tuition Fee Collection Session 2026-2027')))) {
             continue;
           }
+          // Exclude incomplete entries rather than substituting fake fallback values
+          if (!e.date?.trim() || !e.particulars?.trim() || !e.accountHead?.trim()) {
+            console.warn('[ReportingEngine] Excluding incomplete receipt entry:', e);
+            continue;
+          }
+
           result[key].push({
             id: e.id || `${key}-REC-${Math.random()}`,
-            date: e.date || '03-Sep-2026',
-            dateTs: parseDateToTimestamp(e.date || '03-Sep-2026'),
+            date: e.date,
+            dateTs: parseDateToTimestamp(e.date),
             srNo: e.srNo || 0,
             voucherNo: e.voucherSerial || '—',
             paidToBy: e.paidToBy || 'Collection / Deposit',
-            accountHead: e.accountHead || 'Budget / Fee Collection',
-            particulars: e.particulars || 'Receipt Deposit',
+            accountHead: e.accountHead,
+            particulars: e.particulars,
             chequeNo: e.chequeNo || '—',
             receipts: e.receipts,
             payments: 0,
