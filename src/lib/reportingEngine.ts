@@ -124,7 +124,10 @@ export function parseDateToTimestamp(dateStr?: string): number {
   if (!dateStr) return 0;
   const s = String(dateStr).trim();
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-    return new Date(s).getTime();
+    const year = parseInt(s.substring(0, 4), 10);
+    const month = parseInt(s.substring(5, 7), 10);
+    const day = parseInt(s.substring(8, 10), 10);
+    return new Date(year, month - 1, day).getTime();
   }
   const parts = s.split(/[-/ ]/);
   if (parts.length === 3) {
