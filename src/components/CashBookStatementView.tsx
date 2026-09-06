@@ -6,6 +6,7 @@ import {
 import { formatPakistaniDate } from '../lib/formatters';
 import { InstituteEmblem, TevtaEmblem } from './Emblems';
 import { Printer, Download, Building, CreditCard, ShieldCheck } from 'lucide-react';
+import { OFFICIAL_SIGNATORIES } from '../types';
 
 interface CashBookStatementViewProps {
   data: CashBookStatementData;
@@ -427,30 +428,19 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
       {/* 5. OFFICIAL SIGNATURES BLOCK                                  */}
       {/* ------------------------------------------------------------- */}
       <div className="pt-8 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-        <div className="border-t border-slate-400 dark:border-slate-600 pt-2">
-          <strong className="block text-xs font-black text-slate-900 dark:text-white">
-            Kashif Zia
-          </strong>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            Prepared by: Accountant
-          </span>
-        </div>
-        <div className="border-t border-slate-400 dark:border-slate-600 pt-2">
-          <strong className="block text-xs font-black text-slate-900 dark:text-white">
-            ANEEBA JAMIL
-          </strong>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            Checked by: CO-Signatory
-          </span>
-        </div>
-        <div className="border-t border-slate-400 dark:border-slate-600 pt-2">
-          <strong className="block text-xs font-black text-slate-900 dark:text-white">
-            SHAZIA KHADIM
-          </strong>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-            Approved by: Acting Principal / DDO
-          </span>
-        </div>
+        {OFFICIAL_SIGNATORIES.map((sig) => (
+          <div key={sig.name} className="border-t border-slate-400 dark:border-slate-600 pt-2">
+            <strong className="block text-xs font-black text-slate-900 dark:text-white uppercase">
+              {sig.name}
+            </strong>
+            <span className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold block">
+              {sig.role}
+            </span>
+            <span className="text-[9px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block mt-0.5">
+              {sig.label}
+            </span>
+          </div>
+        ))}
       </div>
 
       {/* ------------------------------------------------------------- */}

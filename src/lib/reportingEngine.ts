@@ -8,7 +8,7 @@ import {
   CashBookEntry,
   MasterVoucher,
 } from '../data/cashBookData';
-import { AccountHead } from '../types';
+import { AccountHead, OFFICIAL_SIGNATORIES } from '../types';
 import { INITIAL_ACCOUNTS } from '../data/initialData';
 import { format12HourDate, formatPakistaniDate } from './formatters';
 
@@ -1187,18 +1187,13 @@ export function generateOfficialStatementPrintHtml(params: {
 
         <!-- Signatures Block -->
         <div class="signatures-container">
-          <div class="sig-column">
-            <strong>Kashif Zia</strong>
-            <span>Prepared by: Accountant</span>
-          </div>
-          <div class="sig-column">
-            <strong>ANEEBA JAMIL</strong>
-            <span>Checked by: CO-Signatory</span>
-          </div>
-          <div class="sig-column">
-            <strong>SHAZIA KHADIM</strong>
-            <span>Approved by: Acting Principal / DDO</span>
-          </div>
+          ${OFFICIAL_SIGNATORIES.map((sig) => `
+            <div class="sig-column">
+              <strong style="text-transform: uppercase;">${sig.name}</strong>
+              <span style="font-weight: 600; color: #334155; display: block;">${sig.role}</span>
+              <span style="font-size: 7.5px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-top: 1px;">${sig.label}</span>
+            </div>
+          `).join('')}
         </div>
 
         <!-- Watermark Footer -->

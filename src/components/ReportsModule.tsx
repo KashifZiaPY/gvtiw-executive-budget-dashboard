@@ -8,7 +8,7 @@ import {
   CashBookAccountState,
 } from '../data/cashBookData';
 import { MASTER_PAYEE_LIST, MASTER_ACCOUNT_HEADS } from '../data/voucherMasterLists';
-import { AccountHead } from '../types';
+import { AccountHead, OFFICIAL_SIGNATORIES } from '../types';
 import { INITIAL_ACCOUNTS } from '../data/initialData';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { formatPKR, formatPakistaniDate } from '../lib/formatters';
@@ -649,12 +649,25 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     const gvtiwLogoSrc = customGvtiwLogo || '/gvtiw-logo.png';
     const tevtaLogoSrc = customTevtaLogo || '/tevta-logo.png';
 
+    const isPayeeTab = activeReportTab === 'PAYEE';
+    const hasSpecificPayee = isPayeeTab && selectedPayee && selectedPayee !== 'ALL';
+    
+    // Main Title: includes payee name if specific payee filtered
+    const mainReportTitle = hasSpecificPayee
+      ? `PAYEE TRANSACTION STATEMENT — ${selectedPayee.toUpperCase()}`
+      : isPayeeTab
+      ? 'PAYEE TRANSACTION STATEMENT'
+      : `${reportTitle.toUpperCase()}`;
+    
+    // Subtitle line underneath
+    const subTitle = 'TAX & DISBURSEMENT RECORD';
+
     const html = `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8" />
-        <title>${reportTitle} — GVTI(W) Samanabad</title>
+        <title>${mainReportTitle} — GVTI(W) Samanabad</title>
         <style>
           @page { size: A4 landscape; margin: 6mm; }
           * { box-sizing: border-box; }
@@ -756,9 +769,12 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             <h1 style="font-size: 13px; font-weight: 900; color: #0b2545; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">
               GOVT. VOCATIONAL TRAINING INSTITUTE (W) SAMANABAD, FAISALABAD
             </h1>
-            <h2 style="font-size: 10.5px; font-weight: 800; color: #1e3a8a; margin: 2px 0 0 0; text-transform: uppercase;">
-              ${reportTitle.toUpperCase()} — TAX &amp; DISBURSEMENT RECORD
+            <h2 style="font-size: 11px; font-weight: 900; color: #002b66; margin: 2px 0 0 0; text-transform: uppercase; letter-spacing: 0.3px;">
+              ${mainReportTitle}
             </h2>
+            <div style="font-size: 8px; font-weight: 800; color: #475569; margin: 2px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">
+              ${subTitle}
+            </div>
             <div style="display: flex; justify-content: center; gap: 15px; margin-top: 3px; font-size: 8px; color: #475569;">
               <span><strong>Bank Account:</strong> ${selectedBank}</span>
               <span><strong>Period:</strong> ${buildPeriodLabel(fromDate, toDate)}</span>
@@ -859,16 +875,14 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </tfoot>
         </table>
 
-        <div style="display: flex; justify-content: space-between; margin-top: 25px; padding: 0 20px; text-align: center; font-size: 8px;">
-          <div style="border-top: 1px solid #94a3b8; width: 140px; padding-top: 4px;">
-            <strong>Accountant / Cashier</strong>
-          </div>
-          <div style="border-top: 1px solid #94a3b8; width: 140px; padding-top: 4px;">
-            <strong>Audit &amp; Accounts Officer</strong>
-          </div>
-          <div style="border-top: 1px solid #94a3b8; width: 140px; padding-top: 4px;">
-            <strong>Principal / DDO</strong>
-          </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 35px; padding: 0 35px; text-align: center; font-size: 8.5px; page-break-inside: avoid;">
+          ${OFFICIAL_SIGNATORIES.map((sig) => `
+            <div style="border-top: 1.5px solid #0f172a; width: 170px; padding-top: 5px;">
+              <strong style="display: block; font-size: 10px; font-weight: 900; color: #0f172a; text-transform: uppercase;">${sig.name}</strong>
+              <span style="display: block; font-size: 9px; color: #334155; font-weight: 600; margin-top: 1px;">${sig.role}</span>
+              <span style="display: block; font-size: 7.5px; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;">${sig.label}</span>
+            </div>
+          `).join('')}
         </div>
       </body>
     </html>
@@ -1777,19 +1791,37 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         <div className="space-y-4">
           {/* Action strip */}
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <span className="text-xs font-mono text-slate-400 font-bold">
-              Showing {filteredVouchers.length} Filtered Transactions
-            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-black uppercase text-slate-900 dark:text-white tracking-wide">
+                  {activeReportTab === 'PAYEE' && selectedPayee !== 'ALL'
+                    ? `PAYEE TRANSACTION STATEMENT — ${selectedPayee.toUpperCase()}`
+                    : `${activeReportTab} TRANSACTION STATEMENT`}
+                </h3>
+                {activeReportTab === 'PAYEE' && selectedPayee !== 'ALL' && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+                    Filtered
+                  </span>
+                )}
+              </div>
+              <span className="text-xs font-mono text-slate-400 font-bold block">
+                Showing {filteredVouchers.length} Filtered Transactions
+              </span>
+            </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => handleExportCSV(activeReportTab)}
+                onClick={() => handleExportCSV(activeReportTab === 'PAYEE' && selectedPayee !== 'ALL' ? `Payee_${selectedPayee.replace(/\s+/g, '_')}` : activeReportTab)}
                 className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold text-xs rounded-lg flex items-center gap-1 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5 text-blue-400" />
                 <span>Export CSV</span>
               </button>
               <button
-                onClick={() => handlePrintGeneralReport(`${activeReportTab} Transaction Statement`)}
+                onClick={() => handlePrintGeneralReport(
+                  activeReportTab === 'PAYEE' && selectedPayee !== 'ALL'
+                    ? `PAYEE TRANSACTION STATEMENT — ${selectedPayee.toUpperCase()}`
+                    : `${activeReportTab} Transaction Statement`
+                )}
                 className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg flex items-center gap-1 shadow-md cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5 text-amber-300" />
@@ -1920,6 +1952,23 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 )}
               </table>
             </div>
+          </div>
+
+          {/* Official Signatures Block matching PAF Report */}
+          <div className="pt-6 pb-2 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+            {OFFICIAL_SIGNATORIES.map((sig) => (
+              <div key={sig.name} className="border-t border-slate-400 dark:border-slate-600 pt-2">
+                <strong className="block text-xs font-black text-slate-900 dark:text-white uppercase">
+                  {sig.name}
+                </strong>
+                <span className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold block">
+                  {sig.role}
+                </span>
+                <span className="text-[9px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block mt-0.5">
+                  {sig.label}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -129,3 +129,27 @@ export interface AiInsightResponse {
   }[];
   recommendations: string[];
 }
+
+export interface OfficialSignatory {
+  name: string;
+  role: string;
+  label: string;
+}
+
+export const OFFICIAL_SIGNATORIES: OfficialSignatory[] = [
+  {
+    name: 'KASHIF ZIA',
+    role: 'Accountant',
+    label: 'PREPARED BY:',
+  },
+  {
+    name: 'ANEEBA JAMIL',
+    role: 'CO-Signatory',
+    label: 'CHECKED BY:',
+  },
+  {
+    name: 'SHAZIA KHADIM',
+    role: 'Acting Principal / DDO',
+    label: 'APPROVED BY:',
+  },
+];

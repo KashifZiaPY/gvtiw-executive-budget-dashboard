@@ -4,6 +4,7 @@ import { MasterVoucher } from '../data/cashBookData';
 import { Printer, X, FileText, Layers } from 'lucide-react';
 import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO, DEFAULT_GOP_LOGO } from '../data/initialData';
 import { formatPakistaniDate } from '../lib/formatters';
+import { OFFICIAL_SIGNATORIES } from '../types';
 
 interface PaymentApprovalFormProps {
   voucher: MasterVoucher | null;
@@ -557,58 +558,25 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
         <p>• It is hereby certified that all applicable policies, procedures, SOP&apos;s and PPRA Rules have been duly complied with, prior to the execution of the said payment.</p>
       </div>
 
-      {/* Rows 47-49: Official Signatories (KASHIF ZIA in ALL CAPS) */}
+      {/* Rows 47-49: Official Signatories */}
       <div className="relative z-10 mt-3 sm:mt-4 print:mt-3 pt-2 print:pt-1.5 border-t-2 border-slate-900 grid grid-cols-3 gap-4 text-center text-xs print:text-[10px]">
-        {/* Prepared by - KASHIF ZIA */}
-        <div className="flex flex-col items-center">
-          <div className="h-12 sm:h-14 print:h-11 w-full flex items-end justify-center">
-            {/* Generous physical ink signature zone */}
+        {OFFICIAL_SIGNATORIES.map((sig) => (
+          <div key={sig.name} className="flex flex-col items-center">
+            <div className="h-12 sm:h-14 print:h-11 w-full flex items-end justify-center">
+              {/* Generous physical ink signature zone */}
+            </div>
+            <div className="border-b-2 border-slate-800 w-32 sm:w-36 mb-1.5"></div>
+            <strong className="block text-slate-950 font-black text-[11px] print:text-[10px] uppercase">
+              {sig.name}
+            </strong>
+            <span className="text-[10px] print:text-[9px] text-slate-700 font-semibold block">
+              {sig.role}
+            </span>
+            <span className="text-[8.5px] print:text-[7.5px] text-slate-500 font-extrabold uppercase tracking-wider block mt-0.5">
+              {sig.label}
+            </span>
           </div>
-          <div className="border-b-2 border-slate-800 w-32 sm:w-36 mb-1.5"></div>
-          <strong className="block text-slate-950 font-black text-[11px] print:text-[10px] uppercase">
-            KASHIF ZIA
-          </strong>
-          <span className="text-[10px] print:text-[9px] text-slate-700 font-semibold block">
-            Accountant
-          </span>
-          <span className="text-[8.5px] print:text-[7.5px] text-slate-500 font-extrabold uppercase tracking-wider block mt-0.5">
-            Prepared by:
-          </span>
-        </div>
-
-        {/* Checked by - ANEEBA JAMIL */}
-        <div className="flex flex-col items-center">
-          <div className="h-12 sm:h-14 print:h-11 w-full flex items-end justify-center">
-            {/* Generous physical ink signature zone */}
-          </div>
-          <div className="border-b-2 border-slate-800 w-32 sm:w-36 mb-1.5"></div>
-          <strong className="block text-slate-950 font-black text-[11px] print:text-[10px] uppercase">
-            ANEEBA JAMIL
-          </strong>
-          <span className="text-[10px] print:text-[9px] text-slate-700 font-semibold block">
-            CO-Signatory
-          </span>
-          <span className="text-[8.5px] print:text-[7.5px] text-slate-500 font-extrabold uppercase tracking-wider block mt-0.5">
-            Checked by:
-          </span>
-        </div>
-
-        {/* Approved by - SHAZIA KHADIM */}
-        <div className="flex flex-col items-center">
-          <div className="h-12 sm:h-14 print:h-11 w-full flex items-end justify-center">
-            {/* Generous physical ink signature zone */}
-          </div>
-          <div className="border-b-2 border-slate-800 w-32 sm:w-36 mb-1.5"></div>
-          <strong className="block text-slate-950 font-black text-[11px] print:text-[10px] uppercase">
-            SHAZIA KHADIM
-          </strong>
-          <span className="text-[10px] print:text-[9px] text-slate-700 font-semibold block">
-            Acting Principal / DDO
-          </span>
-          <span className="text-[8.5px] print:text-[7.5px] text-slate-500 font-extrabold uppercase tracking-wider block mt-0.5">
-            Approved by:
-          </span>
-        </div>
+        ))}
       </div>
 
       {/* Dim Footer Watermark Requested for System Attribution */}
