@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Landmark, X, BookOpen, Check, PlusCircle, Calendar, FileText, AlertCircle } from 'lucide-react';
+import { Landmark, X, BookOpen, Check, PlusCircle, Calendar, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { MasterVoucher, INSTITUTIONAL_BANK_ACCOUNTS, BankAccountKey } from '../data/cashBookData';
 import { MASTER_ACCOUNT_HEADS } from '../data/voucherMasterLists';
 import { formatPKR } from '../lib/formatters';
+import { formatSaveErrorMessage } from '../lib/voucherSync';
 
 // -----------------------------------------------------------------------------
 // 1. LOGICAL OFFICER IDENTIFIERS & RESOLVERS
@@ -81,7 +82,7 @@ interface BankChargeModalProps {
   onClose: () => void;
   voucherToAmend?: MasterVoucher | null;
   maxExistingSrNo: number;
-  onSaveBankCharge: (payload: BankChargeSavePayload) => Promise<void> | void;
+  onSaveBankCharge: (payload: BankChargeSavePayload) => Promise<{ success: boolean; code?: string; message?: string } | void> | void;
   darkMode?: boolean;
 }
 
@@ -190,7 +191,7 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
     setErrorMsg(null);
 
     try {
-      await onSaveBankCharge({
+      const res = await onSaveBankCharge({
         accountKey,
         bankFullName,
         amount,
@@ -201,10 +202,18 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
         srNo: isAmend ? voucherToAmend?.srNo : nextSr,
         voucherNo: displayVoucherNo,
       });
+
+      if (res && res.success === false) {
+        setIsSubmitting(false);
+        setErrorMsg(formatSaveErrorMessage(res));
+        return;
+      }
+
+      setIsSubmitting(false);
       onClose();
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Failed to record bank charge.');
       setIsSubmitting(false);
+      setErrorMsg(formatSaveErrorMessage(null, true));
     }
   };
 
@@ -453,8 +462,17 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
                   : 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 shadow-amber-600/20'
               } disabled:opacity-50`}
             >
-              {isAmend ? <Check className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
-              <span>{isAmend ? 'Save Bank Charge Amendment' : 'Post Bank Charge'}</span>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  {isAmend ? <Check className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
+                  <span>{isAmend ? 'Save Bank Charge Amendment' : 'Post Bank Charge'}</span>
+                </>
+              )}
             </button>
           </div>
         </form>

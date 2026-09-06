@@ -6,6 +6,7 @@ import { MiniCalculatorPopover } from './MiniCalculatorPopover';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { CorporateVoucherSuccessModal } from './CorporateVoucherSuccessModal';
 import { isBankChargeVoucher } from './BankChargeModal';
+import { formatSaveErrorMessage } from '../lib/voucherSync';
 import {
   X,
   CheckCircle,
@@ -29,13 +30,14 @@ import {
   ArrowRight,
   Trash2,
   PlusCircle,
+  Loader2,
 } from 'lucide-react';
 
 interface VoucherEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
   voucherToAmend?: MasterVoucher | null;
-  onSaveVoucher: (newVoucher: MasterVoucher, isAmend: boolean) => void;
+  onSaveVoucher: (newVoucher: MasterVoucher, isAmend: boolean) => Promise<{ success: boolean; code?: string; message?: string } | void> | void;
   onDeleteVoucher?: (srNo: number) => void;
   existingVouchers: MasterVoucher[];
   customGvtiwLogo?: string | null;
@@ -675,7 +677,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     return true;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
 
@@ -757,9 +759,16 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
 
     // Show Corporate Revolving Posting State
     setIsPosting(true);
+    setErrorMsg(null);
 
-    setTimeout(() => {
-      onSaveVoucher(newVoucher, isAmend);
+    try {
+      const res = await onSaveVoucher(newVoucher, isAmend);
+      if (res && res.success === false) {
+        setIsPosting(false);
+        setErrorMsg(formatSaveErrorMessage(res));
+        return;
+      }
+
       setIsPosting(false);
       setSuccessSummary({
         srNo: targetSrNo,
@@ -773,7 +782,10 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
         isAmend: isAmend,
         savedVoucherObj: newVoucher,
       });
-    }, 700);
+    } catch (err: any) {
+      setIsPosting(false);
+      setErrorMsg(formatSaveErrorMessage(null, true));
+    }
   };
 
   const handleCloseSuccessPopup = () => {
@@ -1721,8 +1733,17 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                   disabled={isPosting}
                   className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-black text-xs shadow-lg shadow-indigo-600/30 transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  <CheckCircle className="w-4 h-4 text-emerald-300" />
-                  <span>{isAmend ? 'Update & Post Voucher' : 'Save & Authorize Voucher'}</span>
+                  {isPosting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 text-emerald-300 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 text-emerald-300" />
+                      <span>{isAmend ? 'Update & Post Voucher' : 'Save & Authorize Voucher'}</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

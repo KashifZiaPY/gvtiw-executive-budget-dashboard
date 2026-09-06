@@ -28,6 +28,7 @@ interface HeaderProps {
   customGvtiwLogo?: string | null;
   customTevtaLogo?: string | null;
   activeModule?: string;
+  syncStatus?: 'connected' | 'failed';
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -44,6 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
   customGvtiwLogo,
   customTevtaLogo,
   activeModule = 'DASHBOARD',
+  syncStatus = 'connected',
 }) => {
   return (
     <header className="w-full transition-colors duration-200 border-b border-slate-800 bg-[#020617] text-white">
@@ -123,10 +125,17 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Left: System Status, Live Auto-Sync, Sync Now & Latest Activity */}
           <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 font-mono text-[11px] text-slate-300 justify-center md:justify-start">
             {/* Live Indicator */}
-            <div className="flex items-center gap-2 bg-emerald-950/80 text-emerald-300 px-2.5 py-1 rounded-lg border border-emerald-500/30">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-              <span className="font-bold">System Status: Connected & Live</span>
-            </div>
+            {syncStatus === 'failed' ? (
+              <div className="flex items-center gap-2 bg-rose-950/90 text-rose-300 px-2.5 py-1 rounded-lg border border-rose-500/50 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                <span className="font-bold text-rose-200">Sync Failed</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 bg-emerald-950/80 text-emerald-300 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span className="font-bold">System Status: Connected & Live</span>
+              </div>
+            )}
 
             {/* Auto-Sync timestamp */}
             <div className="flex items-center gap-1.5 bg-slate-900/90 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-800">

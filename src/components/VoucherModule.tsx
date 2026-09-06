@@ -5,6 +5,7 @@ import { VoucherEntryModal } from './VoucherEntryModal';
 import { CorporateDeleteVoucherModal } from './CorporateDeleteVoucherModal';
 import { BankChargeModal, isBankChargeVoucher, BankChargeSavePayload } from './BankChargeModal';
 import { formatPKR } from '../lib/formatters';
+import { notifySyncStatus } from '../lib/voucherSync';
 import {
   Search,
   Filter,
@@ -223,23 +224,89 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
     setVoucherToDelete(null);
   };
 
-  const handleSaveVoucher = (savedVoucher: MasterVoucher, isAmend: boolean) => {
-    setVouchers((prev) => {
-      let updated: MasterVoucher[];
-      if (isAmend) {
-        updated = prev.map((v) => (v.srNo === savedVoucher.srNo ? savedVoucher : v));
-      } else {
-        updated = [savedVoucher, ...prev];
+  const handleSaveVoucher = async (
+    savedVoucher: MasterVoucher,
+    isAmend: boolean
+  ): Promise<{ success: boolean; code?: string; message?: string }> => {
+    try {
+      const webAppUrl =
+        localStorage.getItem('gvtiw_admin_web_app_url') ||
+        'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
+      const activePin = (localStorage.getItem('gvtiw_admin_custom_pin') || '').trim();
+
+      const postPayload = JSON.stringify({
+        pin: activePin,
+        action: 'submitNewVoucher',
+        mode: isAmend ? 'amend' : 'new',
+        srNo: isAmend ? savedVoucher.srNo : null,
+        bankHead: savedVoucher.bankAccount,
+        payeeName: savedVoucher.payeeName,
+        billNo: savedVoucher.billNo,
+        billDate: savedVoucher.billDate,
+        billAmtExclTax: savedVoucher.billAmtExclTax || savedVoucher.billAmountGross,
+        saleTax: savedVoucher.gstAmount || 0,
+        praTaxOnBill: savedVoucher.praTaxOnBill || 0,
+        chequeNoNet: savedVoucher.chequeNoNet,
+        chequeDateNet: savedVoucher.chequeDate,
+        chequeAmtNet: savedVoucher.chequeAmountNet,
+        chequeNoIncomeTax: savedVoucher.chequeNoIncomeTax || '0',
+        incomeTaxAmt: savedVoucher.incomeTaxAmount || 0,
+        chequeNoPRATax: savedVoucher.chequeNoPra || '0',
+        praTaxAmt: savedVoucher.praAmount || 0,
+        accountHead: savedVoucher.accountHead,
+        narration: savedVoucher.description,
+      });
+
+      const response = await fetch(webAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: postPayload,
+      });
+
+      if (!response.ok) {
+        notifySyncStatus('failed');
+        return { success: false, code: 'NETWORK_ERROR', message: 'Network response was not ok' };
       }
-      try {
-        localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
-        if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
-      } catch {}
-      return updated;
-    });
+
+      const json = await response.json();
+      if (json.success) {
+        setVouchers((prev) => {
+          let updated: MasterVoucher[];
+          if (isAmend) {
+            updated = prev.map((v) => (v.srNo === savedVoucher.srNo ? savedVoucher : v));
+          } else {
+            updated = [savedVoucher, ...prev];
+          }
+          try {
+            localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
+            if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
+          } catch {}
+          return updated;
+        });
+
+        notifySyncStatus('connected');
+        return { success: true, message: json.message };
+      } else {
+        const errMsg = json.message || json.error || 'Server rejected save.';
+        const lower = errMsg.toLowerCase();
+        let code = json.code;
+        if (!code) {
+          if (lower.includes('unauthorized') || lower.includes('pin') || lower.includes('password')) code = 'AUTH_FAILED';
+          else if (lower.includes('quota')) code = 'QUOTA_EXCEEDED';
+          else code = 'SERVER_ERROR';
+        }
+        notifySyncStatus('failed');
+        return { success: false, code, message: errMsg };
+      }
+    } catch (err: any) {
+      notifySyncStatus('failed');
+      return { success: false, code: 'NETWORK_ERROR', message: err.message || 'Network error' };
+    }
   };
 
-  const handleSaveBankCharge = async (payload: BankChargeSavePayload) => {
+  const handleSaveBankCharge = async (
+    payload: BankChargeSavePayload
+  ): Promise<{ success: boolean; code?: string; message?: string }> => {
     const { accountKey, bankFullName, amount, date, memo, accountHead, isAmend, srNo, voucherNo } = payload;
     const targetSrNo = isAmend && srNo ? srNo : maxExistingSrNo + 1;
     const year = new Date(date).getFullYear();
@@ -273,49 +340,96 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
       preEntryBalance: 0,
     };
 
-    setVouchers((prev) => {
-      let updated: MasterVoucher[];
-      if (isAmend) {
-        updated = prev.map((v) => (v.srNo === targetSrNo ? newVoucherObj : v));
-      } else {
-        updated = [newVoucherObj, ...prev];
-      }
-      try {
-        localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
-        if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
-      } catch {}
-      return updated;
-    });
-
-    setIsBankChargeModalOpen(false);
-    setBcVoucherToAmend(null);
-
-    // Sync with Google Apps Script Web App
     try {
       const webAppUrl =
         localStorage.getItem('gvtiw_admin_web_app_url') ||
         'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
-      const activePin = localStorage.getItem('gvtiw_admin_custom_pin') || '33028';
+      const activePin = (localStorage.getItem('gvtiw_admin_custom_pin') || '').trim();
 
-      const requestPayload = {
-        pin: activePin,
-        action: 'recordDirectBankCharge',
-        mode: isAmend ? 'amend' : 'new',
-        srNo: isAmend ? srNo : null,
-        bank: bankFullName,
-        bankAccount: bankFullName,
-        date: date,
-        amt: amount,
-        amount: amount,
-        narr: memo || 'Bank Charges / SMS / FED Charges',
-      };
+      const requestPayload = isAmend
+        ? {
+            pin: activePin,
+            action: 'submitNewVoucher',
+            mode: 'amend',
+            srNo: targetSrNo,
+            bankHead: bankFullName,
+            payeeName: 'Bank Charges',
+            billNo: 'BC',
+            billDate: date,
+            billAmtExclTax: amount,
+            saleTax: 0,
+            praTaxOnBill: 0,
+            chequeNoNet: 'Direct Debit',
+            chequeDateNet: date,
+            chequeAmtNet: amount,
+            chequeNoIncomeTax: '0',
+            incomeTaxAmt: 0,
+            chequeNoPRATax: '0',
+            praTaxAmt: 0,
+            accountHead: accountHead,
+            narration: memo,
+          }
+        : {
+            pin: activePin,
+            action: 'recordDirectBankCharge',
+            mode: 'new',
+            srNo: targetSrNo,
+            bank: bankFullName,
+            bankAccount: bankFullName,
+            date: date,
+            amt: amount,
+            amount: amount,
+            narr: memo || 'Bank Charges / SMS / FED Charges',
+            accountHead: accountHead,
+          };
 
-      await fetch(webAppUrl, {
+      const response = await fetch(webAppUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(requestPayload),
       });
-    } catch {}
+
+      if (!response.ok) {
+        notifySyncStatus('failed');
+        return { success: false, code: 'NETWORK_ERROR', message: 'Network response was not ok' };
+      }
+
+      const json = await response.json();
+      if (json.success) {
+        setVouchers((prev) => {
+          let updated: MasterVoucher[];
+          if (isAmend) {
+            updated = prev.map((v) => (v.srNo === targetSrNo ? newVoucherObj : v));
+          } else {
+            updated = [newVoucherObj, ...prev];
+          }
+          try {
+            localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
+            if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
+          } catch {}
+          return updated;
+        });
+
+        setIsBankChargeModalOpen(false);
+        setBcVoucherToAmend(null);
+        notifySyncStatus('connected');
+        return { success: true, message: json.message };
+      } else {
+        const errMsg = json.message || json.error || 'Server rejected bank charge save.';
+        const lower = errMsg.toLowerCase();
+        let code = json.code;
+        if (!code) {
+          if (lower.includes('unauthorized') || lower.includes('pin') || lower.includes('password')) code = 'AUTH_FAILED';
+          else if (lower.includes('quota')) code = 'QUOTA_EXCEEDED';
+          else code = 'SERVER_ERROR';
+        }
+        notifySyncStatus('failed');
+        return { success: false, code, message: errMsg };
+      }
+    } catch (err: any) {
+      notifySyncStatus('failed');
+      return { success: false, code: 'NETWORK_ERROR', message: err.message || 'Network error' };
+    }
   };
 
   // Sorting

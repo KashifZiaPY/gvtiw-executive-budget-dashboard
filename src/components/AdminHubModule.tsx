@@ -65,6 +65,7 @@ import { CorporateVoucherSuccessModal } from './CorporateVoucherSuccessModal';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { BankChargeModal, isBankChargeVoucher, BankChargeSavePayload } from './BankChargeModal';
 import { formatPKR } from '../lib/formatters';
+import { notifySyncStatus, formatSaveErrorMessage } from '../lib/voucherSync';
 import { OFFICIAL_GOOGLE_APPS_SCRIPT_V315 } from '../data/googleAppsScriptCode';
 
 interface AdminHubModuleProps {
@@ -340,7 +341,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       busyMessage?: string;
       suppressPopup?: boolean;
     } = {}
-  ): Promise<{ success: boolean; message?: string }> => {
+  ): Promise<{ success: boolean; code?: string; message?: string }> => {
     const normalizedCommand = commandName === 'deleteLastVoucherLIFO' ? 'deleteLastVoucher' : commandName;
 
     // Show Institutional Busy Screen with Institute Logo unless suppressed
@@ -366,7 +367,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           message: errMsg,
         });
       }
-      return { success: false, message: 'Missing URL' };
+      return { success: false, code: 'NETWORK_ERROR', message: 'Missing URL' };
     }
 
     // Helper to execute query against GAS
@@ -437,11 +438,23 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           }
           return { success: true, message: successMsg };
         } else {
-          const errMsg = callResult.json.message || 'Action rejected by backend script.';
+          const errMsg = callResult.json.message || callResult.json.error || 'Action rejected by backend script.';
+          const lowerMsg = errMsg.toLowerCase();
+          let resolvedCode = callResult.json.code;
+          if (!resolvedCode) {
+            if (lowerMsg.includes('unauthorized') || lowerMsg.includes('pin') || lowerMsg.includes('password') || lowerMsg.includes('auth')) {
+              resolvedCode = 'AUTH_FAILED';
+            } else if (lowerMsg.includes('quota')) {
+              resolvedCode = 'QUOTA_EXCEEDED';
+            } else {
+              resolvedCode = 'SERVER_ERROR';
+            }
+          }
+
           addAuditLog(normalizedCommand, 'failed', errMsg);
 
           if (!options.suppressPopup) {
-            if (errMsg.toLowerCase().includes('unauthorized')) {
+            if (resolvedCode === 'AUTH_FAILED') {
               setPopupModal({
                 isOpen: true,
                 type: 'warning',
@@ -458,7 +471,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
               });
             }
           }
-          return { success: false, message: errMsg };
+          return { success: false, code: resolvedCode, message: errMsg };
         }
       } else {
         throw new Error('Unable to establish communication with Google Apps Script Web App.');
@@ -477,7 +490,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           detail: 'Verify that your Google Apps Script Web App is deployed with access set to "Anyone".',
         });
       }
-      return { success: false, message: errorMsg };
+      return { success: false, code: 'NETWORK_ERROR', message: errorMsg };
     }
   };
 
@@ -858,11 +871,11 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   // -------------------------------------------------------------
   // 14. VOUCHER CREATION & AMENDMENT DISPATCH
   // -------------------------------------------------------------
-  const handleSaveVoucher = async (savedVoucher: MasterVoucher, isAmend: boolean) => {
-    setIsNewVoucherModalOpen(false);
-    setVoucherToAmend(null);
-
-    // 1. Dispatch to Google Sheets backend
+  const handleSaveVoucher = async (
+    savedVoucher: MasterVoucher,
+    isAmend: boolean
+  ): Promise<{ success: boolean; code?: string; message?: string }> => {
+    // 1. Dispatch to Google Sheets backend FIRST and await response
     const res = await triggerAppScriptCommand(
       'submitNewVoucher',
       {
@@ -892,7 +905,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       }
     );
 
-    // 2. Only show success dialogue and commit local state if backend returned success
+    // 2. Only commit local state if backend returned success
     if (res.success) {
       setVouchers((prev) => {
         let updated: MasterVoucher[];
@@ -908,20 +921,11 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         return updated;
       });
 
-      setVoucherSuccessModalData({
-        voucher: savedVoucher,
-        isAmend: isAmend,
-        cloudSyncSuccess: true,
-        cloudMessage: res.message || 'Official Google Sheets CashBook & Master Vouchers synchronized.',
-      });
+      notifySyncStatus('connected');
+      return { success: true, message: res.message || 'Official Google Sheets CashBook & Master Vouchers synchronized.' };
     } else {
-      setVoucherSuccessModalData(null);
-      setPopupModal({
-        isOpen: true,
-        type: 'error',
-        title: isAmend ? 'Voucher Amendment Failed' : 'Voucher Save Failed',
-        message: res.message || 'The Google Sheets backend rejected this transaction or reported an authorization failure.',
-      });
+      notifySyncStatus('failed');
+      return { success: false, code: res.code, message: res.message };
     }
   };
 
@@ -1091,10 +1095,10 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   // -------------------------------------------------------------
   // 17. RECORD / AMEND DIRECT BANK CHARGE HANDLER
   // -------------------------------------------------------------
-  const handleSaveBankCharge = async (payload: BankChargeSavePayload) => {
+  const handleSaveBankCharge = async (
+    payload: BankChargeSavePayload
+  ): Promise<{ success: boolean; code?: string; message?: string }> => {
     const { accountKey, bankFullName, amount, date, memo, accountHead, isAmend, srNo, voucherNo } = payload;
-
-    setIsBankChargeModalOpen(false);
 
     if (isAmend && bcVoucherToAmend) {
       // AMENDING AN EXISTING BANK CHARGE RECORD
@@ -1130,44 +1134,53 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         }
       );
 
-      const updatedV: MasterVoucher = {
-        ...bcVoucherToAmend,
-        bankAccount: bankFullName,
-        billAmtExclTax: amount,
-        billAmountGross: amount,
-        chequeAmountNet: amount,
-        billDate: date,
-        chequeDate: date,
-        accountHead: accountHead,
-        description: memo,
-        timestamp:
-          new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          }) + ' (Amended)',
-      };
+      if (res.success) {
+        const updatedV: MasterVoucher = {
+          ...bcVoucherToAmend,
+          bankAccount: bankFullName,
+          billAmtExclTax: amount,
+          billAmountGross: amount,
+          chequeAmountNet: amount,
+          billDate: date,
+          chequeDate: date,
+          accountHead: accountHead,
+          description: memo,
+          timestamp:
+            new Date().toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            }) + ' (Amended)',
+        };
 
-      setVouchers((prev) => {
-        const updated = prev.map((v) => (v.srNo === targetSrNo ? updatedV : v));
-        try {
-          localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
-          if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
-        } catch {}
-        return updated;
-      });
+        setVouchers((prev) => {
+          const updated = prev.map((v) => (v.srNo === targetSrNo ? updatedV : v));
+          try {
+            localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
+            if (typeof window !== 'undefined') window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
+          } catch {}
+          return updated;
+        });
 
-      setBcVoucherToAmend(null);
+        setBcVoucherToAmend(null);
+        setIsBankChargeModalOpen(false);
 
-      setVoucherSuccessModalData({
-        voucher: updatedV,
-        isAmend: true,
-        isBankCharge: true,
-        cloudSyncSuccess: res.success,
-        cloudMessage: `Bank Charge Voucher #${targetSrNo} (${effectiveVoucherNo}) successfully amended in Google Sheets & ${accountKey} CashBook.`,
-      });
+        setVoucherSuccessModalData({
+          voucher: updatedV,
+          isAmend: true,
+          isBankCharge: true,
+          cloudSyncSuccess: true,
+          cloudMessage: `Bank Charge Voucher #${targetSrNo} (${effectiveVoucherNo}) successfully amended in Google Sheets & ${accountKey} CashBook.`,
+        });
+
+        notifySyncStatus('connected');
+        return { success: true };
+      } else {
+        notifySyncStatus('failed');
+        return { success: false, code: res.code, message: res.message };
+      }
     } else {
       // RECORDING A NEW DIRECT BANK CHARGE RECORD
       const targetSr = srNo || maxExistingSrNo + 1;
@@ -1235,6 +1248,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         });
 
         setBcVoucherToAmend(null);
+        setIsBankChargeModalOpen(false);
 
         setVoucherSuccessModalData({
           voucher: newV,
@@ -1243,13 +1257,12 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           cloudSyncSuccess: true,
           cloudMessage: `Bank Charge of Rs. ${formatPKR(amount)} successfully posted to ${accountKey} (${INSTITUTIONAL_BANK_ACCOUNTS[accountKey]?.shortName}) CashBook. Assigned Head: ${accountHead}`,
         });
+
+        notifySyncStatus('connected');
+        return { success: true };
       } else {
-        setPopupModal({
-          isOpen: true,
-          type: 'error',
-          title: 'Bank Charge Failed',
-          message: res.message || 'Could not record the bank charge in Google Sheets.',
-        });
+        notifySyncStatus('failed');
+        return { success: false, code: res.code, message: res.message };
       }
     }
   };

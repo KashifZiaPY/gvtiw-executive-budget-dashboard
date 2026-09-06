@@ -162,6 +162,20 @@ export default function App() {
     return (typeof window !== 'undefined' && localStorage.getItem('gvtiw_admin_custom_pin')) || '';
   });
 
+  // System Backend Sync Status (reflects recent write attempts)
+  const [syncStatus, setSyncStatus] = useState<'connected' | 'failed'>('connected');
+
+  useEffect(() => {
+    const handleSyncStatus = (e: Event) => {
+      const customEvent = e as CustomEvent<{ status: 'connected' | 'failed' }>;
+      if (customEvent.detail?.status) {
+        setSyncStatus(customEvent.detail.status);
+      }
+    };
+    window.addEventListener('gvtiw_sync_status_changed', handleSyncStatus);
+    return () => window.removeEventListener('gvtiw_sync_status_changed', handleSyncStatus);
+  }, []);
+
   const handleUnlock = useCallback(() => {
     setIsUnlocked(true);
     sessionStorage.setItem('gvtiw_admin_session', 'unlocked');
@@ -291,6 +305,7 @@ export default function App() {
         customGvtiwLogo={customGvtiwLogo}
         customTevtaLogo={customTevtaLogo}
         activeModule={activeModule}
+        syncStatus={syncStatus}
       />
 
       {/* ------------------------------------------------------------- */}
