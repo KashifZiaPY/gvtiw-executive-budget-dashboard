@@ -19,6 +19,7 @@ interface CorporateDeleteVoucherModalProps {
   isOpen: boolean;
   isDeleting: boolean;
   voucher: MasterVoucher | null;
+  errorMsg?: string | null;
   onConfirm: () => void | Promise<void>;
   onClose: () => void;
   customGvtiwLogo?: string;
@@ -29,6 +30,7 @@ export const CorporateDeleteVoucherModal: React.FC<CorporateDeleteVoucherModalPr
   isOpen,
   isDeleting,
   voucher,
+  errorMsg,
   onConfirm,
   onClose,
   customGvtiwLogo,
@@ -129,6 +131,14 @@ export const CorporateDeleteVoucherModal: React.FC<CorporateDeleteVoucherModalPr
 
             {/* Modal Body */}
             <div className="p-6 space-y-5">
+              {/* Error Alert Banner */}
+              {errorMsg && (
+                <div className="p-3.5 rounded-xl border border-rose-500/50 bg-rose-950/80 text-rose-200 text-xs font-semibold flex items-center gap-2.5 animate-in fade-in shadow-md">
+                  <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0" />
+                  <span className="leading-relaxed">{errorMsg}</span>
+                </div>
+              )}
+
               {/* LIFO Sequential Rule Notice */}
               <div
                 className={`p-3.5 rounded-xl border flex items-start gap-3 ${
@@ -240,9 +250,6 @@ export const CorporateDeleteVoucherModal: React.FC<CorporateDeleteVoucherModalPr
                 <div className="flex items-center gap-1.5 text-blue-400/90">
                   <span>✓</span>
                   <span>Dispatches <strong>deleteLastVoucher</strong> command to Google Apps Script backend engine.</span>
-                </div>
-                <div className="text-[10px] text-amber-400/90 pt-1.5 border-t border-slate-800/80">
-                  ℹ️ Note: Physical removal of the row in Google Sheets requires the v3.15 Apps Script engine deployed on the sheet (Admin Hub &rarr; Google Apps Script Sync).
                 </div>
               </div>
             </div>

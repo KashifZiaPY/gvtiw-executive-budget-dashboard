@@ -5,7 +5,7 @@ import { VoucherEntryModal } from './VoucherEntryModal';
 import { CorporateDeleteVoucherModal } from './CorporateDeleteVoucherModal';
 import { BankChargeModal, isBankChargeVoucher, BankChargeSavePayload } from './BankChargeModal';
 import { formatPKR } from '../lib/formatters';
-import { notifySyncStatus } from '../lib/voucherSync';
+import { notifySyncStatus, formatDeleteErrorMessage } from '../lib/voucherSync';
 import {
   Search,
   Filter,
@@ -76,6 +76,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [voucherToDelete, setVoucherToDelete] = useState<MasterVoucher | null>(null);
   const [isDeletingVoucher, setIsDeletingVoucher] = useState(false);
+  const [deleteErrorMsg, setDeleteErrorMsg] = useState<string | null>(null);
 
   const handleOpenNewEntry = () => {
     setVoucherToAmend(null);
@@ -121,6 +122,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
     const targetVoucher = vouchers.find((v) => v.srNo === srNo);
     if (!targetVoucher) return;
 
+    setDeleteErrorMsg(null);
     setVoucherToDelete(targetVoucher);
     setIsDeleteModalOpen(true);
   };
@@ -131,97 +133,117 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
     const targetVoucher = voucherToDelete;
 
     setIsDeletingVoucher(true);
+    setDeleteErrorMsg(null);
 
-    // 1. Remove from vouchers state and update localStorage
-    const updated = vouchers.filter((v) => v.srNo !== targetSrNo);
-    setVouchers(updated);
-    try {
-      localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
-      let deletedSerials: number[] = [];
-      const delRaw = localStorage.getItem('gvtiw_deleted_serials_v3');
-      if (delRaw) {
-        try {
-          const parsed = JSON.parse(delRaw);
-          if (Array.isArray(parsed)) deletedSerials = parsed;
-        } catch {}
-      }
-      if (!deletedSerials.includes(targetSrNo)) {
-        deletedSerials.push(targetSrNo);
-      }
-      localStorage.setItem('gvtiw_deleted_serials_v3', JSON.stringify(deletedSerials));
-
-      // Reverse expenditure on account head in local store if present
-      try {
-        const accRaw = localStorage.getItem('gvtiw_accounts_store_v30');
-        if (accRaw) {
-          const accList = JSON.parse(accRaw);
-          if (Array.isArray(accList)) {
-            const headCode = targetVoucher.accountHead.split('-')[0].trim();
-            const acc = accList.find((a: any) => a.code === headCode || targetVoucher.accountHead.includes(a.code));
-            if (acc) {
-              const amtToDeduct = targetVoucher.billAmtExclTax || targetVoucher.billAmountGross || targetVoucher.chequeAmountNet || 0;
-              acc.payments = Math.max(0, acc.payments - amtToDeduct);
-              acc.balance = acc.opening + (acc.reappr || 0) + (acc.receipts || 0) - acc.payments;
-              localStorage.setItem('gvtiw_accounts_store_v30', JSON.stringify(accList));
-            }
-          }
-        }
-      } catch {}
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
-        window.dispatchEvent(new Event('storage'));
-      }
-    } catch {}
-
-    if (voucherToAmend?.srNo === targetSrNo) {
-      setVoucherToAmend(null);
-      setIsEntryModalOpen(false);
-    }
-
-    // 2. Dispatch deleteLastVoucher to Google Apps Script Web App
+    // 1. Dispatch deleteLastVoucher to Google Apps Script Web App FIRST
     try {
       const webAppUrl =
         localStorage.getItem('gvtiw_admin_web_app_url') ||
         'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
-      const activePin = localStorage.getItem('gvtiw_admin_custom_pin') || '33028';
+      const activePin = localStorage.getItem('gvtiw_admin_custom_pin') || '';
 
-      const qp = new URLSearchParams({
+      const requestPayload = {
         pin: activePin,
         action: 'deleteLastVoucher',
         command: 'deleteLastVoucher',
-        srNo: String(targetSrNo),
+        srNo: targetSrNo,
         voucherNo: targetVoucher.voucherNo,
         bankAccount: targetVoucher.bankAccount,
         accountHead: targetVoucher.accountHead,
-        chequeAmountNet: String(targetVoucher.chequeAmountNet),
+        chequeAmountNet: targetVoucher.chequeAmountNet,
+      };
+
+      const response = await fetch(webAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(requestPayload),
       });
 
-      const getRes = await fetch(`${webAppUrl}?${qp.toString()}`, { method: 'GET' });
-      if (!getRes.ok) {
-        // Fallback to text/plain POST
-        await fetch(webAppUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            pin: activePin,
-            action: 'deleteLastVoucher',
-            srNo: targetSrNo,
-            voucherNo: targetVoucher.voucherNo,
-            bankAccount: targetVoucher.bankAccount,
-            accountHead: targetVoucher.accountHead,
-            chequeAmountNet: targetVoucher.chequeAmountNet,
-          }),
-        });
+      if (!response.ok) {
+        setIsDeletingVoucher(false);
+        setDeleteErrorMsg('❌ Not deleted — server error: Network response was not ok');
+        notifySyncStatus('failed');
+        return;
       }
-    } catch {}
 
-    // Smooth pause for animation cycle
-    await new Promise((r) => setTimeout(r, 800));
+      const json = await response.json();
 
-    setIsDeletingVoucher(false);
-    setIsDeleteModalOpen(false);
-    setVoucherToDelete(null);
+      if (!json.success) {
+        setIsDeletingVoucher(false);
+        const errMsg = json.message || json.error || 'Server rejected deletion request.';
+        const lower = errMsg.toLowerCase();
+        let code = json.code;
+        if (!code) {
+          if (lower.includes('unauthorized') || lower.includes('pin') || lower.includes('password')) {
+            code = 'AUTH_FAILED';
+          } else if (lower.includes('quota') || lower.includes('rate limit')) {
+            code = 'QUOTA_EXCEEDED';
+          } else {
+            code = 'SERVER_ERROR';
+          }
+        }
+        setDeleteErrorMsg(formatDeleteErrorMessage({ success: false, code, message: errMsg }));
+        notifySyncStatus('failed');
+        return;
+      }
+
+      // 2. Success: Only mutate local state if Google Apps Script returned success: true
+      const updated = vouchers.filter((v) => v.srNo !== targetSrNo);
+      setVouchers(updated);
+      try {
+        localStorage.setItem('gvtiw_live_vouchers_v3', JSON.stringify(updated));
+        let deletedSerials: number[] = [];
+        const delRaw = localStorage.getItem('gvtiw_deleted_serials_v3');
+        if (delRaw) {
+          try {
+            const parsed = JSON.parse(delRaw);
+            if (Array.isArray(parsed)) deletedSerials = parsed;
+          } catch {}
+        }
+        if (!deletedSerials.includes(targetSrNo)) {
+          deletedSerials.push(targetSrNo);
+        }
+        localStorage.setItem('gvtiw_deleted_serials_v3', JSON.stringify(deletedSerials));
+
+        // Reverse expenditure on account head in local store if present
+        try {
+          const accRaw = localStorage.getItem('gvtiw_accounts_store_v30');
+          if (accRaw) {
+            const accList = JSON.parse(accRaw);
+            if (Array.isArray(accList)) {
+              const headCode = targetVoucher.accountHead.split('-')[0].trim();
+              const acc = accList.find((a: any) => a.code === headCode || targetVoucher.accountHead.includes(a.code));
+              if (acc) {
+                const amtToDeduct = targetVoucher.billAmtExclTax || targetVoucher.billAmountGross || targetVoucher.chequeAmountNet || 0;
+                acc.payments = Math.max(0, acc.payments - amtToDeduct);
+                acc.balance = acc.opening + (acc.reappr || 0) + (acc.receipts || 0) - acc.payments;
+                localStorage.setItem('gvtiw_accounts_store_v30', JSON.stringify(accList));
+              }
+            }
+          }
+        } catch {}
+
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('gvtiw_vouchers_updated'));
+          window.dispatchEvent(new Event('storage'));
+        }
+      } catch {}
+
+      if (voucherToAmend?.srNo === targetSrNo) {
+        setVoucherToAmend(null);
+        setIsEntryModalOpen(false);
+      }
+
+      notifySyncStatus('connected');
+      setIsDeletingVoucher(false);
+      setIsDeleteModalOpen(false);
+      setVoucherToDelete(null);
+      setDeleteErrorMsg(null);
+    } catch (err: any) {
+      setIsDeletingVoucher(false);
+      setDeleteErrorMsg(formatDeleteErrorMessage(null, true));
+      notifySyncStatus('failed');
+    }
   };
 
   const handleSaveVoucher = async (
@@ -863,11 +885,13 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
         isOpen={isDeleteModalOpen}
         isDeleting={isDeletingVoucher}
         voucher={voucherToDelete}
+        errorMsg={deleteErrorMsg}
         onConfirm={executeCorporateDelete}
         onClose={() => {
           if (!isDeletingVoucher) {
             setIsDeleteModalOpen(false);
             setVoucherToDelete(null);
+            setDeleteErrorMsg(null);
           }
         }}
         customGvtiwLogo={customGvtiwLogo || undefined}

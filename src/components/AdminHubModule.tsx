@@ -1037,9 +1037,9 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     } else {
       setPopupModal({
         isOpen: true,
-        type: 'warning',
-        title: 'Local Deletion Complete, Cloud Warning',
-        message: `Voucher #${targetSrNo} was deleted locally, but Google Sheets backend reported: "${dispatchRes.message}". Deploy the v3.15 script from the Cloud Sync tab to ensure cloud deletion succeeds.`,
+        type: 'error',
+        title: 'Deletion Failed',
+        message: dispatchRes.message || 'The Google Sheets backend rejected this transaction or reported an authorization failure.',
       });
     }
   };
