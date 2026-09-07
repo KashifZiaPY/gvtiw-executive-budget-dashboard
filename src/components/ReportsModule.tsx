@@ -842,15 +842,16 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         <table>
           <thead>
             <tr>
-              <th style="width: 28px;" class="text-center">SR#</th>
-              <th style="width: 65px;">DATE</th>
+              <th style="width: 25px;" class="text-center">SR#</th>
+              <th style="width: 60px;">DATE</th>
+              <th style="width: 65px;" class="text-center">CHEQUE#</th>
               <th>PAYEE / VENDOR</th>
-              <th style="width: 90px;">NTN / CNIC</th>
-              <th style="width: 75px;">VOUCHER#</th>
-              <th style="width: 85px;" class="text-right">GROSS BILL (RS.)</th>
-              <th style="width: 85px;" class="text-right">GST / SALES TAX (RS.)</th>
-              <th style="width: 90px;" class="text-right">NET PAID (RS.)</th>
-              <th style="width: 75px;" class="text-center">CHEQUE#</th>
+              <th style="width: 75px;">NTN / CNIC</th>
+              <th style="width: 80px;">BILL/INV # & DATE</th>
+              <th style="width: 80px;" class="text-right">GROSS BILL (RS.)</th>
+              <th style="width: 80px;" class="text-right">GST / SALES TAX (RS.)</th>
+              <th style="width: 85px;" class="text-right">NET PAID (RS.)</th>
+              <th style="width: 65px;" class="text-center">VOUCHER#</th>
             </tr>
           </thead>
           <tbody>
@@ -858,22 +859,26 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               <tr style="border-bottom: 1px solid #e2e8f0;">
                 <td class="text-center font-mono" style="color: #64748b;">${i + 1}</td>
                 <td class="font-mono" style="white-space: nowrap;">${formatPakistaniDate(v.chequeDate || v.billDate)}</td>
+                <td class="text-center font-mono" style="color: #1e293b;">${v.chequeNoNet || '—'}</td>
                 <td>
                   <div class="font-bold" style="color: #0f172a; line-height: 1.2;">${v.payeeName}</div>
                   ${v.description ? `<div style="font-size: 7.5px; color: #64748b; font-weight: normal; line-height: 1.2; margin-top: 1.5px;">${v.description}</div>` : ''}
                 </td>
                 <td class="font-mono" style="color: #334155;">${v.ntnCnic || '—'}</td>
-                <td class="font-mono font-bold" style="color: #1d4ed8; white-space: nowrap;">${v.voucherNo}</td>
+                <td>
+                  <div class="font-bold font-mono" style="color: #0f172a; line-height: 1.2;">${v.billNo || '—'}</div>
+                  ${v.billDate ? `<div class="font-mono" style="font-size: 7.5px; color: #64748b; font-weight: normal; line-height: 1.2; margin-top: 1.5px; white-space: nowrap;">${formatPakistaniDate(v.billDate)}</div>` : ''}
+                </td>
                 <td class="text-right font-mono font-bold" style="color: #0f172a;">${formatCurrency2Decimals(v.billAmountGross)}</td>
                 <td class="text-right font-mono" style="color: #7c3aed;">${v.gstAmount > 0 ? formatCurrency2Decimals(v.gstAmount) : '—'}</td>
                 <td class="text-right font-mono font-black" style="color: #047857;">${formatCurrency2Decimals(v.chequeAmountNet)}</td>
-                <td class="text-center font-mono" style="color: #1e293b;">${v.chequeNoNet || '—'}</td>
+                <td class="font-mono font-bold text-center" style="color: #1d4ed8; white-space: nowrap;">${v.voucherNo}</td>
               </tr>
             `).join('')}
           </tbody>
           <tfoot>
             <tr style="background-color: #e2e8f0; font-weight: bold; border-top: 2px solid #0b2545;">
-              <td colspan="5" class="text-right font-black" style="padding: 6px; text-transform: uppercase;">
+              <td colspan="6" class="text-right font-black" style="padding: 6px; text-transform: uppercase;">
                 GRAND TOTALS (${filteredVouchers.length} RECORDS):
               </td>
               <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9px;">
@@ -912,16 +917,17 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         <table>
           <thead>
             <tr>
-              <th style="width: 28px;" class="text-center">SR#</th>
-              <th style="width: 65px;">DATE</th>
+              <th style="width: 25px;" class="text-center">SR#</th>
+              <th style="width: 60px;">DATE</th>
+              <th style="width: 65px;" class="text-center">PRA CHEQUE#</th>
               <th>PAYEE / VENDOR</th>
-              <th style="width: 90px;">NTN / CNIC</th>
-              <th style="width: 75px;">VOUCHER#</th>
-              <th style="width: 85px;" class="text-right">BILL AMOUNT (RS.)</th>
-              <th style="width: 80px;" class="text-right">PRA (BILL) (RS.)</th>
-              <th style="width: 80px;" class="text-right">PRA WITHHELD (RS.)</th>
-              <th style="width: 75px;" class="text-center">PRA CHEQUE#</th>
-              <th style="width: 90px;" class="text-right">NET PAID (RS.)</th>
+              <th style="width: 75px;">NTN / CNIC</th>
+              <th style="width: 80px;">BILL/INV # & DATE</th>
+              <th style="width: 75px;" class="text-right">BILL AMOUNT (RS.)</th>
+              <th style="width: 75px;" class="text-right">PRA (BILL) (RS.)</th>
+              <th style="width: 75px;" class="text-right">PRA WITHHELD (RS.)</th>
+              <th style="width: 80px;" class="text-right">NET PAID (RS.)</th>
+              <th style="width: 65px;" class="text-center">VOUCHER#</th>
             </tr>
           </thead>
           <tbody>
@@ -929,23 +935,27 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               <tr style="border-bottom: 1px solid #e2e8f0;">
                 <td class="text-center font-mono" style="color: #64748b;">${i + 1}</td>
                 <td class="font-mono" style="white-space: nowrap;">${formatPakistaniDate(v.chequeDate || v.billDate)}</td>
+                <td class="text-center font-mono" style="color: #1e293b;">${v.chequeNoPra || '—'}</td>
                 <td>
                   <div class="font-bold" style="color: #0f172a; line-height: 1.2;">${v.payeeName}</div>
                   ${v.description ? `<div style="font-size: 7.5px; color: #64748b; font-weight: normal; line-height: 1.2; margin-top: 1.5px;">${v.description}</div>` : ''}
                 </td>
                 <td class="font-mono" style="color: #334155;">${v.ntnCnic || '—'}</td>
-                <td class="font-mono font-bold" style="color: #1d4ed8; white-space: nowrap;">${v.voucherNo}</td>
+                <td>
+                  <div class="font-bold font-mono" style="color: #0f172a; line-height: 1.2;">${v.billNo || '—'}</div>
+                  ${v.billDate ? `<div class="font-mono" style="font-size: 7.5px; color: #64748b; font-weight: normal; line-height: 1.2; margin-top: 1.5px; white-space: nowrap;">${formatPakistaniDate(v.billDate)}</div>` : ''}
+                </td>
                 <td class="text-right font-mono font-bold" style="color: #0f172a;">${formatCurrency2Decimals(v.billAmountGross)}</td>
                 <td class="text-right font-mono" style="color: #b45309;">${Number(v.praTaxOnBill) > 0 ? formatCurrency2Decimals(v.praTaxOnBill) : '—'}</td>
                 <td class="text-right font-mono" style="color: #b45309;">${v.praAmount > 0 ? formatCurrency2Decimals(v.praAmount) : '—'}</td>
-                <td class="text-center font-mono" style="color: #1e293b;">${v.chequeNoPra || '—'}</td>
                 <td class="text-right font-mono font-black" style="color: #047857;">${formatCurrency2Decimals(v.chequeAmountNet)}</td>
+                <td class="font-mono font-bold text-center" style="color: #1d4ed8; white-space: nowrap;">${v.voucherNo}</td>
               </tr>
             `).join('')}
           </tbody>
           <tfoot>
             <tr style="background-color: #e2e8f0; font-weight: bold; border-top: 2px solid #0b2545;">
-              <td colspan="5" class="text-right font-black" style="padding: 6px; text-transform: uppercase;">
+              <td colspan="6" class="text-right font-black" style="padding: 6px; text-transform: uppercase;">
                 GRAND TOTALS (${filteredVouchers.length} RECORDS):
               </td>
               <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9px;">
@@ -957,10 +967,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               <td class="text-right font-mono font-black" style="color: #b45309; font-size: 9px;">
                 ${formatCurrency2Decimals(totalPra)}
               </td>
-              <td class="text-center font-mono" style="color: #64748b;">—</td>
               <td class="text-right font-mono font-black" style="color: #047857; font-size: 9.5px;">
                 ${formatCurrency2Decimals(totalNet)}
               </td>
+              <td class="text-center font-mono" style="color: #64748b;">—</td>
             </tr>
           </tfoot>
         </table>
@@ -1343,30 +1353,33 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       const headers = [
         'Sr No',
         'Date',
+        'Cheque No',
         'Payee / Vendor',
         'Particulars / Description',
         'NTN / CNIC',
-        'Voucher No',
+        'Bill / Inv # & Date',
         'Gross Bill (Rs.)',
         'GST / Sales Tax Withheld (Rs.)',
         'Net Paid (Rs.)',
-        'Cheque No',
+        'Voucher No',
       ];
 
       const rows = filteredVouchers.map((v, i) => [
         i + 1,
         v.chequeDate || v.billDate,
+        `"${v.chequeNoNet || ''}"`,
         `"${v.payeeName.replace(/"/g, '""')}"`,
         `"${(v.description || '').replace(/"/g, '""')}"`,
         `"${(v.ntnCnic || '').replace(/"/g, '""')}"`,
-        `"${v.voucherNo}"`,
+        `"${(v.billNo || '')}${v.billDate ? (v.billNo ? ' (' + v.billDate + ')' : v.billDate) : ''}"`,
         v.billAmountGross,
         v.gstAmount || 0,
         v.chequeAmountNet,
-        `"${v.chequeNoNet || ''}"`,
+        `"${v.voucherNo}"`,
       ]);
 
       rows.push([
+        '—',
         '—',
         '—',
         '"GRAND TOTALS (Rs.)"',
@@ -1397,32 +1410,35 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       const headers = [
         'Sr No',
         'Date',
+        'PRA Cheque No',
         'Payee / Vendor',
         'Particulars / Description',
         'NTN / CNIC',
-        'Voucher No',
+        'Bill / Inv # & Date',
         'Bill Amount (Rs.)',
         'PRA (Bill) (Rs.)',
         'PRA Withheld (Rs.)',
-        'PRA Cheque No',
         'Net Paid (Rs.)',
+        'Voucher No',
       ];
 
       const rows = filteredVouchers.map((v, i) => [
         i + 1,
         v.chequeDate || v.billDate,
+        `"${v.chequeNoPra || ''}"`,
         `"${v.payeeName.replace(/"/g, '""')}"`,
         `"${(v.description || '').replace(/"/g, '""')}"`,
         `"${(v.ntnCnic || '').replace(/"/g, '""')}"`,
-        `"${v.voucherNo}"`,
+        `"${(v.billNo || '')}${v.billDate ? (v.billNo ? ' (' + v.billDate + ')' : v.billDate) : ''}"`,
         v.billAmountGross,
         v.praTaxOnBill || 0,
         v.praAmount || 0,
-        `"${v.chequeNoPra || ''}"`,
         v.chequeAmountNet,
+        `"${v.voucherNo}"`,
       ]);
 
       rows.push([
+        '—',
         '—',
         '—',
         '"GRAND TOTALS (Rs.)"',
@@ -1432,8 +1448,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         totalGross,
         totalPraOnBill,
         totalPra,
-        '—',
         totalNet,
+        '—',
       ]);
 
       const csvContent =
@@ -2419,20 +2435,21 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                   <tr>
                     <th className="py-2.5 px-3 text-center w-12">SR#</th>
                     <th className="py-2.5 px-3 whitespace-nowrap">DATE</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">CHEQUE#</th>
                     <th className="py-2.5 px-3">PAYEE / VENDOR</th>
                     <th className="py-2.5 px-3 whitespace-nowrap">NTN / CNIC</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap">VOUCHER#</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">BILL/INV # & DATE</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap">GROSS BILL (RS.)</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap">GST / SALES TAX (RS.)</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap">NET PAID (RS.)</th>
-                    <th className="py-2.5 px-3 text-center whitespace-nowrap">CHEQUE#</th>
                     <th className="py-2.5 px-2 text-center w-16 whitespace-nowrap">PAF</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">VOUCHER#</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {filteredVouchers.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="text-center py-10 text-slate-400">
+                      <td colSpan={11} className="text-center py-10 text-slate-400">
                         No transactions found with GST deductions for the selected criteria.
                       </td>
                     </tr>
@@ -2448,6 +2465,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                         <td className="py-2 px-3 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
                           {formatPakistaniDate(v.chequeDate || v.billDate)}
                         </td>
+                        <td className="py-2 px-3 text-center font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                          {v.chequeNoNet || '—'}
+                        </td>
                         <td className="py-2 px-3">
                           <div className="font-bold text-slate-900 dark:text-white leading-tight">
                             {v.payeeName}
@@ -2461,8 +2481,15 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                         <td className="py-2 px-3 font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">
                           {v.ntnCnic || '—'}
                         </td>
-                        <td className="py-2 px-3 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
-                          {v.voucherNo}
+                        <td className="py-2 px-3">
+                          <div className="font-bold font-mono text-slate-800 dark:text-slate-200 leading-tight">
+                            {v.billNo || '—'}
+                          </div>
+                          {v.billDate && (
+                            <div className="text-[10.5px] font-mono text-slate-500 dark:text-slate-400 font-normal leading-normal mt-0.5 whitespace-nowrap">
+                              {formatPakistaniDate(v.billDate)}
+                            </div>
+                          )}
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
                           {formatPKR(v.billAmountGross, false)}
@@ -2473,9 +2500,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                         <td className="py-2 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                           {formatPKR(v.chequeAmountNet, false)}
                         </td>
-                        <td className="py-2 px-3 text-center font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                          {v.chequeNoNet || '—'}
-                        </td>
                         <td className="py-2 px-2 text-center">
                           <button
                             onClick={() => setSelectedVoucherForPAF(v)}
@@ -2483,6 +2507,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                           >
                             PAF
                           </button>
+                        </td>
+                        <td className="py-2 px-3 font-mono font-bold text-center text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                          {v.voucherNo}
                         </td>
                       </tr>
                     ))
@@ -2493,7 +2520,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                     darkMode ? 'bg-slate-900/90 border-purple-500/50 text-white' : 'bg-purple-50 border-purple-600 text-slate-900'
                   }`}>
                     <tr>
-                      <td colSpan={5} className="py-3 px-3 text-right font-black uppercase text-[11px] tracking-wider">
+                      <td colSpan={6} className="py-3 px-3 text-right font-black uppercase text-[11px] tracking-wider">
                         GRAND TOTALS ({filteredVouchers.length} WITHHOLDING RECORDS):
                       </td>
                       <td className="py-3 px-3 text-right font-mono font-black text-sm text-slate-900 dark:text-white whitespace-nowrap">
@@ -2505,8 +2532,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                       <td className="py-3 px-3 text-right font-mono font-black text-sm text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                         {formatPKR(totalNet, false)}
                       </td>
-                      <td className="py-3 px-3 text-center font-mono text-slate-400">—</td>
                       <td className="py-3 px-2 text-center text-slate-400">—</td>
+                      <td className="py-3 px-3 text-center font-mono text-slate-400">—</td>
                     </tr>
                   </tfoot>
                 )}
@@ -2627,21 +2654,22 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                   <tr>
                     <th className="py-2.5 px-3 text-center w-12">SR#</th>
                     <th className="py-2.5 px-3 whitespace-nowrap">DATE</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">PRA CHEQUE#</th>
                     <th className="py-2.5 px-3">PAYEE / VENDOR</th>
                     <th className="py-2.5 px-3 whitespace-nowrap">NTN / CNIC</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap">VOUCHER#</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap">BILL/INV # & DATE</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap">BILL AMOUNT (RS.)</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap">PRA (BILL) (RS.)</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap">PRA WITHHELD (RS.)</th>
-                    <th className="py-2.5 px-3 text-center whitespace-nowrap">PRA CHEQUE#</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap">NET PAID (RS.)</th>
                     <th className="py-2.5 px-2 text-center w-16 whitespace-nowrap">PAF</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap">VOUCHER#</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {filteredVouchers.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="text-center py-10 text-slate-400">
+                      <td colSpan={12} className="text-center py-10 text-slate-400">
                         No transactions found with PRA service tax for the selected criteria.
                       </td>
                     </tr>
@@ -2657,6 +2685,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                         <td className="py-2 px-3 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
                           {formatPakistaniDate(v.chequeDate || v.billDate)}
                         </td>
+                        <td className="py-2 px-3 text-center font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                          {v.chequeNoPra || '—'}
+                        </td>
                         <td className="py-2 px-3">
                           <div className="font-bold text-slate-900 dark:text-white leading-tight">
                             {v.payeeName}
@@ -2670,8 +2701,15 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                         <td className="py-2 px-3 font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">
                           {v.ntnCnic || '—'}
                         </td>
-                        <td className="py-2 px-3 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
-                          {v.voucherNo}
+                        <td className="py-2 px-3">
+                          <div className="font-bold font-mono text-slate-800 dark:text-slate-200 leading-tight">
+                            {v.billNo || '—'}
+                          </div>
+                          {v.billDate && (
+                            <div className="text-[10.5px] font-mono text-slate-500 dark:text-slate-400 font-normal leading-normal mt-0.5 whitespace-nowrap">
+                              {formatPakistaniDate(v.billDate)}
+                            </div>
+                          )}
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
                           {formatPKR(v.billAmountGross, false)}
@@ -2681,9 +2719,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap">
                           {v.praAmount > 0 ? formatPKR(v.praAmount, false) : '—'}
-                        </td>
-                        <td className="py-2 px-3 text-center font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                          {v.chequeNoPra || '—'}
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                           {formatPKR(v.chequeAmountNet, false)}
@@ -2696,6 +2731,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                             PAF
                           </button>
                         </td>
+                        <td className="py-2 px-3 font-mono font-bold text-center text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                          {v.voucherNo}
+                        </td>
                       </tr>
                     ))
                   )}
@@ -2705,7 +2743,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                     darkMode ? 'bg-slate-900/90 border-amber-500/50 text-white' : 'bg-amber-50 border-amber-600 text-slate-900'
                   }`}>
                     <tr>
-                      <td colSpan={5} className="py-3 px-3 text-right font-black uppercase text-[11px] tracking-wider">
+                      <td colSpan={6} className="py-3 px-3 text-right font-black uppercase text-[11px] tracking-wider">
                         GRAND TOTALS ({filteredVouchers.length} PRA RECORDS):
                       </td>
                       <td className="py-3 px-3 text-right font-mono font-black text-sm text-slate-900 dark:text-white whitespace-nowrap">
@@ -2717,11 +2755,11 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                       <td className="py-3 px-3 text-right font-mono font-black text-sm text-amber-600 dark:text-amber-400 whitespace-nowrap">
                         {formatPKR(totalPra, false)}
                       </td>
-                      <td className="py-3 px-3 text-center font-mono text-slate-400">—</td>
                       <td className="py-3 px-3 text-right font-mono font-black text-sm text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                         {formatPKR(totalNet, false)}
                       </td>
                       <td className="py-3 px-2 text-center text-slate-400">—</td>
+                      <td className="py-3 px-3 text-center font-mono text-slate-400">—</td>
                     </tr>
                   </tfoot>
                 )}
