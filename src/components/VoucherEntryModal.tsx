@@ -7,6 +7,7 @@ import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { CorporateVoucherSuccessModal } from './CorporateVoucherSuccessModal';
 import { isBankChargeVoucher } from './BankChargeModal';
 import { formatSaveErrorMessage } from '../lib/voucherSync';
+import { AnimatedSplashLogos } from './AnimatedSplashLogos';
 import {
   X,
   CheckCircle,
@@ -838,41 +839,17 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
         <div className="bg-white dark:bg-[#0c1322] text-slate-900 dark:text-slate-100 w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col my-auto max-h-[95vh] relative">
           
           {/* ========================================================= */}
-          {/* OFFICIAL CORPORATE BUSY SIGN (REVOLVING GVTIW LOGO IN GREEN CIRCLE) */}
+          {/* OFFICIAL CORPORATE BUSY SIGN (CONNECTING SYNC ANIMATION)  */}
           {/* ========================================================= */}
           {isPosting && (
             <div className="absolute inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
-              <div className="relative mb-5 flex items-center justify-center">
-                {/* Outer Rotating Segmented Green Ring */}
-                <div className="w-28 h-28 rounded-full border-4 border-dashed border-emerald-400 animate-spin duration-3000 absolute" />
-                {/* Inner Glowing Solid Emerald Ring */}
-                <div className="w-24 h-24 rounded-full border-3 border-emerald-500 bg-emerald-950/40 shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center justify-center p-1.5 relative z-10">
-                  <img
-                    src={customGvtiwLogo || '/gvtiw-logo.jpg'}
-                    alt="GVTIW Logo"
-                    className="w-full h-full object-cover rounded-full bg-white shadow-inner"
-                    onError={(e) => {
-                      (e.target as HTMLElement).style.display = 'none';
-                    }}
-                  />
-                </div>
-                {/* Pulsing Badge */}
-                <div className="absolute -bottom-1 -right-1 z-20 w-7 h-7 rounded-full bg-emerald-500 border-2 border-slate-900 text-white flex items-center justify-center text-xs font-mono shadow-md animate-pulse">
-                  ✓
-                </div>
-              </div>
-
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 font-mono text-[10px] font-extrabold uppercase mb-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                <span>GVTIW Institutional Financial Server</span>
-              </div>
-
-              <h4 className="text-base font-black text-white uppercase tracking-wider mb-1">
-                Posting Payment Authorization
-              </h4>
-              <p className="text-xs text-emerald-300/90 font-mono max-w-sm">
-                Validating Head Ceilings, Reconciling Bank Ledgers &amp; Assigning Official v3.14 Voucher Serial...
-              </p>
+              <AnimatedSplashLogos
+                gvtiwLogo={customGvtiwLogo}
+                tevtaLogo={customTevtaLogo}
+                darkMode={true}
+                isFullPage={false}
+                statusMessage="Validating Ceilings & Synchronizing to Official CashBook..."
+              />
             </div>
           )}
 

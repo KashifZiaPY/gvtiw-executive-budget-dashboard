@@ -252,15 +252,12 @@ export default function App() {
 
   if (loading && !data) {
     return (
-      <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-slate-100 font-sans p-4">
-        <div className="flex flex-col items-center gap-4">
-          <AnimatedSplashLogos gvtiwLogo={customGvtiwLogo} tevtaLogo={customTevtaLogo} />
-          <h2 className="text-sm font-bold tracking-wider uppercase text-slate-300 text-center">
-            Initializing Executive Financial Ledger...
-          </h2>
-          <p className="text-xs text-slate-500 font-mono text-center">GVTIW Samanabad Faisalabad (Institute:33028)</p>
-        </div>
-      </div>
+      <AnimatedSplashLogos
+        gvtiwLogo={customGvtiwLogo}
+        tevtaLogo={customTevtaLogo}
+        darkMode={darkMode}
+        instituteName="Govt. Vocational Training Institute (W), Samanabad, Faisalabad"
+      />
     );
   }
 

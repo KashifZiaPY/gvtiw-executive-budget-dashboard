@@ -64,6 +64,7 @@ import { CorporateDeleteVoucherModal } from './CorporateDeleteVoucherModal';
 import { CorporateVoucherSuccessModal } from './CorporateVoucherSuccessModal';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { BankChargeModal, isBankChargeVoucher, BankChargeSavePayload } from './BankChargeModal';
+import { AnimatedSplashLogos } from './AnimatedSplashLogos';
 import { formatPKR } from '../lib/formatters';
 import { notifySyncStatus, formatSaveErrorMessage, formatDeleteErrorMessage } from '../lib/voucherSync';
 import { OFFICIAL_GOOGLE_APPS_SCRIPT_V315 } from '../data/googleAppsScriptCode';
@@ -2997,39 +2998,13 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           id="gvtiw-admin-busy-overlay"
           className="fixed inset-0 z-[120] bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in"
         >
-          <div className="relative mb-5 flex items-center justify-center">
-            {/* Outer Rotating Segmented Green/Indigo Ring */}
-            <div className="w-28 h-28 rounded-full border-4 border-dashed border-indigo-400 dark:border-indigo-300 animate-spin duration-3000 absolute" />
-
-            {/* Inner Glowing Ring with GVTIW Logo */}
-            <div className="w-24 h-24 rounded-full border-3 border-indigo-500 bg-indigo-950/40 shadow-[0_0_30px_rgba(99,102,241,0.6)] flex items-center justify-center p-1 relative z-10 overflow-hidden">
-              <img
-                src={customGvtiwLogo || '/gvtiw-logo.jpg'}
-                alt="GVTIW Logo"
-                className="w-full h-full object-cover rounded-full bg-white shadow-inner"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
-            </div>
-
-            {/* Pulsing Badge */}
-            <div className="absolute -bottom-1 -right-1 z-20 w-7 h-7 rounded-full bg-indigo-600 border-2 border-slate-900 text-white flex items-center justify-center text-xs font-mono shadow-md animate-pulse">
-              <Zap className="w-3.5 h-3.5 text-amber-300" />
-            </div>
-          </div>
-
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/40 text-indigo-300 font-mono text-[10px] font-extrabold uppercase mb-2">
-            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-ping inline-block" />
-            <span>GVTIW Samanabad Faisalabad</span>
-          </div>
-
-          <h4 className="text-base sm:text-lg font-bold text-white tracking-wide mb-1">
-            {busyOverlay.title}
-          </h4>
-          <p className="text-xs text-slate-300/90 font-mono max-w-md leading-relaxed">
-            {busyOverlay.message}
-          </p>
+          <AnimatedSplashLogos
+            gvtiwLogo={customGvtiwLogo}
+            tevtaLogo={customTevtaLogo}
+            darkMode={darkMode}
+            isFullPage={false}
+            statusMessage={busyOverlay.message || busyOverlay.title || 'Synchronizing with Institutional Cloud Backend...'}
+          />
         </div>
       )}
 

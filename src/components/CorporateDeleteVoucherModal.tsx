@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { MasterVoucher } from '../data/cashBookData';
 import { formatPKR } from '../lib/formatters';
+import { AnimatedSplashLogos } from './AnimatedSplashLogos';
 
 interface CorporateDeleteVoucherModalProps {
   isOpen: boolean;
@@ -41,46 +42,19 @@ export const CorporateDeleteVoucherModal: React.FC<CorporateDeleteVoucherModalPr
   return (
     <>
       {/* ================================================================= */}
-      {/* 1. OFFICIAL CORPORATE BUSY SIGN (IDENTICAL TO SAVING TIME MODAL)  */}
+      {/* 1. OFFICIAL CORPORATE BUSY SIGN (CONNECTING SYNC ANIMATION)       */}
       {/* ================================================================= */}
       {isDeleting && (
         <div
           id="gvtiw-corporate-delete-busy-overlay"
           className="fixed inset-0 z-[120] bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in"
         >
-          <div className="relative mb-5 flex items-center justify-center">
-            {/* Outer Rotating Segmented Green Ring */}
-            <div className="w-28 h-28 rounded-full border-4 border-dashed border-emerald-400 animate-spin duration-3000 absolute" />
-            
-            {/* Inner Glowing Solid Emerald Ring */}
-            <div className="w-24 h-24 rounded-full border-3 border-emerald-500 bg-emerald-950/40 shadow-[0_0_30px_rgba(16,185,129,0.7)] flex items-center justify-center p-1.5 relative z-10">
-              <img
-                src={customGvtiwLogo || '/gvtiw-logo.jpg'}
-                alt="GVTIW Logo"
-                className="w-full h-full object-cover rounded-full bg-white shadow-inner"
-                onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
-                }}
-              />
-            </div>
-            
-            {/* Pulsing Badge */}
-            <div className="absolute -bottom-1 -right-1 z-20 w-7 h-7 rounded-full bg-emerald-500 border-2 border-slate-900 text-white flex items-center justify-center text-xs font-mono shadow-md animate-pulse">
-              ✓
-            </div>
-          </div>
-
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 font-mono text-[10px] font-extrabold uppercase mb-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-            <span>GVTIW Institutional Financial Server</span>
-          </div>
-
-          <h4 className="text-base font-black text-white uppercase tracking-wider mb-1">
-            Purging Payment Authorization
-          </h4>
-          <p className="text-xs text-emerald-300/90 font-mono max-w-sm">
-            Reversing Head Ceilings, Restoring Bank Ledgers &amp; Purging Official v3.14 Voucher Serial #{voucher?.srNo ?? ''}...
-          </p>
+          <AnimatedSplashLogos
+            gvtiwLogo={customGvtiwLogo}
+            darkMode={true}
+            isFullPage={false}
+            statusMessage={`Reversing Voucher #${voucher?.voucherNo ?? ''} & Syncing Google Sheets...`}
+          />
         </div>
       )}
 
