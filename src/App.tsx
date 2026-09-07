@@ -18,6 +18,7 @@ import { PaymentApprovalForm } from './components/PaymentApprovalForm';
 import { ReportsModule } from './components/ReportsModule';
 import { AdminHubModule } from './components/AdminHubModule';
 import { PinLockScreen } from './components/PinLockScreen';
+import { AnimatedSplashLogos } from './components/AnimatedSplashLogos';
 import { INITIAL_MASTER_VOUCHERS } from './data/cashBookData';
 import { Loader2, AlertTriangle, LayoutDashboard, BookOpen, Receipt, FileSpreadsheet, Lock } from 'lucide-react';
 import { fetchDashboardPayload } from './lib/apiEngine';
@@ -252,12 +253,12 @@ export default function App() {
   if (loading && !data) {
     return (
       <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-slate-100 font-sans p-4">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-10 h-10 text-blue-500 animate-spin" />
-          <h2 className="text-sm font-bold tracking-wider uppercase text-slate-300">
+        <div className="flex flex-col items-center gap-4">
+          <AnimatedSplashLogos gvtiwLogo={customGvtiwLogo} tevtaLogo={customTevtaLogo} />
+          <h2 className="text-sm font-bold tracking-wider uppercase text-slate-300 text-center">
             Initializing Executive Financial Ledger...
           </h2>
-          <p className="text-xs text-slate-500 font-mono">GVTIW Samanabad Faisalabad (Institute:33028)</p>
+          <p className="text-xs text-slate-500 font-mono text-center">GVTIW Samanabad Faisalabad (Institute:33028)</p>
         </div>
       </div>
     );
