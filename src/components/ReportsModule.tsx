@@ -769,22 +769,25 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 8px;
+            font-size: 8.5px;
+            table-layout: fixed;
           }
           th {
             background-color: #0b2545;
             color: #ffffff;
-            padding: 5px 4px;
+            padding: 5.5px 4px;
             font-weight: 800;
             text-transform: uppercase;
             border: 1px solid #0b2545;
-            font-size: 7.5px;
-            letter-spacing: 0.3px;
+            font-size: 8px;
+            letter-spacing: 0.2px;
+            line-height: 1.15;
           }
           td {
-            padding: 3.5px 4px;
+            padding: 4px 4px;
             border: 1px solid #cbd5e1;
             vertical-align: middle;
+            line-height: 1.25;
           }
           .text-center { text-align: center; }
           .text-right { text-align: right; }
@@ -831,7 +834,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </div>
           <div class="kpi-card" style="border-color: #ddd6fe; background-color: #f5f3ff;">
             <span>GST / Sales Tax Withheld</span>
-            <strong style="color: #7c3aed;">Rs. ${formatCurrency2Decimals(totalGst)}</strong>
+            <strong style="color: #6b21a8;">Rs. ${formatCurrency2Decimals(totalGst)}</strong>
           </div>
           <div class="kpi-card" style="border-color: #a7f3d0; background-color: #ecfdf5;">
             <span>Net Paid (Cheques)</span>
@@ -842,55 +845,60 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         <table>
           <thead>
             <tr>
-              <th style="width: 25px;" class="text-center">SR#</th>
-              <th style="width: 60px;">DATE</th>
-              <th style="width: 65px;" class="text-center">CHEQUE#</th>
-              <th>PAYEE / VENDOR</th>
-              <th style="width: 75px;">NTN / CNIC</th>
-              <th style="width: 80px;">BILL/INV # & DATE</th>
-              <th style="width: 80px;" class="text-right">GROSS BILL (RS.)</th>
-              <th style="width: 80px;" class="text-right">GST / SALES TAX (RS.)</th>
-              <th style="width: 85px;" class="text-right">NET PAID (RS.)</th>
-              <th style="width: 65px;" class="text-center">VOUCHER#</th>
+              <th style="width: 3%;" class="text-center">SR#</th>
+              <th style="width: 7%;">DATE</th>
+              <th style="width: 7%;" class="text-center">CHEQUE#</th>
+              <th style="width: 20%;">PAYEE / VENDOR</th>
+              <th style="width: 8%;">NTN / CNIC</th>
+              <th style="width: 9%;">BILL/INV # & DATE</th>
+              <th style="width: 9.5%;" class="text-right">GROSS BILL (RS.)</th>
+              <th style="width: 9.5%;" class="text-right">AMOUNT EXCL. TAX (RS.)</th>
+              <th style="width: 9%;" class="text-right">GST / SALES TAX (RS.)</th>
+              <th style="width: 10%;" class="text-right">NET PAID (RS.)</th>
+              <th style="width: 7%;" class="text-center">VOUCHER#</th>
             </tr>
           </thead>
           <tbody>
             ${filteredVouchers.map((v, i) => `
-              <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td class="text-center font-mono" style="color: #64748b;">${i + 1}</td>
+              <tr style="border-bottom: 1px solid #cbd5e1;">
+                <td class="text-center font-mono" style="color: #475569;">${i + 1}</td>
                 <td class="font-mono" style="white-space: nowrap;">${formatPakistaniDate(v.chequeDate || v.billDate)}</td>
-                <td class="text-center font-mono" style="color: #1e293b;">${v.chequeNoNet || '—'}</td>
-                <td>
+                <td class="text-center font-mono" style="color: #0f172a;">${v.chequeNoNet || '—'}</td>
+                <td style="word-break: break-word;">
                   <div class="font-bold" style="color: #0f172a; line-height: 1.2;">${v.payeeName}</div>
-                  ${v.description ? `<div style="font-size: 7.5px; color: #64748b; font-weight: normal; line-height: 1.2; margin-top: 1.5px;">${v.description}</div>` : ''}
+                  ${v.description ? `<div style="font-size: 8px; color: #334155; font-weight: normal; line-height: 1.2; margin-top: 1.5px;">${v.description}</div>` : ''}
                 </td>
-                <td class="font-mono" style="color: #334155;">${v.ntnCnic || '—'}</td>
+                <td class="font-mono" style="color: #1e293b; word-break: break-all;">${v.ntnCnic || '—'}</td>
                 <td>
                   <div class="font-bold font-mono" style="color: #0f172a; line-height: 1.2;">${v.billNo || '—'}</div>
-                  ${v.billDate ? `<div class="font-mono" style="font-size: 7.5px; color: #64748b; font-weight: normal; line-height: 1.2; margin-top: 1.5px; white-space: nowrap;">${formatPakistaniDate(v.billDate)}</div>` : ''}
+                  ${v.billDate ? `<div class="font-mono" style="font-size: 8px; color: #334155; font-weight: normal; line-height: 1.2; margin-top: 1.5px; white-space: nowrap;">${formatPakistaniDate(v.billDate)}</div>` : ''}
                 </td>
-                <td class="text-right font-mono font-bold" style="color: #0f172a;">${formatCurrency2Decimals(v.billAmountGross)}</td>
-                <td class="text-right font-mono" style="color: #7c3aed;">${v.gstAmount > 0 ? formatCurrency2Decimals(v.gstAmount) : '—'}</td>
-                <td class="text-right font-mono font-black" style="color: #047857;">${formatCurrency2Decimals(v.chequeAmountNet)}</td>
+                <td class="text-right font-mono font-bold" style="color: #0f172a; white-space: nowrap;">${formatCurrency2Decimals(v.billAmountGross)}</td>
+                <td class="text-right font-mono font-bold" style="color: #0f172a; white-space: nowrap;">${formatCurrency2Decimals(Number(v.billAmtExclTax || v.billAmountGross))}</td>
+                <td class="text-right font-mono font-bold" style="color: #6b21a8; white-space: nowrap;">${v.gstAmount > 0 ? formatCurrency2Decimals(v.gstAmount) : '—'}</td>
+                <td class="text-right font-mono font-black" style="color: #047857; white-space: nowrap;">${formatCurrency2Decimals(v.chequeAmountNet)}</td>
                 <td class="font-mono font-bold text-center" style="color: #1d4ed8; white-space: nowrap;">${v.voucherNo}</td>
               </tr>
             `).join('')}
           </tbody>
           <tfoot>
-            <tr style="background-color: #e2e8f0; font-weight: bold; border-top: 2px solid #0b2545;">
-              <td colspan="6" class="text-right font-black" style="padding: 6px; text-transform: uppercase;">
+            <tr style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #0b2545;">
+              <td colspan="6" class="text-right font-black" style="padding: 6px; text-transform: uppercase; color: #0f172a;">
                 GRAND TOTALS (${filteredVouchers.length} RECORDS):
               </td>
-              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9px;">
+              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9.5px; white-space: nowrap;">
                 ${formatCurrency2Decimals(totalGross)}
               </td>
-              <td class="text-right font-mono font-black" style="color: #7c3aed; font-size: 9px;">
+              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9.5px; white-space: nowrap;">
+                ${formatCurrency2Decimals(totalBillExclTax)}
+              </td>
+              <td class="text-right font-mono font-black" style="color: #6b21a8; font-size: 9.5px; white-space: nowrap;">
                 ${formatCurrency2Decimals(totalGst)}
               </td>
-              <td class="text-right font-mono font-black" style="color: #047857; font-size: 9.5px;">
+              <td class="text-right font-mono font-black" style="color: #047857; font-size: 10px; white-space: nowrap;">
                 ${formatCurrency2Decimals(totalNet)}
               </td>
-              <td class="text-center font-mono" style="color: #64748b;">—</td>
+              <td class="text-center font-mono" style="color: #475569;">—</td>
             </tr>
           </tfoot>
         </table>
@@ -902,11 +910,11 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </div>
           <div class="kpi-card" style="border-color: #fde68a; background-color: #fffbeb;">
             <span>PRA (Bill)</span>
-            <strong style="color: #b45309;">Rs. ${formatCurrency2Decimals(totalPraOnBill)}</strong>
+            <strong style="color: #92400e;">Rs. ${formatCurrency2Decimals(totalPraOnBill)}</strong>
           </div>
           <div class="kpi-card" style="border-color: #fde68a; background-color: #fffbeb;">
             <span>PRA Withheld</span>
-            <strong style="color: #b45309;">Rs. ${formatCurrency2Decimals(totalPra)}</strong>
+            <strong style="color: #92400e;">Rs. ${formatCurrency2Decimals(totalPra)}</strong>
           </div>
           <div class="kpi-card" style="border-color: #a7f3d0; background-color: #ecfdf5;">
             <span>Net Paid (Cheques)</span>
@@ -917,60 +925,65 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         <table>
           <thead>
             <tr>
-              <th style="width: 25px;" class="text-center">SR#</th>
-              <th style="width: 60px;">DATE</th>
-              <th style="width: 65px;" class="text-center">PRA CHEQUE#</th>
-              <th>PAYEE / VENDOR</th>
-              <th style="width: 75px;">NTN / CNIC</th>
-              <th style="width: 80px;">BILL/INV # & DATE</th>
-              <th style="width: 75px;" class="text-right">BILL AMOUNT (RS.)</th>
-              <th style="width: 75px;" class="text-right">PRA (BILL) (RS.)</th>
-              <th style="width: 75px;" class="text-right">PRA WITHHELD (RS.)</th>
-              <th style="width: 80px;" class="text-right">NET PAID (RS.)</th>
-              <th style="width: 65px;" class="text-center">VOUCHER#</th>
+              <th style="width: 3%;" class="text-center">SR#</th>
+              <th style="width: 7%;">DATE</th>
+              <th style="width: 7%;" class="text-center">PRA CHEQUE#</th>
+              <th style="width: 19%;">PAYEE / VENDOR</th>
+              <th style="width: 7.5%;">NTN / CNIC</th>
+              <th style="width: 8.5%;">BILL/INV # & DATE</th>
+              <th style="width: 8.5%;" class="text-right">BILL AMOUNT (RS.)</th>
+              <th style="width: 8.5%;" class="text-right">AMOUNT EXCL. TAX (RS.)</th>
+              <th style="width: 7.5%;" class="text-right">PRA (BILL) (RS.)</th>
+              <th style="width: 8%;" class="text-right">PRA WITHHELD (RS.)</th>
+              <th style="width: 9.5%;" class="text-right">NET PAID (RS.)</th>
+              <th style="width: 6.5%;" class="text-center">VOUCHER#</th>
             </tr>
           </thead>
           <tbody>
             ${filteredVouchers.map((v, i) => `
-              <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td class="text-center font-mono" style="color: #64748b;">${i + 1}</td>
+              <tr style="border-bottom: 1px solid #cbd5e1;">
+                <td class="text-center font-mono" style="color: #475569;">${i + 1}</td>
                 <td class="font-mono" style="white-space: nowrap;">${formatPakistaniDate(v.chequeDate || v.billDate)}</td>
-                <td class="text-center font-mono" style="color: #1e293b;">${v.chequeNoPra || '—'}</td>
-                <td>
+                <td class="text-center font-mono" style="color: #0f172a;">${v.chequeNoPra || '—'}</td>
+                <td style="word-break: break-word;">
                   <div class="font-bold" style="color: #0f172a; line-height: 1.2;">${v.payeeName}</div>
-                  ${v.description ? `<div style="font-size: 7.5px; color: #64748b; font-weight: normal; line-height: 1.2; margin-top: 1.5px;">${v.description}</div>` : ''}
+                  ${v.description ? `<div style="font-size: 8px; color: #334155; font-weight: normal; line-height: 1.2; margin-top: 1.5px;">${v.description}</div>` : ''}
                 </td>
-                <td class="font-mono" style="color: #334155;">${v.ntnCnic || '—'}</td>
+                <td class="font-mono" style="color: #1e293b; word-break: break-all;">${v.ntnCnic || '—'}</td>
                 <td>
                   <div class="font-bold font-mono" style="color: #0f172a; line-height: 1.2;">${v.billNo || '—'}</div>
-                  ${v.billDate ? `<div class="font-mono" style="font-size: 7.5px; color: #64748b; font-weight: normal; line-height: 1.2; margin-top: 1.5px; white-space: nowrap;">${formatPakistaniDate(v.billDate)}</div>` : ''}
+                  ${v.billDate ? `<div class="font-mono" style="font-size: 8px; color: #334155; font-weight: normal; line-height: 1.2; margin-top: 1.5px; white-space: nowrap;">${formatPakistaniDate(v.billDate)}</div>` : ''}
                 </td>
-                <td class="text-right font-mono font-bold" style="color: #0f172a;">${formatCurrency2Decimals(v.billAmountGross)}</td>
-                <td class="text-right font-mono" style="color: #b45309;">${Number(v.praTaxOnBill) > 0 ? formatCurrency2Decimals(v.praTaxOnBill) : '—'}</td>
-                <td class="text-right font-mono" style="color: #b45309;">${v.praAmount > 0 ? formatCurrency2Decimals(v.praAmount) : '—'}</td>
-                <td class="text-right font-mono font-black" style="color: #047857;">${formatCurrency2Decimals(v.chequeAmountNet)}</td>
+                <td class="text-right font-mono font-bold" style="color: #0f172a; white-space: nowrap;">${formatCurrency2Decimals(v.billAmountGross)}</td>
+                <td class="text-right font-mono font-bold" style="color: #0f172a; white-space: nowrap;">${formatCurrency2Decimals(Number(v.billAmtExclTax || v.billAmountGross))}</td>
+                <td class="text-right font-mono font-bold" style="color: #92400e; white-space: nowrap;">${Number(v.praTaxOnBill) > 0 ? formatCurrency2Decimals(v.praTaxOnBill) : '—'}</td>
+                <td class="text-right font-mono font-bold" style="color: #92400e; white-space: nowrap;">${v.praAmount > 0 ? formatCurrency2Decimals(v.praAmount) : '—'}</td>
+                <td class="text-right font-mono font-black" style="color: #047857; white-space: nowrap;">${formatCurrency2Decimals(v.chequeAmountNet)}</td>
                 <td class="font-mono font-bold text-center" style="color: #1d4ed8; white-space: nowrap;">${v.voucherNo}</td>
               </tr>
             `).join('')}
           </tbody>
           <tfoot>
-            <tr style="background-color: #e2e8f0; font-weight: bold; border-top: 2px solid #0b2545;">
-              <td colspan="6" class="text-right font-black" style="padding: 6px; text-transform: uppercase;">
+            <tr style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #0b2545;">
+              <td colspan="6" class="text-right font-black" style="padding: 6px; text-transform: uppercase; color: #0f172a;">
                 GRAND TOTALS (${filteredVouchers.length} RECORDS):
               </td>
-              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9px;">
+              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9.5px; white-space: nowrap;">
                 ${formatCurrency2Decimals(totalGross)}
               </td>
-              <td class="text-right font-mono font-black" style="color: #b45309; font-size: 9px;">
+              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9.5px; white-space: nowrap;">
+                ${formatCurrency2Decimals(totalBillExclTax)}
+              </td>
+              <td class="text-right font-mono font-black" style="color: #92400e; font-size: 9.5px; white-space: nowrap;">
                 ${formatCurrency2Decimals(totalPraOnBill)}
               </td>
-              <td class="text-right font-mono font-black" style="color: #b45309; font-size: 9px;">
+              <td class="text-right font-mono font-black" style="color: #92400e; font-size: 9.5px; white-space: nowrap;">
                 ${formatCurrency2Decimals(totalPra)}
               </td>
-              <td class="text-right font-mono font-black" style="color: #047857; font-size: 9.5px;">
+              <td class="text-right font-mono font-black" style="color: #047857; font-size: 10px; white-space: nowrap;">
                 ${formatCurrency2Decimals(totalNet)}
               </td>
-              <td class="text-center font-mono" style="color: #64748b;">—</td>
+              <td class="text-center font-mono" style="color: #475569;">—</td>
             </tr>
           </tfoot>
         </table>
@@ -982,15 +995,15 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </div>
           <div class="kpi-card" style="border-color: #ddd6fe; background-color: #f5f3ff;">
             <span>GST Sales Tax</span>
-            <strong style="color: #7c3aed;">Rs. ${formatCurrency2Decimals(totalGst)}</strong>
+            <strong style="color: #6b21a8;">Rs. ${formatCurrency2Decimals(totalGst)}</strong>
           </div>
           <div class="kpi-card" style="border-color: #fca5a5; background-color: #fef2f2;">
             <span>WHT Income Tax</span>
-            <strong style="color: #be123c;">Rs. ${formatCurrency2Decimals(totalWht)}</strong>
+            <strong style="color: #9f1239;">Rs. ${formatCurrency2Decimals(totalWht)}</strong>
           </div>
           <div class="kpi-card" style="border-color: #fde68a; background-color: #fffbeb;">
             <span>PRA Sales Tax</span>
-            <strong style="color: #b45309;">Rs. ${formatCurrency2Decimals(totalPra)}</strong>
+            <strong style="color: #92400e;">Rs. ${formatCurrency2Decimals(totalPra)}</strong>
           </div>
           <div class="kpi-card" style="border-color: #a7f3d0; background-color: #ecfdf5;">
             <span>Net Paid (Cheques)</span>
@@ -1001,75 +1014,75 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         <table>
           <thead>
             <tr>
-              <th style="width: 25px;" class="text-center">SR#</th>
-              <th style="width: 70px;">VOUCHER#</th>
-              <th style="width: 55px;">DATE</th>
-              <th>PAYEE / VENDOR</th>
-              <th style="width: 60px;">BILL/INV #</th>
-              <th style="width: 50px;">BILL DATE</th>
-              <th style="width: 70px;" class="text-right">AMOUNT EXCL. TAX (RS.)</th>
-              <th style="width: 60px;" class="text-right">PRA (BILL) (RS.)</th>
-              <th style="width: 70px;" class="text-right">GROSS BILL (RS.)</th>
-              <th style="width: 60px;" class="text-right">GST (RS.)</th>
-              <th>BUDGET ACCOUNT HEAD</th>
-              <th style="width: 55px;" class="text-center">CHEQUE#</th>
-              <th style="width: 55px;" class="text-right">WHT (RS.)</th>
-              <th style="width: 55px;" class="text-right">PRA (RS.)</th>
-              <th style="width: 70px;" class="text-right">NET PAID (RS.)</th>
+              <th style="width: 3%;" class="text-center">SR#</th>
+              <th style="width: 6.5%;">VOUCHER#</th>
+              <th style="width: 6%;">DATE</th>
+              <th style="width: 16%;">PAYEE / VENDOR</th>
+              <th style="width: 6%;">BILL/INV #</th>
+              <th style="width: 5.5%;">BILL DATE</th>
+              <th style="width: 7.5%;" class="text-right">AMOUNT EXCL. TAX (RS.)</th>
+              <th style="width: 6.5%;" class="text-right">PRA (BILL) (RS.)</th>
+              <th style="width: 7.5%;" class="text-right">GROSS BILL (RS.)</th>
+              <th style="width: 6.5%;" class="text-right">GST (RS.)</th>
+              <th style="width: 13%;">BUDGET ACCOUNT HEAD</th>
+              <th style="width: 5.5%;" class="text-center">CHEQUE#</th>
+              <th style="width: 6%;" class="text-right">WHT (RS.)</th>
+              <th style="width: 6%;" class="text-right">PRA (RS.)</th>
+              <th style="width: 8%;" class="text-right">NET PAID (RS.)</th>
             </tr>
           </thead>
           <tbody>
             ${filteredVouchers.map((v, i) => `
-              <tr style="border-bottom: 1px solid #e2e8f0;">
-                <td class="text-center font-mono" style="color: #64748b;">${i + 1}</td>
+              <tr style="border-bottom: 1px solid #cbd5e1;">
+                <td class="text-center font-mono" style="color: #475569;">${i + 1}</td>
                 <td class="font-mono font-bold" style="color: #1d4ed8; white-space: nowrap;">${v.voucherNo}</td>
                 <td class="font-mono" style="white-space: nowrap;">${v.chequeDate || v.billDate}</td>
-                <td>
+                <td style="word-break: break-word;">
                   <div class="font-bold" style="color: #0f172a; line-height: 1.2;">${v.payeeName}</div>
-                  ${v.description ? `<div style="font-size: 7.5px; color: #64748b; font-weight: normal; line-height: 1.2; margin-top: 1.5px;">${v.description}</div>` : ''}
+                  ${v.description ? `<div style="font-size: 8px; color: #334155; font-weight: normal; line-height: 1.2; margin-top: 1.5px;">${v.description}</div>` : ''}
                 </td>
-                <td class="font-mono" style="color: #334155;">${v.billNo || '—'}</td>
-                <td class="font-mono" style="color: #64748b;">${v.billDate || '—'}</td>
+                <td class="font-mono" style="color: #1e293b;">${v.billNo || '—'}</td>
+                <td class="font-mono" style="color: #475569;">${v.billDate || '—'}</td>
                 <td class="text-right font-mono" style="color: #0f172a;">${formatCurrency2Decimals(Number(v.billAmtExclTax || v.billAmountGross))}</td>
-                <td class="text-right font-mono" style="color: #b45309;">${Number(v.praTaxOnBill) > 0 ? formatCurrency2Decimals(v.praTaxOnBill) : '—'}</td>
+                <td class="text-right font-mono font-bold" style="color: #92400e;">${Number(v.praTaxOnBill) > 0 ? formatCurrency2Decimals(v.praTaxOnBill) : '—'}</td>
                 <td class="text-right font-mono font-bold" style="color: #0f172a;">${formatCurrency2Decimals(v.billAmountGross)}</td>
-                <td class="text-right font-mono" style="color: #7c3aed;">${v.gstAmount > 0 ? formatCurrency2Decimals(v.gstAmount) : '—'}</td>
-                <td style="color: #334155; font-size: 7.5px;">${v.accountHead}</td>
-                <td class="text-center font-mono" style="font-size: 7.5px;">${v.chequeNoNet || '—'}</td>
-                <td class="text-right font-mono" style="color: #be123c;">${v.incomeTaxAmount > 0 ? formatCurrency2Decimals(v.incomeTaxAmount) : '—'}</td>
-                <td class="text-right font-mono" style="color: #b45309;">${v.praAmount > 0 ? formatCurrency2Decimals(v.praAmount) : '—'}</td>
+                <td class="text-right font-mono font-bold" style="color: #6b21a8;">${v.gstAmount > 0 ? formatCurrency2Decimals(v.gstAmount) : '—'}</td>
+                <td style="color: #1e293b; font-size: 8px; word-break: break-word;">${v.accountHead}</td>
+                <td class="text-center font-mono" style="font-size: 8px; color: #0f172a;">${v.chequeNoNet || '—'}</td>
+                <td class="text-right font-mono font-bold" style="color: #9f1239;">${v.incomeTaxAmount > 0 ? formatCurrency2Decimals(v.incomeTaxAmount) : '—'}</td>
+                <td class="text-right font-mono font-bold" style="color: #92400e;">${v.praAmount > 0 ? formatCurrency2Decimals(v.praAmount) : '—'}</td>
                 <td class="text-right font-mono font-black" style="color: #047857;">${formatCurrency2Decimals(v.chequeAmountNet)}</td>
               </tr>
             `).join('')}
           </tbody>
           <tfoot>
-            <tr style="background-color: #e2e8f0; font-weight: bold; border-top: 2px solid #0b2545;">
-              <td colspan="4" class="text-right font-black" style="padding: 6px; text-transform: uppercase;">
+            <tr style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #0b2545;">
+              <td colspan="4" class="text-right font-black" style="padding: 6px; text-transform: uppercase; color: #0f172a;">
                 GRAND TOTALS (${filteredVouchers.length} RECORDS):
               </td>
               <td class="text-center" style="color: #64748b;">—</td>
               <td class="text-center" style="color: #64748b;">—</td>
-              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9px;">
+              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9.5px;">
                 ${formatCurrency2Decimals(totalBillExclTax)}
               </td>
-              <td class="text-right font-mono font-black" style="color: #b45309; font-size: 9px;">
+              <td class="text-right font-mono font-black" style="color: #92400e; font-size: 9.5px;">
                 ${formatCurrency2Decimals(totalPraOnBill)}
               </td>
-              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9px;">
+              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9.5px;">
                 ${formatCurrency2Decimals(totalGross)}
               </td>
-              <td class="text-right font-mono font-black" style="color: #7c3aed; font-size: 9px;">
+              <td class="text-right font-mono font-black" style="color: #6b21a8; font-size: 9.5px;">
                 ${formatCurrency2Decimals(totalGst)}
               </td>
               <td class="text-center" style="color: #64748b;">—</td>
               <td class="text-center" style="color: #64748b;">—</td>
-              <td class="text-right font-mono font-black" style="color: #be123c; font-size: 9px;">
+              <td class="text-right font-mono font-black" style="color: #9f1239; font-size: 9.5px;">
                 ${formatCurrency2Decimals(totalWht)}
               </td>
-              <td class="text-right font-mono font-black" style="color: #b45309; font-size: 9px;">
+              <td class="text-right font-mono font-black" style="color: #92400e; font-size: 9.5px;">
                 ${formatCurrency2Decimals(totalPra)}
               </td>
-              <td class="text-right font-mono font-black" style="color: #047857; font-size: 9.5px;">
+              <td class="text-right font-mono font-black" style="color: #047857; font-size: 10px;">
                 ${formatCurrency2Decimals(totalNet)}
               </td>
             </tr>
@@ -1359,6 +1372,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         'NTN / CNIC',
         'Bill / Inv # & Date',
         'Gross Bill (Rs.)',
+        'Amount Excl. Tax (Rs.)',
         'GST / Sales Tax Withheld (Rs.)',
         'Net Paid (Rs.)',
         'Voucher No',
@@ -1373,6 +1387,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         `"${(v.ntnCnic || '').replace(/"/g, '""')}"`,
         `"${(v.billNo || '')}${v.billDate ? (v.billNo ? ' (' + v.billDate + ')' : v.billDate) : ''}"`,
         v.billAmountGross,
+        Number(v.billAmtExclTax || v.billAmountGross),
         v.gstAmount || 0,
         v.chequeAmountNet,
         `"${v.voucherNo}"`,
@@ -1387,6 +1402,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         '—',
         '—',
         totalGross,
+        totalBillExclTax,
         totalGst,
         totalNet,
         '—',
@@ -1416,6 +1432,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         'NTN / CNIC',
         'Bill / Inv # & Date',
         'Bill Amount (Rs.)',
+        'Amount Excl. Tax (Rs.)',
         'PRA (Bill) (Rs.)',
         'PRA Withheld (Rs.)',
         'Net Paid (Rs.)',
@@ -1431,6 +1448,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         `"${(v.ntnCnic || '').replace(/"/g, '""')}"`,
         `"${(v.billNo || '')}${v.billDate ? (v.billNo ? ' (' + v.billDate + ')' : v.billDate) : ''}"`,
         v.billAmountGross,
+        Number(v.billAmtExclTax || v.billAmountGross),
         v.praTaxOnBill || 0,
         v.praAmount || 0,
         v.chequeAmountNet,
@@ -1446,6 +1464,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         '—',
         '—',
         totalGross,
+        totalBillExclTax,
         totalPraOnBill,
         totalPra,
         totalNet,
@@ -2188,32 +2207,32 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
-              <span className="text-[10px] text-slate-400 font-bold uppercase block">Gross Claimed</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">Gross Claimed</span>
               <span className="text-base font-black font-mono text-slate-900 dark:text-white">
                 {formatPKR(totalGross, false)}
               </span>
             </div>
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-purple-900/60 bg-purple-950/20' : 'bg-purple-50 border-purple-200 shadow-xs'}`}>
               <span className="text-[10px] text-purple-700 dark:text-purple-400 font-bold uppercase block">GST Sales Tax</span>
-              <span className="text-base font-black font-mono text-purple-600 dark:text-purple-400">
+              <span className="text-base font-black font-mono text-purple-700 dark:text-purple-400">
                 {formatPKR(totalGst, false)}
               </span>
             </div>
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
-              <span className="text-[10px] text-slate-400 font-bold uppercase block">WHT Income Tax</span>
-              <span className="text-base font-black font-mono text-rose-500">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">WHT Income Tax</span>
+              <span className="text-base font-black font-mono text-rose-700 dark:text-rose-400">
                 {formatPKR(totalWht, false)}
               </span>
             </div>
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
-              <span className="text-[10px] text-slate-400 font-bold uppercase block">PRA Sales Tax</span>
-              <span className="text-base font-black font-mono text-amber-400">
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">PRA Sales Tax</span>
+              <span className="text-base font-black font-mono text-amber-700 dark:text-amber-400">
                 {formatPKR(totalPra, false)}
               </span>
             </div>
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-emerald-800 bg-emerald-950/20' : 'bg-emerald-50 border-emerald-200 shadow-xs'}`}>
               <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase block">Net Paid (Cheques)</span>
-              <span className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400">
+              <span className="text-base font-black font-mono text-emerald-700 dark:text-emerald-400">
                 {formatPKR(totalNet, false)}
               </span>
             </div>
@@ -2226,9 +2245,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 <thead className="bg-[#0b2545] text-white font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-800">
                   <tr>
                     <th className="py-2.5 px-2 text-center w-12 border-r border-slate-800">Sr.#</th>
-                    <th className="py-2.5 px-3 border-r border-slate-800 w-28">Voucher#</th>
+                    <th className="py-2.5 px-3 border-r border-slate-800 w-24">Voucher#</th>
                     <th className="py-2.5 px-3 border-r border-slate-800 w-24">Date</th>
-                    <th className="py-2.5 px-3 border-r border-slate-800">Payee / Vendor</th>
+                    <th className="py-2.5 px-3 border-r border-slate-800 min-w-[170px] max-w-[240px]">Payee / Vendor</th>
                     <th className="py-2.5 px-2.5 border-r border-slate-800 w-24">Bill/Invoice #</th>
                     <th className="py-2.5 px-2.5 border-r border-slate-800 w-24">Bill Date</th>
                     <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28">Amount Excl. Tax (Rs.)</th>
@@ -2253,30 +2272,30 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                   ) : (
                     filteredVouchers.map((v, i) => (
                       <tr key={i} className="hover:bg-blue-500/10 transition-colors">
-                        <td className="py-2 px-2 text-center font-mono text-slate-400 border-r border-slate-800/50">{i + 1}</td>
-                        <td className="py-2 px-3 font-mono font-bold text-blue-400 border-r border-slate-800/50">{v.voucherNo}</td>
-                        <td className="py-2 px-3 font-mono text-slate-400 border-r border-slate-800/50">{v.chequeDate || v.billDate}</td>
-                        <td className="py-2 px-3 border-r border-slate-800/50">
+                        <td className="py-2 px-2 text-center font-mono text-slate-500 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800/50">{i + 1}</td>
+                        <td className="py-2 px-3 font-mono font-bold text-blue-700 dark:text-blue-400 border-r border-slate-200 dark:border-slate-800/50">{v.voucherNo}</td>
+                        <td className="py-2 px-3 font-mono text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800/50">{v.chequeDate || v.billDate}</td>
+                        <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800/50 min-w-[170px] max-w-[240px]">
                           <div className="font-bold text-slate-900 dark:text-white leading-tight">
                             {v.payeeName}
                           </div>
                           {v.description && (
-                            <div className="text-[10.5px] text-slate-500 dark:text-slate-400 font-normal leading-normal mt-0.5">
+                            <div className="text-[10.5px] text-slate-600 dark:text-slate-400 font-normal leading-normal mt-0.5">
                               {v.description}
                             </div>
                           )}
                         </td>
-                        <td className="py-2 px-2.5 font-mono text-slate-300 border-r border-slate-800/50">{v.billNo || '—'}</td>
-                        <td className="py-2 px-2.5 font-mono text-slate-400 border-r border-slate-800/50">{v.billDate || '—'}</td>
-                        <td className="py-2 px-3 text-right font-mono text-slate-900 dark:text-slate-100 border-r border-slate-800/50">{formatPKR(Number(v.billAmtExclTax || v.billAmountGross), false)}</td>
-                        <td className="py-2 px-2.5 text-right font-mono text-amber-500 dark:text-amber-400 border-r border-slate-800/50">{Number(v.praTaxOnBill) > 0 ? formatPKR(Number(v.praTaxOnBill), false) : '-'}</td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100 border-r border-slate-800/50">{formatPKR(v.billAmountGross, false)}</td>
-                        <td className="py-2 px-2.5 text-right font-mono text-purple-600 dark:text-purple-400 border-r border-slate-800/50">{v.gstAmount > 0 ? formatPKR(v.gstAmount, false) : '-'}</td>
-                        <td className="py-2 px-3 text-[11px] font-mono text-slate-300 border-r border-slate-800/50">{v.accountHead}</td>
-                        <td className="py-2 px-2 text-center font-mono border-r border-slate-800/50">{v.chequeNoNet || '—'}</td>
-                        <td className="py-2 px-2.5 text-right font-mono text-rose-500 dark:text-rose-400 border-r border-slate-800/50">{v.incomeTaxAmount > 0 ? formatPKR(v.incomeTaxAmount, false) : '-'}</td>
-                        <td className="py-2 px-2.5 text-right font-mono text-amber-500 dark:text-amber-400 border-r border-slate-800/50">{v.praAmount > 0 ? formatPKR(v.praAmount, false) : '-'}</td>
-                        <td className="py-2 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 border-r border-slate-800/50">{formatPKR(v.chequeAmountNet, false)}</td>
+                        <td className="py-2 px-2.5 font-mono font-semibold text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800/50">{v.billNo || '—'}</td>
+                        <td className="py-2 px-2.5 font-mono text-slate-700 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800/50">{v.billDate || '—'}</td>
+                        <td className="py-2 px-3 text-right font-mono text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800/50">{formatPKR(Number(v.billAmtExclTax || v.billAmountGross), false)}</td>
+                        <td className="py-2 px-2.5 text-right font-mono text-amber-700 dark:text-amber-400 border-r border-slate-200 dark:border-slate-800/50">{Number(v.praTaxOnBill) > 0 ? formatPKR(Number(v.praTaxOnBill), false) : '-'}</td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800/50">{formatPKR(v.billAmountGross, false)}</td>
+                        <td className="py-2 px-2.5 text-right font-mono text-purple-700 dark:text-purple-400 border-r border-slate-200 dark:border-slate-800/50">{v.gstAmount > 0 ? formatPKR(v.gstAmount, false) : '-'}</td>
+                        <td className="py-2 px-3 text-[11px] font-mono text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800/50">{v.accountHead}</td>
+                        <td className="py-2 px-2 text-center font-mono text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800/50">{v.chequeNoNet || '—'}</td>
+                        <td className="py-2 px-2.5 text-right font-mono text-rose-700 dark:text-rose-400 border-r border-slate-200 dark:border-slate-800/50">{v.incomeTaxAmount > 0 ? formatPKR(v.incomeTaxAmount, false) : '-'}</td>
+                        <td className="py-2 px-2.5 text-right font-mono text-amber-700 dark:text-amber-400 border-r border-slate-200 dark:border-slate-800/50">{v.praAmount > 0 ? formatPKR(v.praAmount, false) : '-'}</td>
+                        <td className="py-2 px-3 text-right font-mono font-black text-emerald-700 dark:text-emerald-400 border-r border-slate-200 dark:border-slate-800/50">{formatPKR(v.chequeAmountNet, false)}</td>
                         <td className="py-2 px-2 text-center">
                           <button
                             onClick={() => setSelectedVoucherForPAF(v)}
@@ -2295,32 +2314,32 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                       <td colSpan={4} className="py-3 px-3 text-right uppercase text-[11px] font-black tracking-wider text-slate-700 dark:text-slate-200 border-r border-slate-300 dark:border-slate-800/50">
                         Grand Totals ({filteredVouchers.length} Records):
                       </td>
-                      <td className="py-3 px-2 text-center text-slate-400 border-r border-slate-300 dark:border-slate-800/50">—</td>
-                      <td className="py-3 px-2 text-center text-slate-400 border-r border-slate-300 dark:border-slate-800/50">—</td>
+                      <td className="py-3 px-2 text-center text-slate-400 dark:text-slate-500 border-r border-slate-300 dark:border-slate-800/50">—</td>
+                      <td className="py-3 px-2 text-center text-slate-400 dark:text-slate-500 border-r border-slate-300 dark:border-slate-800/50">—</td>
                       <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white text-xs border-r border-slate-300 dark:border-slate-800/50">
                         {formatPKR(totalBillExclTax, false)}
                       </td>
-                      <td className="py-3 px-2.5 text-right font-mono font-black text-amber-500 dark:text-amber-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
+                      <td className="py-3 px-2.5 text-right font-mono font-black text-amber-700 dark:text-amber-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
                         {formatPKR(totalPraOnBill, false)}
                       </td>
                       <td className="py-3 px-3 text-right font-mono font-black text-slate-900 dark:text-white text-xs border-r border-slate-300 dark:border-slate-800/50">
                         {formatPKR(totalGross, false)}
                       </td>
-                      <td className="py-3 px-2.5 text-right font-mono font-black text-purple-600 dark:text-purple-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
+                      <td className="py-3 px-2.5 text-right font-mono font-black text-purple-700 dark:text-purple-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
                         {formatPKR(totalGst, false)}
                       </td>
-                      <td className="py-3 px-2 text-center text-slate-400 border-r border-slate-300 dark:border-slate-800/50">—</td>
-                      <td className="py-3 px-2 text-center text-slate-400 border-r border-slate-300 dark:border-slate-800/50">—</td>
-                      <td className="py-3 px-2.5 text-right font-mono font-black text-rose-500 dark:text-rose-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
+                      <td className="py-3 px-2 text-center text-slate-400 dark:text-slate-500 border-r border-slate-300 dark:border-slate-800/50">—</td>
+                      <td className="py-3 px-2 text-center text-slate-400 dark:text-slate-500 border-r border-slate-300 dark:border-slate-800/50">—</td>
+                      <td className="py-3 px-2.5 text-right font-mono font-black text-rose-700 dark:text-rose-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
                         {formatPKR(totalWht, false)}
                       </td>
-                      <td className="py-3 px-2.5 text-right font-mono font-black text-amber-500 dark:text-amber-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
+                      <td className="py-3 px-2.5 text-right font-mono font-black text-amber-700 dark:text-amber-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
                         {formatPKR(totalPra, false)}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
+                      <td className="py-3 px-3 text-right font-mono font-black text-emerald-700 dark:text-emerald-400 text-xs border-r border-slate-300 dark:border-slate-800/50">
                         {formatPKR(totalNet, false)}
                       </td>
-                      <td className="py-3 px-2 text-center text-slate-400">—</td>
+                      <td className="py-3 px-2 text-center text-slate-400 dark:text-slate-500">—</td>
                     </tr>
                   </tfoot>
                 )}
@@ -2411,13 +2430,13 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             </div>
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-purple-900/60 bg-purple-950/20' : 'bg-purple-50 border-purple-200 shadow-xs'}`}>
               <span className="text-[10px] text-purple-700 dark:text-purple-400 font-bold uppercase block">GST / Sales Tax Withheld</span>
-              <span className="text-base font-black font-mono text-purple-600 dark:text-purple-400">
+              <span className="text-base font-black font-mono text-purple-700 dark:text-purple-400">
                 {formatPKR(totalGst, false)}
               </span>
             </div>
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-emerald-900/60 bg-emerald-950/20' : 'bg-emerald-50 border-emerald-200 shadow-xs'}`}>
               <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase block">Net Paid (Cheques)</span>
-              <span className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400">
+              <span className="text-base font-black font-mono text-emerald-700 dark:text-emerald-400">
                 {formatPKR(totalNet, false)}
               </span>
             </div>
@@ -2434,22 +2453,23 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 }`}>
                   <tr>
                     <th className="py-2.5 px-3 text-center w-12">SR#</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap">DATE</th>
-                    <th className="py-2.5 px-3 text-center whitespace-nowrap">CHEQUE#</th>
-                    <th className="py-2.5 px-3">PAYEE / VENDOR</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap">NTN / CNIC</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap">BILL/INV # & DATE</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap">GROSS BILL (RS.)</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap">GST / SALES TAX (RS.)</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap">NET PAID (RS.)</th>
-                    <th className="py-2.5 px-2 text-center w-16 whitespace-nowrap">PAF</th>
-                    <th className="py-2.5 px-3 text-center whitespace-nowrap">VOUCHER#</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[85px]">DATE</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[85px]">CHEQUE#</th>
+                    <th className="py-2.5 px-3 min-w-[180px] max-w-[260px]">PAYEE / VENDOR</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[95px]">NTN / CNIC</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[110px]">BILL/INV # & DATE</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">GROSS BILL (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[110px]">AMOUNT EXCL. TAX (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">GST / SALES TAX (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">NET PAID (RS.)</th>
+                    <th className="py-2.5 px-2 text-center w-14 whitespace-nowrap">PAF</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[85px]">VOUCHER#</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {filteredVouchers.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="text-center py-10 text-slate-400">
+                      <td colSpan={12} className="text-center py-10 text-slate-500 dark:text-slate-400">
                         No transactions found with GST deductions for the selected criteria.
                       </td>
                     </tr>
@@ -2461,32 +2481,32 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                           i % 2 === 1 ? (darkMode ? 'bg-slate-900/30' : 'bg-slate-50/50') : ''
                         }`}
                       >
-                        <td className="py-2 px-3 text-center font-mono text-slate-400">{i + 1}</td>
+                        <td className="py-2 px-3 text-center font-mono text-slate-500 dark:text-slate-400">{i + 1}</td>
                         <td className="py-2 px-3 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
                           {formatPakistaniDate(v.chequeDate || v.billDate)}
                         </td>
-                        <td className="py-2 px-3 text-center font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <td className="py-2 px-3 text-center font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap">
                           {v.chequeNoNet || '—'}
                         </td>
-                        <td className="py-2 px-3">
+                        <td className="py-2 px-3 min-w-[180px] max-w-[260px]">
                           <div className="font-bold text-slate-900 dark:text-white leading-tight">
                             {v.payeeName}
                           </div>
                           {v.description && (
-                            <div className="text-[10.5px] text-slate-500 dark:text-slate-400 font-normal leading-normal mt-0.5">
+                            <div className="text-[10.5px] text-slate-600 dark:text-slate-400 font-normal leading-normal mt-0.5">
                               {v.description}
                             </div>
                           )}
                         </td>
-                        <td className="py-2 px-3 font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                        <td className="py-2 px-3 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
                           {v.ntnCnic || '—'}
                         </td>
-                        <td className="py-2 px-3">
-                          <div className="font-bold font-mono text-slate-800 dark:text-slate-200 leading-tight">
+                        <td className="py-2 px-3 whitespace-nowrap">
+                          <div className="font-bold font-mono text-slate-900 dark:text-slate-100 leading-tight">
                             {v.billNo || '—'}
                           </div>
                           {v.billDate && (
-                            <div className="text-[10.5px] font-mono text-slate-500 dark:text-slate-400 font-normal leading-normal mt-0.5 whitespace-nowrap">
+                            <div className="text-[10.5px] font-mono text-slate-600 dark:text-slate-400 font-normal leading-normal mt-0.5 whitespace-nowrap">
                               {formatPakistaniDate(v.billDate)}
                             </div>
                           )}
@@ -2494,10 +2514,13 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                         <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
                           {formatPKR(v.billAmountGross, false)}
                         </td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-purple-600 dark:text-purple-400 whitespace-nowrap">
+                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                          {formatPKR(Number(v.billAmtExclTax || v.billAmountGross), false)}
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-purple-700 dark:text-purple-400 whitespace-nowrap">
                           {v.gstAmount > 0 ? formatPKR(v.gstAmount, false) : '—'}
                         </td>
-                        <td className="py-2 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                        <td className="py-2 px-3 text-right font-mono font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
                           {formatPKR(v.chequeAmountNet, false)}
                         </td>
                         <td className="py-2 px-2 text-center">
@@ -2508,7 +2531,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                             PAF
                           </button>
                         </td>
-                        <td className="py-2 px-3 font-mono font-bold text-center text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                        <td className="py-2 px-3 font-mono font-bold text-center text-blue-700 dark:text-blue-400 whitespace-nowrap">
                           {v.voucherNo}
                         </td>
                       </tr>
@@ -2526,14 +2549,17 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                       <td className="py-3 px-3 text-right font-mono font-black text-sm text-slate-900 dark:text-white whitespace-nowrap">
                         {formatPKR(totalGross, false)}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-purple-600 dark:text-purple-400 whitespace-nowrap">
+                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-slate-900 dark:text-white whitespace-nowrap">
+                        {formatPKR(totalBillExclTax, false)}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-purple-700 dark:text-purple-400 whitespace-nowrap">
                         {formatPKR(totalGst, false)}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
                         {formatPKR(totalNet, false)}
                       </td>
-                      <td className="py-3 px-2 text-center text-slate-400">—</td>
-                      <td className="py-3 px-3 text-center font-mono text-slate-400">—</td>
+                      <td className="py-3 px-2 text-center text-slate-400 dark:text-slate-500">—</td>
+                      <td className="py-3 px-3 text-center font-mono text-slate-400 dark:text-slate-500">—</td>
                     </tr>
                   </tfoot>
                 )}
@@ -2617,26 +2643,26 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           {/* KPI Summary Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
-              <span className="text-[10px] text-slate-400 font-bold uppercase block">Total Bill Amount</span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">Total Bill Amount</span>
               <span className="text-base font-black font-mono text-slate-900 dark:text-white">
                 {formatPKR(totalGross, false)}
               </span>
             </div>
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-amber-900/60 bg-amber-950/20' : 'bg-amber-50 border-amber-200 shadow-xs'}`}>
               <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold uppercase block">PRA (Bill)</span>
-              <span className="text-base font-black font-mono text-amber-600 dark:text-amber-400">
+              <span className="text-base font-black font-mono text-amber-700 dark:text-amber-400">
                 {formatPKR(totalPraOnBill, false)}
               </span>
             </div>
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-amber-900/60 bg-amber-950/20' : 'bg-amber-50 border-amber-200 shadow-xs'}`}>
               <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold uppercase block">PRA Withheld</span>
-              <span className="text-base font-black font-mono text-amber-600 dark:text-amber-400">
+              <span className="text-base font-black font-mono text-amber-700 dark:text-amber-400">
                 {formatPKR(totalPra, false)}
               </span>
             </div>
             <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-emerald-900/60 bg-emerald-950/20' : 'bg-emerald-50 border-emerald-200 shadow-xs'}`}>
               <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase block">Net Paid (Cheques)</span>
-              <span className="text-base font-black font-mono text-emerald-600 dark:text-emerald-400">
+              <span className="text-base font-black font-mono text-emerald-700 dark:text-emerald-400">
                 {formatPKR(totalNet, false)}
               </span>
             </div>
@@ -2653,23 +2679,24 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 }`}>
                   <tr>
                     <th className="py-2.5 px-3 text-center w-12">SR#</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap">DATE</th>
-                    <th className="py-2.5 px-3 text-center whitespace-nowrap">PRA CHEQUE#</th>
-                    <th className="py-2.5 px-3">PAYEE / VENDOR</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap">NTN / CNIC</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap">BILL/INV # & DATE</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap">BILL AMOUNT (RS.)</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap">PRA (BILL) (RS.)</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap">PRA WITHHELD (RS.)</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap">NET PAID (RS.)</th>
-                    <th className="py-2.5 px-2 text-center w-16 whitespace-nowrap">PAF</th>
-                    <th className="py-2.5 px-3 text-center whitespace-nowrap">VOUCHER#</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[85px]">DATE</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[85px]">PRA CHEQUE#</th>
+                    <th className="py-2.5 px-3 min-w-[180px] max-w-[260px]">PAYEE / VENDOR</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[95px]">NTN / CNIC</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[110px]">BILL/INV # & DATE</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">BILL AMOUNT (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[110px]">AMOUNT EXCL. TAX (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">PRA (BILL) (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">PRA WITHHELD (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">NET PAID (RS.)</th>
+                    <th className="py-2.5 px-2 text-center w-14 whitespace-nowrap">PAF</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[85px]">VOUCHER#</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {filteredVouchers.length === 0 ? (
                     <tr>
-                      <td colSpan={12} className="text-center py-10 text-slate-400">
+                      <td colSpan={13} className="text-center py-10 text-slate-500 dark:text-slate-400">
                         No transactions found with PRA service tax for the selected criteria.
                       </td>
                     </tr>
@@ -2681,32 +2708,32 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                           i % 2 === 1 ? (darkMode ? 'bg-slate-900/30' : 'bg-slate-50/50') : ''
                         }`}
                       >
-                        <td className="py-2 px-3 text-center font-mono text-slate-400">{i + 1}</td>
+                        <td className="py-2 px-3 text-center font-mono text-slate-500 dark:text-slate-400">{i + 1}</td>
                         <td className="py-2 px-3 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
                           {formatPakistaniDate(v.chequeDate || v.billDate)}
                         </td>
-                        <td className="py-2 px-3 text-center font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                        <td className="py-2 px-3 text-center font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap">
                           {v.chequeNoPra || '—'}
                         </td>
-                        <td className="py-2 px-3">
+                        <td className="py-2 px-3 min-w-[180px] max-w-[260px]">
                           <div className="font-bold text-slate-900 dark:text-white leading-tight">
                             {v.payeeName}
                           </div>
                           {v.description && (
-                            <div className="text-[10.5px] text-slate-500 dark:text-slate-400 font-normal leading-normal mt-0.5">
+                            <div className="text-[10.5px] text-slate-600 dark:text-slate-400 font-normal leading-normal mt-0.5">
                               {v.description}
                             </div>
                           )}
                         </td>
-                        <td className="py-2 px-3 font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                        <td className="py-2 px-3 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
                           {v.ntnCnic || '—'}
                         </td>
-                        <td className="py-2 px-3">
-                          <div className="font-bold font-mono text-slate-800 dark:text-slate-200 leading-tight">
+                        <td className="py-2 px-3 whitespace-nowrap">
+                          <div className="font-bold font-mono text-slate-900 dark:text-slate-100 leading-tight">
                             {v.billNo || '—'}
                           </div>
                           {v.billDate && (
-                            <div className="text-[10.5px] font-mono text-slate-500 dark:text-slate-400 font-normal leading-normal mt-0.5 whitespace-nowrap">
+                            <div className="text-[10.5px] font-mono text-slate-600 dark:text-slate-400 font-normal leading-normal mt-0.5 whitespace-nowrap">
                               {formatPakistaniDate(v.billDate)}
                             </div>
                           )}
@@ -2714,13 +2741,16 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                         <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
                           {formatPKR(v.billAmountGross, false)}
                         </td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap">
-                          {Number(v.praTaxOnBill) > 0 ? formatPKR(v.praTaxOnBill, false) : '—'}
+                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                          {formatPKR(Number(v.billAmtExclTax || v.billAmountGross), false)}
                         </td>
-                        <td className="py-2 px-3 text-right font-mono font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                        <td className="py-2 px-3 text-right font-mono font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">
+                          {Number(v.praTaxOnBill) > 0 ? formatPKR(Number(v.praTaxOnBill), false) : '—'}
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">
                           {v.praAmount > 0 ? formatPKR(v.praAmount, false) : '—'}
                         </td>
-                        <td className="py-2 px-3 text-right font-mono font-black text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                        <td className="py-2 px-3 text-right font-mono font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
                           {formatPKR(v.chequeAmountNet, false)}
                         </td>
                         <td className="py-2 px-2 text-center">
@@ -2731,7 +2761,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                             PAF
                           </button>
                         </td>
-                        <td className="py-2 px-3 font-mono font-bold text-center text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                        <td className="py-2 px-3 font-mono font-bold text-center text-blue-700 dark:text-blue-400 whitespace-nowrap">
                           {v.voucherNo}
                         </td>
                       </tr>
@@ -2749,17 +2779,20 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                       <td className="py-3 px-3 text-right font-mono font-black text-sm text-slate-900 dark:text-white whitespace-nowrap">
                         {formatPKR(totalGross, false)}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-slate-900 dark:text-white whitespace-nowrap">
+                        {formatPKR(totalBillExclTax, false)}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-amber-700 dark:text-amber-400 whitespace-nowrap">
                         {formatPKR(totalPraOnBill, false)}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-amber-700 dark:text-amber-400 whitespace-nowrap">
                         {formatPKR(totalPra, false)}
                       </td>
-                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
                         {formatPKR(totalNet, false)}
                       </td>
-                      <td className="py-3 px-2 text-center text-slate-400">—</td>
-                      <td className="py-3 px-3 text-center font-mono text-slate-400">—</td>
+                      <td className="py-3 px-2 text-center text-slate-400 dark:text-slate-500">—</td>
+                      <td className="py-3 px-3 text-center font-mono text-slate-400 dark:text-slate-500">—</td>
                     </tr>
                   </tfoot>
                 )}
