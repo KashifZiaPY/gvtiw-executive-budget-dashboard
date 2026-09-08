@@ -1737,23 +1737,27 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       <div className={`p-3 rounded-xl border flex items-center justify-between flex-wrap gap-3 text-xs ${
         darkMode ? 'bg-slate-900/90 border-slate-700' : 'bg-slate-50 border-slate-300 shadow-xs'
       }`}>
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
-          <span className="font-extrabold uppercase tracking-wide text-slate-700 dark:text-slate-200 text-[11px]">
-            Audited Opening Balances (FY 2026-27):
-          </span>
-          <div className="hidden lg:flex items-center gap-2 font-mono text-[11px] text-slate-600 dark:text-slate-300">
-            <span>NS: <strong className="text-blue-600 dark:text-blue-400">Rs. {formatCurrency2Decimals(cashBookStates.NS?.openingBalance || 2387207)}</strong></span>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2 shrink-0">
+            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span className="font-extrabold uppercase tracking-wide text-slate-700 dark:text-slate-200 text-[11px]">
+              Audited Opening Balances (FY 2026-27):
+            </span>
+          </div>
+          <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1 font-mono text-[11px] text-slate-600 dark:text-slate-300">
+            <span>NS: <strong className="text-blue-600 dark:text-blue-400">Rs. {formatCurrency2Decimals(cashBookStates.NS?.openingBalance ?? 2387207)}</strong></span>
             <span>•</span>
-            <span>PF: <strong className="text-emerald-600 dark:text-emerald-400">Rs. {formatCurrency2Decimals(cashBookStates.PF?.openingBalance || 408588)}</strong></span>
+            <span>PF: <strong className="text-emerald-600 dark:text-emerald-400">Rs. {formatCurrency2Decimals(cashBookStates.PF?.openingBalance ?? 408588)}</strong></span>
             <span>•</span>
             <span className="bg-purple-100 dark:bg-purple-950/80 px-1.5 py-0.5 rounded border border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-200">
-              FC: <strong className="font-bold">Rs. {formatCurrency2Decimals(cashBookStates.FC?.openingBalance || 77717)}</strong>
+              FC: <strong className="font-bold">Rs. {formatCurrency2Decimals(cashBookStates.FC?.openingBalance ?? 77717)}</strong>
             </span>
             <span>•</span>
-            <span>SEC: <strong className="text-amber-600 dark:text-amber-400">Rs. {formatCurrency2Decimals(cashBookStates.SEC?.openingBalance || 357709)}</strong></span>
+            <span>SEC: <strong className="text-amber-600 dark:text-amber-400">Rs. {formatCurrency2Decimals(cashBookStates.SEC?.openingBalance ?? 357709)}</strong></span>
             <span>•</span>
-            <span>SC: <strong className="text-sky-600 dark:text-sky-400">Rs. {formatCurrency2Decimals(cashBookStates.SC?.openingBalance || 251567)}</strong></span>
+            <span>SC: <strong className="text-sky-600 dark:text-sky-400">Rs. {formatCurrency2Decimals(cashBookStates.SC?.openingBalance ?? 251567)}</strong></span>
+            <span>•</span>
+            <span>AAA: <strong className="text-teal-600 dark:text-teal-400">Rs. {formatCurrency2Decimals(cashBookStates.AA?.openingBalance ?? 0)}</strong></span>
           </div>
         </div>
       </div>
