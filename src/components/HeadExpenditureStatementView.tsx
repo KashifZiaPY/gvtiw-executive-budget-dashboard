@@ -2,10 +2,11 @@ import React from 'react';
 import {
   HeadExpenditureStatementData,
   formatCurrency2Decimals,
+  formatCashBookBillInfo,
 } from '../lib/reportingEngine';
 import { formatPakistaniDate } from '../lib/formatters';
 import { InstituteEmblem, TevtaEmblem } from './Emblems';
-import { Printer, Download, BookOpen, Layers } from 'lucide-react';
+import { Printer, Download, BookOpen, Layers, FileText } from 'lucide-react';
 import { OFFICIAL_SIGNATORIES } from '../types';
 
 interface HeadExpenditureStatementViewProps {
@@ -15,6 +16,7 @@ interface HeadExpenditureStatementViewProps {
   customTevtaLogo?: string | null;
   onPrint: () => void;
   onExportCSV: () => void;
+  onOpenPAF?: (voucherNo: string) => void;
 }
 
 export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementViewProps> = ({
@@ -24,6 +26,7 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
   customTevtaLogo,
   onPrint,
   onExportCSV,
+  onOpenPAF,
 }) => {
   let globalSr = 1;
 
@@ -211,7 +214,8 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
               <th className="py-2.5 px-2 text-center border-r border-slate-700 w-24">CHEQUE #</th>
               <th className="py-2.5 px-3 text-right border-r border-slate-700 w-28">RECEIPTS (RS.)</th>
               <th className="py-2.5 px-3 text-right border-r border-slate-700 w-28">EXPENDITURE (RS.)</th>
-              <th className="py-2.5 px-3 text-right w-32">UNSPENT BUDGET (RS.)</th>
+              <th className="py-2.5 px-3 text-right border-r border-slate-700 w-32">UNSPENT BUDGET (RS.)</th>
+              <th className="py-2.5 px-2 text-center w-16 whitespace-nowrap">PAF</th>
             </tr>
           </thead>
 
@@ -250,8 +254,11 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
               <td className="py-2 px-3 text-right font-mono text-slate-400 border-r border-slate-200 dark:border-slate-800">
                 —
               </td>
-              <td className="py-2 px-3 text-right font-mono font-black text-slate-900 dark:text-white">
+              <td className="py-2 px-3 text-right font-mono font-black text-slate-900 dark:text-white border-r border-slate-200 dark:border-slate-800">
                 {formatCurrency2Decimals(data.budgetAllocationOpening)}
+              </td>
+              <td className="py-2 px-2 text-center font-mono text-slate-400">
+                —
               </td>
             </tr>
 
@@ -263,7 +270,7 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
                   {data.isGroupedAllHeads && (
                     <tr className="bg-[#0f172a] text-white font-extrabold">
                       <td
-                        colSpan={11}
+                        colSpan={12}
                         className="py-2 px-3 text-xs tracking-wider border-y border-slate-700"
                       >
                         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -283,6 +290,36 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
 
                   {/* Transactions under this head */}
                   {group.rows.map((r) => {
+                    const isReceipt = Boolean(
+                      r.entryType === 'RECEIPT' ||
+                      r.receipts > 0 ||
+                      (r.voucherNo && r.voucherNo.trim().toUpperCase().startsWith('REC-')) ||
+                      (r.id && r.id.trim().toUpperCase().startsWith('REC-')) ||
+                      (r.id && r.id.trim().toUpperCase().startsWith('CUSTOM-REC-'))
+                    );
+                    const isBankCharge = Boolean(
+                      (r.voucherNo && (r.voucherNo.trim().toUpperCase().startsWith('BC-') || r.voucherNo.trim().toUpperCase().startsWith('BC/'))) ||
+                      (r.voucherNo && r.voucherNo.trim().toUpperCase() === 'BC') ||
+                      (r.billNo && r.billNo.trim().toUpperCase() === 'BC') ||
+                      (r.billNo && r.billNo.trim().toUpperCase() === 'DIRECT DEBIT') ||
+                      (r.chequeNo && r.chequeNo.trim().toLowerCase().includes('direct debit')) ||
+                      (r.chequeNo && r.chequeNo.trim().toLowerCase().includes('bank debit')) ||
+                      (r.paidToBy && r.paidToBy.trim().toLowerCase().includes('bank charge')) ||
+                      (r.accountHead && (r.accountHead.trim().toUpperCase().includes('A03101') || r.accountHead.trim().toUpperCase().includes('BANK CHARGES'))) ||
+                      (r.particulars && r.particulars.trim().toLowerCase().includes('bank charge'))
+                    );
+                    const canShowPAF = Boolean(
+                      !isReceipt &&
+                      !isBankCharge &&
+                      r.voucherNo &&
+                      r.voucherNo !== '—' &&
+                      r.voucherNo.trim() !== '' &&
+                      !r.isOpening &&
+                      !r.isSubtotal &&
+                      !r.isGrandTotal &&
+                      !r.isClosing
+                    );
+
                     return (
                       <tr
                         key={r.id}
@@ -301,8 +338,19 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
                             {r.accountKey}
                           </span>
                         </td>
-                        <td className="py-2 px-3 font-mono font-extrabold text-blue-600 dark:text-blue-400 whitespace-nowrap border-r border-slate-200 dark:border-slate-800/60">
-                          {r.voucherNo}
+                        <td className="py-2 px-3 font-mono font-extrabold whitespace-nowrap border-r border-slate-200 dark:border-slate-800/60">
+                          {canShowPAF && onOpenPAF ? (
+                            <button
+                              type="button"
+                              onClick={() => onOpenPAF(r.voucherNo)}
+                              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline cursor-pointer font-mono font-extrabold text-left"
+                              title={`Click to view linked PAF for ${r.voucherNo}`}
+                            >
+                              {r.voucherNo}
+                            </button>
+                          ) : (
+                            <span className="text-blue-600 dark:text-blue-400">{r.voucherNo}</span>
+                          )}
                         </td>
                         <td className="py-2 px-3 font-bold text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800/60">
                           {r.paidToBy}
@@ -310,8 +358,13 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
                         <td className="py-2 px-3 text-[11px] font-mono text-slate-600 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800/60">
                           {r.accountHead}
                         </td>
-                        <td className="py-2 px-3 text-[11px] text-slate-600 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800/60">
-                          {r.particulars}
+                        <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800/60 min-w-[200px]">
+                          <div className="font-semibold text-slate-900 dark:text-slate-100 text-[11px] leading-tight">
+                            {r.particulars}
+                          </div>
+                          <div className="text-[10px] text-slate-900 dark:text-slate-100 font-mono font-normal leading-normal mt-0.5">
+                            {formatCashBookBillInfo(r.billNo, r.billDate)}
+                          </div>
                         </td>
                         <td className="py-2 px-2 text-center font-mono text-[11px] border-r border-slate-200 dark:border-slate-800/60">
                           {r.chequeNo}
@@ -322,8 +375,23 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
                         <td className="py-2 px-3 text-right font-mono font-bold text-rose-600 dark:text-rose-400 border-r border-slate-200 dark:border-slate-800/60">
                           {r.payments > 0 ? formatCurrency2Decimals(r.payments) : '—'}
                         </td>
-                        <td className="py-2 px-3 text-right font-mono font-black text-[#0b2545] dark:text-blue-200">
+                        <td className="py-2 px-3 text-right font-mono font-black text-[#0b2545] dark:text-blue-200 border-r border-slate-200 dark:border-slate-800/60">
                           {formatCurrency2Decimals(r.balance)}
+                        </td>
+                        <td className="py-2 px-2 text-center whitespace-nowrap">
+                          {canShowPAF ? (
+                            <button
+                              type="button"
+                              onClick={() => onOpenPAF?.(r.voucherNo)}
+                              className="px-2 py-1 text-[10px] font-bold rounded bg-blue-600 hover:bg-blue-500 text-white cursor-pointer shadow-xs transition-colors flex items-center justify-center gap-1 mx-auto"
+                              title={`View Payment Approval Form (PAF) for ${r.voucherNo}`}
+                            >
+                              <FileText className="w-3 h-3" />
+                              <span>PAF</span>
+                            </button>
+                          ) : (
+                            <span className="text-slate-400 font-mono text-[10px]">—</span>
+                          )}
                         </td>
                       </tr>
                     );
@@ -348,8 +416,11 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
                       <td className="py-2 px-3 text-right font-mono text-rose-600 dark:text-rose-400 border-r border-slate-200 dark:border-slate-800">
                         {formatCurrency2Decimals(group.totalExpenditure)}
                       </td>
-                      <td className="py-2 px-3 text-right font-mono text-blue-700 dark:text-blue-300">
+                      <td className="py-2 px-3 text-right font-mono text-blue-700 dark:text-blue-300 border-r border-slate-200 dark:border-slate-800">
                         {formatCurrency2Decimals(group.closingUnspentBalance)}
+                      </td>
+                      <td className="py-2 px-2 text-center font-mono text-slate-400 text-xs">
+                        —
                       </td>
                     </tr>
                   )}
@@ -375,7 +446,10 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
               <td className="py-2.5 px-3 text-right font-mono text-xs text-rose-600 dark:text-rose-400 border-r border-slate-300 dark:border-slate-700">
                 {formatCurrency2Decimals(data.totalExpenditure)}
               </td>
-              <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-xs">
+              <td className="py-2.5 px-3 text-center text-slate-400 font-mono text-xs border-r border-slate-300 dark:border-slate-700">
+                —
+              </td>
+              <td className="py-2.5 px-2 text-center font-mono text-slate-400 text-xs">
                 —
               </td>
             </tr>
@@ -398,8 +472,11 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
               >
                 [Allocation + Receipts - Expenditure]
               </td>
-              <td className="py-2.5 px-3 text-right font-mono text-sm font-black text-[#002b66] dark:text-blue-300">
+              <td className="py-2.5 px-3 text-right font-mono text-sm font-black text-[#002b66] dark:text-blue-300 border-r border-slate-300 dark:border-slate-700">
                 {formatCurrency2Decimals(data.closingUnspentBalance)}
+              </td>
+              <td className="py-2.5 px-2 text-center font-mono text-slate-400 text-xs">
+                —
               </td>
             </tr>
           </tbody>

@@ -298,7 +298,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
         <div className="flex items-center gap-1 sm:gap-1.5 text-[9px] print:text-[8px] font-mono select-none">
           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-slate-300 bg-slate-50/90 print:bg-white shadow-2xs">
             <span className="text-[8px] print:text-[7px] uppercase font-sans font-bold text-slate-400 tracking-wider">NET CHEQUE#</span>
-            <span className="font-semibold text-slate-800">{voucher.chequeNoNet}</span>
+            <span className="font-bold font-mono text-slate-950">{voucher.chequeNoNet}</span>
           </div>
           <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-slate-300 bg-slate-50/90 print:bg-white shadow-2xs">
             <span className="text-[8px] print:text-[7px] uppercase font-sans font-bold text-slate-400 tracking-wider">NET AMOUNT</span>
@@ -516,10 +516,10 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
           </span>
         </div>
         <div className="grid grid-cols-12">
-          <span className="col-span-5 font-bold text-slate-800 bg-slate-100 py-0.5 px-2.5 border-r border-slate-400 uppercase">
+          <span className="col-span-5 font-black text-slate-900 bg-slate-100 py-0.5 px-2.5 border-r border-slate-400 uppercase">
             CHEQUE NO. :
           </span>
-          <span className="col-span-7 font-mono font-extrabold text-blue-900 py-0.5 px-2.5">
+          <span className="col-span-7 font-mono font-black text-slate-950 text-xs sm:text-sm py-0.5 px-2.5 tracking-wider">
             {voucher.chequeNoNet}
           </span>
         </div>

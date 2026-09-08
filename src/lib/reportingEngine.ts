@@ -772,6 +772,8 @@ export function generateHeadExpenditureStatementData(
       paidToBy: string;
       accountHead: string;
       particulars: string;
+      billNo?: string;
+      billDate?: string;
       chequeNo: string;
       receipts: number;
       payments: number;
@@ -822,6 +824,8 @@ export function generateHeadExpenditureStatementData(
           paidToBy: v.payeeName,
           accountHead: v.accountHead || acc.head,
           particulars: v.description,
+          billNo: v.billNo,
+          billDate: v.billDate,
           chequeNo: v.chequeNoNet || '—',
           receipts: 0,
           payments: amt,
@@ -867,6 +871,8 @@ export function generateHeadExpenditureStatementData(
         paidToBy: tx.paidToBy,
         accountHead: tx.accountHead,
         particulars: tx.particulars,
+        billNo: tx.billNo,
+        billDate: tx.billDate,
         chequeNo: tx.chequeNo,
         receipts: tx.receipts,
         payments: tx.payments,
@@ -937,8 +943,8 @@ export function generateHeadExpenditureStatementData(
 }
 
 /**
- * Formats Bill/Invoice # and Bill Date for Cash Book Statement display.
- * Returns formatted string like "199 (27-Jun-2026)" or "N/A" if no bill.
+ * Formats Bill/Invoice # and Bill Date for Cash Book Statement & Head Expenditure display.
+ * Returns formatted string like "Bill/Invoice#: 199 (27-Jun-2026)" or "Bill/Invoice#: N/A".
  */
 export function formatCashBookBillInfo(billNo?: string, billDate?: string): string {
   const bNo = (billNo || '').trim();
@@ -949,13 +955,15 @@ export function formatCashBookBillInfo(billNo?: string, billDate?: string): stri
     ['N/A', 'NONE', 'NIL', '—', '-', '0', 'BC', 'DIRECT DEBIT'].includes(bNo.toUpperCase());
 
   if (isNoBill) {
-    return 'N/A';
+    return 'Bill/Invoice#: N/A';
   }
 
+  const prefix = bNo.toLowerCase().startsWith('bill/invoice#') ? '' : 'Bill/Invoice#: ';
+
   if (bDate) {
-    return `${bNo} (${bDate})`;
+    return `${prefix}${bNo} (${bDate})`;
   }
-  return bNo;
+  return `${prefix}${bNo}`;
 }
 
 /**
@@ -1073,7 +1081,7 @@ export function generateOfficialStatementPrintHtml(params: {
           <td style="padding: 4px; border: 1px solid #cbd5e1; font-size: 8.5px; color: #334155;">${r.accountHead}</td>
           <td style="padding: 4px; border: 1px solid #cbd5e1; font-size: 8.5px; word-break: break-word;">
             <div style="font-weight: 600; color: #0f172a; line-height: 1.25;">${r.particulars}</div>
-            ${params.reportType === 'CASHBOOK' ? `<div style="font-family: monospace; font-size: 7.5px; color: #64748b; font-weight: normal; line-height: 1.2; margin-top: 2px;">${formatCashBookBillInfo(r.billNo, r.billDate)}</div>` : ''}
+            ${(params.reportType === 'CASHBOOK' || params.reportType === 'HEAD') ? `<div style="font-family: monospace; font-size: 7.5px; color: #0f172a; font-weight: normal; line-height: 1.2; margin-top: 2px;">${formatCashBookBillInfo(r.billNo, r.billDate)}</div>` : ''}
           </td>
           <td style="text-align: center; padding: 4px; border: 1px solid #cbd5e1; font-family: monospace; font-size: 8.5px;">${r.chequeNo}</td>
           <td style="text-align: right; padding: 4px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: bold; color: #15803d;">${recText}</td>

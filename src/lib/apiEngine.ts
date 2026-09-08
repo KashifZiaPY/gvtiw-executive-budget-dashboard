@@ -402,8 +402,10 @@ export async function syncDirectFromGoogleSheet(accounts: AccountHead[]): Promis
 
     let detectedChanges = 0;
     let mostRecentChangedHead: string | null = null;
+    let changedHeadMaxDate = 0;
     let extractedLatestTx: string | null = null;
     let maxTsMs = 0;
+    let latestActivityHeadCode: string | null = null;
 
     for (const r of rows) {
       const c = r?.c;
@@ -439,7 +441,9 @@ export async function syncDirectFromGoogleSheet(accounts: AccountHead[]): Promis
       const rawReceipts = cleanNum(c[5]?.v);
       const newReceipts = acc.category === 'Non Salary' ? 0 : rawReceipts;
       const newPayments = cleanNum(c[6]?.v);
-      const newBalance = cleanNum(c[7]?.v);
+      const newBalance = acc.category === 'Non Salary'
+        ? (newOpening + newReappr + newReceipts - newPayments)
+        : cleanNum(c[7]?.v);
       const rawActivity = c[9]?.f || c[9]?.v ? String(c[9]?.f || c[9]?.v).trim() : '';
 
       if (rawActivity && rawActivity !== '-') {
@@ -447,6 +451,7 @@ export async function syncDirectFromGoogleSheet(accounts: AccountHead[]): Promis
         if (!isNaN(d) && d > maxTsMs) {
           maxTsMs = d;
           extractedLatestTx = rawActivity;
+          latestActivityHeadCode = acc.code;
         }
       }
 
@@ -459,7 +464,13 @@ export async function syncDirectFromGoogleSheet(accounts: AccountHead[]): Promis
 
       if (isNumChanged) {
         detectedChanges++;
-        mostRecentChangedHead = acc.code;
+        const d = rawActivity ? new Date(rawActivity).getTime() : 0;
+        if (!isNaN(d) && d >= changedHeadMaxDate) {
+          changedHeadMaxDate = d;
+          mostRecentChangedHead = acc.code;
+        } else if (!mostRecentChangedHead) {
+          mostRecentChangedHead = acc.code;
+        }
         acc.opening = newOpening;
         acc.reappr = newReappr;
         acc.receipts = newReceipts;
@@ -474,24 +485,27 @@ export async function syncDirectFromGoogleSheet(accounts: AccountHead[]): Promis
       }
     }
 
-    if (detectedChanges > 0 && mostRecentChangedHead) {
-      localStorage.setItem(STORAGE_KEY_SPOTLIGHT, mostRecentChangedHead);
-    } else {
-      let newestCode: string | null = null;
-      let newestDate = 0;
-      accounts.forEach((a) => {
-        if (a.code && VALID_ACCOUNT_CODES.has(a.code) && !a.code.includes('SUBTOTAL') && !a.code.includes('GRAND')) {
-          const d = new Date(a.lastActivity).getTime();
-          if (!isNaN(d) && d > newestDate) {
-            newestDate = d;
-            newestCode = a.code;
-          }
+    // Identify the account head with the most recent financial activity timestamp
+    let newestCode: string | null = null;
+    let newestDate = 0;
+    accounts.forEach((a) => {
+      if (a.code && VALID_ACCOUNT_CODES.has(a.code) && !a.code.includes('SUBTOTAL') && !a.code.includes('GRAND')) {
+        const d = new Date(a.lastActivity).getTime();
+        if (!isNaN(d) && d > newestDate) {
+          newestDate = d;
+          newestCode = a.code;
         }
-      });
-      if (newestCode) {
-        localStorage.setItem(STORAGE_KEY_SPOTLIGHT, newestCode);
-        mostRecentChangedHead = newestCode;
       }
+    });
+
+    // Active Spotlight prioritizes newly modified transactions; otherwise spotlights the head with the newest activity across the ledger
+    const spotlightCode = (detectedChanges > 0 && mostRecentChangedHead && changedHeadMaxDate >= newestDate)
+      ? mostRecentChangedHead
+      : (newestCode || latestActivityHeadCode || mostRecentChangedHead);
+
+    if (spotlightCode) {
+      localStorage.setItem(STORAGE_KEY_SPOTLIGHT, spotlightCode);
+      mostRecentChangedHead = spotlightCode;
     }
 
     if (extractedLatestTx) {

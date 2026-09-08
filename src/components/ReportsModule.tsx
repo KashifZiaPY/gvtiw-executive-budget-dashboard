@@ -193,6 +193,25 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     }
   };
 
+  const handleOpenPAFByVoucherNo = (voucherNo: string) => {
+    if (!voucherNo || voucherNo === '—' || !voucherNo.trim()) return;
+    const clean = voucherNo.trim().toUpperCase();
+    const v =
+      vouchers.find((item) => item.voucherNo?.trim().toUpperCase() === clean) ||
+      INITIAL_MASTER_VOUCHERS.find((item) => item.voucherNo?.trim().toUpperCase() === clean);
+    if (v) {
+      setSelectedVoucherForPAF(v);
+    } else {
+      const num = parseInt(clean.replace(/\D/g, ''));
+      if (!isNaN(num)) {
+        const bySr =
+          vouchers.find((item) => item.srNo === num) ||
+          INITIAL_MASTER_VOUCHERS.find((item) => item.srNo === num);
+        if (bySr) setSelectedVoucherForPAF(bySr);
+      }
+    }
+  };
+
   // Authoritative Cash Book Statement Data
   const cashBookStatementData = useMemo(() => {
     return generateCashBookStatementData(
@@ -1284,6 +1303,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         ]);
       }
       for (const r of g.rows) {
+        const billText = formatCashBookBillInfo(r.billNo, r.billDate);
+        const particularsWithBill = r.particulars
+          ? `${r.particulars}\n${billText}`
+          : billText;
         rows.push([
           sr++,
           r.date,
@@ -1291,7 +1314,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           `"${r.voucherNo}"`,
           `"${r.paidToBy}"`,
           `"${r.accountHead}"`,
-          `"${(r.particulars || '').replace(/"/g, '""')}"`,
+          `"${particularsWithBill.replace(/"/g, '""')}"`,
           `"${r.chequeNo}"`,
           r.receipts.toFixed(2),
           r.payments.toFixed(2),
@@ -1996,6 +2019,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           customTevtaLogo={customTevtaLogo}
           onPrint={() => handlePrintCashBook(cashBookStatementData)}
           onExportCSV={() => handleExportCashBookCSV(cashBookStatementData)}
+          onOpenPAF={handleOpenPAFByVoucherNo}
         />
       )}
 
@@ -2010,6 +2034,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           customTevtaLogo={customTevtaLogo}
           onPrint={() => handlePrintHeadExpenditure(headExpenditureStatementData)}
           onExportCSV={() => handleExportHeadCSV(headExpenditureStatementData)}
+          onOpenPAF={handleOpenPAFByVoucherNo}
         />
       )}
 
