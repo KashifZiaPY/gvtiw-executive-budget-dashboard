@@ -21,6 +21,8 @@ export interface CashBookStatementRow {
   paidToBy: string;
   accountHead: string;
   particulars: string;
+  billNo?: string;
+  billDate?: string;
   chequeNo: string;
   receipts: number;
   payments: number;
@@ -228,6 +230,8 @@ export function buildRawCashBookItems(
   paidToBy: string;
   accountHead: string;
   particulars: string;
+  billNo?: string;
+  billDate?: string;
   chequeNo: string;
   chequeDate?: string;
   chequeDateTs?: number;
@@ -264,6 +268,8 @@ export function buildRawCashBookItems(
             paidToBy: e.paidToBy || 'Collection / Deposit',
             accountHead: e.accountHead,
             particulars: e.particulars,
+            billNo: '',
+            billDate: '',
             chequeNo: e.chequeNo || '—',
             chequeDate: e.date || '',
             chequeDateTs: parseDateToTimestamp(e.date),
@@ -294,6 +300,8 @@ export function buildRawCashBookItems(
           paidToBy: 'Bank Charges',
           accountHead: v.accountHead || 'A03101-BANK CHARGES',
           particulars: v.description || 'Bank Service Charge',
+          billNo: '',
+          billDate: v.billDate || '',
           chequeNo: '—',
           chequeDate: v.chequeDate || v.billDate || '',
           chequeDateTs: parseDateToTimestamp(v.chequeDate || v.billDate || dateStr),
@@ -313,6 +321,8 @@ export function buildRawCashBookItems(
           paidToBy: v.payeeName,
           accountHead: v.accountHead,
           particulars: v.description,
+          billNo: v.billNo || '',
+          billDate: v.billDate || '',
           chequeNo: v.chequeNoNet || '—',
           chequeDate: v.chequeDate || '',
           chequeDateTs: parseDateToTimestamp(v.chequeDate || dateStr),
@@ -332,6 +342,8 @@ export function buildRawCashBookItems(
           paidToBy: 'Income Tax',
           accountHead: v.accountHead,
           particulars: v.description,
+          billNo: v.billNo || '',
+          billDate: v.billDate || '',
           chequeNo: v.chequeNoIncomeTax || '—',
           chequeDate: v.chequeDate || '',
           chequeDateTs: parseDateToTimestamp(v.chequeDate || dateStr),
@@ -351,6 +363,8 @@ export function buildRawCashBookItems(
           paidToBy: 'PRA Tax',
           accountHead: v.accountHead,
           particulars: v.description,
+          billNo: v.billNo || '',
+          billDate: v.billDate || '',
           chequeNo: v.chequeNoPra || '—',
           chequeDate: v.chequeDate || '',
           chequeDateTs: parseDateToTimestamp(v.chequeDate || dateStr),
@@ -516,6 +530,8 @@ export function generateCashBookStatementData(
         paidToBy: item.paidToBy,
         accountHead: item.accountHead,
         particulars: item.particulars,
+        billNo: item.billNo || '',
+        billDate: item.billDate || '',
         chequeNo: item.chequeNo,
         receipts: item.receipts,
         payments: item.payments,
@@ -921,6 +937,28 @@ export function generateHeadExpenditureStatementData(
 }
 
 /**
+ * Formats Bill/Invoice # and Bill Date for Cash Book Statement display.
+ * Returns formatted string like "199 (27-Jun-2026)" or "N/A" if no bill.
+ */
+export function formatCashBookBillInfo(billNo?: string, billDate?: string): string {
+  const bNo = (billNo || '').trim();
+  const bDate = (billDate || '').trim();
+
+  const isNoBill =
+    !bNo ||
+    ['N/A', 'NONE', 'NIL', '—', '-', '0', 'BC', 'DIRECT DEBIT'].includes(bNo.toUpperCase());
+
+  if (isNoBill) {
+    return 'N/A';
+  }
+
+  if (bDate) {
+    return `${bNo} (${bDate})`;
+  }
+  return bNo;
+}
+
+/**
  * GENERATE OFFICIAL A4 LANDSCAPE PRINT / PDF HTML TEMPLATE
  * Incorporates dual logos (TEVTA & GVTI(W)) on top, 4 KPI cards, running balances, and signatures
  */
@@ -1033,7 +1071,10 @@ export function generateOfficialStatementPrintHtml(params: {
           <td style="padding: 4px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: 800; color: #1d4ed8; white-space: nowrap;">${r.voucherNo}</td>
           <td style="padding: 4px; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">${r.paidToBy}</td>
           <td style="padding: 4px; border: 1px solid #cbd5e1; font-size: 8.5px; color: #334155;">${r.accountHead}</td>
-          <td style="padding: 4px; border: 1px solid #cbd5e1; font-size: 8.5px; color: #475569;">${r.particulars}</td>
+          <td style="padding: 4px; border: 1px solid #cbd5e1; font-size: 8.5px; word-break: break-word;">
+            <div style="font-weight: 600; color: #0f172a; line-height: 1.25;">${r.particulars}</div>
+            ${params.reportType === 'CASHBOOK' ? `<div style="font-family: monospace; font-size: 7.5px; color: #64748b; font-weight: normal; line-height: 1.2; margin-top: 2px;">${formatCashBookBillInfo(r.billNo, r.billDate)}</div>` : ''}
+          </td>
           <td style="text-align: center; padding: 4px; border: 1px solid #cbd5e1; font-family: monospace; font-size: 8.5px;">${r.chequeNo}</td>
           <td style="text-align: right; padding: 4px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: bold; color: #15803d;">${recText}</td>
           <td style="text-align: right; padding: 4px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: bold; color: #dc2626;">${payText}</td>

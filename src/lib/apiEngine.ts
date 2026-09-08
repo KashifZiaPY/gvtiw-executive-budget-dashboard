@@ -235,7 +235,7 @@ export async function syncDirectFromGoogleSheet(accounts: AccountHead[]): Promis
   try {
     const gvizUrl =
       'https://docs.google.com/spreadsheets/d/1wU3zS6BSrCJuFqio8Az7sKkCcwuTOSeJ8GRW7FhCRls/gviz/tq?tqx=out:json';
-    const res = await fetch(gvizUrl, { cache: 'no-store' });
+    const res = await fetch(`${gvizUrl}&_t=${Date.now()}`);
     if (!res.ok) return { changed: 0, spotlight: null, latestTransactionTs: null };
     const text = await res.text();
     const match = text.match(/setResponse\((.*)\);/s);
@@ -822,19 +822,38 @@ export async function fetchLiveReceiptsFromCashBooks(): Promise<Record<BankAccou
     bankKeys.map(async (key) => {
       try {
         const spreadsheetId = CASHBOOK_SPREADSHEET_IDS[key];
-        const gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=CASH%20BOOK%2026-27`;
-        
-        if (key === 'FC') {
-          console.log('[DEBUG FC] 1. GViz URL:', gvizUrl);
+        const gvizUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=CASH%20BOOK%2026-27&_t=${Date.now()}`;
+
+        let res: Response | null = null;
+        try {
+          res = await fetch(gvizUrl);
+        } catch {
+          // Retry once after a brief pause if transient network error
+          await new Promise((r) => setTimeout(r, 400));
+          try {
+            res = await fetch(gvizUrl);
+          } catch {
+            res = null;
+          }
         }
 
-        const res = await fetch(gvizUrl, { cache: 'no-store' });
-        
-        if (key === 'FC') {
-          console.log('[DEBUG FC] 2. HTTP response status:', res.status, res.statusText);
+        if (!res || !res.ok) {
+          // Gracefully fallback to initial receipt entries if any
+          const fallbackReceipts = (INITIAL_CASHBOOK_STATES[key]?.entries || [])
+            .filter((e) => (e.receipts || 0) > 0)
+            .map((e) => ({
+              id: e.id,
+              date: e.date,
+              month: e.month,
+              particulars: e.particulars,
+              paidToBy: e.paidToBy,
+              head: e.accountHead,
+              chq: e.chequeNo,
+              amount: e.receipts,
+            }));
+          result[key] = fallbackReceipts;
+          return;
         }
-
-        if (!res.ok) return;
 
         const text = await res.text();
         const match = text.match(/setResponse\((.*)\);/s);
@@ -843,10 +862,6 @@ export async function fetchLiveReceiptsFromCashBooks(): Promise<Record<BankAccou
         const parsed = JSON.parse(match[1]);
         const rows = parsed?.table?.rows;
         if (!Array.isArray(rows)) return;
-
-        if (key === 'FC') {
-          console.log('[DEBUG FC] 3. Total rows returned before filtering:', rows.length);
-        }
 
         const entries: LiveReceiptEntry[] = [];
         let receiptCounter = 1;
@@ -859,10 +874,6 @@ export async function fetchLiveReceiptsFromCashBooks(): Promise<Record<BankAccou
           const date = getVal(c, 1);
           const receipts = getNum(c, 8);
           const accountHead = getVal(c, 6);
-
-          if (key === 'FC') {
-            console.log(`[DEBUG FC] 4. Row ${rIdx}: Column B (Date)="${date}", Column G (Account Head)="${accountHead}", Column I (Receipts)=${receipts}, Raw c[1]=`, c[1], 'Raw c[6]=', c[6], 'Raw c[8]=', c[8]);
-          }
 
           // Skip row if it doesn't have BOTH a non-empty date and receipts > 0
           if (!date || receipts <= 0) continue;
@@ -884,17 +895,22 @@ export async function fetchLiveReceiptsFromCashBooks(): Promise<Record<BankAccou
           });
         }
 
-        if (key === 'FC') {
-          console.log('[DEBUG FC] 5. Final count of valid receipt entries after filtering:', entries.length, entries);
-        }
-
         result[key] = entries;
-      } catch (err) {
-        if (key === 'FC') {
-          console.error('[DEBUG FC] Error fetching or parsing FC sheet:', err);
-        }
-        // If any GViz request fails, return an empty array for this bank without crashing
-        result[key] = [];
+      } catch {
+        // If any GViz request fails or fails to parse, gracefully fall back to initial receipt entries
+        const fallbackReceipts = (INITIAL_CASHBOOK_STATES[key]?.entries || [])
+          .filter((e) => (e.receipts || 0) > 0)
+          .map((e) => ({
+            id: e.id,
+            date: e.date,
+            month: e.month,
+            particulars: e.particulars,
+            paidToBy: e.paidToBy,
+            head: e.accountHead,
+            chq: e.chequeNo,
+            amount: e.receipts,
+          }));
+        result[key] = fallbackReceipts;
       }
     })
   );
@@ -915,7 +931,7 @@ export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
   syncTimestamp: string;
 }> {
   try {
-    const res = await fetch(LIVE_VOUCHERS_GVIZ_URL, { cache: 'no-store' });
+    const res = await fetch(`${LIVE_VOUCHERS_GVIZ_URL}&_t=${Date.now()}`);
     if (!res.ok) {
       throw new Error(`Google Sheets responded with HTTP ${res.status}`);
     }

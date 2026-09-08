@@ -2,6 +2,7 @@ import React from 'react';
 import {
   CashBookStatementData,
   formatCurrency2Decimals,
+  formatCashBookBillInfo,
 } from '../lib/reportingEngine';
 import { formatPakistaniDate } from '../lib/formatters';
 import { InstituteEmblem, TevtaEmblem } from './Emblems';
@@ -328,8 +329,13 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
                         <td className="py-2 px-3 text-[11px] font-mono text-slate-600 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800/60">
                           {r.accountHead}
                         </td>
-                        <td className="py-2 px-3 text-[11px] text-slate-600 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800/60">
-                          {r.particulars}
+                        <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800/60 min-w-[200px]">
+                          <div className="font-semibold text-slate-900 dark:text-slate-100 text-[11px] leading-tight">
+                            {r.particulars}
+                          </div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-normal leading-normal mt-0.5">
+                            {formatCashBookBillInfo(r.billNo, r.billDate)}
+                          </div>
                         </td>
                         <td className="py-2 px-2 text-center font-mono text-[11px] border-r border-slate-200 dark:border-slate-800/60">
                           {r.chequeNo}

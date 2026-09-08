@@ -27,6 +27,7 @@ import {
   generateHeadExpenditureStatementData,
   generateOfficialStatementPrintHtml,
   formatCurrency2Decimals,
+  formatCashBookBillInfo,
   CashBookStatementData,
   HeadExpenditureStatementData,
   CashBookStatementRow,
@@ -1163,6 +1164,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         ]);
       }
       for (const r of g.rows) {
+        const billText = formatCashBookBillInfo(r.billNo, r.billDate);
+        const particularsWithBill = r.particulars
+          ? `${r.particulars}\n${billText}`
+          : billText;
         rows.push([
           sr++,
           r.date,
@@ -1170,7 +1175,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           `"${r.voucherNo}"`,
           `"${r.paidToBy}"`,
           `"${r.accountHead}"`,
-          `"${(r.particulars || '').replace(/"/g, '""')}"`,
+          `"${particularsWithBill.replace(/"/g, '""')}"`,
           `"${r.chequeNo}"`,
           r.receipts.toFixed(2),
           r.payments.toFixed(2),
