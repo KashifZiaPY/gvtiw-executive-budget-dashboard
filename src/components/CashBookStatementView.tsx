@@ -343,7 +343,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
                           darkMode ? 'odd:bg-slate-950/40 even:bg-transparent' : 'odd:bg-slate-50/50 even:bg-white'
                         }`}
                       >
-                        <td className="py-2 px-2 text-center font-mono text-slate-400 border-r border-slate-200 dark:border-slate-800/60">
+                        <td className="py-2 px-2 text-center font-mono font-bold text-slate-700 dark:text-slate-400 border-r border-slate-200 dark:border-slate-800/60">
                           {globalSr++}
                         </td>
                         <td className="py-2 px-3 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap border-r border-slate-200 dark:border-slate-800/60">
@@ -382,7 +382,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
                             {formatCashBookBillInfo(r.billNo, r.billDate)}
                           </div>
                         </td>
-                        <td className="py-2 px-2 text-center font-mono text-[11px] border-r border-slate-200 dark:border-slate-800/60">
+                        <td className="py-2 px-2 text-center font-mono font-bold text-slate-950 dark:text-slate-200 text-[11px] border-r border-slate-200 dark:border-slate-800/60">
                           {r.chequeNo}
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 border-r border-slate-200 dark:border-slate-800/60">

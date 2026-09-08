@@ -288,7 +288,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         <td style="text-align:center; padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold;">${e.srNo}</td>
         <td style="padding: 4px 6px; border: 1px solid #cbd5e1; white-space: nowrap;">${e.date}</td>
         <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">${e.month}</td>
-        <td style="text-align:center; padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold;">${e.vNo || '-'}</td>
+        <td style="text-align:center; padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; white-space: nowrap;">${e.vNo && e.voucherSerial && e.vNo !== e.voucherSerial ? `${e.vNo} (${e.voucherSerial})` : (e.vNo || e.voucherSerial || '-')}</td>
         <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">${e.particulars}</td>
         <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: 600;">${e.paidToBy}</td>
         <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-family: monospace; font-size: 10px;">${e.accountHead}</td>
@@ -452,12 +452,12 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                     {accMeta.shortName}
                   </span>
                   <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold ${
-                    isActive ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300'
+                    isActive ? 'bg-blue-600 text-white' : darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700'
                   }`}>
                     {accMeta.code}
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-400 font-mono truncate">
+                <p className={`text-[10px] font-mono truncate ${darkMode ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
                   A/C: {accMeta.accountNo}
                 </p>
                 <p className={`text-sm font-black font-mono mt-1 ${
@@ -465,7 +465,9 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                     ? darkMode
                       ? 'text-amber-300'
                       : 'text-blue-900'
-                    : 'text-slate-400'
+                    : darkMode
+                    ? 'text-slate-400'
+                    : 'text-slate-700 font-bold'
                 }`}>
                   {formatPKR(state.closingBalance, false)}
                 </p>
@@ -658,13 +660,13 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-300'
       }`}>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse min-w-[1150px]">
+          <table className="w-full text-xs text-left border-collapse min-w-[1250px]">
             <thead className="bg-slate-900 text-white font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-800">
               <tr>
                 <th className="py-3 px-2 text-center w-12 border-r border-slate-800">Sr.#</th>
                 <th className="py-3 px-3 border-r border-slate-800 w-28">Date</th>
                 <th className="py-3 px-2 border-r border-slate-800 w-20">Month</th>
-                <th className="py-3 px-2 text-center border-r border-slate-800 w-16">V#</th>
+                <th className="py-3 px-2 text-center border-r border-slate-800 min-w-[140px] whitespace-nowrap">V#</th>
                 <th className="py-3 px-4 border-r border-slate-800 min-w-[240px]">Particulars / Narration</th>
                 <th className="py-3 px-3 border-r border-slate-800 w-44">Paid To / By</th>
                 <th className="py-3 px-3 border-r border-slate-800 w-48">Budget Account Head</th>
@@ -678,25 +680,25 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
             <tbody className={`divide-y font-sans ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
               
               {/* Opening Balance Row */}
-              <tr className={`font-bold ${darkMode ? 'bg-slate-900/60 text-slate-300' : 'bg-slate-100 text-slate-800'}`}>
-                <td className="py-2.5 px-2 text-center font-mono text-slate-500">—</td>
-                <td className="py-2.5 px-3 font-mono">
+              <tr className={`font-bold ${darkMode ? 'bg-slate-900/60 text-slate-300' : 'bg-slate-100 text-slate-900'}`}>
+                <td className={`py-2.5 px-2 text-center font-mono ${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>—</td>
+                <td className={`py-2.5 px-3 font-mono font-bold ${darkMode ? 'text-slate-300' : 'text-slate-950'}`}>
                   {periodFilter === 'CUSTOM' && customFromDate ? formatPakistaniDate(customFromDate) : '01-Jul-2026'}
                 </td>
-                <td className="py-2.5 px-2 font-mono">
+                <td className={`py-2.5 px-2 font-mono font-bold ${darkMode ? 'text-slate-400' : 'text-slate-800'}`}>
                   {periodFilter === 'CUSTOM' && customFromDate ? '' : 'July'}
                 </td>
-                <td className="py-2.5 px-2 text-center font-mono">—</td>
-                <td colSpan={3} className="py-2.5 px-4 font-black uppercase text-blue-400">
+                <td className={`py-2.5 px-2 text-center font-mono ${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>—</td>
+                <td colSpan={3} className={`py-2.5 px-4 font-black uppercase ${darkMode ? 'text-blue-400' : 'text-blue-950'}`}>
                   OPENING BALANCE BROUGHT FORWARD (FY 2026-27)
                 </td>
-                <td className="py-2.5 px-3 text-center font-mono text-slate-500">—</td>
-                <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-400">—</td>
-                <td className="py-2.5 px-3 text-right font-mono font-bold text-rose-400">—</td>
-                <td className="py-2.5 px-3 text-right font-mono font-black text-amber-300">
+                <td className={`py-2.5 px-3 text-center font-mono ${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>—</td>
+                <td className={`py-2.5 px-3 text-right font-mono font-bold ${darkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>—</td>
+                <td className={`py-2.5 px-3 text-right font-mono font-bold ${darkMode ? 'text-rose-400' : 'text-rose-700'}`}>—</td>
+                <td className={`py-2.5 px-3 text-right font-mono font-black ${darkMode ? 'text-amber-300' : 'text-amber-900'}`}>
                   {formatPKR(currentAccount.openingBalance, false)}
                 </td>
-                <td className="py-2.5 px-2 text-center">—</td>
+                <td className="py-2.5 px-2 text-center text-slate-400">—</td>
               </tr>
 
               {/* Ledger Rows */}
@@ -714,47 +716,65 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                   return (
                     <tr
                       key={entry.id}
-                      className={`transition-colors hover:bg-blue-500/10 ${
+                      className={`transition-colors ${
                         isEven
                           ? darkMode
-                            ? 'bg-[#0B132B]'
-                            : 'bg-white'
+                            ? 'bg-[#0B132B] hover:bg-blue-500/10'
+                            : 'bg-white hover:bg-blue-50/70'
                           : darkMode
-                          ? 'bg-[#070E20]'
-                          : 'bg-slate-50/70'
+                          ? 'bg-[#070E20] hover:bg-blue-500/10'
+                          : 'bg-slate-50/70 hover:bg-blue-50/70'
                       }`}
                     >
                       {/* Sr.# */}
-                      <td className="py-3 px-2 text-center font-mono font-bold text-slate-400 border-r border-slate-700/50">
+                      <td className={`py-3 px-2 text-center font-mono font-bold border-r ${
+                        darkMode ? 'text-slate-400 border-slate-700/50' : 'text-slate-800 border-slate-200'
+                      }`}>
                         {entry.srNo}
                       </td>
 
                       {/* Date */}
-                      <td className="py-3 px-3 font-mono font-bold text-slate-300 border-r border-slate-700/50">
+                      <td className={`py-3 px-3 font-mono font-bold border-r ${
+                        darkMode ? 'text-slate-300 border-slate-700/50' : 'text-slate-950 border-slate-200'
+                      }`}>
                         {entry.date}
                       </td>
 
                       {/* Month */}
-                      <td className="py-3 px-2 font-mono text-slate-400 border-r border-slate-700/50">
+                      <td className={`py-3 px-2 font-mono border-r ${
+                        darkMode ? 'text-slate-400 border-slate-700/50' : 'text-slate-800 font-semibold border-slate-200'
+                      }`}>
                         {entry.month}
                       </td>
 
                       {/* V# */}
-                      <td className="py-3 px-2 text-center font-mono font-bold text-blue-400 border-r border-slate-700/50">
+                      <td className={`py-3 px-2 text-center font-mono font-bold whitespace-nowrap border-r ${
+                        darkMode ? 'text-blue-400 border-slate-700/50' : 'text-blue-700 font-black border-slate-200'
+                      }`}>
                         {entry.entryType === 'RECEIPT' && !entry.vNo ? (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                            REC
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                            darkMode ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                          }`}>
+                            {entry.voucherSerial ? `REC (${entry.voucherSerial})` : 'REC'}
                           </span>
                         ) : (
-                          entry.vNo || '—'
+                          (() => {
+                            if (entry.vNo && entry.voucherSerial) {
+                              if (entry.vNo === entry.voucherSerial) return entry.vNo;
+                              return `${entry.vNo} (${entry.voucherSerial})`;
+                            }
+                            return entry.vNo || entry.voucherSerial || '—';
+                          })()
                         )}
                       </td>
 
                       {/* Particulars */}
-                      <td className="py-3 px-4 border-r border-slate-700/50">
+                      <td className={`py-3 px-4 border-r ${darkMode ? 'border-slate-700/50' : 'border-slate-200'}`}>
                         <div className="flex items-start gap-2">
                           {entry.entryType === 'RECEIPT' && (
-                            <span className="shrink-0 mt-0.5 px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                            <span className={`shrink-0 mt-0.5 px-1.5 py-0.5 text-[9px] font-black uppercase rounded border ${
+                              darkMode ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                            }`}>
                               RECEIPT
                             </span>
                           )}
@@ -762,12 +782,10 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                             <span
                               className={`font-medium block leading-snug ${
                                 isTaxEntry
-                                  ? 'text-rose-400 font-semibold'
+                                  ? darkMode ? 'text-rose-400 font-semibold' : 'text-rose-700 font-semibold'
                                   : entry.entryType === 'RECEIPT'
-                                  ? 'text-emerald-300 font-semibold'
-                                  : darkMode
-                                  ? 'text-white'
-                                  : 'text-slate-900'
+                                  ? darkMode ? 'text-emerald-300 font-semibold' : 'text-emerald-800 font-semibold'
+                                  : darkMode ? 'text-white' : 'text-slate-950 font-semibold'
                               }`}
                             >
                               {entry.particulars}
@@ -776,12 +794,10 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                               <span
                                 className={`text-[10px] font-mono block mt-0.5 ${
                                   isTaxEntry
-                                    ? 'text-rose-400'
+                                    ? darkMode ? 'text-rose-400' : 'text-rose-700 font-medium'
                                     : entry.entryType === 'RECEIPT'
-                                    ? 'text-emerald-300'
-                                    : darkMode
-                                    ? 'text-white'
-                                    : 'text-slate-900'
+                                    ? darkMode ? 'text-emerald-300' : 'text-emerald-700 font-medium'
+                                    : darkMode ? 'text-slate-300' : 'text-slate-600 font-medium'
                                 }`}
                               >
                                 {formatCashBookBillInfo(
@@ -790,46 +806,49 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                                 )}
                               </span>
                             )}
-                            {entry.voucherSerial && (
-                              <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
-                                Ref: {entry.voucherSerial}
-                              </span>
-                            )}
                           </div>
                         </div>
                       </td>
 
                       {/* Paid To / By */}
-                      <td className="py-3 px-3 font-bold border-r border-slate-700/50">
-                        <span className={entry.entryType === 'RECEIPT' ? 'text-emerald-300 font-semibold' : darkMode ? 'text-slate-200' : 'text-slate-800'}>
+                      <td className={`py-3 px-3 font-bold border-r ${darkMode ? 'border-slate-700/50' : 'border-slate-200'}`}>
+                        <span className={entry.entryType === 'RECEIPT' ? (darkMode ? 'text-emerald-300 font-semibold' : 'text-emerald-800 font-bold') : darkMode ? 'text-slate-200' : 'text-slate-950 font-bold'}>
                           {entry.paidToBy}
                         </span>
                       </td>
 
                       {/* Budget Head */}
-                      <td className="py-3 px-3 border-r border-slate-700/50">
-                        <span className={`font-bold text-[11px] block line-clamp-1 ${darkMode ? 'text-blue-300' : 'text-blue-900'}`} title={entry.accountHead}>
+                      <td className={`py-3 px-3 border-r ${darkMode ? 'border-slate-700/50' : 'border-slate-200'}`}>
+                        <span className={`font-bold text-[11px] block line-clamp-1 ${darkMode ? 'text-blue-300' : 'text-blue-950 font-black'}`} title={entry.accountHead}>
                           {entry.accountHead}
                         </span>
                       </td>
 
                       {/* Cheque # */}
-                      <td className="py-3 px-3 text-center font-mono text-slate-300 border-r border-slate-700/50">
+                      <td className={`py-3 px-3 text-center font-mono font-bold border-r ${
+                        darkMode ? 'text-slate-200 border-slate-700/50' : 'text-slate-950 font-black border-slate-200'
+                      }`}>
                         {entry.chequeNo || '—'}
                       </td>
 
                       {/* Receipts */}
-                      <td className="py-3 px-3 text-right font-mono font-bold text-emerald-400 border-r border-slate-700/50">
+                      <td className={`py-3 px-3 text-right font-mono font-bold border-r ${
+                        darkMode ? 'text-emerald-400 border-slate-700/50' : 'text-emerald-700 font-black border-slate-200'
+                      }`}>
                         {entry.receipts > 0 ? formatPKR(entry.receipts, false) : '—'}
                       </td>
 
                       {/* Payments */}
-                      <td className="py-3 px-3 text-right font-mono font-bold text-rose-400 border-r border-slate-700/50">
+                      <td className={`py-3 px-3 text-right font-mono font-bold border-r ${
+                        darkMode ? 'text-rose-400 border-slate-700/50' : 'text-rose-700 font-black border-slate-200'
+                      }`}>
                         {entry.payments > 0 ? formatPKR(entry.payments, false) : '—'}
                       </td>
 
                       {/* Running Balance */}
-                      <td className="py-3 px-3 text-right font-mono font-black text-amber-300 border-r border-slate-700/50">
+                      <td className={`py-3 px-3 text-right font-mono font-black border-r ${
+                        darkMode ? 'text-amber-300 border-slate-700/50' : 'text-amber-900 font-black border-slate-200'
+                      }`}>
                         {formatPKR(entry.runningBalance, false)}
                       </td>
 
@@ -859,7 +878,11 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                             return (
                               <button
                                 onClick={() => handleOpenPAF(entry.voucherSerial)}
-                                className="px-2.5 py-1 bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white font-bold rounded-lg text-[10px] transition-all cursor-pointer"
+                                className={`px-2.5 py-1 font-bold rounded-lg text-[10px] transition-all cursor-pointer ${
+                                  darkMode
+                                    ? 'bg-blue-600/30 hover:bg-blue-600 text-blue-300 hover:text-white'
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-xs'
+                                }`}
                               >
                                 View PAF
                               </button>
@@ -876,7 +899,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                               </button>
                             );
                           }
-                          return <span className="text-slate-600 font-mono text-[10px]">—</span>;
+                          return <span className={`${darkMode ? 'text-slate-600' : 'text-slate-400'} font-mono text-[10px]`}>—</span>;
                         })()}
                       </td>
                     </tr>
