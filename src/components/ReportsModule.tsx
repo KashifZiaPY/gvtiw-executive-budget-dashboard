@@ -37,7 +37,6 @@ import {
 } from '../lib/reportingEngine';
 import {
   sanitizeCashBookStates,
-  updateBankAccountOpeningBalance,
 } from '../lib/apiEngine';
 import {
   FileSpreadsheet,
@@ -58,7 +57,6 @@ import {
   TrendingUp,
   DollarSign,
   Filter,
-  Edit3,
   X,
   Sparkles,
   Landmark,
@@ -164,11 +162,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   const [minAmount, setMinAmount] = useState<string>('');
   const [maxAmount, setMaxAmount] = useState<string>('');
 
-  // Opening Balance CFO Audit & Verification State
-  const [showOpeningAuditModal, setShowOpeningAuditModal] = useState(false);
-  const [editingOpeningBank, setEditingOpeningBank] = useState<BankAccountKey | null>(null);
-  const [openingInputVal, setOpeningInputVal] = useState<string>('');
-
   // Print Center
   const [voucherSrInput, setVoucherSrInput] = useState('1');
   const [selectedVoucherForPAF, setSelectedVoucherForPAF] = useState<MasterVoucher | null>(null);
@@ -224,14 +217,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       cashBookStates
     );
   }, [vouchers, accountsStore, selectedHead, selectedBank, fromDate, toDate, headSearchQuery, cashBookStates]);
-
-  // Handle Opening Balance Adjustment
-  const handleSaveOpeningBalance = (bankKey: BankAccountKey, val: number) => {
-    if (!isAuthUnlocked) return;
-    const updated = updateBankAccountOpeningBalance(bankKey, val);
-    setCashBookStates({ ...updated });
-    setEditingOpeningBank(null);
-  };
 
   // Bank Combobox Options & Categories
   const bankCategories = [
@@ -1771,16 +1756,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             <span>SC: <strong className="text-sky-600 dark:text-sky-400">Rs. {formatCurrency2Decimals(cashBookStates.SC?.openingBalance || 251567)}</strong></span>
           </div>
         </div>
-
-        {isAuthUnlocked && (
-          <button
-            onClick={() => setShowOpeningAuditModal(true)}
-            className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
-          >
-            <Edit3 className="w-3.5 h-3.5 text-amber-300" />
-            <span>Audit & Confirm Balances</span>
-          </button>
-        )}
       </div>
 
       {/* ------------------------------------------------------------- */}
@@ -2001,144 +1976,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                   Clear
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------- */}
-      {/* 1.6 CFO OPENING BALANCES VERIFICATION & ADJUSTMENT MODAL        */}
-      {/* ------------------------------------------------------------- */}
-      {showOpeningAuditModal && isAuthUnlocked && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className={`w-full max-w-2xl rounded-2xl border shadow-2xl p-6 space-y-4 ${
-            darkMode ? 'bg-[#0B132B] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-          }`}>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                <h3 className="text-base font-black uppercase tracking-wide">
-                  CFO Audit: Institutional Bank Opening Balances
-                </h3>
-              </div>
-              <button
-                onClick={() => { setShowOpeningAuditModal(false); setEditingOpeningBank(null); }}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-600 dark:text-slate-300">
-              Review and confirm the exact opening balance brought forward (b/d) for each institutional bank account as of <strong>01-Jul-2026</strong>. All cashbook statements, running balances, and sub-totals will rebalance immediately.
-            </p>
-
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-              {(['NS', 'PF', 'FC', 'SEC', 'SC', 'AA'] as BankAccountKey[]).map((key) => {
-                const meta = INSTITUTIONAL_BANK_ACCOUNTS[key];
-                const currentVal = cashBookStates[key]?.openingBalance ?? meta.openingBalance;
-                const isEditing = editingOpeningBank === key;
-
-                return (
-                  <div
-                    key={key}
-                    className={`p-3.5 rounded-xl border flex items-center justify-between flex-wrap gap-3 ${
-                      key === 'FC'
-                        ? darkMode ? 'bg-purple-950/40 border-purple-800' : 'bg-purple-50/80 border-purple-300'
-                        : darkMode ? 'bg-slate-900/80 border-slate-700' : 'bg-slate-50 border-slate-200'
-                    }`}
-                  >
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs">{meta.shortName} ({meta.code})</span>
-                        <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
-                          {meta.accountNo}
-                        </span>
-                        {key === 'FC' && (
-                          <span className="px-1.5 py-0.2 text-[9px] font-black uppercase rounded bg-purple-200 text-purple-900 dark:bg-purple-900 dark:text-purple-200">
-                            Fee Collection
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                        {meta.fullName} • {meta.bankName}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {isEditing ? (
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="number"
-                            value={openingInputVal}
-                            onChange={(e) => setOpeningInputVal(e.target.value)}
-                            className={`w-32 p-1.5 rounded-lg border font-mono font-bold text-xs outline-none ${
-                              darkMode ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-slate-300 text-slate-900'
-                            }`}
-                          />
-                          <button
-                            onClick={() => handleSaveOpeningBalance(key, parseFloat(openingInputVal) || 0)}
-                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-lg cursor-pointer"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={() => setEditingOpeningBank(null)}
-                            className="px-2 py-1.5 bg-slate-400 hover:bg-slate-500 text-white font-bold text-xs rounded-lg cursor-pointer"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono font-black text-sm text-slate-900 dark:text-white">
-                            Rs. {formatCurrency2Decimals(currentVal)}
-                          </span>
-                          <button
-                            onClick={() => {
-                              setEditingOpeningBank(key);
-                              setOpeningInputVal(String(currentVal));
-                            }}
-                            className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-500/10 cursor-pointer"
-                            title="Edit opening balance"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                          {key === 'FC' && (
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => handleSaveOpeningBalance('FC', 77717)}
-                                className={`px-2 py-0.5 text-[10px] font-bold rounded cursor-pointer ${
-                                  currentVal === 77717 ? 'bg-purple-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                                }`}
-                              >
-                                77,717
-                              </button>
-                              <button
-                                onClick={() => handleSaveOpeningBalance('FC', 77714)}
-                                className={`px-2 py-0.5 text-[10px] font-bold rounded cursor-pointer ${
-                                  currentVal === 77714 ? 'bg-purple-600 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                                }`}
-                              >
-                                77,714
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-              <button
-                onClick={() => { setShowOpeningAuditModal(false); setEditingOpeningBank(null); }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer"
-              >
-                Close & Apply to Reports
-              </button>
             </div>
           </div>
         </div>
