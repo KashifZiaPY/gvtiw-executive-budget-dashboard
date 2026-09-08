@@ -192,6 +192,28 @@ export function isBankChargeVoucher(v: MasterVoucher): boolean {
 }
 
 /**
+ * Check if a transaction has a valid, assigned cheque number
+ * (i.e. not blank, dash, zero, or placeholder)
+ */
+export function hasValidChequeNo(chq?: string): boolean {
+  if (!chq) return false;
+  const t = chq.trim().toLowerCase();
+  if (
+    !t ||
+    t === '—' ||
+    t === '–' ||
+    t === '-' ||
+    t === '0' ||
+    t === 'n/a' ||
+    t === 'none' ||
+    t === 'nil'
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Decomposes master vouchers and receipts into atomic cashbook transaction items
  */
 export function buildRawCashBookItems(
@@ -207,6 +229,8 @@ export function buildRawCashBookItems(
   accountHead: string;
   particulars: string;
   chequeNo: string;
+  chequeDate?: string;
+  chequeDateTs?: number;
   receipts: number;
   payments: number;
 }>> {
@@ -241,6 +265,8 @@ export function buildRawCashBookItems(
             accountHead: e.accountHead,
             particulars: e.particulars,
             chequeNo: e.chequeNo || '—',
+            chequeDate: e.date || '',
+            chequeDateTs: parseDateToTimestamp(e.date),
             receipts: e.receipts,
             payments: 0,
           });
@@ -269,6 +295,8 @@ export function buildRawCashBookItems(
           accountHead: v.accountHead || 'A03101-BANK CHARGES',
           particulars: v.description || 'Bank Service Charge',
           chequeNo: '—',
+          chequeDate: v.chequeDate || v.billDate || '',
+          chequeDateTs: parseDateToTimestamp(v.chequeDate || v.billDate || dateStr),
           receipts: 0,
           payments: chargeAmt,
         });
@@ -286,6 +314,8 @@ export function buildRawCashBookItems(
           accountHead: v.accountHead,
           particulars: v.description,
           chequeNo: v.chequeNoNet || '—',
+          chequeDate: v.chequeDate || '',
+          chequeDateTs: parseDateToTimestamp(v.chequeDate || dateStr),
           receipts: 0,
           payments: v.chequeAmountNet,
         });
@@ -303,6 +333,8 @@ export function buildRawCashBookItems(
           accountHead: v.accountHead,
           particulars: v.description,
           chequeNo: v.chequeNoIncomeTax || '—',
+          chequeDate: v.chequeDate || '',
+          chequeDateTs: parseDateToTimestamp(v.chequeDate || dateStr),
           receipts: 0,
           payments: v.incomeTaxAmount,
         });
@@ -320,6 +352,8 @@ export function buildRawCashBookItems(
           accountHead: v.accountHead,
           particulars: v.description,
           chequeNo: v.chequeNoPra || '—',
+          chequeDate: v.chequeDate || '',
+          chequeDateTs: parseDateToTimestamp(v.chequeDate || dateStr),
           receipts: 0,
           payments: v.praAmount,
         });
@@ -401,6 +435,62 @@ export function generateCashBookStatementData(
       } else if (item.dateTs <= toTs) {
         inPeriodItems.push(item);
       }
+    }
+
+    // In Consolidated view, sort each bank group's transaction rows by:
+    // Primary sort key: Date (chronological, ascending) — this is the main ordering.
+    // Within the same date, if multiple transactions share that date, break ties in this order:
+    // 1. Cheque# (ascending) — entries with a cheque# sort before entries without one, on the same date
+    // 2. Then Cheque Date (ascending), if needed
+    // 3. Then Voucher# (ascending), if still tied
+    //
+    // Entries with no cheque# (e.g. Bank Charges) fall into their correct chronological position by date.
+    // Single-bank and all other reports keep their existing chronological sort order.
+    if (isConsolidated) {
+      inPeriodItems.sort((a, b) => {
+        // Primary sort key: Date (chronological, ascending)
+        if (a.dateTs !== b.dateTs) {
+          return a.dateTs - b.dateTs;
+        }
+
+        // Within the same date:
+        // 1. Cheque# (ascending) — entries with a cheque# sort before entries without one, on the same date
+        const hasA = hasValidChequeNo(a.chequeNo);
+        const hasB = hasValidChequeNo(b.chequeNo);
+
+        if (hasA && !hasB) return -1;
+        if (!hasA && hasB) return 1;
+
+        if (hasA && hasB) {
+          const chqA = (a.chequeNo || '').trim();
+          const chqB = (b.chequeNo || '').trim();
+          if (chqA !== chqB) {
+            const chqCmp = chqA.localeCompare(chqB, undefined, { numeric: true, sensitivity: 'base' });
+            if (chqCmp !== 0) return chqCmp;
+          }
+        }
+
+        // 2. Then Cheque Date (ascending), if needed
+        const chqDateTsA = a.chequeDateTs ?? a.dateTs;
+        const chqDateTsB = b.chequeDateTs ?? b.dateTs;
+        if (chqDateTsA !== chqDateTsB) {
+          return chqDateTsA - chqDateTsB;
+        }
+
+        // 3. Then Voucher# (ascending), if still tied
+        const vNoA = (a.voucherNo || '').trim();
+        const vNoB = (b.voucherNo || '').trim();
+        if (vNoA !== vNoB) {
+          const vCmp = vNoA.localeCompare(vNoB, undefined, { numeric: true, sensitivity: 'base' });
+          if (vCmp !== 0) return vCmp;
+        }
+
+        // Stable fallback for identical date, cheque, chequeDate, and voucher
+        if (a.srNo !== b.srNo) {
+          return a.srNo - b.srNo;
+        }
+        return (a.id || '').localeCompare(b.id || '');
+      });
     }
 
     const effectiveOpening = baselineOpening + preRec - prePay;
