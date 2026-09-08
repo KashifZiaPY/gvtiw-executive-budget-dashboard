@@ -70,6 +70,7 @@ interface ReportsModuleProps {
   customGvtiwLogo?: string | null;
   customTevtaLogo?: string | null;
   customGopLogo?: string | null;
+  isUnlocked?: boolean;
 }
 
 type ReportTab =
@@ -89,7 +90,12 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   customGvtiwLogo,
   customTevtaLogo,
   customGopLogo,
+  isUnlocked = false,
 }) => {
+  const isAuthUnlocked = Boolean(
+    isUnlocked ||
+    (typeof window !== 'undefined' && sessionStorage.getItem('gvtiw_admin_session') === 'unlocked')
+  );
   const [activeReportTab, setActiveReportTab] = useState<ReportTab>('CASHBOOK');
   const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
     try {
@@ -221,6 +227,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
   // Handle Opening Balance Adjustment
   const handleSaveOpeningBalance = (bankKey: BankAccountKey, val: number) => {
+    if (!isAuthUnlocked) return;
     const updated = updateBankAccountOpeningBalance(bankKey, val);
     setCashBookStates({ ...updated });
     setEditingOpeningBank(null);
@@ -1765,13 +1772,15 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={() => setShowOpeningAuditModal(true)}
-          className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
-        >
-          <Edit3 className="w-3.5 h-3.5 text-amber-300" />
-          <span>Audit & Confirm Balances</span>
-        </button>
+        {isAuthUnlocked && (
+          <button
+            onClick={() => setShowOpeningAuditModal(true)}
+            className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[11px] flex items-center gap-1.5 shadow-xs cursor-pointer transition-all"
+          >
+            <Edit3 className="w-3.5 h-3.5 text-amber-300" />
+            <span>Audit & Confirm Balances</span>
+          </button>
+        )}
       </div>
 
       {/* ------------------------------------------------------------- */}
@@ -2000,7 +2009,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       {/* ------------------------------------------------------------- */}
       {/* 1.6 CFO OPENING BALANCES VERIFICATION & ADJUSTMENT MODAL        */}
       {/* ------------------------------------------------------------- */}
-      {showOpeningAuditModal && (
+      {showOpeningAuditModal && isAuthUnlocked && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className={`w-full max-w-2xl rounded-2xl border shadow-2xl p-6 space-y-4 ${
             darkMode ? 'bg-[#0B132B] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'

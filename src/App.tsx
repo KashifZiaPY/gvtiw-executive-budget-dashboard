@@ -482,6 +482,7 @@ export default function App() {
               customGvtiwLogo={customGvtiwLogo}
               customTevtaLogo={customTevtaLogo}
               customGopLogo={customGopLogo}
+              isUnlocked={isUnlocked}
             />
           </section>
         )}

@@ -26,6 +26,9 @@ import {
 const GOOGLE_SHEET_CSV_URL =
   'https://docs.google.com/spreadsheets/d/1wU3zS6BSrCJuFqio8Az7sKkCcwuTOSeJ8GRW7FhCRls/export?format=csv&gid=240736415';
 
+export const NS_CASHBOOK_SPREADSHEET_ID = '1CJ-IW14fyHSIvux07kxn6HVomfNstYtbkNLPAaXvexY';
+export const STORAGE_KEY_LIVE_HEAD_OPENINGS = 'gvtiw_live_head_openings_map_v1';
+
 const STORAGE_KEY_ACCOUNTS = 'gvtiw_accounts_store_v30';
 const STORAGE_KEY_VOUCHERS = 'gvtiw_vouchers_store_v30';
 const STORAGE_KEY_AUDITS = 'gvtiw_audits_store_v30';
@@ -34,11 +37,155 @@ const STORAGE_KEY_LATEST_ACTIVITY_TS = 'gvtiw_latest_activity_ts_v30';
 
 const VALID_ACCOUNT_CODES = new Set(INITIAL_ACCOUNTS.map((a) => a.code));
 
+function calculateHash(acc: { opening: number; reappr: number; receipts: number; payments: number; balance: number }): string {
+  return `${acc.opening.toFixed(2)}|${acc.reappr.toFixed(2)}|${acc.receipts.toFixed(2)}|${acc.payments.toFixed(2)}|${acc.balance.toFixed(2)}`;
+}
+
+// -------------------------------------------------------------
+// PART 2: LIVE HEAD-WISE OPENING BALANCES FROM "Account Heads" TAB
+// Queries NS Cash Book spreadsheet (ID: 1CJ-IW14fyHSIvux07kxn6HVomfNstYtbkNLPAaXvexY)
+// Reads rows 3 through 44, columns B (Head Code) and D (Opening as on 01-07-2026)
+// -------------------------------------------------------------
+
+export async function fetchLiveHeadWiseOpeningBalances(): Promise<Record<string, number>> {
+  const url = `https://docs.google.com/spreadsheets/d/${NS_CASHBOOK_SPREADSHEET_ID}/gviz/tq?tqx=out:json&sheet=Account%20Heads&range=B3:D44&headers=0&_t=${Date.now()}`;
+  const liveMap: Record<string, number> = {};
+
+  try {
+    let res: Response | null = null;
+    try {
+      res = await fetch(url);
+    } catch {
+      await new Promise((r) => setTimeout(r, 400));
+      try {
+        res = await fetch(url);
+      } catch {
+        res = null;
+      }
+    }
+
+    if (!res || !res.ok) {
+      console.warn('Failed to fetch live Account Heads from Google Sheet (HTTP response not ok).');
+      return liveMap;
+    }
+
+    const text = await res.text();
+    const match = text.match(/setResponse\((.*)\);/s);
+    if (!match || !match[1]) {
+      console.warn('Invalid JSONP structure received for Account Heads tab.');
+      return liveMap;
+    }
+
+    const parsed = JSON.parse(match[1]);
+    const rows = parsed?.table?.rows;
+    if (!Array.isArray(rows) || rows.length === 0) {
+      console.warn('No rows found in Account Heads tab response.');
+      return liveMap;
+    }
+
+    const parseNum = (val: any): number => {
+      if (val === null || val === undefined) return 0;
+      if (typeof val === 'number') return isNaN(val) ? 0 : val;
+      const s = String(val).replace(/,/g, '').trim();
+      if (s === '-' || s === '') return 0;
+      if (s.startsWith('(') && s.endsWith(')')) {
+        const n = parseFloat(s.slice(1, -1));
+        return isNaN(n) ? 0 : -n;
+      }
+      const n = parseFloat(s);
+      return isNaN(n) ? 0 : n;
+    };
+
+    for (const r of rows) {
+      const c = r?.c || [];
+      if (c.length === 0) continue;
+
+      let code = '';
+      let openingVal: any = null;
+
+      // In range B3:D44: Column B is index 0, Column D is index 2
+      // In full-sheet fallback: Column B is index 1, Column D is index 3
+      if (c[0]?.v && String(c[0].v).trim().startsWith('A')) {
+        code = String(c[0].v).trim();
+        openingVal = c[2]?.v !== undefined ? c[2].v : c[2]?.f;
+      } else if (c[1]?.v && String(c[1].v).trim().startsWith('A')) {
+        code = String(c[1].v).trim();
+        openingVal = c[3]?.v !== undefined ? c[3].v : c[3]?.f;
+      }
+
+      if (code) {
+        liveMap[code] = parseNum(openingVal);
+      }
+    }
+  } catch (err) {
+    console.warn('Error fetching live head-wise opening balances from Account Heads tab:', err);
+  }
+
+  return liveMap;
+}
+
+export function applyLiveOpeningBalancesToAccounts(
+  accounts: AccountHead[],
+  liveMap: Record<string, number>
+): { updatedCount: number; missingCodes: string[] } {
+  const missingCodes: string[] = [];
+  let updatedCount = 0;
+
+  // Identify any head code in INITIAL_ACCOUNTS that does not exist in liveMap
+  for (const staticAcc of INITIAL_ACCOUNTS) {
+    if (staticAcc.code && liveMap[staticAcc.code] === undefined) {
+      missingCodes.push(staticAcc.code);
+    }
+  }
+
+  if (missingCodes.length > 0) {
+    console.warn(
+      `[Head-wise Opening Balances] The following ${missingCodes.length} account head codes from initialData.ts were not found live in Account Heads tab: ${missingCodes.join(', ')}`
+    );
+  }
+
+  // Override live opening values in target accounts array
+  for (const acc of accounts) {
+    if (acc.code && liveMap[acc.code] !== undefined) {
+      acc.opening = liveMap[acc.code];
+      acc.balance = acc.opening + acc.reappr + acc.receipts - acc.payments;
+      const totalAlloc = acc.opening + acc.reappr + acc.receipts;
+      acc.burnRate = totalAlloc > 0 ? acc.payments / totalAlloc : 0;
+      acc.hash = calculateHash(acc);
+      updatedCount++;
+    }
+  }
+
+  // Also override INITIAL_ACCOUNTS in-memory so subsequent clones/references inherit live opening values
+  for (const initAcc of INITIAL_ACCOUNTS) {
+    if (initAcc.code && liveMap[initAcc.code] !== undefined) {
+      initAcc.opening = liveMap[initAcc.code];
+      initAcc.balance = initAcc.opening + initAcc.reappr + initAcc.receipts - initAcc.payments;
+      const totalAlloc = initAcc.opening + initAcc.reappr + initAcc.receipts;
+      initAcc.burnRate = totalAlloc > 0 ? initAcc.payments / totalAlloc : 0;
+      initAcc.hash = calculateHash(initAcc);
+    }
+  }
+
+  return { updatedCount, missingCodes };
+}
+
 function getAccountsStore(): AccountHead[] {
   // Clear any legacy polluted local storage keys
   try {
     localStorage.removeItem('gvtiw_accounts_store');
     localStorage.removeItem('gvtiw_spotlight_code');
+  } catch {}
+
+  // Prime INITIAL_ACCOUNTS with cached live head opening balances if available
+  try {
+    const cachedOpeningsRaw = localStorage.getItem(STORAGE_KEY_LIVE_HEAD_OPENINGS);
+    if (cachedOpeningsRaw) {
+      const cachedMap = JSON.parse(cachedOpeningsRaw);
+      if (cachedMap && typeof cachedMap === 'object') {
+        applyLiveOpeningBalancesToAccounts(INITIAL_ACCOUNTS, cachedMap);
+      }
+    }
   } catch {}
 
   const saved = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
@@ -111,10 +258,6 @@ function getAuditsStore(): AuditLogEntry[] {
 
 function saveAuditsStore(audits: AuditLogEntry[]) {
   localStorage.setItem(STORAGE_KEY_AUDITS, JSON.stringify(audits));
-}
-
-function calculateHash(acc: { opening: number; reappr: number; receipts: number; payments: number; balance: number }): string {
-  return `${acc.opening.toFixed(2)}|${acc.reappr.toFixed(2)}|${acc.receipts.toFixed(2)}|${acc.payments.toFixed(2)}|${acc.balance.toFixed(2)}`;
 }
 
 export function computeAggregations(accounts: AccountHead[]) {
@@ -278,7 +421,18 @@ export async function syncDirectFromGoogleSheet(accounts: AccountHead[]): Promis
         acc.head = headDesc;
       }
 
-      const newOpening = cleanNum(c[3]?.v);
+      // Preserve live opening balance from "Account Heads" tab if present
+      let authoritativeOpening: number | undefined = undefined;
+      try {
+        const cachedRaw = localStorage.getItem(STORAGE_KEY_LIVE_HEAD_OPENINGS);
+        if (cachedRaw) {
+          const cachedMap = JSON.parse(cachedRaw);
+          if (cachedMap && cachedMap[code] !== undefined) {
+            authoritativeOpening = cachedMap[code];
+          }
+        }
+      } catch {}
+      const newOpening = authoritativeOpening !== undefined ? authoritativeOpening : cleanNum(c[3]?.v);
       const newReappr = cleanNum(c[4]?.v);
       // If category is Non Salary, receipts in sheet column 5 represent AAA budget allocations (ceiling), not cash deposits into BOP NS Bank A/C.
       // AAA allocation is tracked under the dedicated AAA head (A00000AA).
@@ -376,20 +530,46 @@ export async function fetchDashboardPayload(): Promise<DashboardResponse> {
   const audits = getAuditsStore();
   let spotlight = localStorage.getItem(STORAGE_KEY_SPOTLIGHT) || 'A03201';
 
+  // PART 2 & PART 1: Concurrently fetch live head-wise opening balances and bank cashbook data
+  let headOpeningMap: Record<string, number> = {};
+  try {
+    const [liveHeadOpenings] = await Promise.all([
+      fetchLiveHeadWiseOpeningBalances(),
+      fetchLiveCashBookFromGoogleSheet().catch((err) => {
+        console.warn('Live voucher & cashbook sheet sync in fetchDashboardPayload:', err);
+        return null;
+      }),
+    ]);
+    headOpeningMap = liveHeadOpenings;
+  } catch (err) {
+    console.warn('Error fetching live opening balances in fetchDashboardPayload:', err);
+  }
+
+  // Apply live head-wise opening balances to accounts and storage
+  if (headOpeningMap && Object.keys(headOpeningMap).length > 0) {
+    applyLiveOpeningBalancesToAccounts(accounts, headOpeningMap);
+    saveAccountsStore(accounts);
+    try {
+      localStorage.setItem(STORAGE_KEY_LIVE_HEAD_OPENINGS, JSON.stringify(headOpeningMap));
+      localStorage.setItem('gvtiw_live_accounts_v3', JSON.stringify(accounts));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('gvtiw_accounts_updated'));
+      }
+    } catch {}
+  }
+
   // Live Sheet Sync
   const syncResult = await syncDirectFromGoogleSheet(accounts);
   if (syncResult.spotlight) {
     spotlight = syncResult.spotlight;
     localStorage.setItem(STORAGE_KEY_SPOTLIGHT, spotlight);
-    saveAccountsStore(accounts);
   }
 
-  // Trigger live voucher synchronization from Google Sheet (Vouchers tab)
-  try {
-    await fetchLiveCashBookFromGoogleSheet();
-  } catch (err) {
-    console.warn('Live voucher sheet sync in fetchDashboardPayload:', err);
+  // Re-affirm live head-wise opening balances from Account Heads tab remain authoritative
+  if (headOpeningMap && Object.keys(headOpeningMap).length > 0) {
+    applyLiveOpeningBalancesToAccounts(accounts, headOpeningMap);
   }
+  saveAccountsStore(accounts);
 
   let liveMasterVouchers: MasterVoucher[] = [];
   try {
@@ -781,14 +961,28 @@ export interface LiveReceiptEntry {
   amount: number;
 }
 
-export async function fetchLiveReceiptsFromCashBooks(): Promise<Record<BankAccountKey, LiveReceiptEntry[]>> {
-  const result: Record<BankAccountKey, LiveReceiptEntry[]> = {
+export interface LiveCashBookFetchResult {
+  receipts: Record<BankAccountKey, LiveReceiptEntry[]>;
+  openingBalances: Record<BankAccountKey, number | null>;
+}
+
+export async function fetchLiveReceiptsFromCashBooks(): Promise<LiveCashBookFetchResult> {
+  const receiptsResult: Record<BankAccountKey, LiveReceiptEntry[]> = {
     NS: [],
     PF: [],
     FC: [],
     SEC: [],
     SC: [],
     AA: [],
+  };
+
+  const openingBalancesResult: Record<BankAccountKey, number | null> = {
+    NS: null,
+    PF: null,
+    FC: null,
+    SEC: null,
+    SC: null,
+    AA: null,
   };
 
   const getMonthName = (dtStr: string): string => {
@@ -851,17 +1045,64 @@ export async function fetchLiveReceiptsFromCashBooks(): Promise<Record<BankAccou
               chq: e.chequeNo,
               amount: e.receipts,
             }));
-          result[key] = fallbackReceipts;
+          receiptsResult[key] = fallbackReceipts;
+          openingBalancesResult[key] = null;
           return;
         }
 
         const text = await res.text();
         const match = text.match(/setResponse\((.*)\);/s);
-        if (!match || !match[1]) return;
+        if (!match || !match[1]) {
+          openingBalancesResult[key] = null;
+          return;
+        }
 
         const parsed = JSON.parse(match[1]);
         const rows = parsed?.table?.rows;
-        if (!Array.isArray(rows)) return;
+        if (!Array.isArray(rows)) {
+          openingBalancesResult[key] = null;
+          return;
+        }
+
+        // PART 1: Extract live Opening Balance from cell K3
+        // In Google Sheets: Row 1 is header labels, Row 2 is Totals, Row 3 is cell K3.
+        // In GViz default response: Sheet Row 3 is index rows[1].
+        // Column K is column index 10 (0-indexed: A=0..K=10).
+        if (rows.length > 1 && rows[1]?.c && rows[1].c.length > 10) {
+          const cellK3 = rows[1].c[10];
+          if (cellK3 !== null && cellK3 !== undefined) {
+            const rawVal = cellK3.v;
+            if (rawVal !== null && rawVal !== undefined && rawVal !== '' && rawVal !== '-') {
+              const parsedNum = typeof rawVal === 'number' ? rawVal : parseFloat(String(rawVal).replace(/,/g, '').trim());
+              if (!isNaN(parsedNum)) {
+                openingBalancesResult[key] = parsedNum;
+              }
+            } else if (rawVal === '-' || rawVal === 0) {
+              openingBalancesResult[key] = 0;
+            }
+          }
+        }
+
+        // Label-based search for "Opening Balance" row if rows[1] index was shifted
+        if (openingBalancesResult[key] === null) {
+          for (let r = 0; r < Math.min(5, rows.length); r++) {
+            const c = rows[r]?.c;
+            if (!c || c.length <= 10) continue;
+            const jVal = String(c[9]?.v || c[9]?.f || '').toLowerCase();
+            if (jVal.includes('opening balance') && c[10]) {
+              const v = c[10].v;
+              if (typeof v === 'number') {
+                openingBalancesResult[key] = v;
+                break;
+              }
+              const p = parseFloat(String(v || '').replace(/,/g, '').trim());
+              if (!isNaN(p)) {
+                openingBalancesResult[key] = p;
+                break;
+              }
+            }
+          }
+        }
 
         const entries: LiveReceiptEntry[] = [];
         let receiptCounter = 1;
@@ -895,7 +1136,7 @@ export async function fetchLiveReceiptsFromCashBooks(): Promise<Record<BankAccou
           });
         }
 
-        result[key] = entries;
+        receiptsResult[key] = entries;
       } catch {
         // If any GViz request fails or fails to parse, gracefully fall back to initial receipt entries
         const fallbackReceipts = (INITIAL_CASHBOOK_STATES[key]?.entries || [])
@@ -910,12 +1151,13 @@ export async function fetchLiveReceiptsFromCashBooks(): Promise<Record<BankAccou
             chq: e.chequeNo,
             amount: e.receipts,
           }));
-        result[key] = fallbackReceipts;
+        receiptsResult[key] = fallbackReceipts;
+        openingBalancesResult[key] = null;
       }
     })
   );
 
-  return result;
+  return { receipts: receiptsResult, openingBalances: openingBalancesResult };
 }
 
 export const STORAGE_KEY_LIVE_CASHBOOKS = 'gvtiw_live_cashbook_states_v3';
@@ -1040,7 +1282,59 @@ export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
       JSON.stringify(INITIAL_CASHBOOK_STATES)
     );
 
+    // 1. Fetch authentic receipts & live K3 opening balances from all 6 bank cashbook sheets
+    const { receipts: liveReceiptsMap, openingBalances: liveOpeningBalances } =
+      await fetchLiveReceiptsFromCashBooks();
+
+    // Cache of last successfully-synced states for fallback
+    let lastSyncedStates: Record<BankAccountKey, CashBookAccountState> | null = null;
+    try {
+      const cached =
+        localStorage.getItem(STORAGE_KEY_LIVE_CASHBOOKS) ||
+        localStorage.getItem('gvtiw_live_cashbooks_v3');
+      if (cached) {
+        lastSyncedStates = JSON.parse(cached);
+      }
+    } catch {}
+
+    // PART 1: Apply live K3 opening balance for each bank account
     for (const key of Object.keys(newStates) as BankAccountKey[]) {
+      const liveOpening = liveOpeningBalances[key];
+
+      if (liveOpening !== null && liveOpening !== undefined && !isNaN(liveOpening)) {
+        newStates[key].openingBalance = liveOpening;
+        if (newStates[key].meta) {
+          newStates[key].meta.openingBalance = liveOpening;
+        }
+        if (INITIAL_CASHBOOK_STATES[key]) {
+          INITIAL_CASHBOOK_STATES[key].openingBalance = liveOpening;
+          if (INITIAL_CASHBOOK_STATES[key].meta) {
+            INITIAL_CASHBOOK_STATES[key].meta.openingBalance = liveOpening;
+          }
+        }
+      } else {
+        // Fall back to last successfully-synced value if available, or static value as last resort
+        const lastSyncedOpening = lastSyncedStates?.[key]?.openingBalance;
+        if (lastSyncedOpening !== undefined && lastSyncedOpening !== null && !isNaN(lastSyncedOpening)) {
+          newStates[key].openingBalance = lastSyncedOpening;
+          if (newStates[key].meta) {
+            newStates[key].meta.openingBalance = lastSyncedOpening;
+          }
+          console.warn(
+            `[Bank ${key}] Could not read live K3 opening balance from Google Sheet. Falling back to last successfully-synced value (${lastSyncedOpening}).`
+          );
+        } else {
+          const staticOpening = INITIAL_CASHBOOK_STATES[key]?.openingBalance ?? 0;
+          newStates[key].openingBalance = staticOpening;
+          if (newStates[key].meta) {
+            newStates[key].meta.openingBalance = staticOpening;
+          }
+          console.warn(
+            `[Bank ${key}] Could not read live K3 opening balance and no cached sync available. Falling back to static initial value (${staticOpening}) as last resort.`
+          );
+        }
+      }
+
       newStates[key].entries = [];
       newStates[key].totalReceipts = 0;
       newStates[key].totalPayments = 0;
@@ -1048,8 +1342,24 @@ export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
       newStates[key].reconciledBankBalance = newStates[key].openingBalance;
     }
 
-    // 1. Fetch authentic receipts live from all 6 bank cashbook sheets
-    const liveReceiptsMap = await fetchLiveReceiptsFromCashBooks();
+    // PART 2: Sync head-wise opening balances from "Account Heads" tab as well
+    try {
+      const liveHeadOpenings = await fetchLiveHeadWiseOpeningBalances();
+      if (liveHeadOpenings && Object.keys(liveHeadOpenings).length > 0) {
+        const accounts = getAccountsStore();
+        applyLiveOpeningBalancesToAccounts(accounts, liveHeadOpenings);
+        saveAccountsStore(accounts);
+        try {
+          localStorage.setItem(STORAGE_KEY_LIVE_HEAD_OPENINGS, JSON.stringify(liveHeadOpenings));
+          localStorage.setItem('gvtiw_live_accounts_v3', JSON.stringify(accounts));
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('gvtiw_accounts_updated'));
+          }
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('Error syncing live head-wise opening balances in fetchLiveCashBookFromGoogleSheet:', err);
+    }
 
     // Inject live receipts into each bank account
     for (const key of Object.keys(liveReceiptsMap) as BankAccountKey[]) {
@@ -1204,8 +1514,12 @@ export async function fetchLiveCashBookFromGoogleSheet(): Promise<{
     const nowStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     try {
       localStorage.setItem(STORAGE_KEY_LIVE_CASHBOOKS, JSON.stringify(newStates));
+      localStorage.setItem('gvtiw_live_cashbooks_v3', JSON.stringify(newStates));
       localStorage.setItem(STORAGE_KEY_LIVE_VOUCHERS, JSON.stringify(parsedVouchers));
       localStorage.setItem(STORAGE_KEY_LIVE_SYNC_TS, nowStr);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('gvtiw_cashbooks_updated'));
+      }
     } catch {}
 
     return {
