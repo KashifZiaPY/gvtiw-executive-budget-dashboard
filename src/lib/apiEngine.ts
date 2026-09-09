@@ -22,6 +22,7 @@ import {
   SOURCE_SHEET_URL,
   WEB_APP_URL,
 } from '../data/initialData';
+import { syncLiveNsAndAaaHeadBudgets } from './headBalanceService';
 
 const GOOGLE_SHEET_CSV_URL =
   'https://docs.google.com/spreadsheets/d/1wU3zS6BSrCJuFqio8Az7sKkCcwuTOSeJ8GRW7FhCRls/export?format=csv&gid=240736415';
@@ -551,6 +552,10 @@ export async function fetchDashboardPayload(): Promise<DashboardResponse> {
       fetchLiveHeadWiseOpeningBalances(),
       fetchLiveCashBookFromGoogleSheet().catch((err) => {
         console.warn('Live voucher & cashbook sheet sync in fetchDashboardPayload:', err);
+        return null;
+      }),
+      syncLiveNsAndAaaHeadBudgets().catch((err) => {
+        console.warn('Live NS and AAA head budget sync in fetchDashboardPayload:', err);
         return null;
       }),
     ]);

@@ -5,6 +5,13 @@ import { Printer, X, FileText, Layers } from 'lucide-react';
 import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO, DEFAULT_GOP_LOGO, INITIAL_ACCOUNTS } from '../data/initialData';
 import { formatPakistaniDate } from '../lib/formatters';
 import { OFFICIAL_SIGNATORIES } from '../types';
+import {
+  isNsBankAccount,
+  isAaaBankAccount,
+  getNsHeadBudgetRows,
+  getAaaHeadBudgetRows,
+  matchHeadInSheetList,
+} from '../lib/headBalanceService';
 
 interface PaymentApprovalFormProps {
   voucher: MasterVoucher | null;
@@ -233,6 +240,46 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
       return Number(voucher.preEntryBalance);
     }
     try {
+      const liveVouchersStr = localStorage.getItem('gvtiw_live_vouchers_v3');
+      const allVouchers: MasterVoucher[] = liveVouchersStr ? JSON.parse(liveVouchersStr) : INITIAL_MASTER_VOUCHERS;
+
+      if (isAaaBankAccount(voucher.bankAccount)) {
+        const aaaRows = getAaaHeadBudgetRows();
+        const matched = matchHeadInSheetList(voucher.accountHead, aaaRows);
+        const allocated = matched ? matched.totalAllocated : 0;
+        const priorSpent = allVouchers
+          .filter(
+            (v) =>
+              v.accountHead === voucher.accountHead &&
+              isAaaBankAccount(v.bankAccount) &&
+              (v.srNo < voucher.srNo || (v.srNo === voucher.srNo && v.timestamp < voucher.timestamp))
+          )
+          .reduce((sum, v) => sum + (v.billAmountGross || 0), 0);
+        return allocated - priorSpent;
+      }
+
+      if (isNsBankAccount(voucher.bankAccount)) {
+        const nsRows = getNsHeadBudgetRows();
+        const matched = matchHeadInSheetList(voucher.accountHead, nsRows);
+        let allocated = matched ? matched.totalAllocated : 0;
+        if (!allocated) {
+          const staticAcc = INITIAL_ACCOUNTS.find((a) => a.head === voucher.accountHead || a.code === voucher.accountHead);
+          if (staticAcc) {
+            allocated = (staticAcc.opening || 0) + (staticAcc.reappr || 0) + (staticAcc.receipts || 0);
+          }
+        }
+        const priorSpent = allVouchers
+          .filter(
+            (v) =>
+              v.accountHead === voucher.accountHead &&
+              isNsBankAccount(v.bankAccount) &&
+              (v.srNo < voucher.srNo || (v.srNo === voucher.srNo && v.timestamp < voucher.timestamp))
+          )
+          .reduce((sum, v) => sum + (v.billAmountGross || 0), 0);
+        return allocated - priorSpent;
+      }
+
+      // Other bank accounts: preserve standard logic
       let allocated = 0;
       const liveAccountsStr = localStorage.getItem('gvtiw_live_accounts');
       if (liveAccountsStr) {
@@ -248,8 +295,6 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
           allocated = (staticAcc.opening || 0) + (staticAcc.reappr || 0) + (staticAcc.receipts || 0);
         }
       }
-      const liveVouchersStr = localStorage.getItem('gvtiw_live_vouchers_v3');
-      const allVouchers: MasterVoucher[] = liveVouchersStr ? JSON.parse(liveVouchersStr) : INITIAL_MASTER_VOUCHERS;
       const priorSpent = allVouchers
         .filter((v) => v.accountHead === voucher.accountHead && (v.srNo < voucher.srNo || (v.srNo === voucher.srNo && v.timestamp < voucher.timestamp)))
         .reduce((sum, v) => sum + (v.billAmountGross || 0), 0);

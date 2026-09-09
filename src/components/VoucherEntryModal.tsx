@@ -9,6 +9,12 @@ import { isBankChargeVoucher } from './BankChargeModal';
 import { formatSaveErrorMessage } from '../lib/voucherSync';
 import { AnimatedSplashLogos } from './AnimatedSplashLogos';
 import {
+  computeHeadAvailableBalance,
+  syncLiveNsAndAaaHeadBudgets,
+  isNsBankAccount,
+  isAaaBankAccount,
+} from '../lib/headBalanceService';
+import {
   X,
   CheckCircle,
   AlertCircle,
@@ -439,23 +445,55 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
 
   // =========================================================================
   // 2. BOTTOM: Dynamic Available Account Head Balance & FY Expenditure
-  // Allocated Ceiling (from initial accounts) - Total FY Gross Invoiced in Head
+  // - NS: Live fetched from Google Sheet GID 1689777979 (Col E=Opening, Col R=Receipts)
+  //       minus NS ONLY head expenses => Closing/Available Balance
+  // - AAA: Live fetched from Google Sheet GID 2012464444 (Col E=Opening, Col R=Receipts)
+  //       minus AAA ONLY head expenses => Closing/Available Balance
+  // - Other Accounts: Preserves existing baseline allocations without alteration
   // =========================================================================
-  const headAllocatedCeiling = useMemo(() => {
-    if (!accountHead) return 0;
-    return HEAD_ALLOCATIONS[accountHead] ?? 0;
-  }, [accountHead]);
+  const [budgetVersion, setBudgetVersion] = useState(0);
 
-  const currentHeadExpenditure = useMemo(() => {
-    if (!accountHead) return 0;
-    return existingVouchers
-      .filter((v) => v.accountHead === accountHead && (!voucherToAmend || v.srNo !== voucherToAmend.srNo))
-      .reduce((sum, v) => sum + (v.billAmountGross || 0), 0);
-  }, [accountHead, existingVouchers, voucherToAmend]);
+  useEffect(() => {
+    syncLiveNsAndAaaHeadBudgets().then(() => {
+      setBudgetVersion((v) => v + 1);
+    });
 
-  const availableHeadBalance = useMemo(() => {
-    return headAllocatedCeiling - currentHeadExpenditure;
-  }, [headAllocatedCeiling, currentHeadExpenditure]);
+    const handleBudgetUpdate = () => {
+      setBudgetVersion((v) => v + 1);
+    };
+
+    window.addEventListener('gvtiw_head_budgets_updated', handleBudgetUpdate);
+    return () => {
+      window.removeEventListener('gvtiw_head_budgets_updated', handleBudgetUpdate);
+    };
+  }, []);
+
+  const headBudgetStatus = useMemo(() => {
+    if (!accountHead) {
+      return {
+        accountHead: '',
+        bankAccount,
+        isNs: isNsBankAccount(bankAccount),
+        isAaa: isAaaBankAccount(bankAccount),
+        opening: 0,
+        receipts: 0,
+        allocatedCeiling: 0,
+        headExpenditure: 0,
+        availableBalance: 0,
+      };
+    }
+    return computeHeadAvailableBalance({
+      accountHead,
+      bankAccount,
+      allVouchers: existingVouchers,
+      excludeVoucherSrNo: voucherToAmend ? voucherToAmend.srNo : undefined,
+      defaultCeilings: HEAD_ALLOCATIONS,
+    });
+  }, [accountHead, bankAccount, existingVouchers, voucherToAmend, budgetVersion]);
+
+  const headAllocatedCeiling = headBudgetStatus.allocatedCeiling;
+  const currentHeadExpenditure = headBudgetStatus.headExpenditure;
+  const availableHeadBalance = headBudgetStatus.availableBalance;
 
   // =========================================================================
   // 3. Mathematical Calculations
@@ -1588,10 +1626,24 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
               {/* ========================================================= */}
               <div className="p-3.5 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50 space-y-2">
                 <div className="flex items-center justify-between border-b border-purple-200/60 dark:border-purple-800/40 pb-2">
-                  <span className="text-[11px] font-extrabold text-purple-900 dark:text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Wallet className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
-                    <span>Relevant Head Available Balance:</span>
-                  </span>
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-extrabold text-purple-900 dark:text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <Wallet className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                      <span>Relevant Head Available Balance:</span>
+                    </span>
+                    {headBudgetStatus.isAaa && (
+                      <span className="text-[9px] font-semibold text-purple-700 dark:text-purple-400 flex items-center gap-1 mt-0.5">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        AAA Revolving Live Sheet (gid=2012464444): (Open + Rec) - AAA Expenses
+                      </span>
+                    )}
+                    {headBudgetStatus.isNs && (
+                      <span className="text-[9px] font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-1 mt-0.5">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                        NS Live Sheet (gid=1689777979): (Open + Rec) - NS Expenses
+                      </span>
+                    )}
+                  </div>
                   <span className={`font-mono font-black text-sm px-2.5 py-0.5 rounded-md ${
                     availableHeadBalance >= 0 
                       ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200' 
@@ -1603,18 +1655,38 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
 
                 <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
                   <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                    <span>Allocated Budget Ceiling:</span>
+                    <span>
+                      {headBudgetStatus.isAaa
+                        ? 'AAA Total Released (Open+Rec):'
+                        : headBudgetStatus.isNs
+                        ? 'NS Allocated (Open+Rec):'
+                        : 'Allocated Budget Ceiling:'}
+                    </span>
                     <span className="font-bold text-slate-900 dark:text-slate-200">
                       Rs. {Number(headAllocatedCeiling).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                    <span>Current FY Expended:</span>
+                    <span>
+                      {headBudgetStatus.isAaa
+                        ? 'AAA FY Gross Expended:'
+                        : headBudgetStatus.isNs
+                        ? 'NS FY Gross Expended:'
+                        : 'Current FY Expended:'}
+                    </span>
                     <span className="font-bold text-amber-600 dark:text-amber-400">
                       Rs. {Number(currentHeadExpenditure).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
+
+                {(headBudgetStatus.isNs || headBudgetStatus.isAaa) && (
+                  <div className="pt-1.5 border-t border-purple-200/40 dark:border-purple-800/30 flex items-center justify-between text-[9px] font-mono text-slate-600 dark:text-slate-400">
+                    <span>Opening: <strong className="text-slate-800 dark:text-slate-200">Rs. {Number(headBudgetStatus.opening).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></span>
+                    <span>Receipts: <strong className="text-slate-800 dark:text-slate-200">Rs. {Number(headBudgetStatus.receipts).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></span>
+                    <span>Closing: <strong className={availableHeadBalance >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600'}>Rs. {Number(availableHeadBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></span>
+                  </div>
+                )}
               </div>
 
               {/* Section 5: Small Financial Audit & Reconciliation Verification Box */}
