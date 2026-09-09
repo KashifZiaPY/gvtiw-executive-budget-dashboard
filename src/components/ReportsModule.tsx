@@ -22,6 +22,7 @@ import {
   SearchableCombobox,
   ComboboxOption,
 } from './SearchableCombobox';
+import { ChequeSearchInput } from './ChequeSearchInput';
 import {
   generateCashBookStatementData,
   generateHeadExpenditureStatementData,
@@ -1900,16 +1901,15 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
             {/* Cheque Query (when in CHEQUE tab) */}
             {activeReportTab === 'CHEQUE' && (
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Cheque# / Payee Query</label>
-                <input
-                  type="text"
+              <div className="space-y-1.5">
+                <ChequeSearchInput
+                  id="cheque-payee-search-input"
                   value={chequeQuery}
-                  onChange={(e) => setChequeQuery(e.target.value)}
+                  onChange={(val) => setChequeQuery(val)}
+                  vouchers={vouchers}
+                  selectedBank={selectedBank}
+                  darkMode={darkMode}
                   placeholder="Enter Cheque # or Payee..."
-                  className={`w-full p-2 rounded-lg border font-bold outline-none ${
-                    darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
                 />
               </div>
             )}
