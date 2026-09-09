@@ -14,6 +14,7 @@
  */
 
 import { MasterVoucher } from '../data/cashBookData';
+import { INITIAL_ACCOUNTS } from '../data/initialData';
 
 export interface HeadBudgetRow {
   sheetRow: number;
@@ -348,6 +349,71 @@ export async function syncLiveNsAndAaaHeadBudgets(): Promise<{
   }
 }
 
+// Map of Allocated Budget Ceilings for every Account Head (derived directly from INITIAL_ACCOUNTS)
+export const HEAD_ALLOCATIONS: Record<string, number> = {
+  'A00000PF-PUPIL FUND': 408588.0 + 77717.0, // 486,305.00
+  'A00000SC-SHORT COURSE': 251567.0,
+  'A00000SS-STUDENT SEC.': 357709.0,
+  'A00000TFC-TEVTA FEE COL.': 77717.0,
+  'A00000DW-DAILY WAGES-SALARIES': 182127.0,
+  'A03933-SERVICE CHARGES': 373946.0,
+  'A03302-WATER CHARGES': -15730.0,
+  'A03202-TELEPHONE & TRUNK CHARGES': -59990.0,
+  'A03303-ELECTRICITY CHARGES': -230811.0,
+  'A03101-BANK CHARGES': 1407.0,
+  'A03201-POSTAGE & TELEGRAPH': 16350.0,
+  'A03301-SUI GAS CHARGES': -40275.0,
+  'A03805-TA/DA CHARGES': -53695.0,
+  'A03808-CONVEYANCE CHARGES': -12175.0,
+  'A03901-STATIONERY CHARGES': -3530.0,
+  'A03902-PRINTING CHARGES': 6975.0,
+  'A03907-PUBLICITY ADVERTISING CHARGES': -40419.0,
+  'A03970-OTHERS (MISC. CHARGES)': -190335.0,
+  'A13101-REPAIR OF MACHINERY/EQUIPMENTS': 8434.0,
+  'A13201-REPAIR OF FURNITURE & FIXTURES': 89238.0,
+  'A03807-POL CHARGES': -8718.0,
+  'A03942-COST OF OTHER STORES / TRAINING MATERIALS': -40040.0,
+  'A03806-TRANSPORTATION OF GOODS': -8500.0,
+  'A13301-REPAIR OF BUILDING (AR/SR)': 1834.0,
+  'A03905-Newspapers & Books': 0.0,
+  'PLACEMENT-A03918-JOB FAIR & EXHIBITION': 4942.0,
+  'PLACEMENT-A03903- CONFRENCE SEMINAR & WORKSHOP': -43972.0,
+  'PLACEMENT-A03202-TELEPHONE & TRUNK CALLS': 54500.0,
+  'PLACEMENT-A03807-POL': 14834.0,
+  'A00000NTTM-NAVTTC COOK-TRAINING MATERIAL': 527067.0,
+  'A00000NTTR-NAVTTC COOK-TEACHER REMUNERATION': 463120.0,
+  'A00000NTADC-NAVTTC COOK-ADVERTISING COST': -9293.0,
+  'A00000NTOH-NAVTTC COOK-OVERHEADS': 190075.0,
+  'A00000NTADM-NAVTTC COOK-ADMIN COST': 52097.0,
+  'A00000CM2-DATA ANALYTICS-CMSDI': 332511.0,
+  'A00000CM1-GRAPHIC DESIGN-HIGH TECH': 451543.0,
+  'A00000II-NS INTEREST INCOME': 137492.0,
+  'A00000FG-SALE OF FINISHED PROJECTS': 112090.0,
+  'A00000LN-LOAN ACC.': 0.0,
+  'A00000FW-FEE WAIVER BUDGET (2020-21)': 114108.0,
+  'A00000WB-FUND AGAINST DLI-4 WB PROJECT': 0.0,
+  'A00000AA-AAA': 1460000.0,
+};
+
+INITIAL_ACCOUNTS.forEach((acc) => {
+  if (HEAD_ALLOCATIONS[acc.head] === undefined) {
+    HEAD_ALLOCATIONS[acc.head] = acc.opening + acc.reappr + acc.receipts;
+  }
+});
+
+function matchOtherBankAccount(vAcct: string, targetAcct: string): boolean {
+  if (!vAcct || !targetAcct) return false;
+  if (vAcct === targetAcct) return true;
+  const clean = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/payment of\s+/g, '')
+      .replace(/\s+for\s+20\d\d-20\d\d/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  return clean(vAcct) === clean(targetAcct);
+}
+
 /**
  * Intelligent Head Available Balance Computer:
  * - When bankAccount is Non-Salary (NS):
@@ -370,7 +436,13 @@ export function computeHeadAvailableBalance(params: {
   excludeVoucherSrNo?: number;
   defaultCeilings?: Record<string, number>;
 }): HeadBalanceComputation {
-  const { accountHead, bankAccount, allVouchers, excludeVoucherSrNo, defaultCeilings = {} } = params;
+  const {
+    accountHead,
+    bankAccount,
+    allVouchers,
+    excludeVoucherSrNo,
+    defaultCeilings = HEAD_ALLOCATIONS,
+  } = params;
 
   const isNs = isNsBankAccount(bankAccount);
   const isAaa = isAaaBankAccount(bankAccount);
@@ -446,13 +518,13 @@ export function computeHeadAvailableBalance(params: {
   }
 
   // Other Bank Accounts (Pupil Fund, Short Course, Securities, Fee Collection):
-  // Preserve default logic without disturbing
+  // Standard allocation ceiling and matching account expenses
   const allocatedCeiling = defaultCeilings[accountHead] ?? 0;
   const headExpenditure = allVouchers
     .filter((v) => {
       if (v.accountHead !== accountHead) return false;
       if (excludeVoucherSrNo !== undefined && v.srNo === excludeVoucherSrNo) return false;
-      return v.bankAccount === bankAccount;
+      return matchOtherBankAccount(v.bankAccount, bankAccount);
     })
     .reduce((sum, v) => sum + (v.billAmountGross || 0), 0);
 

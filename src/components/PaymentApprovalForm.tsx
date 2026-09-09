@@ -6,11 +6,8 @@ import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO, DEFAULT_GOP_LOGO, INITIAL_ACCOU
 import { formatPakistaniDate } from '../lib/formatters';
 import { OFFICIAL_SIGNATORIES } from '../types';
 import {
-  isNsBankAccount,
-  isAaaBankAccount,
-  getNsHeadBudgetRows,
-  getAaaHeadBudgetRows,
-  matchHeadInSheetList,
+  computeHeadAvailableBalance,
+  HEAD_ALLOCATIONS,
 } from '../lib/headBalanceService';
 
 interface PaymentApprovalFormProps {
@@ -233,77 +230,31 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
     window.print();
   };
 
-  // Dynamic available budget resolution:
-  // Uses voucher.preEntryBalance if positive. If 0 or missing, dynamically computes the available head balance.
+  // Unified Dynamic Available Budget Resolution:
+  // Replicates the EXACT available balance logic used during main voucher entry across ALL bank accounts
+  // (NS, AAA, Pupil Fund, Short Course, Fee Collection, etc.) by computing available balance
+  // prior to this specific voucher's expenditure.
   const budgetAvailableAmount = useMemo(() => {
-    if (voucher.preEntryBalance && Number(voucher.preEntryBalance) > 0) {
-      return Number(voucher.preEntryBalance);
-    }
     try {
       const liveVouchersStr = localStorage.getItem('gvtiw_live_vouchers_v3');
       const allVouchers: MasterVoucher[] = liveVouchersStr ? JSON.parse(liveVouchersStr) : INITIAL_MASTER_VOUCHERS;
 
-      if (isAaaBankAccount(voucher.bankAccount)) {
-        const aaaRows = getAaaHeadBudgetRows();
-        const matched = matchHeadInSheetList(voucher.accountHead, aaaRows);
-        const allocated = matched ? matched.totalAllocated : 0;
-        const priorSpent = allVouchers
-          .filter(
-            (v) =>
-              v.accountHead === voucher.accountHead &&
-              isAaaBankAccount(v.bankAccount) &&
-              (v.srNo < voucher.srNo || (v.srNo === voucher.srNo && v.timestamp < voucher.timestamp))
-          )
-          .reduce((sum, v) => sum + (v.billAmountGross || 0), 0);
-        return allocated - priorSpent;
-      }
+      // Filter vouchers to those prior to this specific voucher (same state as when this voucher was newly entered)
+      const priorVouchers = voucher.srNo
+        ? allVouchers.filter((v) => v.srNo < voucher.srNo)
+        : allVouchers.filter((v) => v !== voucher);
 
-      if (isNsBankAccount(voucher.bankAccount)) {
-        const nsRows = getNsHeadBudgetRows();
-        const matched = matchHeadInSheetList(voucher.accountHead, nsRows);
-        let allocated = matched ? matched.totalAllocated : 0;
-        if (!allocated) {
-          const staticAcc = INITIAL_ACCOUNTS.find((a) => a.head === voucher.accountHead || a.code === voucher.accountHead);
-          if (staticAcc) {
-            allocated = (staticAcc.opening || 0) + (staticAcc.reappr || 0) + (staticAcc.receipts || 0);
-          }
-        }
-        const priorSpent = allVouchers
-          .filter(
-            (v) =>
-              v.accountHead === voucher.accountHead &&
-              isNsBankAccount(v.bankAccount) &&
-              (v.srNo < voucher.srNo || (v.srNo === voucher.srNo && v.timestamp < voucher.timestamp))
-          )
-          .reduce((sum, v) => sum + (v.billAmountGross || 0), 0);
-        return allocated - priorSpent;
-      }
+      const status = computeHeadAvailableBalance({
+        accountHead: voucher.accountHead,
+        bankAccount: voucher.bankAccount,
+        allVouchers: priorVouchers,
+        defaultCeilings: HEAD_ALLOCATIONS,
+      });
 
-      // Other bank accounts: preserve standard logic
-      let allocated = 0;
-      const liveAccountsStr = localStorage.getItem('gvtiw_live_accounts');
-      if (liveAccountsStr) {
-        const accs = JSON.parse(liveAccountsStr);
-        const match = accs.find((a: any) => a.head === voucher.accountHead || a.code === voucher.accountHead);
-        if (match) {
-          allocated = (match.opening || 0) + (match.reappr || 0) + (match.receipts || 0);
-        }
-      }
-      if (!allocated) {
-        const staticAcc = INITIAL_ACCOUNTS.find((a) => a.head === voucher.accountHead || a.code === voucher.accountHead);
-        if (staticAcc) {
-          allocated = (staticAcc.opening || 0) + (staticAcc.reappr || 0) + (staticAcc.receipts || 0);
-        }
-      }
-      const priorSpent = allVouchers
-        .filter((v) => v.accountHead === voucher.accountHead && (v.srNo < voucher.srNo || (v.srNo === voucher.srNo && v.timestamp < voucher.timestamp)))
-        .reduce((sum, v) => sum + (v.billAmountGross || 0), 0);
-      
-      const balance = allocated - priorSpent;
-      if (balance > 0) return balance;
-      if (allocated > 0) return allocated;
-    } catch {}
-    return voucher.preEntryBalance || 0;
+      return status.availableBalance;
+    } catch {
+      return voucher.preEntryBalance || 0;
+    }
   }, [voucher]);
 
   const balanceBudgetAfterPayment = Math.max(0, budgetAvailableAmount - voucher.billAmountGross);
