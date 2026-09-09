@@ -755,7 +755,9 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       bankAccount: bankAccount,
       billAmtExclTax: numBillExcl,
       praTaxOnBill: numPraOnBill,
-      preEntryBalance: voucherToAmend?.preEntryBalance || 0,
+      preEntryBalance: (voucherToAmend?.preEntryBalance && voucherToAmend.preEntryBalance > 0)
+        ? voucherToAmend.preEntryBalance
+        : (availableHeadBalance > 0 ? availableHeadBalance : (headAllocatedCeiling > 0 ? headAllocatedCeiling : 0)),
     };
 
     // Show Corporate Revolving Posting State

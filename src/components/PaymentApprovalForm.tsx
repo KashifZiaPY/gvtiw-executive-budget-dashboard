@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { MasterVoucher } from '../data/cashBookData';
+import { MasterVoucher, INITIAL_MASTER_VOUCHERS } from '../data/cashBookData';
 import { Printer, X, FileText, Layers } from 'lucide-react';
-import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO, DEFAULT_GOP_LOGO } from '../data/initialData';
+import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO, DEFAULT_GOP_LOGO, INITIAL_ACCOUNTS } from '../data/initialData';
 import { formatPakistaniDate } from '../lib/formatters';
 import { OFFICIAL_SIGNATORIES } from '../types';
 
@@ -226,7 +226,42 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
     window.print();
   };
 
-  const balanceBudgetAfterPayment = Math.max(0, (voucher.preEntryBalance || 0) - voucher.billAmountGross);
+  // Dynamic available budget resolution:
+  // Uses voucher.preEntryBalance if positive. If 0 or missing, dynamically computes the available head balance.
+  const budgetAvailableAmount = useMemo(() => {
+    if (voucher.preEntryBalance && Number(voucher.preEntryBalance) > 0) {
+      return Number(voucher.preEntryBalance);
+    }
+    try {
+      let allocated = 0;
+      const liveAccountsStr = localStorage.getItem('gvtiw_live_accounts');
+      if (liveAccountsStr) {
+        const accs = JSON.parse(liveAccountsStr);
+        const match = accs.find((a: any) => a.head === voucher.accountHead || a.code === voucher.accountHead);
+        if (match) {
+          allocated = (match.opening || 0) + (match.reappr || 0) + (match.receipts || 0);
+        }
+      }
+      if (!allocated) {
+        const staticAcc = INITIAL_ACCOUNTS.find((a) => a.head === voucher.accountHead || a.code === voucher.accountHead);
+        if (staticAcc) {
+          allocated = (staticAcc.opening || 0) + (staticAcc.reappr || 0) + (staticAcc.receipts || 0);
+        }
+      }
+      const liveVouchersStr = localStorage.getItem('gvtiw_live_vouchers_v3');
+      const allVouchers: MasterVoucher[] = liveVouchersStr ? JSON.parse(liveVouchersStr) : INITIAL_MASTER_VOUCHERS;
+      const priorSpent = allVouchers
+        .filter((v) => v.accountHead === voucher.accountHead && (v.srNo < voucher.srNo || (v.srNo === voucher.srNo && v.timestamp < voucher.timestamp)))
+        .reduce((sum, v) => sum + (v.billAmountGross || 0), 0);
+      
+      const balance = allocated - priorSpent;
+      if (balance > 0) return balance;
+      if (allocated > 0) return allocated;
+    } catch {}
+    return voucher.preEntryBalance || 0;
+  }, [voucher]);
+
+  const balanceBudgetAfterPayment = Math.max(0, budgetAvailableAmount - voucher.billAmountGross);
 
   // Official Institutional Header: TEVTA Logo (Left), Title (Center), Govt of Punjab Logo (Right)
   const renderOfficialHeader = (title: string, subheader: string) => (
@@ -278,7 +313,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
   const renderPafPage = (pageBreakClass: string = '') => (
     <div
       key="page-1-paf"
-      className={`paf-single-page min-h-[760px] sm:min-h-[860px] p-3 sm:pt-6 sm:pb-5 sm:pr-5 sm:pl-10 border-2 border-slate-800 rounded-xl print:border-none relative bg-white overflow-hidden ${pageBreakClass}`}
+      className={`paf-single-page min-h-[760px] sm:min-h-[860px] print:min-h-0 p-3 sm:pt-6 sm:pb-5 sm:pr-5 sm:pl-10 border-2 border-slate-800 rounded-xl print:border-none relative bg-white overflow-hidden ${pageBreakClass}`}
     >
       {/* GVTIW Center Watermark (Ink Efficient / Saving) */}
       <CenterWatermark logoSrc={gvtiwLogoSrc} />
@@ -402,7 +437,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
             BUDGET AVAILABLE AMOUNT :
           </span>
           <span className="col-span-7 font-mono font-bold text-slate-900 py-0.5 px-2.5">
-            Rs. {Number(voucher.preEntryBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            Rs. {Number(budgetAvailableAmount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </span>
         </div>
         <div className="grid grid-cols-12">
@@ -559,20 +594,20 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
       </div>
 
       {/* Rows 47-49: Official Signatories */}
-      <div className="relative z-10 mt-3 sm:mt-4 print:mt-3 pt-2 print:pt-1.5 border-t-2 border-slate-900 grid grid-cols-3 gap-4 text-center text-xs print:text-[10px]">
+      <div className="relative z-10 mt-3 sm:mt-4 print:mt-1.5 pt-2 print:pt-1 border-t-2 border-slate-900 grid grid-cols-3 gap-4 print:gap-2 text-center text-xs print:text-[9px]">
         {OFFICIAL_SIGNATORIES.map((sig) => (
           <div key={sig.name} className="flex flex-col items-center">
-            <div className="h-12 sm:h-14 print:h-11 w-full flex items-end justify-center">
+            <div className="h-12 sm:h-14 print:h-8 w-full flex items-end justify-center">
               {/* Generous physical ink signature zone */}
             </div>
-            <div className="border-b-2 border-slate-800 w-32 sm:w-36 mb-1.5"></div>
-            <strong className="block text-slate-950 font-black text-[11px] print:text-[10px] uppercase">
+            <div className="border-b-2 border-slate-800 w-32 sm:w-36 print:w-28 mb-1.5 print:mb-0.5"></div>
+            <strong className="block text-slate-950 font-black text-[11px] print:text-[9px] uppercase">
               {sig.name}
             </strong>
-            <span className="text-[10px] print:text-[9px] text-slate-700 font-semibold block">
+            <span className="text-[10px] print:text-[8px] text-slate-700 font-semibold block">
               {sig.role}
             </span>
-            <span className="text-[8.5px] print:text-[7.5px] text-slate-500 font-extrabold uppercase tracking-wider block mt-0.5">
+            <span className="text-[8.5px] print:text-[7px] text-slate-500 font-extrabold uppercase tracking-wider block mt-0.5 print:mt-0">
               {sig.label}
             </span>
           </div>
@@ -588,7 +623,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
   const renderSanctionPage = (pageBreakClass: string = '') => (
     <div
       key="page-2-sanction"
-      className={`paf-single-page min-h-[760px] sm:min-h-[860px] p-3 sm:pt-6 sm:pb-5 sm:pr-5 sm:pl-10 border-2 border-slate-800 rounded-xl print:border-none relative bg-white overflow-hidden ${pageBreakClass}`}
+      className={`paf-single-page min-h-[760px] sm:min-h-[860px] print:min-h-0 p-3 sm:pt-6 sm:pb-5 sm:pr-5 sm:pl-10 border-2 border-slate-800 rounded-xl print:border-none relative bg-white overflow-hidden ${pageBreakClass}`}
     >
       {/* GVTIW Center Watermark (Ink Efficient / Saving) */}
       <CenterWatermark logoSrc={gvtiwLogoSrc} />
@@ -679,16 +714,16 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
       </div>
 
       {/* Principal Signature Authority (SHAZIA KHADIM in ALL CAPS) */}
-      <div className="relative z-10 pt-3 print:pt-1.5 flex justify-end">
+      <div className="relative z-10 pt-3 print:pt-1 flex justify-end">
         <div className="text-center w-56 sm:w-64">
-          <div className="h-12 sm:h-14 print:h-10"></div>
-          <div className="border-b-2 border-slate-800 w-36 sm:w-44 mx-auto mb-1.5"></div>
+          <div className="h-12 sm:h-14 print:h-8"></div>
+          <div className="border-b-2 border-slate-800 w-36 sm:w-44 mx-auto mb-1.5 print:mb-0.5"></div>
           <strong className="block text-sm print:text-xs font-black text-slate-950 uppercase">
             SHAZIA KHADIM
           </strong>
-          <p className="text-xs print:text-[10px] text-slate-800 font-bold">Acting Principal</p>
-          <p className="text-xs print:text-[10px] text-slate-700 font-medium">Govt. Vocational Training Institute (W)</p>
-          <p className="text-xs print:text-[10px] text-slate-700 font-medium">Samanabad, FSD</p>
+          <p className="text-xs print:text-[9.5px] text-slate-800 font-bold">Acting Principal</p>
+          <p className="text-xs print:text-[9.5px] text-slate-700 font-medium">Govt. Vocational Training Institute (W)</p>
+          <p className="text-xs print:text-[9.5px] text-slate-700 font-medium">Samanabad, FSD</p>
         </div>
       </div>
 

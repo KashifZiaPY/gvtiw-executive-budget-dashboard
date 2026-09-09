@@ -59,7 +59,7 @@
 /* Official Print Isolation Styles */
 @page {
   size: A4 portrait;
-  margin: 15mm 8mm 8mm 8mm; /* 15mm top margin prevents printer cropping; 8mm sides + 14mm gutter = 22mm filing clearance */
+  margin: 10mm 8mm 8mm 8mm; /* 10mm top margin; 8mm sides + 14mm gutter = 22mm filing clearance */
 }
 
 @media print {
@@ -120,8 +120,11 @@
     width: 100% !important;
     max-width: 100% !important;
     position: relative !important;
-    min-height: 275mm !important;
     height: auto !important;
+    min-height: auto !important;
+    max-height: 278mm !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
   }
 
   /* Forced clean page break when printing complete 2-page voucher set */
