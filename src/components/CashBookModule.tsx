@@ -660,22 +660,22 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       <div className={`rounded-xl border overflow-hidden shadow-xl ${
         darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-300'
       }`}>
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-280px)] min-h-[420px] table-scrollbar-always-visible">
           <table className="w-full text-xs text-left border-collapse min-w-[1250px]">
-            <thead className="bg-slate-900 text-white font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-800">
+            <thead className="bg-slate-900 text-white font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-800 sticky top-0 z-20 shadow-sm">
               <tr>
-                <th className="py-3 px-2 text-center w-12 border-r border-slate-800">Sr.#</th>
-                <th className="py-3 px-3 border-r border-slate-800 w-28">Date</th>
-                <th className="py-3 px-2 border-r border-slate-800 w-20">Month</th>
-                <th className="py-3 px-2 text-center border-r border-slate-800 min-w-[140px] whitespace-nowrap">V#</th>
-                <th className="py-3 px-4 border-r border-slate-800 min-w-[240px]">Particulars / Narration</th>
-                <th className="py-3 px-3 border-r border-slate-800 w-44">Paid To / By</th>
-                <th className="py-3 px-3 border-r border-slate-800 w-48">Budget Account Head</th>
-                <th className="py-3 px-3 text-center border-r border-slate-800 w-28">Cheque #</th>
-                <th className="py-3 px-3 text-right border-r border-slate-800 w-28 text-emerald-400">Receipts (Rs.)</th>
-                <th className="py-3 px-3 text-right border-r border-slate-800 w-28 text-rose-400">Payments (Rs.)</th>
-                <th className="py-3 px-3 text-right border-r border-slate-800 w-32 text-amber-300">Balance (Rs.)</th>
-                <th className="py-3 px-2 text-center w-24">PAF</th>
+                <th className="py-3 px-2 text-center w-12 border-r border-slate-800 sticky top-0 bg-slate-900">Sr.#</th>
+                <th className="py-3 px-3 border-r border-slate-800 w-28 sticky top-0 bg-slate-900">Date</th>
+                <th className="py-3 px-2 border-r border-slate-800 w-20 sticky top-0 bg-slate-900">Month</th>
+                <th className="py-3 px-2 text-center border-r border-slate-800 min-w-[140px] whitespace-nowrap sticky top-0 bg-slate-900">V#</th>
+                <th className="py-3 px-4 border-r border-slate-800 min-w-[240px] sticky top-0 bg-slate-900">Particulars / Narration</th>
+                <th className="py-3 px-3 border-r border-slate-800 w-44 sticky top-0 bg-slate-900">Paid To / By</th>
+                <th className="py-3 px-3 border-r border-slate-800 w-48 sticky top-0 bg-slate-900">Budget Account Head</th>
+                <th className="py-3 px-3 text-center border-r border-slate-800 w-28 sticky top-0 bg-slate-900">Cheque #</th>
+                <th className="py-3 px-3 text-right border-r border-slate-800 w-28 text-emerald-400 sticky top-0 bg-slate-900">Receipts (Rs.)</th>
+                <th className="py-3 px-3 text-right border-r border-slate-800 w-28 text-rose-400 sticky top-0 bg-slate-900">Payments (Rs.)</th>
+                <th className="py-3 px-3 text-right border-r border-slate-800 w-32 text-amber-300 sticky top-0 bg-slate-900">Balance (Rs.)</th>
+                <th className="py-3 px-2 text-center w-24 sticky top-0 bg-slate-900">PAF</th>
               </tr>
             </thead>
             <tbody className={`divide-y font-sans ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>

@@ -2157,26 +2157,26 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
           {/* Detailed Table */}
           <div className={`rounded-xl border overflow-hidden shadow-lg ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200'}`}>
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[calc(100vh-280px)] min-h-[420px] table-scrollbar-always-visible">
               <table className="w-full text-xs text-left border-collapse min-w-[1200px]">
-                <thead className="bg-[#0b2545] text-white font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-800">
+                <thead className="bg-[#0b2545] text-white font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-800 sticky top-0 z-20 shadow-sm">
                   <tr>
-                    <th className="py-2.5 px-2 text-center w-12 border-r border-slate-800">Sr.#</th>
-                    <th className="py-2.5 px-3 border-r border-slate-800 w-24">Voucher#</th>
-                    <th className="py-2.5 px-3 border-r border-slate-800 w-24">Date</th>
-                    <th className="py-2.5 px-3 border-r border-slate-800 min-w-[170px] max-w-[240px]">Payee / Vendor</th>
-                    <th className="py-2.5 px-2.5 border-r border-slate-800 w-24">Bill/Invoice #</th>
-                    <th className="py-2.5 px-2.5 border-r border-slate-800 w-24">Bill Date</th>
-                    <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28">Amount Excl. Tax (Rs.)</th>
-                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-24 text-amber-300">PRA (Bill) (Rs.)</th>
-                    <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28">Gross Bill (Rs.)</th>
-                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-24 text-purple-300">GST (Rs.)</th>
-                    <th className="py-2.5 px-3 border-r border-slate-800">Budget Account Head</th>
-                    <th className="py-2.5 px-2 text-center border-r border-slate-800 w-24">Cheque#</th>
-                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-20 text-rose-300">WHT (Rs.)</th>
-                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-20 text-amber-300">PRA (Rs.)</th>
-                    <th className="py-2.5 px-3 text-right w-28 text-emerald-300">Net Paid (Rs.)</th>
-                    <th className="py-2.5 px-2 text-center w-16">PAF</th>
+                    <th className="py-2.5 px-2 text-center w-12 border-r border-slate-800 sticky top-0 bg-[#0b2545]">Sr.#</th>
+                    <th className="py-2.5 px-3 border-r border-slate-800 w-24 sticky top-0 bg-[#0b2545]">Voucher#</th>
+                    <th className="py-2.5 px-3 border-r border-slate-800 w-24 sticky top-0 bg-[#0b2545]">Date</th>
+                    <th className="py-2.5 px-3 border-r border-slate-800 min-w-[170px] max-w-[240px] sticky top-0 bg-[#0b2545]">Payee / Vendor</th>
+                    <th className="py-2.5 px-2.5 border-r border-slate-800 w-24 sticky top-0 bg-[#0b2545]">Bill/Invoice #</th>
+                    <th className="py-2.5 px-2.5 border-r border-slate-800 w-24 sticky top-0 bg-[#0b2545]">Bill Date</th>
+                    <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28 sticky top-0 bg-[#0b2545]">Amount Excl. Tax (Rs.)</th>
+                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-24 text-amber-300 sticky top-0 bg-[#0b2545]">PRA (Bill) (Rs.)</th>
+                    <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28 sticky top-0 bg-[#0b2545]">Gross Bill (Rs.)</th>
+                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-24 text-purple-300 sticky top-0 bg-[#0b2545]">GST (Rs.)</th>
+                    <th className="py-2.5 px-3 border-r border-slate-800 sticky top-0 bg-[#0b2545]">Budget Account Head</th>
+                    <th className="py-2.5 px-2 text-center border-r border-slate-800 w-24 sticky top-0 bg-[#0b2545]">Cheque#</th>
+                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-20 text-rose-300 sticky top-0 bg-[#0b2545]">WHT (Rs.)</th>
+                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-20 text-amber-300 sticky top-0 bg-[#0b2545]">PRA (Rs.)</th>
+                    <th className="py-2.5 px-3 text-right w-28 text-emerald-300 sticky top-0 bg-[#0b2545]">Net Paid (Rs.)</th>
+                    <th className="py-2.5 px-2 text-center w-16 sticky top-0 bg-[#0b2545]">PAF</th>
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
@@ -2365,24 +2365,24 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           <div className={`rounded-xl border overflow-hidden ${
             darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
           }`}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead className={`text-[10.5px] uppercase font-black border-b ${
+            <div className="overflow-auto max-h-[calc(100vh-280px)] min-h-[420px] table-scrollbar-always-visible">
+              <table className="w-full text-xs text-left min-w-[1100px]">
+                <thead className={`text-[10.5px] uppercase font-black border-b sticky top-0 z-20 shadow-sm ${
                   darkMode ? 'bg-slate-900 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-300'
                 }`}>
                   <tr>
-                    <th className="py-2.5 px-3 text-center w-12">SR#</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[85px]">DATE</th>
-                    <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[85px]">CHEQUE#</th>
-                    <th className="py-2.5 px-3 min-w-[180px] max-w-[260px]">PAYEE / VENDOR</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[95px]">NTN / CNIC</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[110px]">BILL/INV # & DATE</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">GROSS BILL (RS.)</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[110px]">AMOUNT EXCL. TAX (RS.)</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">GST / SALES TAX (RS.)</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">NET PAID (RS.)</th>
-                    <th className="py-2.5 px-2 text-center w-14 whitespace-nowrap">PAF</th>
-                    <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[85px]">VOUCHER#</th>
+                    <th className="py-2.5 px-3 text-center w-12 sticky top-0">SR#</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[85px] sticky top-0">DATE</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[85px] sticky top-0">CHEQUE#</th>
+                    <th className="py-2.5 px-3 min-w-[180px] max-w-[260px] sticky top-0">PAYEE / VENDOR</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[95px] sticky top-0">NTN / CNIC</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[110px] sticky top-0">BILL/INV # & DATE</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">GROSS BILL (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[110px] sticky top-0">AMOUNT EXCL. TAX (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">GST / SALES TAX (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">NET PAID (RS.)</th>
+                    <th className="py-2.5 px-2 text-center w-14 whitespace-nowrap sticky top-0">PAF</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[85px] sticky top-0">VOUCHER#</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -2591,25 +2591,25 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           <div className={`rounded-xl border overflow-hidden ${
             darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
           }`}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead className={`text-[10.5px] uppercase font-black border-b ${
+            <div className="overflow-auto max-h-[calc(100vh-280px)] min-h-[420px] table-scrollbar-always-visible">
+              <table className="w-full text-xs text-left min-w-[1150px]">
+                <thead className={`text-[10.5px] uppercase font-black border-b sticky top-0 z-20 shadow-sm ${
                   darkMode ? 'bg-slate-900 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-300'
                 }`}>
                   <tr>
-                    <th className="py-2.5 px-3 text-center w-12">SR#</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[85px]">DATE</th>
-                    <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[85px]">PRA CHEQUE#</th>
-                    <th className="py-2.5 px-3 min-w-[180px] max-w-[260px]">PAYEE / VENDOR</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[95px]">NTN / CNIC</th>
-                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[110px]">BILL/INV # & DATE</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">BILL AMOUNT (RS.)</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[110px]">AMOUNT EXCL. TAX (RS.)</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">PRA (BILL) (RS.)</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">PRA WITHHELD (RS.)</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px]">NET PAID (RS.)</th>
-                    <th className="py-2.5 px-2 text-center w-14 whitespace-nowrap">PAF</th>
-                    <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[85px]">VOUCHER#</th>
+                    <th className="py-2.5 px-3 text-center w-12 sticky top-0">SR#</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[85px] sticky top-0">DATE</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[85px] sticky top-0">PRA CHEQUE#</th>
+                    <th className="py-2.5 px-3 min-w-[180px] max-w-[260px] sticky top-0">PAYEE / VENDOR</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[95px] sticky top-0">NTN / CNIC</th>
+                    <th className="py-2.5 px-3 whitespace-nowrap min-w-[110px] sticky top-0">BILL/INV # & DATE</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">BILL AMOUNT (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[110px] sticky top-0">AMOUNT EXCL. TAX (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">PRA (BILL) (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">PRA WITHHELD (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">NET PAID (RS.)</th>
+                    <th className="py-2.5 px-2 text-center w-14 whitespace-nowrap sticky top-0">PAF</th>
+                    <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[85px] sticky top-0">VOUCHER#</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">

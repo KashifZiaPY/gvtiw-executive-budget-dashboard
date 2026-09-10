@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   CashBookStatementData,
   formatCurrency2Decimals,
@@ -6,7 +6,19 @@ import {
 } from '../lib/reportingEngine';
 import { formatPakistaniDate } from '../lib/formatters';
 import { InstituteEmblem, TevtaEmblem } from './Emblems';
-import { Printer, Download, Building, CreditCard, ShieldCheck, FileText } from 'lucide-react';
+import {
+  Printer,
+  Download,
+  Building,
+  CreditCard,
+  ShieldCheck,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+  Minimize2,
+  MoveHorizontal,
+} from 'lucide-react';
 import { OFFICIAL_SIGNATORIES } from '../types';
 import { AccountHeadDisplay } from './AccountHeadTag';
 
@@ -30,6 +42,57 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
   onOpenPAF,
 }) => {
   let globalSr = 1;
+  const tableRef = useRef<HTMLDivElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const [isCompactView, setIsCompactView] = useState(true);
+
+  // Synchronize Top Scrollbar with Table Scrollbar
+  useEffect(() => {
+    const tableEl = tableRef.current;
+    const topEl = topScrollRef.current;
+    if (!tableEl || !topEl) return;
+
+    let isSyncingTop = false;
+    let isSyncingTable = false;
+
+    const handleTableScroll = () => {
+      if (isSyncingTable) {
+        isSyncingTable = false;
+        return;
+      }
+      isSyncingTop = true;
+      topEl.scrollLeft = tableEl.scrollLeft;
+    };
+
+    const handleTopScroll = () => {
+      if (isSyncingTop) {
+        isSyncingTop = false;
+        return;
+      }
+      isSyncingTable = true;
+      tableEl.scrollLeft = topEl.scrollLeft;
+    };
+
+    tableEl.addEventListener('scroll', handleTableScroll, { passive: true });
+    topEl.addEventListener('scroll', handleTopScroll, { passive: true });
+
+    return () => {
+      tableEl.removeEventListener('scroll', handleTableScroll);
+      topEl.removeEventListener('scroll', handleTopScroll);
+    };
+  }, []);
+
+  const scrollToLeft = () => {
+    if (tableRef.current) {
+      tableRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+    }
+  };
+
+  const scrollToRight = () => {
+    if (tableRef.current) {
+      tableRef.current.scrollTo({ left: tableRef.current.scrollWidth, behavior: 'smooth' });
+    }
+  };
 
   return (
     <div
@@ -166,7 +229,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 3. REPORT ACTION CONTROLS                                     */}
+      {/* 3. REPORT ACTION CONTROLS & HORIZONTAL SCROLL NAVIGATOR       */}
       {/* ------------------------------------------------------------- */}
       <div className="flex items-center justify-between flex-wrap gap-2 pt-1 pb-1">
         <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400">
@@ -175,7 +238,45 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
           <span>•</span>
           <span>{data.allRows.length} Total Line Items</span>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Quick Horizontal Scroll & Viewport Controls */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 border border-slate-300 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={scrollToLeft}
+              title="Scroll table to left columns (Date, Voucher, Payee)"
+              className="px-2.5 py-1 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all flex items-center gap-1 cursor-pointer"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>Left (Date/Sr)</span>
+            </button>
+            <div className="w-px h-4 bg-slate-300 dark:bg-slate-700 mx-0.5" />
+            <button
+              type="button"
+              onClick={scrollToRight}
+              title="Scroll table to right columns (Receipts, Payments, Balance, PAF)"
+              className="px-2.5 py-1 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-slate-700 rounded-md transition-all flex items-center gap-1 cursor-pointer"
+            >
+              <span>Right (Balance/PAF)</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsCompactView((prev) => !prev)}
+            title={isCompactView ? 'Expand to view all rows without vertical viewport scroll' : 'Enable compact viewport with sticky scrollbar'}
+            className={`px-2.5 py-1.5 text-xs font-bold rounded-lg border flex items-center gap-1.5 cursor-pointer transition-colors ${
+              isCompactView
+                ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800'
+                : 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+            }`}
+          >
+            {isCompactView ? <Minimize2 className="w-3.5 h-3.5 text-blue-500" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">{isCompactView ? 'Sticky Viewport' : 'Full Page'}</span>
+          </button>
+
           <button
             onClick={onExportCSV}
             className={`px-3 py-1.5 text-xs font-bold rounded-lg border flex items-center gap-1.5 cursor-pointer transition-colors ${
@@ -198,25 +299,48 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
       </div>
 
       {/* ------------------------------------------------------------- */}
+      {/* 3.1 TOP SYNCHRONIZED SCROLLBAR (INSTANT ACCESSIBILITY)        */}
+      {/* ------------------------------------------------------------- */}
+      <div className="bg-slate-100 dark:bg-slate-900/90 rounded-t-xl border-x border-t border-slate-300 dark:border-slate-700 px-3 py-1.5 flex items-center gap-2">
+        <div className="flex items-center gap-1 text-[11px] font-mono text-slate-500 dark:text-slate-400 select-none whitespace-nowrap">
+          <MoveHorizontal className="w-3.5 h-3.5 text-blue-500 animate-pulse" />
+          <span className="hidden sm:inline">Top Scroll Bar:</span>
+        </div>
+        <div
+          ref={topScrollRef}
+          className="flex-1 overflow-x-auto table-scrollbar-always-visible h-4"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {/* Inner spacer matching the exact minimum table width */}
+          <div className="min-w-[1250px] h-1" />
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------- */}
       {/* 4. OFFICIAL CASH BOOK DATA TABLE (Pixel Perfect Matching)     */}
       {/* ------------------------------------------------------------- */}
-      <div className="overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700 shadow-sm">
-        <table className="w-full text-xs text-left border-collapse min-w-[1050px]">
-          {/* Table Header */}
-          <thead className="bg-[#0b2545] text-white font-extrabold text-[10px] uppercase tracking-wider">
+      <div
+        ref={tableRef}
+        className={`overflow-auto rounded-b-xl border-x border-b border-slate-300 dark:border-slate-700 shadow-sm table-scrollbar-always-visible relative ${
+          isCompactView ? 'max-h-[calc(100vh-280px)] min-h-[420px]' : ''
+        }`}
+      >
+        <table className="w-full text-xs text-left border-collapse min-w-[1250px]">
+          {/* Table Header with Sticky Pinned Positioning */}
+          <thead className="bg-[#0b2545] text-white font-extrabold text-[10px] uppercase tracking-wider sticky top-0 z-20 shadow-sm">
             <tr>
-              <th className="py-2.5 px-2 text-center w-10 border-r border-slate-700">SR#</th>
-              <th className="py-2.5 px-3 border-r border-slate-700 w-24">DATE</th>
-              <th className="py-2.5 px-2 text-center border-r border-slate-700 w-16">ACCT</th>
-              <th className="py-2.5 px-3 border-r border-slate-700 w-32">VOUCHER #</th>
-              <th className="py-2.5 px-3 border-r border-slate-700 min-w-[140px]">PAID TO / BY</th>
-              <th className="py-2.5 px-3 border-r border-slate-700 min-w-[180px]">ACCOUNT HEAD</th>
-              <th className="py-2.5 px-3 border-r border-slate-700 min-w-[220px]">PARTICULAR / NARRATION</th>
-              <th className="py-2.5 px-2 text-center border-r border-slate-700 w-24">CHEQUE #</th>
-              <th className="py-2.5 px-3 text-right border-r border-slate-700 w-28">RECEIPTS (RS.)</th>
-              <th className="py-2.5 px-3 text-right border-r border-slate-700 w-28">PAYMENTS (RS.)</th>
-              <th className="py-2.5 px-3 text-right border-r border-slate-700 w-32">BALANCE (RS.)</th>
-              <th className="py-2.5 px-2 text-center w-16 whitespace-nowrap">PAF</th>
+              <th className="py-2.5 px-2 text-center w-10 border-r border-slate-700 sticky top-0 bg-[#0b2545]">SR#</th>
+              <th className="py-2.5 px-3 border-r border-slate-700 w-24 sticky top-0 bg-[#0b2545]">DATE</th>
+              <th className="py-2.5 px-2 text-center border-r border-slate-700 w-16 sticky top-0 bg-[#0b2545]">ACCT</th>
+              <th className="py-2.5 px-3 border-r border-slate-700 w-32 sticky top-0 bg-[#0b2545]">VOUCHER #</th>
+              <th className="py-2.5 px-3 border-r border-slate-700 min-w-[140px] sticky top-0 bg-[#0b2545]">PAID TO / BY</th>
+              <th className="py-2.5 px-3 border-r border-slate-700 min-w-[180px] sticky top-0 bg-[#0b2545]">ACCOUNT HEAD</th>
+              <th className="py-2.5 px-3 border-r border-slate-700 min-w-[220px] sticky top-0 bg-[#0b2545]">PARTICULAR / NARRATION</th>
+              <th className="py-2.5 px-2 text-center border-r border-slate-700 w-24 sticky top-0 bg-[#0b2545]">CHEQUE #</th>
+              <th className="py-2.5 px-3 text-right border-r border-slate-700 w-28 sticky top-0 bg-[#0b2545]">RECEIPTS (RS.)</th>
+              <th className="py-2.5 px-3 text-right border-r border-slate-700 w-28 sticky top-0 bg-[#0b2545]">PAYMENTS (RS.)</th>
+              <th className="py-2.5 px-3 text-right border-r border-slate-700 w-32 sticky top-0 bg-[#0b2545]">BALANCE (RS.)</th>
+              <th className="py-2.5 px-2 text-center w-16 whitespace-nowrap sticky top-0 bg-[#0b2545]">PAF</th>
             </tr>
           </thead>
 
