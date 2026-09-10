@@ -6,6 +6,7 @@ import { MiniCalculatorPopover } from './MiniCalculatorPopover';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { CorporateVoucherSuccessModal } from './CorporateVoucherSuccessModal';
 import { isBankChargeVoucher } from './BankChargeModal';
+import { AccountHeadBadge, parseAccountHead, AccountTagType } from './AccountHeadTag';
 import { formatSaveErrorMessage } from '../lib/voucherSync';
 import { AnimatedSplashLogos } from './AnimatedSplashLogos';
 import {
@@ -167,7 +168,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const [chequeNoPra, setChequeNoPra] = useState('');
   const [praTaxAmt, setPraTaxAmt] = useState<number | string>('');
 
-  const [accountHead, setAccountHead] = useState('A00000DW-DAILY WAGES-SALARIES');
+  const [accountHead, setAccountHead] = useState('');
   const [headSearch, setHeadSearch] = useState('');
   const [isHeadDropdownOpen, setIsHeadDropdownOpen] = useState(false);
   const [headHighlightedIndex, setHeadHighlightedIndex] = useState(0);
@@ -208,7 +209,9 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   // Voucher Print Modal State (Direct PAF Popup from Success Dialog)
   const [printVoucherPAF, setPrintVoucherPAF] = useState<MasterVoucher | null>(null);
 
-  // Refs for keyboard scroll into view
+  // Refs for keyboard scroll into view and outside click detection
+  const payeeContainerRef = useRef<HTMLDivElement>(null);
+  const headContainerRef = useRef<HTMLDivElement>(null);
   const payeeListRef = useRef<HTMLDivElement>(null);
   const headListRef = useRef<HTMLDivElement>(null);
 
@@ -218,7 +221,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   }, [bankAccount]);
 
   // Account Heads available based on Selected Bank (Google Sheet Rule Enforcement)
-  // - If Non-Salary or AAA -> Show all 38 non-salary / operating / placement / NAVTTC / CMSDI heads
+  // - If Non-Salary or AAA -> Show non-salary / operating / placement / NAVTTC / CMSDI heads (excluding Bank Charges since Bank Charges have their own dedicated module)
   // - If Pupil Funds -> ONLY A00000PF-PUPIL FUND
   // - If Short Course -> ONLY A00000SC-SHORT COURSE
   // - If Securities -> ONLY A00000SS-STUDENT SEC.
@@ -236,8 +239,16 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     if (selectedBankObj.key === 'FC') {
       return ['A00000TFC-TEVTA FEE COL.'];
     }
-    // Non-Salary (NS) or AAA (AA): return all heads excluding the dedicated own-funds
-    return MASTER_ACCOUNT_HEADS.filter((h) => !DEDICATED_OWN_FUND_HEADS.includes(h));
+    // Non-Salary (NS) or AAA (AA): return all heads excluding dedicated own-funds AND bank charges
+    // (Bank Charges have their own separate direct debit entry module)
+    return MASTER_ACCOUNT_HEADS.filter((h) => {
+      if (DEDICATED_OWN_FUND_HEADS.includes(h)) return false;
+      const upper = h.toUpperCase();
+      if (upper.includes('BANK CHARGES') || upper === 'A03101-BANK CHARGES-NS' || upper === 'A03101-BANK CHARGES-AAA') {
+        return false;
+      }
+      return true;
+    });
   }, [selectedBankObj.key]);
 
   // Sync / enforce account head when Bank Account changes
@@ -258,10 +269,11 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       setAccountHead('A00000TFC-TEVTA FEE COL.');
       setHeadSearch('A00000TFC-TEVTA FEE COL.');
     } else {
-      // NS or AAA: If current head is an own fund, switch to default non-salary head
+      // Non-Salary (NS) or AAA: If switching to NS/AAA or previous head was a dedicated own-fund head,
+      // reset to blank so user searches and selects their required head
       if (DEDICATED_OWN_FUND_HEADS.includes(accountHead)) {
-        setAccountHead('A00000DW-DAILY WAGES-SALARIES');
-        setHeadSearch('A00000DW-DAILY WAGES-SALARIES');
+        setAccountHead('');
+        setHeadSearch('');
       }
     }
   };
@@ -301,7 +313,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       setIncomeTaxAmt(voucherToAmend.incomeTaxAmount ?? 0);
       setChequeNoPra(voucherToAmend.chequeNoPra || '0');
       setPraTaxAmt(voucherToAmend.praAmount ?? 0);
-      const targetHead = voucherToAmend.accountHead || 'A00000DW-DAILY WAGES-SALARIES';
+      const targetHead = voucherToAmend.accountHead || '';
       setAccountHead(targetHead);
       setHeadSearch(targetHead);
       setDescription(voucherToAmend.description || '');
@@ -323,8 +335,9 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       setIncomeTaxAmt('');
       setChequeNoPra('');
       setPraTaxAmt('');
-      setAccountHead('A00000DW-DAILY WAGES-SALARIES');
-      setHeadSearch('A00000DW-DAILY WAGES-SALARIES');
+      // Blank initial state with dim instructive placeholder to prevent unintended default saves
+      setAccountHead('');
+      setHeadSearch('');
       setDescription('');
     }
     setErrorMsg(null);
@@ -334,6 +347,20 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     setPrintVoucherPAF(null);
     setIsPosting(false);
   }, [isOpen, voucherToAmend]);
+
+  // Handle outside click to automatically close dropdowns
+  useEffect(() => {
+    const handlePointerDownOutside = (e: MouseEvent) => {
+      if (payeeContainerRef.current && !payeeContainerRef.current.contains(e.target as Node)) {
+        setIsPayeeDropdownOpen(false);
+      }
+      if (headContainerRef.current && !headContainerRef.current.contains(e.target as Node)) {
+        setIsHeadDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handlePointerDownOutside);
+    return () => document.removeEventListener('mousedown', handlePointerDownOutside);
+  }, []);
 
   // Global ESC Key Listener for Modal and Success Summary
   useEffect(() => {
@@ -371,11 +398,33 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     );
   }, [payeeSearch]);
 
-  // Filter Heads: when typing, filter within availableHeadsForBank
+  // Filter Heads: Multi-token search across Head Code, Description and Categories with relevance ranking
   const filteredHeads = useMemo(() => {
     if (!headSearch || headSearch.trim() === '') return availableHeadsForBank;
-    const s = headSearch.toLowerCase().trim();
-    return availableHeadsForBank.filter((h) => h.toLowerCase().includes(s));
+    const rawSearch = headSearch.trim().toLowerCase();
+    const tokens = rawSearch.split(/[\s,/-]+/).filter(Boolean);
+
+    return availableHeadsForBank
+      .filter((h) => {
+        const lowerHead = h.toLowerCase();
+        if (lowerHead.includes(rawSearch)) return true;
+        return tokens.every((tok) => lowerHead.includes(tok));
+      })
+      .sort((a, b) => {
+        const aLower = a.toLowerCase();
+        const bLower = b.toLowerCase();
+        // Exact match first
+        const aExact = aLower === rawSearch;
+        const bExact = bLower === rawSearch;
+        if (aExact && !bExact) return -1;
+        if (!aExact && bExact) return 1;
+        // Code prefix / Starts with first
+        const aStarts = aLower.startsWith(rawSearch);
+        const bStarts = bLower.startsWith(rawSearch);
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+        return a.localeCompare(b);
+      });
   }, [headSearch, availableHeadsForBank]);
 
   // =========================================================================
@@ -962,7 +1011,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 
                 {/* Payee Searchable Select (with Keyboard Arrow & Enter Navigation) */}
-                <div className="relative">
+                <div ref={payeeContainerRef} className="relative">
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
                       PAYEE NAME <span className="text-rose-500">*</span>
@@ -1478,14 +1527,18 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
               </div>
 
               {/* Searchable Account Head Dropdown (Strictly filtered by Bank logic) */}
-              <div className="relative">
+              <div ref={headContainerRef} className="relative">
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
                     ACCOUNT HEAD <span className="text-rose-500">*</span>
                   </label>
-                  {selectedBankObj.key !== 'NS' && selectedBankObj.key !== 'AA' && (
+                  {selectedBankObj.key !== 'NS' && selectedBankObj.key !== 'AA' ? (
                     <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
                       Locked to {selectedBankObj.shortName} Account Head
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                      Type code or name to search
                     </span>
                   )}
                 </div>
@@ -1502,7 +1555,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                       if (matched) {
                         setAccountHead(matched);
                       } else {
-                        setAccountHead(val);
+                        setAccountHead('');
                       }
                       setIsHeadDropdownOpen(true);
                       setHeadHighlightedIndex(0);
@@ -1510,8 +1563,8 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                     onFocus={() => setIsHeadDropdownOpen(true)}
                     onKeyDown={handleHeadKeyDown}
                     disabled={availableHeadsForBank.length <= 1}
-                    placeholder="Type to search code or head description..."
-                    className={`w-full px-3.5 py-2.5 pr-16 rounded-xl border-2 border-purple-400/60 dark:border-purple-500/40 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold outline-none focus:ring-3 focus:ring-purple-500/20 text-xs shadow-xs ${
+                    placeholder="Search or select Account Head (e.g. A03901, POL, Stationary, Daily Wages)..."
+                    className={`w-full px-3.5 py-2.5 pr-16 rounded-xl border-2 border-purple-400/60 dark:border-purple-500/40 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-extrabold outline-none focus:ring-3 focus:ring-purple-500/20 text-xs shadow-xs placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:font-normal placeholder:text-[11.5px] ${
                       availableHeadsForBank.length <= 1 ? 'cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''
                     }`}
                     autoComplete="off"
@@ -1546,34 +1599,85 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                 {isHeadDropdownOpen && availableHeadsForBank.length > 1 && (
                   <div
                     ref={headListRef}
-                    className="absolute z-30 top-full mt-1.5 left-0 right-0 max-h-60 overflow-y-auto bg-white dark:bg-slate-900 border-2 border-purple-500/50 rounded-xl shadow-2xl divide-y divide-slate-100 dark:divide-slate-800"
+                    className="absolute z-30 top-full mt-1.5 left-0 right-0 max-h-64 overflow-y-auto bg-white dark:bg-slate-900 border-2 border-purple-500/50 rounded-xl shadow-2xl divide-y divide-slate-100 dark:divide-slate-800"
                   >
-                    <div className="p-2 bg-purple-50/80 dark:bg-purple-950/60 sticky top-0 z-10 flex items-center justify-between text-[10px] font-bold text-purple-900 dark:text-purple-200 border-b border-purple-200 dark:border-purple-800">
-                      <span>Select Account Head (↑ ↓ Arrows + Enter):</span>
-                      <button type="button" onClick={() => setIsHeadDropdownOpen(false)} className="text-slate-500 hover:text-slate-700">Done ✕</button>
+                    <div className="p-2 bg-purple-50/90 dark:bg-purple-950/80 sticky top-0 z-10 flex items-center justify-between text-[10px] font-bold text-purple-900 dark:text-purple-200 border-b border-purple-200 dark:border-purple-800">
+                      <span className="flex items-center gap-1">
+                        <Search className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                        <span>Select Account Head ({filteredHeads.length} matching • ↑ ↓ Arrows + Enter):</span>
+                      </span>
+                      <button type="button" onClick={() => setIsHeadDropdownOpen(false)} className="text-slate-500 hover:text-slate-700 font-bold">Done ✕</button>
                     </div>
                     {filteredHeads.map((h, idx) => {
                       const isHighlighted = idx === headHighlightedIndex;
                       const isSelected = h === accountHead;
+                      const parts = h.split('-');
+                      const headCode = parts[0] || '';
+                      const rawDesc = parts.slice(1).join('-') || h;
+
+                      // Derive tag using parseAccountHead and current bank context
+                      const parsed = parseAccountHead(h);
+                      // If the head doesn't have an explicit suffix in its string,
+                      // contextualize with the active bank (NS or AAA or OWN_FUND)
+                      const effectiveTag =
+                        parsed.tag ||
+                        (selectedBankObj.key === 'AA'
+                          ? '-AAA'
+                          : selectedBankObj.key === 'NS'
+                          ? '-NS'
+                          : selectedBankObj.key === 'PF' || selectedBankObj.key === 'SC' || selectedBankObj.key === 'SEC' || selectedBankObj.key === 'FC'
+                          ? `-${selectedBankObj.shortName}`
+                          : null);
+                      const effectiveTagType: AccountTagType | null =
+                        parsed.tagType ||
+                        (selectedBankObj.key === 'AA'
+                          ? 'AAA'
+                          : selectedBankObj.key === 'NS'
+                          ? 'NS'
+                          : 'OWN_FUND');
+
+                      // Clean the description to avoid repeating the tag in the text
+                      const cleanDesc = rawDesc
+                        .replace(/-?(NS|AAA|AA|PLACEMENT|NAVTTC|SALARIES|SALARY)$/i, '')
+                        .trim();
+
                       return (
                         <div
                           key={idx}
                           onClick={() => handleSelectHead(h)}
-                          className={`px-3.5 py-2.5 cursor-pointer font-mono text-xs flex items-center justify-between transition-colors ${
+                          className={`px-3.5 py-2.5 cursor-pointer text-xs flex items-center justify-between transition-colors ${
                             isHighlighted
                               ? 'bg-purple-100 dark:bg-purple-900/60 text-purple-950 dark:text-white font-black'
                               : isSelected
-                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 font-extrabold'
-                              : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold'
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-100 font-bold'
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-800/60 text-slate-800 dark:text-slate-200 font-medium'
                           }`}
                         >
-                          <span>{h}</span>
-                          {isSelected && <span className="text-emerald-600 font-extrabold text-[10px]">✓ Selected</span>}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 font-mono text-[10px] font-black border border-purple-200 dark:border-purple-800">
+                              {headCode}
+                            </span>
+                            <span className="font-bold text-slate-900 dark:text-white">{cleanDesc}</span>
+                            {effectiveTag && (
+                              <AccountHeadBadge
+                                tag={effectiveTag}
+                                tagType={effectiveTagType}
+                                size="xs"
+                              />
+                            )}
+                          </div>
+                          {isSelected && (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 font-extrabold text-[10px] flex items-center gap-0.5">
+                              ✓ Selected
+                            </span>
+                          )}
                         </div>
                       );
                     })}
                     {filteredHeads.length === 0 && (
-                      <div className="p-3 text-center text-slate-400 italic">No matching account head found.</div>
+                      <div className="p-4 text-center text-slate-400 dark:text-slate-500 italic text-xs">
+                        No matching account head found for &ldquo;{headSearch}&rdquo;.
+                      </div>
                     )}
                   </div>
                 )}
@@ -1603,47 +1707,60 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                     )}
                   </div>
                   <span className={`font-mono font-black text-sm px-2.5 py-0.5 rounded-md ${
-                    availableHeadBalance >= 0 
+                    !accountHead
+                      ? 'bg-slate-200/70 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                      : availableHeadBalance >= 0 
                       ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200' 
                       : 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-200'
                   }`}>
-                    Rs. {Number(availableHeadBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    Rs. {!accountHead ? '0.00' : Number(availableHeadBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
-                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                    <span>
-                      {headBudgetStatus.isAaa
-                        ? 'AAA Total Released (Open+Rec):'
-                        : headBudgetStatus.isNs
-                        ? 'NS Allocated (Open+Rec):'
-                        : 'Allocated Budget Ceiling:'}
-                    </span>
-                    <span className="font-bold text-slate-900 dark:text-slate-200">
-                      Rs. {Number(headAllocatedCeiling).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                {!accountHead ? (
+                  <div className="p-2.5 rounded-lg bg-white/70 dark:bg-slate-900/60 border border-dashed border-purple-300/80 dark:border-purple-800/60 flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs">
+                    <Info className="w-4 h-4 text-purple-500 shrink-0" />
+                    <span className="italic text-[11px]">
+                      Search and select an Account Head above to view live available budget balance, allocation ceiling, and FY expenditure.
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                    <span>
-                      {headBudgetStatus.isAaa
-                        ? 'AAA FY Gross Expended:'
-                        : headBudgetStatus.isNs
-                        ? 'NS FY Gross Expended:'
-                        : 'Current FY Expended:'}
-                    </span>
-                    <span className="font-bold text-amber-600 dark:text-amber-400">
-                      Rs. {Number(currentHeadExpenditure).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                      <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                        <span>
+                          {headBudgetStatus.isAaa
+                            ? 'AAA Total Released (Open+Rec):'
+                            : headBudgetStatus.isNs
+                            ? 'NS Allocated (Open+Rec):'
+                            : 'Allocated Budget Ceiling:'}
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-slate-200">
+                          Rs. {Number(headAllocatedCeiling).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                        <span>
+                          {headBudgetStatus.isAaa
+                            ? 'AAA FY Gross Expended:'
+                            : headBudgetStatus.isNs
+                            ? 'NS FY Gross Expended:'
+                            : 'Current FY Expended:'}
+                        </span>
+                        <span className="font-bold text-amber-600 dark:text-amber-400">
+                          Rs. {Number(currentHeadExpenditure).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
 
-                {(headBudgetStatus.isNs || headBudgetStatus.isAaa) && (
-                  <div className="pt-1.5 border-t border-purple-200/40 dark:border-purple-800/30 flex items-center justify-between text-[9px] font-mono text-slate-600 dark:text-slate-400">
-                    <span>Opening: <strong className="text-slate-800 dark:text-slate-200">Rs. {Number(headBudgetStatus.opening).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></span>
-                    <span>Receipts: <strong className="text-slate-800 dark:text-slate-200">Rs. {Number(headBudgetStatus.receipts).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></span>
-                    <span>Closing: <strong className={availableHeadBalance >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600'}>Rs. {Number(availableHeadBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></span>
-                  </div>
+                    {(headBudgetStatus.isNs || headBudgetStatus.isAaa) && (
+                      <div className="pt-1.5 border-t border-purple-200/40 dark:border-purple-800/30 flex items-center justify-between text-[9px] font-mono text-slate-600 dark:text-slate-400">
+                        <span>Opening: <strong className="text-slate-800 dark:text-slate-200">Rs. {Number(headBudgetStatus.opening).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></span>
+                        <span>Receipts: <strong className="text-slate-800 dark:text-slate-200">Rs. {Number(headBudgetStatus.receipts).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></span>
+                        <span>Closing: <strong className={availableHeadBalance >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600'}>Rs. {Number(availableHeadBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></span>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
