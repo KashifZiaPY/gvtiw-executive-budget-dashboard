@@ -2369,30 +2369,34 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
             </div>
           </div>
 
-          {/* Live Voucher Ledger Table */}
+          {/* Live Voucher Ledger Table with Dedicated Left-Side Vertical Scroll */}
           <div
             className={`rounded-2xl border overflow-hidden ${
               darkMode ? 'bg-[#0B132B] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
             }`}
           >
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[900px] text-left text-xs border-collapse">
-                <thead>
+            {/* Dedicated Left-Side Vertical Scroll Container with Sticky Headers */}
+            <div
+              className="max-h-[660px] overflow-auto voucher-left-scroll-container table-scrollbar-always-visible"
+              style={{ direction: 'rtl' }}
+            >
+              <table className="w-full min-w-[900px] text-left text-xs border-separate border-spacing-0 voucher-left-scroll-inner" style={{ direction: 'ltr' }}>
+                <thead className="sticky top-0 z-30 shadow-xs">
                   <tr
-                    className={`border-b font-mono font-bold uppercase text-[10px] tracking-wider ${
+                    className={`border-b font-mono font-bold uppercase text-[10px] tracking-wider sticky top-0 z-30 ${
                       darkMode
-                        ? 'bg-slate-900/90 text-slate-400 border-slate-800'
-                        : 'bg-slate-50 text-slate-500 border-slate-200'
+                        ? 'bg-slate-900 text-slate-400 border-slate-800'
+                        : 'bg-slate-100 text-slate-600 border-slate-200'
                     }`}
                   >
-                    <th className="py-3 px-3">Sr.#</th>
-                    <th className="py-3 px-3">Voucher No</th>
-                    <th className="py-3 px-3">Date</th>
-                    <th className="py-3 px-3">Payee &amp; Account Head</th>
-                    <th className="py-3 px-3">Bank Account</th>
-                    <th className="py-3 px-3 text-right">Net Amount</th>
-                    <th className="py-3 px-3 text-center">LIFO Status</th>
-                    <th className="py-3 px-3 text-right">Operations</th>
+                    <th className="py-3 px-3 sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Sr.#</th>
+                    <th className="py-3 px-3 sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Voucher No</th>
+                    <th className="py-3 px-3 sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Date</th>
+                    <th className="py-3 px-3 sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Payee &amp; Account Head</th>
+                    <th className="py-3 px-3 sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Bank Account</th>
+                    <th className="py-3 px-3 text-right sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Net Amount</th>
+                    <th className="py-3 px-3 text-center sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">LIFO Status</th>
+                    <th className="py-3 px-3 text-right sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Operations</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
