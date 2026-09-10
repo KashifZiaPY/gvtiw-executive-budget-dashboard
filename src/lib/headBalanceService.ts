@@ -49,7 +49,18 @@ export const STORAGE_KEY_NS_HEADS = 'gvtiw_live_ns_heads_budget_v1';
 export const STORAGE_KEY_AAA_HEADS = 'gvtiw_live_aaa_heads_budget_v1';
 
 // Compact baseline definitions: [sheetRow, code, headName, opening, receipts]
-const NS_RAW_BASELINE: [number, string, string, number, number][] = [[6, "A031", "A031-Fees", 0.0, 0.0], [7, "A03101", "A03101-Bank Charges", 1407.0, 0.0], [8, "A031", "A031-Total Fees", 1407.0, 0.0], [9, "A032", "A032 Communications", 0.0, 0.0], [10, "A03201", "A03201-Postage & Telegraph", 16350.0, 0.0], [11, "A03202", "A03202-Telephone & Trunk Charges", -59990.0, 0.0], [12, "A03202-P", "Placement-A03202-Telephone & Trunk Calls", 54500.0, 0.0], [13, "A03203", "A03203-Telephone,Teleprinter & Fax/Communication", 0.0, 0.0], [14, "A03204", "A03204-Electronic Communications", 0.0, 0.0], [15, "A032", "A032  Total Communications", 10860.0, 0.0], [16, "A033", "A033 Utilities", 0.0, 0.0], [17, "A03301", "A03301-Sui Gas Charges", -40275.0, 0.0], [18, "A03302", "A03302-Water Charges", -15730.0, 0.0], [19, "A03303", "A03303-Electricity Charges", -230811.0, 0.0], [20, "A03304", "A03304-Hot & Cold Weather Charges", 0.0, 0.0], [21, "A033", "A033  Total Utilities", -286816.0, 0.0], [22, "A034", "A034 Occupancy Costs.", 0.0, 0.0], [23, "A03402", "A03402 Rent of Office Building", 0.0, 0.0], [24, "A03407", "A03407 Rates and Taxes", 0.0, 0.0], [25, "A034", "A034 Total Occupancy Costs.", 0.0, 0.0], [26, "A036", "A036-Motor Vehicles", 0.0, 0.0], [27, "A03602", "A03602-Insurance", 0.0, 0.0], [28, "A03603", "A03603-Registration", 0.0, 0.0], [29, "A036", "A036 Total Motor Vehicles", 0.0, 0.0], [30, "A037", "A037-Consultancy & Cont Work", 0.0, 0.0], [31, "A03702", "A03702-Management", 0.0, 0.0], [32, "A037", "A037 Total Consultancy & Contractual Work", 0.0, 0.0], [33, "A038", "A038 Travel & Transport.", 0.0, 0.0], [34, "A03801", "A03801-Staff Training", 0.0, 0.0], [35, "A03805", "A03805-TA/DA Charges", -53695.0, 0.0], [36, "A03806", "A03806-Transportation of Goods", -8500.0, 0.0], [37, "A03807-P", "Placement-A03807-POL", 14834.0, 0.0], [38, "A03807", "A03807-POL Charges", -8718.0, 0.0], [39, "A03808", "A03808-Conveyance Charges", -12175.0, 0.0], [40, "A03809", "A03809-CNG Charges", 0.0, 0.0], [41, "A038", "A038 Total Travel & Transportation.", -68254.0, 0.0], [42, "A039", "A039 General", 0.0, 0.0], [43, "A03901", "A03901-Stationery Charges", -3530.0, 0.0], [44, "A03902", "A03902-Printing Charges", 6975.0, 0.0], [45, "A03903", "Placement-A03903- Confrence Seminar & Workshop", -43972.0, 0.0], [46, "A03905", "A03905-Newspapers & Books", 0.0, 0.0], [47, "A03906", "A03906-Uniforms Liveries", 0.0, 0.0], [48, "A03907", "A03907-Publicity Advertising Charges", -40419.0, 0.0], [49, "A03917", "A03917-Law Charges", 0.0, 0.0], [50, "A03918", "Placement-A03918-Job Fair & Exhibition", 4942.0, 0.0], [51, "A03927", "A03927-Purchase of Drug & Medicines", 0.0, 0.0], [52, "A03933", "A03933-Service Charges", 373946.0, 0.0], [53, "A03942", "A03942-Cost of Other Stores / Training Materials", -40040.0, 0.0], [54, "A03970", "A03970-Others (Misc. Charges)", -190335.0, 0.0], [55, "A03949", "A03949-Research & Development /Tarining", 0.0, 0.0], [56, "A039", "A039 Total General", 67567.0, 0.0], [57, "AO41", "AO41-Pension", 0.0, 0.0], [58, "A04104", "A04104-Pension-Others", 0.0, 0.0], [59, "AO41", "AO41 Total Pension", 0.0, 0.0], [60, "AO52", "AO52-Domestic Grant", 0.0, 0.0], [61, "AO5216", "AO5216-Financial Assistance", 0.0, 0.0], [62, "AO52", "AO52 Total Domestic Grant", 0.0, 0.0], [63, "A061", "A061-Scholarship", 0.0, 0.0], [64, "A06104", "A06104-S. Bonus", 0.0, 0.0], [65, "A061", "A061-Total Scholarship", 0.0, 0.0], [66, "A063", "A063-Entertainment & Gifts", 0.0, 0.0], [67, "A06301", "A06301-Entertainment & Gifts", 0.0, 0.0], [68, "A063", "A063 Total Entertainment & Gifts", 0.0, 0.0], [69, "A013", "A013- Repairs and Maintenance of D/Goods", 0.0, 0.0], [70, "A13001", "A13001-Repair of Transport", 0.0, 0.0], [71, "A13101", "A13101-Repair of Machinery/Equipments", 8434.0, 0.0], [72, "A13201", "A13201-Repair of Furniture & Fixtures", 89238.0, 0.0], [73, "A013", "Total Repair And Maintenance", 97672.0, 0.0], [74, "", "Non Salary Sub Total:", -177564.0, 0.0]];
+const NS_RAW_BASELINE: [number, string, string, number, number][] = [[6, "A031", "A031-Fees", 0.0, 0.0], [7, "A03101", "A03101-Bank Charges", 1407.0, 0.0], [8, "A031", "A031-Total Fees", 1407.0, 0.0], [9, "A032", "A032 Communications", 0.0, 0.0], [10, "A03201", "A03201-Postage & Telegraph", 16350.0, 0.0], [11, "A03202", "A03202-Telephone & Trunk Charges", -59990.0, 0.0], [12, "A03202-P", "Placement-A03202-Telephone & Trunk Calls", 54500.0, 0.0], [13, "A03203", "A03203-Telephone,Teleprinter & Fax/Communication", 0.0, 0.0], [14, "A03204", "A03204-Electronic Communications", 0.0, 0.0], [15, "A032", "A032  Total Communications", 10860.0, 0.0], [16, "A033", "A033 Utilities", 0.0, 0.0], [17, "A03301", "A03301-Sui Gas Charges", -40275.0, 0.0], [18, "A03302", "A03302-Water Charges", -15730.0, 0.0], [19, "A03303", "A03303-Electricity Charges", -230811.0, 0.0], [20, "A03304", "A03304-Hot & Cold Weather Charges", 0.0, 0.0], [21, "A033", "A033  Total Utilities", -286816.0, 0.0], [22, "A034", "A034 Occupancy Costs.", 0.0, 0.0], [23, "A03402", "A03402 Rent of Office Building", 0.0, 0.0], [24, "A03407", "A03407 Rates and Taxes", 0.0, 0.0], [25, "A034", "A034 Total Occupancy Costs.", 0.0, 0.0], [26, "A036", "A036-Motor Vehicles", 0.0, 0.0], [27, "A03602", "A03602-Insurance", 0.0, 0.0], [28, "A03603", "A03603-Registration", 0.0, 0.0], [29, "A036", "A036 Total Motor Vehicles", 0.0, 0.0], [30, "A037", "A037-Consultancy & Cont Work", 0.0, 0.0], [31, "A03702", "A03702-Management", 0.0, 0.0], [32, "A037", "A037 Total Consultancy & Contractual Work", 0.0, 0.0], [33, "A038", "A038 Travel & Transport.", 0.0, 0.0], [34, "A03801", "A03801-Staff Training", 0.0, 0.0], [35, "A03805", "A03805-TA/DA Charges", -53695.0, 0.0], [36, "A03806", "A03806-Transportation of Goods", -8500.0, 0.0], [37, "A03807-P", "Placement-A03807-POL", 14834.0, 0.0], [38, "A03807", "A03807-POL Charges", -8718.0, 0.0], [39, "A03808", "A03808-Conveyance Charges", -12175.0, 0.0], [40, "A03809", "A03809-CNG Charges", 0.0, 0.0], [41, "A038", "A038 Total Travel & Transportation.", -68254.0, 0.0], [42, "A039", "A039 General", 0.0, 0.0], [43, "A03901", "A03901-Stationery Charges", -3530.0, 0.0], [44, "A03902", "A03902-Printing Charges", 6975.0, 0.0], [45, "A03903", "Placement-A03903- Confrence Seminar & Workshop", -43972.0, 0.0], [46, "A03905", "A03905-Newspapers & Books", 0.0, 0.0], [47, "A03906", "A03906-Uniforms Liveries", 0.0, 0.0], [48, "A03907", "A03907-Publicity Advertising Charges", -40419.0, 0.0], [49, "A03917", "A03917-Law Charges", 0.0, 0.0], [50, "A03918", "Placement-A03918-Job Fair & Exhibition", 4942.0, 0.0], [51, "A03927", "A03927-Purchase of Drug & Medicines", 0.0, 0.0], [52, "A03933", "A03933-Service Charges", 373946.0, 0.0], [53, "A03942", "A03942-Cost of Other Stores / Training Materials", -40040.0, 0.0], [54, "A03970", "A03970-Others (Misc. Charges)", -190335.0, 0.0], [55, "A03949", "A03949-Research & Development /Tarining", 0.0, 0.0], [56, "A039", "A039 Total General", 67567.0, 0.0], [57, "AO41", "AO41-Pension", 0.0, 0.0], [58, "A04104", "A04104-Pension-Others", 0.0, 0.0], [59, "AO41", "AO41 Total Pension", 0.0, 0.0], [60, "AO52", "AO52-Domestic Grant", 0.0, 0.0], [61, "AO5216", "AO5216-Financial Assistance", 0.0, 0.0], [62, "AO52", "AO52 Total Domestic Grant", 0.0, 0.0], [63, "A061", "A061-Scholarship", 0.0, 0.0], [64, "A06104", "A06104-S. Bonus", 0.0, 0.0], [65, "A061", "A061-Total Scholarship", 0.0, 0.0], [66, "A063", "A063-Entertainment & Gifts", 0.0, 0.0], [67, "A06301", "A06301-Entertainment & Gifts", 0.0, 0.0], [68, "A063", "A063 Total Entertainment & Gifts", 0.0, 0.0], [69, "A013", "A013- Repairs and Maintenance of D/Goods", 0.0, 0.0], [70, "A13001", "A13001-Repair of Transport", 0.0, 0.0], [71, "A13101", "A13101-Repair of Machinery/Equipments", 8434.0, 0.0], [72, "A13201", "A13201-Repair of Furniture & Fixtures", 89238.0, 0.0], [73, "A013", "Total Repair And Maintenance", 97672.0, 0.0], [74, "", "Non Salary Sub Total:", -177564.0, 0.0],
+[83, "", "A00000-Job Placement Budget", 0.0, 0.0],
+[84, "", "A00000II-NS Interest Income", 137492.0, 0.0],
+[85, "", "A00000LN-Loan Acc.", 0.0, 0.0],
+[86, "", "A00000NTTM-NAVTTC Cook-Training Material", 527067.0, 0.0],
+[87, "", "A00000NTTR-NAVTTC Cook-Teacher Remuneration", 463120.0, 0.0],
+[88, "", "A00000NTADC-NAVTTC Cook-Advertising Cost", -9293.0, 0.0],
+[89, "", "A00000NTOH-NAVTTC Cook-Overheads", 190075.0, 0.0],
+[90, "", "A00000NTADM-NAVTTC Cook-Admin Cost", 52097.0, 0.0],
+[91, "", "Others-II", 0.0, 0.0],
+[92, "", "OtherThan Non Salary Sub Total:", 2564771.0, 0.0],
+[93, "", "Grand Total:", 2387207.0, 0.0]];
 
 const AAA_RAW_BASELINE: [number, string, string, number, number][] = [[6, "A031", "A031-Fees", 0.0, 0.0], [7, "A03101", "A03101-Bank Charges", 0.0, 0.0], [8, "A031", "A031-Total Fees", 0.0, 0.0], [9, "A032", "A032 Communications", 0.0, 0.0], [10, "A03201", "A03201-Postage & Telegraph", 0.0, 4794.0], [11, "A03202", "A03202-Telephone & Trunk Charges", 0.0, 23697.0], [12, "A03202-P", "Placement-A03202-Telephone & Trunk Calls", 0.0, 0.0], [13, "A03203", "A03203-Telephone,Teleprinter & Fax/Communication", 0.0, 0.0], [14, "A03204", "A03204-Electronic Communications", 0.0, 0.0], [15, "A032", "A032  Total Communications", 0.0, 28491.0], [16, "A033", "A033 Utilities", 0.0, 0.0], [17, "A03301", "A03301-Sui Gas Charges", 0.0, 3529.0], [18, "A03302", "A03302-Water Charges", 0.0, 8046.0], [19, "A03303", "A03303-Electricity Charges", 0.0, 202490.0], [20, "A03304", "A03304-Hot & Cold Weather Charges", 0.0, 0.0], [21, "A033", "A033  Total Utilities", 0.0, 214065.0], [22, "A034", "A034 Occupancy Costs.", 0.0, 0.0], [23, "A03402", "A03402 Rent of Office Building", 0.0, 0.0], [24, "A03407", "A03407 Rates and Taxes", 0.0, 0.0], [25, "A034", "A034 Total Occupancy Costs.", 0.0, 0.0], [26, "A036", "A036-Motor Vehicles", 0.0, 0.0], [27, "A03602", "A03602-Insurance", 0.0, 0.0], [28, "A03603", "A03603-Registration", 0.0, 0.0], [29, "A036", "A036 Total Motor Vehicles", 0.0, 0.0], [30, "A037", "A037-Consultancy & Cont Work", 0.0, 0.0], [31, "A03702", "A03702-Management", 0.0, 0.0], [32, "A037", "A037 Total Consultancy & Contractual Work", 0.0, 0.0], [33, "A038", "A038 Travel & Transport.", 0.0, 0.0], [34, "A03801", "A03801-Staff Training", 0.0, 0.0], [35, "A03805", "A03805-TA/DA Charges", 0.0, 6804.0], [36, "A03806", "A03806-Transportation of Goods", 0.0, 0.0], [37, "A03807-P", "Placement-A03807-POL", 0.0, 0.0], [38, "A03807", "A03807-POL Charges", 0.0, 67546.0], [39, "A03808", "A03808-Conveyance Charges", 0.0, 3314.0], [40, "A03809", "A03809-CNG Charges", 0.0, 0.0], [41, "A038", "A038 Total Travel & Transportation.", 0.0, 77664.0], [42, "A039", "A039 General", 0.0, 0.0], [43, "A03901", "A03901-Stationery Charges", 0.0, 19334.0], [44, "A03902", "A03902-Printing Charges", 0.0, 8393.0], [45, "A03903", "Placement-A03903- Confrence Seminar & Workshop", 0.0, 0.0], [46, "A03905", "A03905-Newspapers & Books", 0.0, 0.0], [47, "A03906", "A03906-Uniforms Liveries", 0.0, 0.0], [48, "A03907", "A03907-Publicity Advertising Charges", 0.0, 0.0], [49, "A03917", "A03917-Law Charges", 0.0, 0.0], [50, "A03918", "Placement-A03918-Job Fair & Exhibition", 0.0, 0.0], [51, "A03927", "A03927-Purchase of Drug & Medicines", 0.0, 0.0], [52, "A03933", "A03933-Service Charges", 0.0, 142852.0], [53, "A03942", "A03942-Cost of Other Stores / Training Materials", 0.0, 0.0], [54, "A03970", "A03970-Others (Misc. Charges)", 0.0, 0.0], [55, "A03949", "A03949-Research & Development /Tarining", 0.0, 0.0], [56, "A039", "A039 Total General", 0.0, 170579.0], [57, "AO41", "AO41-Pension", 0.0, 0.0], [58, "A04104", "A04104-Pension-Others", 0.0, 0.0], [59, "AO41", "AO41 Total Pension", 0.0, 0.0], [60, "AO52", "AO52-Domestic Grant", 0.0, 0.0], [61, "AO5216", "AO5216-Financial Assistance", 0.0, 0.0], [62, "AO52", "AO52 Total Domestic Grant", 0.0, 0.0], [63, "A061", "A061-Scholarship", 0.0, 0.0], [64, "A06104", "A06104-S. Bonus", 0.0, 0.0], [65, "A061", "A061-Total Scholarship", 0.0, 0.0], [66, "A063", "A063-Entertainment & Gifts", 0.0, 0.0], [67, "A06301", "A06301-Entertainment & Gifts", 0.0, 0.0], [68, "A063", "A063 Total Entertainment & Gifts", 0.0, 0.0], [69, "A013", "A013- Repairs and Maintenance of D/Goods", 0.0, 0.0], [70, "A13001", "A13001-Repair of Transport", 0.0, 0.0], [71, "A13101", "A13101-Repair of Machinery/Equipments", 0.0, 6212.0], [72, "A13201", "A13201-Repair of Furniture & Fixtures", 0.0, 11820.0], [73, "A013", "Total Repair And Maintenance", 0.0, 18032.0], [74, "", "AAA-Non Salary Sub Total:", 0.0, 508831.0]];
 
@@ -289,8 +300,9 @@ export async function fetchLiveHeadBudgets(gid: string): Promise<HeadBudgetRow[]
   }
 
   const resultRows: HeadBudgetRow[] = [];
-  // Rows 6 to 74 in 1-based indexing correspond to indices 5 to 73 in 0-based array
-  for (let r = 5; r < Math.min(74, rows.length); r++) {
+  // Rows 6 to 95 in 1-based indexing correspond to indices 5 to 94 in 0-based array
+  // (Covers Non-Salary Operational Heads Rows 6-74 and Other Than Non-Salary Heads Rows 83-93 like NAVTTC, Job Placement, Interest Income)
+  for (let r = 5; r < Math.min(95, rows.length); r++) {
     const row = rows[r];
     const code = row[2] || '';
     const headName = row[3] || '';
@@ -472,7 +484,13 @@ export function computeHeadAvailableBalance(params: {
         if (excludeVoucherSrNo !== undefined && v.srNo === excludeVoucherSrNo) return false;
         return isNsBankAccount(v.bankAccount);
       })
-      .reduce((sum, v) => sum + (v.billAmountGross || 0), 0);
+      .reduce((sum, v) => {
+        const gross =
+          v.billAmountGross && v.billAmountGross > 0
+            ? v.billAmountGross
+            : (v.chequeAmountNet || 0) + (v.incomeTaxAmount || 0) + (v.praAmount || 0);
+        return sum + gross;
+      }, 0);
 
     const availableBalance = allocatedCeiling - headExpenditure;
 
@@ -509,7 +527,13 @@ export function computeHeadAvailableBalance(params: {
         if (excludeVoucherSrNo !== undefined && v.srNo === excludeVoucherSrNo) return false;
         return isAaaBankAccount(v.bankAccount);
       })
-      .reduce((sum, v) => sum + (v.billAmountGross || 0), 0);
+      .reduce((sum, v) => {
+        const gross =
+          v.billAmountGross && v.billAmountGross > 0
+            ? v.billAmountGross
+            : (v.chequeAmountNet || 0) + (v.incomeTaxAmount || 0) + (v.praAmount || 0);
+        return sum + gross;
+      }, 0);
 
     const availableBalance = allocatedCeiling - headExpenditure;
 
@@ -539,7 +563,13 @@ export function computeHeadAvailableBalance(params: {
       if (excludeVoucherSrNo !== undefined && v.srNo === excludeVoucherSrNo) return false;
       return matchOtherBankAccount(v.bankAccount, bankAccount);
     })
-    .reduce((sum, v) => sum + (v.billAmountGross || 0), 0);
+    .reduce((sum, v) => {
+      const gross =
+        v.billAmountGross && v.billAmountGross > 0
+          ? v.billAmountGross
+          : (v.chequeAmountNet || 0) + (v.incomeTaxAmount || 0) + (v.praAmount || 0);
+      return sum + gross;
+    }, 0);
 
   const availableBalance = allocatedCeiling - headExpenditure;
 

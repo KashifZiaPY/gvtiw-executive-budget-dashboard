@@ -1400,10 +1400,15 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       const matchesSearch =
         !q ||
         (v.payeeName && v.payeeName.toLowerCase().includes(q)) ||
-        (v.voucherNo && v.voucherNo.toLowerCase().includes(q)) ||
+        (v.description && v.description.toLowerCase().includes(q)) ||
         (v.billNo && v.billNo.toLowerCase().includes(q)) ||
+        (v.billDate && v.billDate.toLowerCase().includes(q)) ||
         (v.accountHead && v.accountHead.toLowerCase().includes(q)) ||
+        (v.voucherNo && v.voucherNo.toLowerCase().includes(q)) ||
         (v.bankAccount && v.bankAccount.toLowerCase().includes(q)) ||
+        (v.chequeNoNet && v.chequeNoNet.toLowerCase().includes(q)) ||
+        (v.chequeDate && v.chequeDate.toLowerCase().includes(q)) ||
+        (v.ntnCnic && v.ntnCnic.toLowerCase().includes(q)) ||
         String(v.srNo).includes(q);
       return matchesBank && matchesSearch;
     });
@@ -2336,7 +2341,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search payee, voucher#, head, bank..."
+                placeholder="Search payee, detail, bill#, bill date, voucher#, head, bank..."
                 className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl border outline-none ${
                   darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
                 }`}
@@ -2371,7 +2376,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
             }`}
           >
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+              <table className="w-full min-w-[900px] text-left text-xs border-collapse">
                 <thead>
                   <tr
                     className={`border-b font-mono font-bold uppercase text-[10px] tracking-wider ${
@@ -2422,9 +2427,40 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                           <td className="py-3 px-3 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
                             {v.chequeDate || v.billDate || '-'}
                           </td>
-                          <td className="py-3 px-3 max-w-xs">
-                            <div className="font-bold text-slate-900 dark:text-white truncate">{v.payeeName}</div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{v.accountHead}</div>
+                          <td className="py-3 px-3 min-w-[280px] max-w-md">
+                            <div className="font-bold text-slate-900 dark:text-white leading-snug">{v.payeeName}</div>
+                            <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">{v.accountHead}</div>
+                            
+                            {/* Bill / Invoice No & Bill Date Section */}
+                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-100/90 dark:bg-amber-950/60 text-amber-950 dark:text-amber-200 border border-amber-300 dark:border-amber-800 font-semibold shadow-2xs">
+                                <span className="text-[9px] font-bold text-amber-800 dark:text-amber-400 uppercase">Bill/Inv#:</span>
+                                <span className="font-bold text-slate-950 dark:text-amber-100">
+                                  {v.billNo && v.billNo.trim() ? v.billNo : (v.voucherNo ? `INV-${v.voucherNo}` : '—')}
+                                </span>
+                              </span>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 font-medium">
+                                <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase">Bill Dt:</span>
+                                <span className="font-semibold text-slate-900 dark:text-slate-100">
+                                  {v.billDate && v.billDate.trim() ? v.billDate : (v.chequeDate || '—')}
+                                </span>
+                              </span>
+                              {v.ntnCnic && v.ntnCnic.trim() && (
+                                <span className="text-[9px] text-slate-400 dark:text-slate-500">
+                                  | NTN: {v.ntnCnic}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Description / Item Detail */}
+                            {v.description && (
+                              <div className="mt-1.5 text-[11px] italic font-serif text-indigo-950 dark:text-indigo-200/90 bg-indigo-50/70 dark:bg-indigo-950/40 px-2 py-1 rounded-md border border-indigo-100 dark:border-indigo-900/50 leading-tight">
+                                <span className="not-italic font-sans font-bold text-[9px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mr-1.5 px-1 py-0.5 bg-indigo-100/80 dark:bg-indigo-900/60 rounded text-[8.5px]">
+                                  DETAIL
+                                </span>
+                                <span>{v.description}</span>
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-3 text-slate-600 dark:text-slate-300 max-w-xs truncate">
                             {v.bankAccount}
@@ -2475,6 +2511,16 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                                 }
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* PAF Linked Button (Just after Delete Icon) */}
+                              <button
+                                onClick={() => setVoucherForPAF(v)}
+                                className="px-2 py-1 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-bold text-[10px] flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
+                                title={`View & Print Official Payment Approval Form (PAF) for Voucher #${v.srNo}`}
+                              >
+                                <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                                <span>PAF</span>
                               </button>
                             </div>
                           </td>

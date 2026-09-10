@@ -474,7 +474,9 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
           const matchesDesc = v.description.toLowerCase().includes(t);
           const matchesCheque = v.chequeNoNet.toLowerCase().includes(t);
           const matchesNtn = v.ntnCnic.toLowerCase().includes(t);
-          if (!matchesNo && !matchesPayee && !matchesHead && !matchesDesc && !matchesCheque && !matchesNtn) {
+          const matchesBill = (v.billNo || '').toLowerCase().includes(t);
+          const matchesBillDate = (v.billDate || '').toLowerCase().includes(t);
+          if (!matchesNo && !matchesPayee && !matchesHead && !matchesDesc && !matchesCheque && !matchesNtn && !matchesBill && !matchesBillDate) {
             return false;
           }
         }
