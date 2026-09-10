@@ -979,6 +979,16 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                         const val = e.target.value;
                         setPayeeSearch(val);
                         setPayeeName(val);
+                        const matchedPayee = MASTER_PAYEE_LIST.find(
+                          (p) => p.name.trim().toLowerCase() === val.trim().toLowerCase()
+                        );
+                        if (matchedPayee) {
+                          setNtnCnic(matchedPayee.ntn || matchedPayee.cnic || 'N/A');
+                        } else if (!val.trim()) {
+                          setNtnCnic('');
+                        } else {
+                          setNtnCnic('N/A');
+                        }
                         setIsPayeeDropdownOpen(true);
                         setPayeeHighlightedIndex(0);
                       }}

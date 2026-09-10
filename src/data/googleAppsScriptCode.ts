@@ -218,20 +218,11 @@ function onOpen() {
 // ============================================================
 // ON-SHEET BUTTON MACRO BRIDGES
 // ============================================================
-function clearEntryForNext() { clearForm(); }
-function clearForm() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var formSheet = ss.getSheetByName('Payment Approval Form');
-  if (formSheet) {
-    clearEditingMarker_(formSheet);
-    PropertiesService.getDocumentProperties().deleteProperty('AMEND_SR');
-    PropertiesService.getDocumentProperties().deleteProperty('AMEND_ROW');
-    try { SpreadsheetApp.getUi().alert('✅ Form cleared and ready for next entry.'); } catch(e){}
-  }
-}
-function clearFormForNext() { clearForm(); }
-function clearPAFForm() { clearForm(); }
-function resetForm() { clearForm(); }
+function clearEntryForNext() { clearVoucherFormForNextEntry(); }
+function clearForm() { clearVoucherFormForNextEntry(); }
+function clearFormForNext() { clearVoucherFormForNextEntry(); }
+function clearPAFForm() { clearVoucherFormForNextEntry(); }
+function resetForm() { clearVoucherFormForNextEntry(); }
 function saveVoucher() { showNewVoucherDialog(); }
 function amendVoucher() { amendBySerialPrompt(); }
 function printVoucher() { printVoucherAsPdfPrompt(); }
@@ -253,8 +244,9 @@ function clearVoucherFormForNextEntry() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var formSheet = ss.getSheetByName('Payment Approval Form');
   if (formSheet) {
-    clearInputCells_(formSheet, 'M8:M22');
+    clearInputCells_(formSheet, 'M5:M22');
     clearInputCells_(formSheet, 'I20:I21');
+    clearInputCells_(formSheet, 'C7:E8');
     clearEditingMarker_(formSheet);
   }
   PropertiesService.getDocumentProperties().deleteProperty('AMEND_SR');
@@ -281,28 +273,24 @@ function lookupPayeeNtnCnic_(ss, payeeName) {
   if (!payeeName) return '';
   try {
     var headSheet = ss.getSheetByName('Head-Approval');
-    if (!headSheet) return '';
-    var lastRow = headSheet.getLastRow();
-    if (lastRow < 3) return '';
-    
-    var data = headSheet.getRange(3, 6, lastRow - 2, 3).getValues();
-    var cleanPayee = String(payeeName).trim().toLowerCase();
-    
-    for (var i = 0; i < data.length; i++) {
-      var sName = String(data[i][0]).trim().toLowerCase();
-      if (sName === cleanPayee) {
-        var ntn = String(data[i][1] || '').trim();
-        var cnic = String(data[i][2] || '').trim();
-        if (ntn && ntn !== '0') return ntn;
-        if (cnic && cnic !== '0') return cnic;
+    if (headSheet) {
+      var lastRow = headSheet.getLastRow();
+      if (lastRow >= 3) {
+        var data = headSheet.getRange(3, 6, lastRow - 2, 3).getValues();
+        var cleanPayee = String(payeeName).trim().toLowerCase();
+        
+        for (var i = 0; i < data.length; i++) {
+          var sName = String(data[i][0]).trim().toLowerCase();
+          if (sName === cleanPayee) {
+            var ntn = String(data[i][1] || '').trim();
+            var cnic = String(data[i][2] || '').trim();
+            if (ntn && ntn !== '0' && ntn !== '—' && ntn !== 'N/A') return ntn;
+            if (cnic && cnic !== '0' && cnic !== '—' && cnic !== 'N/A') return cnic;
+            return ''; // Payee exists in Head-Approval with no NTN/CNIC (e.g. WASA)
+          }
+        }
       }
     }
-  } catch (e) {}
-  
-  try {
-    SpreadsheetApp.flush();
-    var m6Val = String(ss.getSheetByName('Payment Approval Form').getRange('M6').getValue() || '').trim();
-    if (m6Val !== '#N/A' && m6Val !== '0') return m6Val;
   } catch (e) {}
   
   return '';

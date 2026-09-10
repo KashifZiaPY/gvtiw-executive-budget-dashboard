@@ -1429,7 +1429,7 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
   {
     "srNo": 49,
     "payeeName": "WASA",
-    "ntnCnic": "2862096-8",
+    "ntnCnic": "",
     "billNo": "15225000320",
     "billDate": "01-Sep-2026",
     "chequeNoNet": "AAA",
