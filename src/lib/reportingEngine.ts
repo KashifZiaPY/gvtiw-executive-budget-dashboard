@@ -622,11 +622,47 @@ export function generateHeadExpenditureStatementData(
   const canonicalAccounts = accountsStore && accountsStore.length > 0 ? accountsStore : INITIAL_ACCOUNTS;
 
   // Build target list of heads
-  let targetHeads: AccountHead[] = isGroupedAllHeads
-    ? canonicalAccounts
-    : canonicalAccounts.filter(
-        (a) => a.head.toLowerCase() === selectedHead.toLowerCase() || a.code.toLowerCase() === selectedHead.toLowerCase()
+  let targetHeads: AccountHead[] = [];
+  if (isGroupedAllHeads) {
+    targetHeads = [...canonicalAccounts];
+  } else {
+    const selLower = selectedHead.trim().toLowerCase();
+
+    // 1. Direct exact match by head name or code
+    let matched = canonicalAccounts.filter(
+      (a) => a.head.trim().toLowerCase() === selLower || a.code.trim().toLowerCase() === selLower
+    );
+
+    // 2. If no direct match, try matching by code prefix or head prefix
+    if (matched.length === 0) {
+      matched = canonicalAccounts.filter(
+        (a) =>
+          a.code.trim().toLowerCase().startsWith(selLower) ||
+          a.head.trim().toLowerCase().includes(selLower) ||
+          selLower.startsWith(a.code.trim().toLowerCase())
       );
+    }
+
+    // 3. Disambiguate if multiple matches (e.g. A03302 vs A03302-AA)
+    if (matched.length > 1) {
+      if (selLower.includes('-ns') || selLower.includes('non salary') || selLower.endsWith('ns')) {
+        const nsOnly = matched.filter(
+          (a) => a.category === 'Non Salary' || a.head.toUpperCase().includes('-NS')
+        );
+        if (nsOnly.length > 0) matched = nsOnly;
+      } else if (selLower.includes('-aa') || selLower.includes('aaa') || selLower.endsWith('aa')) {
+        const aaaOnly = matched.filter(
+          (a) =>
+            a.category === 'AAA' ||
+            a.code.toUpperCase().endsWith('-AA') ||
+            a.head.toUpperCase().includes('AAA')
+        );
+        if (aaaOnly.length > 0) matched = aaaOnly;
+      }
+    }
+
+    targetHeads = matched.length > 0 ? matched : canonicalAccounts.filter((a) => a.head.toLowerCase() === selLower);
+  }
 
   // Apply search query filter if provided
   if (searchQuery && searchQuery.trim().length > 0) {
@@ -707,37 +743,200 @@ export function generateHeadExpenditureStatementData(
   for (const acc of targetHeads) {
     const accCodeUpper = acc.code.toUpperCase().trim();
     const accHeadUpper = acc.head.toUpperCase().trim();
-    const headTitleOnly = (acc.head.includes('-') ? acc.head.split('-')[1] : acc.head).toUpperCase().trim();
+    const accCatUpper = (acc.category || '').toUpperCase().trim();
+
+    // Account Type Disambiguation
+    const isAAAAccount =
+      accCatUpper === 'AAA' ||
+      accCodeUpper.endsWith('-AA') ||
+      accHeadUpper.includes('-AAA') ||
+      accHeadUpper.endsWith('AAA');
+
+    const isPlacementAccount =
+      accCatUpper === 'PLACEMENT' ||
+      accCodeUpper.endsWith('-P') ||
+      accHeadUpper.startsWith('PLACEMENT');
+
+    const isNSAccount =
+      accCatUpper === 'NON SALARY' ||
+      (!isAAAAccount && !isPlacementAccount && (accHeadUpper.includes('-NS') || accHeadUpper.endsWith('-NS') || accCodeUpper.startsWith('A03') || accCodeUpper.startsWith('A13')));
+
+    const isNavttcAccount =
+      accCatUpper === 'NAVTTC' ||
+      accHeadUpper.includes('NAVTTC');
+
+    // Base code without suffixes (e.g. 'A03302' from 'A03302-AA' or 'A03302')
+    const baseCode = accCodeUpper.replace(/-AA$|-P$/i, '').trim();
+
+    // Clean title keyword (e.g. 'WATER CHARGES')
+    let headTitleOnly = '';
+    if (acc.head.includes('-')) {
+      const parts = acc.head.split('-');
+      headTitleOnly = parts.length > 2 ? parts[parts.length - 1] : parts[1];
+    } else {
+      headTitleOnly = acc.head;
+    }
+    headTitleOnly = headTitleOnly.replace(/\b(NS|AAA|AA|PLACEMENT|GOVT|TEVTA)\b/gi, '').trim().toUpperCase();
 
     // 1. Collect all payment vouchers matching this head & bank
     const allHeadVouchers = vouchers.filter((v) => {
-      const vHeadUpper = (v.accountHead || '').toUpperCase().trim();
-      const matchHead =
-        vHeadUpper === accHeadUpper ||
-        vHeadUpper.startsWith(accCodeUpper) ||
-        (accCodeUpper.length >= 4 && vHeadUpper.includes(accCodeUpper));
-      if (!matchHead) return false;
-
+      // Respect selected bank filter
       if (selectedBank !== 'ALL' && !v.bankAccount.includes(selectedBank)) {
         return false;
       }
-      return true;
+
+      const vHeadUpper = (v.accountHead || '').toUpperCase().trim();
+      const vBankUpper = (v.bankAccount || '').toUpperCase().trim();
+      const vNoUpper = (v.voucherNo || '').toUpperCase().trim();
+
+      // Classify the voucher
+      const isVoucherAAA =
+        vBankUpper.includes('PAYMENT OF AAA') ||
+        vBankUpper.includes('ASSAN ASSIGNMENT') ||
+        vBankUpper.includes('AAA') ||
+        vNoUpper.startsWith('AA-') ||
+        vHeadUpper.includes('-AA') ||
+        vHeadUpper.includes('-AAA') ||
+        vHeadUpper.endsWith('AAA');
+
+      const isVoucherPlacement =
+        vHeadUpper.includes('-P') ||
+        vHeadUpper.startsWith('PLACEMENT');
+
+      const isVoucherNS =
+        !isVoucherAAA &&
+        !isVoucherPlacement &&
+        (vBankUpper.includes('NON SALARY') ||
+         vBankUpper.includes('NS') ||
+         vNoUpper.startsWith('NS-') ||
+         vHeadUpper.includes('-NS'));
+
+      // STRICT ISOLATION RULES:
+      // AAA Accounts ONLY accept AAA vouchers
+      if (isAAAAccount && !isVoucherAAA) return false;
+
+      // Non-Salary Accounts MUST NEVER accept AAA or Placement vouchers
+      if (isNSAccount && (isVoucherAAA || isVoucherPlacement)) return false;
+
+      // Placement Accounts ONLY accept Placement vouchers
+      if (isPlacementAccount && !isVoucherPlacement) return false;
+
+      // NAVTTC Accounts DO NOT accept AAA or Non Salary vouchers
+      if (isNavttcAccount && (isVoucherAAA || isVoucherNS)) return false;
+
+      // Direct exact match
+      if (vHeadUpper === accHeadUpper) return true;
+
+      // Direct code match (ensuring no suffix confusion)
+      if (vHeadUpper.startsWith(accCodeUpper) || (accCodeUpper.length >= 4 && vHeadUpper.includes(accCodeUpper))) {
+        if (isNSAccount && (vHeadUpper.includes('-AA') || vHeadUpper.includes('AAA'))) {
+          return false;
+        }
+        return true;
+      }
+
+      // Base code or keyword match for AAA vouchers
+      if (isAAAAccount && isVoucherAAA) {
+        if (vHeadUpper.includes(baseCode)) return true;
+        if (headTitleOnly.length >= 4 && vHeadUpper.includes(headTitleOnly)) return true;
+      }
+
+      // Base code or keyword match for Non-Salary vouchers
+      if (isNSAccount && !isVoucherAAA) {
+        if (
+          (vHeadUpper.includes(baseCode) || (headTitleOnly.length >= 4 && vHeadUpper.includes(headTitleOnly))) &&
+          !vHeadUpper.includes('-AA') &&
+          !vHeadUpper.includes('AAA')
+        ) {
+          return true;
+        }
+      }
+
+      return false;
     });
 
     // 2. Collect all receipts matching this head
     const allHeadReceipts = allAvailableReceipts.filter((r) => {
       const rHeadUpper = (r.head || '').toUpperCase().trim();
       const rPartUpper = (r.particulars || '').toUpperCase().trim();
+      const rChqUpper = (r.chequeNo || '').toUpperCase().trim();
+      const rVNoUpper = (r.vNo || '').toUpperCase().trim();
 
-      const matchDirect =
-        rHeadUpper === accHeadUpper ||
-        rHeadUpper.startsWith(accCodeUpper) ||
-        (accCodeUpper.length >= 4 && rHeadUpper.includes(accCodeUpper));
+      // Classify the receipt
+      const isReceiptAAA =
+        r.accountKey === 'AA' ||
+        rPartUpper.includes('AAA-CEILING') ||
+        rPartUpper.includes('ASSAN ASSIGNMENT') ||
+        rPartUpper.includes('AAA') ||
+        rHeadUpper.includes('-AA') ||
+        rHeadUpper.includes('-AAA') ||
+        rHeadUpper.endsWith('AAA') ||
+        rChqUpper.includes('AAA') ||
+        rVNoUpper.startsWith('AA-');
 
-      const matchParticulars = accCodeUpper.length >= 4 && rPartUpper.includes(accCodeUpper);
+      const isReceiptPlacement =
+        rHeadUpper.includes('-P') ||
+        rHeadUpper.startsWith('PLACEMENT') ||
+        rPartUpper.includes('PLACEMENT');
 
-      const matchTitleKeyword = headTitleOnly.length >= 4 && (rHeadUpper.includes(headTitleOnly) || rPartUpper.includes(headTitleOnly));
+      const isReceiptNS =
+        r.accountKey === 'NS' ||
+        (!isReceiptAAA && !isReceiptPlacement && (rPartUpper.includes('NON SALARY') || rHeadUpper.includes('-NS')));
 
+      // STRICT ISOLATION RULES:
+      // AAA Accounts ONLY accept AAA receipts
+      if (isAAAAccount && !isReceiptAAA) return false;
+
+      // Non-Salary Accounts MUST NEVER accept AAA or Placement receipts
+      if (isNSAccount && (isReceiptAAA || isReceiptPlacement)) return false;
+
+      // Placement Accounts ONLY accept Placement receipts
+      if (isPlacementAccount && !isReceiptPlacement) return false;
+
+      // Bank account filter condition for receipts
+      if (selectedBank !== 'ALL') {
+        const targetBankKey = resolveBankKeyFromAccount(selectedBank);
+        if (isAAAAccount && targetBankKey !== 'AA') return false;
+        if (isNSAccount && targetBankKey !== 'NS') return false;
+        if (r.accountKey !== targetBankKey) return false;
+      }
+
+      // Direct exact match
+      if (rHeadUpper === accHeadUpper) return true;
+
+      // Exact code match
+      if (rHeadUpper.startsWith(accCodeUpper) || (accCodeUpper.length >= 4 && rHeadUpper.includes(accCodeUpper))) {
+        if (isNSAccount && (rHeadUpper.includes('-AA') || rHeadUpper.includes('AAA'))) {
+          return false;
+        }
+        return true;
+      }
+
+      // Base code or title keyword matching for AAA receipts
+      if (isAAAAccount && isReceiptAAA) {
+        if (
+          rHeadUpper.includes(baseCode) ||
+          rPartUpper.includes(baseCode) ||
+          (headTitleOnly.length >= 4 && (rHeadUpper.includes(headTitleOnly) || rPartUpper.includes(headTitleOnly)))
+        ) {
+          return true;
+        }
+      }
+
+      // Base code or title keyword matching for Non-Salary receipts
+      if (isNSAccount && !isReceiptAAA) {
+        if (
+          (rHeadUpper.includes(baseCode) || rPartUpper.includes(baseCode) ||
+           (headTitleOnly.length >= 4 && (rHeadUpper.includes(headTitleOnly) || rPartUpper.includes(headTitleOnly)))) &&
+          !rHeadUpper.includes('-AA') &&
+          !rHeadUpper.includes('AAA') &&
+          !rPartUpper.includes('AAA')
+        ) {
+          return true;
+        }
+      }
+
+      // Special institutional receipts
       const matchBankSpecific =
         (acc.code === 'A00000PF' && (r.accountKey === 'PF' || rPartUpper.includes('PUPIL'))) ||
         (acc.code === 'A00000SC' && (r.accountKey === 'SC' || rPartUpper.includes('SHORT COURSE'))) ||
@@ -745,19 +944,9 @@ export function generateHeadExpenditureStatementData(
         (acc.code === 'A00000TFC' && (r.accountKey === 'FC' || rPartUpper.includes('FEE'))) ||
         (acc.code === 'A00000AA' && r.accountKey === 'AA');
 
-      // Bank account filter condition for receipts
-      if (selectedBank !== 'ALL') {
-        const targetBankKey = resolveBankKeyFromAccount(selectedBank);
-        // If bank is NS or AA, allow AA and NS receipts for Non-Salary heads
-        const isNonSalaryHead = acc.code.startsWith('A03') || acc.code.startsWith('A13') || acc.code.startsWith('A01');
-        if (isNonSalaryHead && (targetBankKey === 'NS' || targetBankKey === 'AA')) {
-          // Allow AAA ceiling receipts
-        } else if (r.accountKey !== targetBankKey) {
-          return false;
-        }
-      }
+      if (matchBankSpecific) return true;
 
-      return matchDirect || matchParticulars || matchTitleKeyword || matchBankSpecific;
+      return false;
     });
 
     // 3. Separate into pre-period and in-period

@@ -328,8 +328,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     return [
       { label: 'All Heads', value: 'ALL', count: counts['ALL'] },
       { label: 'Non-Salary (A03)', value: 'Non Salary', count: counts['Non Salary'] || 14 },
+      { label: 'Assan Assignment (AAA)', value: 'AAA', count: counts['AAA'] || 20 },
       { label: 'NAVTTC', value: 'NAVTTC', count: counts['NAVTTC'] || 13 },
       { label: 'Own Fund', value: 'Own Fund', count: counts['Own Fund'] || 4 },
+      { label: 'Placement', value: 'Placement', count: counts['Placement'] || 4 },
       { label: 'Salary', value: 'Salary', count: counts['Salary'] || 1 },
     ];
   }, [accountsStore]);
@@ -349,7 +351,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     const headOpts: ComboboxOption[] = accountsStore.map((h) => {
       let badgeColor = 'bg-slate-700 text-white';
       if (h.category === 'Non Salary') badgeColor = 'bg-emerald-700 text-white';
+      else if (h.category === 'AAA') badgeColor = 'bg-amber-600 text-white';
       else if (h.category === 'NAVTTC') badgeColor = 'bg-blue-700 text-white';
+      else if (h.category === 'Placement') badgeColor = 'bg-indigo-700 text-white';
       else if (h.category === 'Own Fund' || h.head.includes('FEE') || h.head.includes('PUPIL')) badgeColor = 'bg-purple-700 text-white';
 
       return {
@@ -1860,11 +1864,13 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 <div className="flex items-center gap-1 overflow-x-auto pb-0.5 pt-0.5 scrollbar-none">
                   {[
                     { label: 'ALL', val: 'ALL' },
-                    { label: 'Electricity (A03303)', val: 'A03303-ELECTRICITY CHARGES' },
-                    { label: 'Printing (A03902)', val: 'A03902-PRINTING AND PUBLICATION' },
+                    { label: 'Water (NS)', val: 'A03302-WATER CHARGES-NS' },
+                    { label: 'Water (AAA)', val: 'A03302-WATER CHARGES-AAA' },
+                    { label: 'Electricity (NS)', val: 'A03303-ELECTRICITY CHARGES-NS' },
+                    { label: 'Electricity (AAA)', val: 'A03303-ELECTRICITY CHARGES-AAA' },
+                    { label: 'Printing (NS)', val: 'A03902-PRINTING CHARGES-NS' },
                     { label: 'Service Charges', val: 'A03933-SERVICE CHARGES' },
                     { label: 'NAVTTC (A03970)', val: 'A03970-OTHERS(NAVTTC)' },
-                    { label: 'Admission Fee', val: 'A012-ADMISSION FEE' },
                   ].map((chip, idx) => (
                     <button
                       key={idx}

@@ -263,6 +263,23 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
             </tr>
 
             {/* TRANSACTIONS: GROUPED BY HEAD OR SINGLE HEAD */}
+            {!data.isGroupedAllHeads && data.allRows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={12}
+                  className="py-8 text-center font-mono text-xs text-slate-500 dark:text-slate-400 bg-slate-50/60 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800"
+                >
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">
+                      No In-Period Transactions Registered for this Head
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Expenditure: Rs. 0.00 • Receipts / Reappropriation: Rs. 0.00 • Closing Balance remains at Brought Forward figure.
+                    </span>
+                  </div>
+                </td>
+              </tr>
+            )}
             {data.groups.map((group) => {
               return (
                 <React.Fragment key={group.headCode}>
