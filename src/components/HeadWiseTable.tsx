@@ -25,6 +25,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   MoveHorizontal,
+  X,
 } from 'lucide-react';
 
 interface HeadWiseTableProps {
@@ -196,10 +197,46 @@ export const HeadWiseTable: React.FC<HeadWiseTableProps> = ({
 
   return (
     <div
-      className={`rounded-xl border overflow-hidden transition-all duration-200 shadow-xl ${
+      id="audit-matrix-table"
+      className={`rounded-xl border overflow-hidden transition-all duration-200 shadow-xl scroll-mt-20 ${
         darkMode ? 'bg-[#0B132B] border-slate-700/90' : 'bg-white border-slate-300'
       }`}
     >
+      {/* Active Category Filter Status Notification Bar */}
+      {selectedCategory !== 'ALL' && (
+        <div
+          className={`px-4 py-2.5 flex items-center justify-between gap-3 border-b text-xs flex-wrap ${
+            darkMode
+              ? 'bg-gradient-to-r from-blue-950/70 to-slate-900 border-blue-500/30 text-blue-200'
+              : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 text-blue-900'
+          }`}
+        >
+          <div className="flex items-center gap-2 font-bold">
+            <span className="flex h-2 w-2 relative">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+            </span>
+            <Filter className="w-3.5 h-3.5 text-blue-400" />
+            <span>
+              Audit Matrix Filtered by Category:{' '}
+              <strong className="uppercase font-black text-blue-400 underline underline-offset-2">
+                {selectedCategory}
+              </strong>{' '}
+              ({filteredAccounts.length} {filteredAccounts.length === 1 ? 'head' : 'heads'} shown)
+            </span>
+          </div>
+
+          <button
+            onClick={() => onSelectCategory('ALL')}
+            className="text-[11px] bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1 rounded-lg transition-all flex items-center gap-1 shadow-xs hover:scale-105 active:scale-95"
+            title="Reset to view all 37 heads"
+          >
+            <X className="w-3 h-3" />
+            <span>Show All Categories ({accounts.length} Heads)</span>
+          </button>
+        </div>
+      )}
+
       {/* ------------------------------------------------------------- */}
       {/* TABLE CONTROLS & SEARCH BAR                                    */}
       {/* ------------------------------------------------------------- */}
@@ -217,7 +254,7 @@ export const HeadWiseTable: React.FC<HeadWiseTableProps> = ({
               Head-Wise Financial Position & Instant Audit Matrix
             </h2>
             <p className="text-[11px] text-slate-400">
-              38 Institutional heads grouped by corporate tier with real-time audit spotlight
+              {accounts.length} Institutional heads grouped by corporate tier with real-time audit spotlight
             </p>
           </div>
         </div>
@@ -528,6 +565,16 @@ export const HeadWiseTable: React.FC<HeadWiseTableProps> = ({
                             }`}>
                               {item.head}
                             </span>
+                            {item.head.endsWith('-NS') && (
+                              <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20 whitespace-nowrap">
+                                NS
+                              </span>
+                            )}
+                            {item.head.endsWith('-AAA') && (
+                              <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 whitespace-nowrap">
+                                AAA
+                              </span>
+                            )}
                             {isSpotlight && (
                               <span className="flex items-center gap-1 text-[10px] bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-xs animate-pulse">
                                 <Sparkles className="w-3 h-3" />
@@ -607,9 +654,16 @@ export const HeadWiseTable: React.FC<HeadWiseTableProps> = ({
 
                         {/* Last Activity (12-Hour format) */}
                         <td className={`py-2.5 px-3 text-center font-mono text-[11px] whitespace-nowrap ${
-                          darkMode ? 'text-slate-300' : 'text-slate-600'
+                          isSpotlight
+                            ? darkMode ? 'text-amber-300 font-bold' : 'text-amber-700 font-bold'
+                            : darkMode ? 'text-slate-300' : 'text-slate-600'
                         }`}>
-                          {format12HourDate(item.lastActivity, false)}
+                          <div className="inline-flex items-center justify-center gap-1.5">
+                            {isSpotlight && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                            )}
+                            {format12HourDate(item.lastActivity, false)}
+                          </div>
                         </td>
                       </tr>
                     );

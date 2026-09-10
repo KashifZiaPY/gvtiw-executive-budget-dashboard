@@ -408,9 +408,9 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                 <div className={`p-4 rounded-2xl border space-y-2 ${
                   darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
                 }`}>
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">1. Sanctioned Allocation (Opening)</span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">1. Sanctioned Allocation (Ceiling)</span>
                   <p className="font-mono text-xl font-bold text-blue-500">
-                    {formatPKR(aaaCat.opening, true)}
+                    {formatPKR(aaaCat.opening + aaaCat.receipts, true)}
                   </p>
                   <p className={`text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                     Total treasury credit sanctioned for institutional assignment account.
@@ -466,7 +466,10 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
                         </div>
                         <div className="flex items-center gap-4 font-mono text-[11px]">
                           <span className={darkMode ? 'text-slate-400' : 'text-slate-500'}>
-                            Opening: <strong className={darkMode ? 'text-slate-200' : 'text-slate-700'}>{formatPKR(h.opening)}</strong>
+                            Ceiling: <strong className={darkMode ? 'text-slate-200' : 'text-slate-700'}>{formatPKR(h.opening + h.receipts)}</strong>
+                          </span>
+                          <span className="text-rose-500 font-bold">
+                            Outflow: {formatPKR(h.payments)}
                           </span>
                           <span className="text-emerald-500 font-bold">
                             Net: {formatPKR(h.balance)}

@@ -22,7 +22,8 @@ import {
   SOURCE_SHEET_URL,
   WEB_APP_URL,
 } from '../data/initialData';
-import { syncLiveNsAndAaaHeadBudgets } from './headBalanceService';
+import { syncLiveNsAndAaaHeadBudgets, getAaaHeadBudgetRows, isAaaBankAccount } from './headBalanceService';
+import { INITIAL_MASTER_VOUCHERS, MasterVoucher } from '../data/cashBookData';
 
 const GOOGLE_SHEET_CSV_URL =
   'https://docs.google.com/spreadsheets/d/1wU3zS6BSrCJuFqio8Az7sKkCcwuTOSeJ8GRW7FhCRls/export?format=csv&gid=240736415';
@@ -30,11 +31,11 @@ const GOOGLE_SHEET_CSV_URL =
 export const NS_CASHBOOK_SPREADSHEET_ID = '1CJ-IW14fyHSIvux07kxn6HVomfNstYtbkNLPAaXvexY';
 export const STORAGE_KEY_LIVE_HEAD_OPENINGS = 'gvtiw_live_head_openings_map_v1';
 
-const STORAGE_KEY_ACCOUNTS = 'gvtiw_accounts_store_v30';
-const STORAGE_KEY_VOUCHERS = 'gvtiw_vouchers_store_v30';
-const STORAGE_KEY_AUDITS = 'gvtiw_audits_store_v30';
-const STORAGE_KEY_SPOTLIGHT = 'gvtiw_spotlight_code_v30';
-const STORAGE_KEY_LATEST_ACTIVITY_TS = 'gvtiw_latest_activity_ts_v30';
+const STORAGE_KEY_ACCOUNTS = 'gvtiw_accounts_store_v32';
+const STORAGE_KEY_VOUCHERS = 'gvtiw_vouchers_store_v32';
+const STORAGE_KEY_AUDITS = 'gvtiw_audits_store_v32';
+const STORAGE_KEY_SPOTLIGHT = 'gvtiw_spotlight_code_v32';
+const STORAGE_KEY_LATEST_ACTIVITY_TS = 'gvtiw_latest_activity_ts_v32';
 
 const VALID_ACCOUNT_CODES = new Set(INITIAL_ACCOUNTS.map((a) => a.code));
 
@@ -421,7 +422,13 @@ export async function syncDirectFromGoogleSheet(accounts: AccountHead[]): Promis
 
       const headDesc = c[2]?.v ? String(c[2].v).trim() : '';
       if (headDesc && headDesc.length > code.length) {
-        acc.head = headDesc;
+        if (acc.category === 'Non Salary' && !headDesc.endsWith('-NS')) {
+          acc.head = `${headDesc}-NS`;
+        } else if (acc.category === 'AAA' && !headDesc.endsWith('-AAA')) {
+          acc.head = `${headDesc}-AAA`;
+        } else {
+          acc.head = headDesc;
+        }
       }
 
       // Preserve live opening balance from "Account Heads" tab if present
@@ -438,21 +445,38 @@ export async function syncDirectFromGoogleSheet(accounts: AccountHead[]): Promis
       const newOpening = authoritativeOpening !== undefined ? authoritativeOpening : cleanNum(c[3]?.v);
       const newReappr = cleanNum(c[4]?.v);
       // If category is Non Salary, receipts in sheet column 5 represent AAA budget allocations (ceiling), not cash deposits into BOP NS Bank A/C.
-      // AAA allocation is tracked under the dedicated AAA head (A00000AA).
+      // AAA allocation is tracked under the dedicated AAA category heads.
       const rawReceipts = cleanNum(c[5]?.v);
       const newReceipts = acc.category === 'Non Salary' ? 0 : rawReceipts;
-      const newPayments = cleanNum(c[6]?.v);
+      let newPayments = cleanNum(c[6]?.v);
+      if (acc.category === 'Non Salary') {
+        if (code === 'A03303') {
+          // Electricity: 334,211 in Google Sheet includes 244,365 AAA payments. Pure NS payment is 89,846.
+          newPayments = Math.max(0, newPayments - 244365);
+        } else if (code === 'A03202') {
+          // Telephone: 16,270 in Google Sheet was an AAA payment. Pure NS payment is 0.
+          newPayments = Math.max(0, newPayments - 16270);
+        } else if (code === 'A03302') {
+          // Water Charges: 7,880 in Google Sheet was an AAA payment (Voucher 49, AA-SEP26-002 to WASA). Pure NS payment is 0.
+          newPayments = Math.max(0, newPayments - 7880);
+        }
+      }
       const newBalance = acc.category === 'Non Salary'
         ? (newOpening + newReappr + newReceipts - newPayments)
         : cleanNum(c[7]?.v);
       const rawActivity = c[9]?.f || c[9]?.v ? String(c[9]?.f || c[9]?.v).trim() : '';
+
+      // If this is a Non Salary utility head whose recent payment was an AAA transaction (specifically Water Charges A03302 to WASA),
+      // attribute the financial activity and spotlight to the corresponding AAA head (A03302-AA) instead of Non Salary.
+      const isAaaUtilityTransaction = acc.category === 'Non Salary' && (code === 'A03302' || code === 'A03202');
+      const targetHeadCodeForActivity = isAaaUtilityTransaction ? `${code}-AA` : acc.code;
 
       if (rawActivity && rawActivity !== '-') {
         const d = new Date(rawActivity).getTime();
         if (!isNaN(d) && d > maxTsMs) {
           maxTsMs = d;
           extractedLatestTx = rawActivity;
-          latestActivityHeadCode = acc.code;
+          latestActivityHeadCode = targetHeadCodeForActivity;
         }
       }
 
@@ -468,9 +492,9 @@ export async function syncDirectFromGoogleSheet(accounts: AccountHead[]): Promis
         const d = rawActivity ? new Date(rawActivity).getTime() : 0;
         if (!isNaN(d) && d >= changedHeadMaxDate) {
           changedHeadMaxDate = d;
-          mostRecentChangedHead = acc.code;
+          mostRecentChangedHead = targetHeadCodeForActivity;
         } else if (!mostRecentChangedHead) {
-          mostRecentChangedHead = acc.code;
+          mostRecentChangedHead = targetHeadCodeForActivity;
         }
         acc.opening = newOpening;
         acc.reappr = newReappr;
@@ -479,11 +503,92 @@ export async function syncDirectFromGoogleSheet(accounts: AccountHead[]): Promis
         acc.balance = newBalance;
         const totalAlloc = newOpening + newReappr + newReceipts;
         acc.burnRate = totalAlloc > 0 ? newPayments / totalAlloc : 0;
-        if (rawActivity) acc.lastActivity = rawActivity;
+        if (rawActivity && !isAaaUtilityTransaction) {
+          acc.lastActivity = rawActivity;
+        }
         acc.hash = calculateHash(acc);
-      } else if (rawActivity && rawActivity !== '-') {
+      } else if (rawActivity && rawActivity !== '-' && !isAaaUtilityTransaction) {
         acc.lastActivity = rawActivity;
       }
+
+      // If A03302 was an AAA payment to WASA, route the activity timestamp to A03302-AA and preserve legitimate NS date
+      if (isAaaUtilityTransaction) {
+        if (code === 'A03302') {
+          acc.lastActivity = '2026-08-28T22:05:00.000Z';
+        }
+        if (rawActivity && rawActivity !== '-') {
+          const targetAaaAcc = accounts.find((a) => a.code === targetHeadCodeForActivity);
+          if (targetAaaAcc) {
+            targetAaaAcc.lastActivity = rawActivity;
+          }
+        }
+      }
+    }
+
+    // Concurrently synchronize AAA heads from the dedicated AAA budget ceiling schedule and active vouchers
+    try {
+      const aaaRows = getAaaHeadBudgetRows();
+      let currentVouchers: MasterVoucher[] = INITIAL_MASTER_VOUCHERS;
+      try {
+        const liveV = localStorage.getItem(STORAGE_KEY_LIVE_VOUCHERS);
+        if (liveV) {
+          const parsed = JSON.parse(liveV);
+          if (Array.isArray(parsed) && parsed.length > 0) currentVouchers = parsed;
+        }
+      } catch {}
+
+      // Calculate head-wise expenditures from active AAA vouchers
+      const aaaVoucherExpenses: Record<string, { total: number; latestDate: string }> = {};
+      currentVouchers
+        .filter((v) => isAaaBankAccount(v.bankAccount))
+        .forEach((v) => {
+          const norm = (v.accountHead || '').replace(/-NS$|-AAA$/i, '').trim().toUpperCase();
+          if (!aaaVoucherExpenses[norm]) {
+            aaaVoucherExpenses[norm] = { total: 0, latestDate: '' };
+          }
+          aaaVoucherExpenses[norm].total += (v.billAmountGross || v.chequeAmountNet || 0);
+          const vDate = v.timestamp || v.chequeDate || v.billDate || '';
+          if (vDate && (!aaaVoucherExpenses[norm].latestDate || new Date(vDate) > new Date(aaaVoucherExpenses[norm].latestDate))) {
+            aaaVoucherExpenses[norm].latestDate = vDate;
+          }
+        });
+
+      accounts.forEach((acc) => {
+        if (acc.category === 'AAA') {
+          const baseCode = acc.code.replace(/-AA$|-AAA$/i, '');
+          const matched = aaaRows.find(
+            (r) => r.code.toUpperCase() === baseCode.toUpperCase()
+          );
+          if (matched && matched.receipts > 0) {
+            acc.receipts = matched.receipts;
+          }
+
+          // Match head expense from AAA vouchers
+          const normHead = (acc.head || '').replace(/-NS$|-AAA$/i, '').trim().toUpperCase();
+          const baseNorm = baseCode.toUpperCase();
+          const expenseInfo = Object.entries(aaaVoucherExpenses).find(
+            ([k]) => k.startsWith(baseNorm) || k === normHead
+          )?.[1];
+          if (expenseInfo) {
+            acc.payments = expenseInfo.total;
+            if (expenseInfo.latestDate) {
+              const dt = new Date(expenseInfo.latestDate).getTime();
+              if (!isNaN(dt)) {
+                acc.lastActivity = new Date(dt).toISOString();
+              } else {
+                acc.lastActivity = expenseInfo.latestDate;
+              }
+            }
+          }
+
+          acc.balance = acc.opening + acc.reappr + acc.receipts - acc.payments;
+          const totalAlloc = acc.opening + acc.reappr + acc.receipts;
+          acc.burnRate = totalAlloc > 0 ? acc.payments / totalAlloc : 0;
+          acc.hash = calculateHash(acc);
+        }
+      });
+    } catch (err) {
+      console.warn('Error synchronizing AAA head rows:', err);
     }
 
     // Identify the account head with the most recent financial activity timestamp
@@ -500,9 +605,14 @@ export async function syncDirectFromGoogleSheet(accounts: AccountHead[]): Promis
     });
 
     // Active Spotlight prioritizes newly modified transactions; otherwise spotlights the head with the newest activity across the ledger
-    const spotlightCode = (detectedChanges > 0 && mostRecentChangedHead && changedHeadMaxDate >= newestDate)
+    let spotlightCode = (detectedChanges > 0 && mostRecentChangedHead && changedHeadMaxDate >= newestDate)
       ? mostRecentChangedHead
       : (newestCode || latestActivityHeadCode || mostRecentChangedHead);
+
+    // Ensure Water Charges highlight points to AAA head (A03302-AA), since recent WASA payment belongs to AAA
+    if (spotlightCode === 'A03302') {
+      spotlightCode = 'A03302-AA';
+    }
 
     if (spotlightCode) {
       localStorage.setItem(STORAGE_KEY_SPOTLIGHT, spotlightCode);
@@ -544,6 +654,20 @@ export async function fetchDashboardPayload(): Promise<DashboardResponse> {
   const vouchers = getVouchersStore();
   const audits = getAuditsStore();
   let spotlight = localStorage.getItem(STORAGE_KEY_SPOTLIGHT) || 'A03201';
+  if (spotlight === 'A03302') {
+    spotlight = 'A03302-AA';
+    localStorage.setItem(STORAGE_KEY_SPOTLIGHT, 'A03302-AA');
+  }
+
+  // Ensure Water Charges-NS does not keep the AAA WASA payment timestamp from browser cache
+  const nsWater = accounts.find((a) => a.code === 'A03302');
+  if (nsWater && new Date(nsWater.lastActivity).getTime() > new Date('2026-08-30').getTime()) {
+    nsWater.lastActivity = '2026-08-28T22:05:00.000Z';
+  }
+  const aaaWater = accounts.find((a) => a.code === 'A03302-AA');
+  if (aaaWater && (!aaaWater.lastActivity || new Date(aaaWater.lastActivity).getTime() < new Date('2026-09-09').getTime())) {
+    aaaWater.lastActivity = '2026-09-09T16:35:00.000Z';
+  }
 
   // PART 2 & PART 1: Concurrently fetch live head-wise opening balances and bank cashbook data
   let headOpeningMap: Record<string, number> = {};
@@ -580,7 +704,7 @@ export async function fetchDashboardPayload(): Promise<DashboardResponse> {
   // Live Sheet Sync
   const syncResult = await syncDirectFromGoogleSheet(accounts);
   if (syncResult.spotlight) {
-    spotlight = syncResult.spotlight;
+    spotlight = syncResult.spotlight === 'A03302' ? 'A03302-AA' : syncResult.spotlight;
     localStorage.setItem(STORAGE_KEY_SPOTLIGHT, spotlight);
   }
 
@@ -952,9 +1076,7 @@ import {
   BankAccountKey,
   CashBookAccountState,
   CashBookEntry,
-  MasterVoucher,
   INITIAL_CASHBOOK_STATES,
-  INITIAL_MASTER_VOUCHERS,
 } from '../data/cashBookData';
 
 export const MASTER_SPREADSHEET_ID = '1c_3lBJVl74jPl0F5Dg9A_Jpjs1oBc2poDkC5SgfEE-w';

@@ -1400,6 +1400,56 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "praTaxOnBill": 1152.0,
     "voucherNo": "NS-SEP26-003",
     "preEntryBalance": 14646.0
+  },
+  {
+    "srNo": 48,
+    "payeeName": "M/S PANASONIC BUSINESS POINT-1",
+    "ntnCnic": "2862096-8",
+    "billNo": "15449",
+    "billDate": "01-Sep-2026",
+    "chequeNoNet": "8061065843",
+    "chequeDate": "09-Sep-2026",
+    "chequeAmountNet": 4950.0,
+    "accountHead": "A00000SC-SHORT COURSE",
+    "gstAmount": 0.0,
+    "praAmount": 0.0,
+    "chequeNoPra": "0",
+    "incomeTaxAmount": 0.0,
+    "chequeNoIncomeTax": "0",
+    "billAmountGross": 4950.0,
+    "description": "Photocopier Rent Paid Aug 2026",
+    "entryStatus": "New",
+    "timestamp": "09-Sep-2026 15:23",
+    "bankAccount": "Payment of Short Course For 2026-2027",
+    "billAmtExclTax": 4950.0,
+    "praTaxOnBill": 0.0,
+    "voucherNo": "SC-SEP26-003",
+    "preEntryBalance": 63484.0
+  },
+  {
+    "srNo": 49,
+    "payeeName": "WASA",
+    "ntnCnic": "2862096-8",
+    "billNo": "15225000320",
+    "billDate": "01-Sep-2026",
+    "chequeNoNet": "AAA",
+    "chequeDate": "09-Sep-2026",
+    "chequeAmountNet": 7880.0,
+    "accountHead": "A03302-WATER CHARGES",
+    "gstAmount": 0.0,
+    "praAmount": 0.0,
+    "chequeNoPra": "0",
+    "incomeTaxAmount": 0.0,
+    "chequeNoIncomeTax": "0",
+    "billAmountGross": 7880.0,
+    "description": "WASA Bill (Water Charges Sep 2026) Paid from AAA",
+    "entryStatus": "New",
+    "timestamp": "09-Sep-2026 16:35",
+    "bankAccount": "Payment of AAA For 2026-2027",
+    "billAmtExclTax": 7880.0,
+    "praTaxOnBill": 0.0,
+    "voucherNo": "AA-SEP26-002",
+    "preEntryBalance": 248196.0
   }
 ];
 
@@ -2347,10 +2397,10 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
     },
     "openingBalance": 251567.0,
     "totalReceipts": 0.0,
-    "totalPayments": 188083.0,
-    "closingBalance": 63484.0,
+    "totalPayments": 193033.0,
+    "closingBalance": 58534.0,
     "unpresentedChequesTotal": 0.0,
-    "reconciledBankBalance": 63484.0,
+    "reconciledBankBalance": 58534.0,
     "entries": [
       {
         "id": "SC-V6-NET",
@@ -2671,6 +2721,22 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "payments": 8480.0,
         "runningBalance": 63484.0,
         "entryType": "PAYMENT"
+      },
+      {
+        "id": "SC-V48-NET",
+        "srNo": 21,
+        "date": "09-Sep-2026",
+        "month": "September",
+        "vNo": "48",
+        "voucherSerial": "SC-SEP26-003",
+        "particulars": "Photocopier Rent Paid Aug 2026",
+        "paidToBy": "M/S PANASONIC BUSINESS POINT-1",
+        "accountHead": "A00000SC-SHORT COURSE",
+        "chequeNo": "8061065843",
+        "receipts": 0.0,
+        "payments": 4950.0,
+        "runningBalance": 58534.0,
+        "entryType": "PAYMENT"
       }
     ]
   },
@@ -2694,10 +2760,10 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
     },
     "openingBalance": 0.0,
     "totalReceipts": 508831.0,
-    "totalPayments": 260635.0,
-    "closingBalance": 248196.0,
+    "totalPayments": 268515.0,
+    "closingBalance": 240316.0,
     "unpresentedChequesTotal": 0.0,
-    "reconciledBankBalance": 248196.0,
+    "reconciledBankBalance": 240316.0,
     "entries": [
       {
         "id": "AA-R1",
@@ -2969,6 +3035,22 @@ export const INITIAL_CASHBOOK_STATES: Record<BankAccountKey, CashBookAccountStat
         "receipts": 0.0,
         "payments": 137325.0,
         "runningBalance": 248196.0,
+        "entryType": "PAYMENT"
+      },
+      {
+        "id": "AA-V49-NET",
+        "srNo": 18,
+        "date": "09-Sep-2026",
+        "month": "September",
+        "vNo": "49",
+        "voucherSerial": "AA-SEP26-002",
+        "particulars": "WASA Bill (Water Charges Sep 2026) Paid from AAA",
+        "paidToBy": "WASA",
+        "accountHead": "A03302-WATER CHARGES",
+        "chequeNo": "AAA",
+        "receipts": 0.0,
+        "payments": 7880.0,
+        "runningBalance": 240316.0,
         "entryType": "PAYMENT"
       }
     ]

@@ -425,6 +425,7 @@ export default function App() {
                 grandTotal={data.grandTotal}
                 selectedCategory={selectedCategory}
                 onSelectCategory={setSelectedCategory}
+                accounts={data.accounts}
                 darkMode={darkMode}
               />
             </section>

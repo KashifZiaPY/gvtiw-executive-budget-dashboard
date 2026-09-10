@@ -143,9 +143,9 @@ export function matchHeadInSheetList(
   const parts = accountHead.split('-');
   let primaryCode = '';
   if (parts[0] && (parts[0].startsWith('A') || parts[0].startsWith('a'))) {
-    primaryCode = parts[0].trim().toUpperCase();
+    primaryCode = parts[0].trim().toUpperCase().replace(/-NS$|-AA$|-AAA$/i, '');
   } else if (isPlacement && parts.length > 1 && (parts[1].startsWith('A') || parts[1].startsWith('a'))) {
-    primaryCode = parts[1].trim().toUpperCase() + '-P';
+    primaryCode = parts[1].trim().toUpperCase().replace(/-NS$|-AA$|-AAA$/i, '') + '-P';
   }
 
   // Filter out subtotal / summary category rows (e.g. Total Communications, Non Salary Sub Total)
@@ -158,15 +158,18 @@ export function matchHeadInSheetList(
     );
   });
 
+  const baseAhClean = ahClean.replace(/-ns$|-aa$|-aaa$/i, '').trim();
+
   // 1. Direct exact clean match
   for (const h of operationalRows) {
-    if (cleanStr(h.headName) === ahClean) return h;
+    const hClean = cleanStr(h.headName);
+    if (hClean === ahClean || hClean === baseAhClean) return h;
   }
 
   // 2. Primary code match
   if (primaryCode) {
     for (const h of operationalRows) {
-      const hCode = h.code.trim().toUpperCase();
+      const hCode = h.code.trim().toUpperCase().replace(/-NS$|-AA$|-AAA$/i, '');
       if (hCode === primaryCode) return h;
       if (primaryCode.endsWith('-P') && hCode === primaryCode.replace('-P', '')) {
         if (cleanStr(h.headName).includes('placement')) return h;
@@ -179,10 +182,10 @@ export function matchHeadInSheetList(
     const hClean = cleanStr(h.headName);
     const rowIsPlacement = hClean.includes('placement') || h.code.toUpperCase().includes('-P');
     if (isPlacement === rowIsPlacement) {
-      if (ahClean.includes(hClean) || hClean.includes(ahClean)) {
+      if (ahClean.includes(hClean) || hClean.includes(ahClean) || baseAhClean.includes(hClean) || hClean.includes(baseAhClean)) {
         return h;
       }
-      if (h.code && h.code.length >= 5 && ahClean.includes(cleanStr(h.code))) {
+      if (h.code && h.code.length >= 5 && (ahClean.includes(cleanStr(h.code)) || baseAhClean.includes(cleanStr(h.code)))) {
         return h;
       }
     }
@@ -399,6 +402,10 @@ INITIAL_ACCOUNTS.forEach((acc) => {
   if (HEAD_ALLOCATIONS[acc.head] === undefined) {
     HEAD_ALLOCATIONS[acc.head] = acc.opening + acc.reappr + acc.receipts;
   }
+  const base = acc.head.replace(/-NS$|-AAA$/i, '');
+  if (HEAD_ALLOCATIONS[base] === undefined) {
+    HEAD_ALLOCATIONS[base] = acc.opening + acc.reappr + acc.receipts;
+  }
 });
 
 function matchOtherBankAccount(vAcct: string, targetAcct: string): boolean {
@@ -455,9 +462,11 @@ export function computeHeadAvailableBalance(params: {
     const allocatedCeiling = opening + receipts;
 
     // Filter expenses to NS bank account ONLY
+    const targetNorm = (accountHead || '').replace(/-NS$|-AAA$/i, '').trim().toUpperCase();
     const headExpenditure = allVouchers
       .filter((v) => {
-        if (v.accountHead !== accountHead) return false;
+        const vNorm = (v.accountHead || '').replace(/-NS$|-AAA$/i, '').trim().toUpperCase();
+        if (vNorm !== targetNorm) return false;
         if (excludeVoucherSrNo !== undefined && v.srNo === excludeVoucherSrNo) return false;
         return isNsBankAccount(v.bankAccount);
       })
@@ -490,9 +499,11 @@ export function computeHeadAvailableBalance(params: {
     const allocatedCeiling = opening + receipts;
 
     // Filter expenses to AAA bank account ONLY
+    const targetNorm = (accountHead || '').replace(/-NS$|-AAA$/i, '').trim().toUpperCase();
     const headExpenditure = allVouchers
       .filter((v) => {
-        if (v.accountHead !== accountHead) return false;
+        const vNorm = (v.accountHead || '').replace(/-NS$|-AAA$/i, '').trim().toUpperCase();
+        if (vNorm !== targetNorm) return false;
         if (excludeVoucherSrNo !== undefined && v.srNo === excludeVoucherSrNo) return false;
         return isAaaBankAccount(v.bankAccount);
       })
