@@ -2,6 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { CategorySummary, GrandTotalSummary, CategoryType, AccountHead } from '../types';
 import { formatPKR, formatPercent, getBurnRateBadge, format12HourDate } from '../lib/formatters';
 import { Layers, Sparkles, Filter, CheckCircle2, X, ArrowDownRight } from 'lucide-react';
+import { AccountHeadDisplay } from './AccountHeadTag';
 
 interface CategoryDeckProps {
   categories: CategorySummary[];
@@ -389,7 +390,7 @@ export const CategoryDeck: React.FC<CategoryDeckProps> = ({
                           {head.code}
                         </td>
                         <td className="py-2 px-4 font-semibold border-r border-slate-700/30">
-                          {head.head}
+                          <AccountHeadDisplay head={head.head} category={head.category} code={head.code} />
                         </td>
                         <td className="py-2 px-3 font-mono text-right border-r border-slate-700/30">
                           {formatPKR(head.opening, false)}

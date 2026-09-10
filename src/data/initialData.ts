@@ -955,7 +955,7 @@ export const INITIAL_VOUCHERS: VoucherTransaction[] = [
     id: 'V-2026-091',
     voucherNo: 'VR-2026/091',
     headCode: 'A03101',
-    headTitle: 'A03101-BANK CHARGES',
+    headTitle: 'A03101-BANK CHARGES-NS',
     category: 'Non Salary',
     type: 'Payment',
     amount: 2784,
@@ -1038,7 +1038,7 @@ export const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
   {
     id: 'AUD-1002',
     headCode: 'A03101',
-    headTitle: 'A03101-BANK CHARGES',
+    headTitle: 'A03101-BANK CHARGES-NS',
     action: 'VOUCHER_ADDED',
     deltaAmount: 2784,
     previousBalance: 1407,

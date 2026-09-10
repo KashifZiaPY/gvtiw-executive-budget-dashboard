@@ -11,6 +11,7 @@ import {
 import { AccountHead, OFFICIAL_SIGNATORIES } from '../types';
 import { INITIAL_ACCOUNTS } from '../data/initialData';
 import { format12HourDate, formatPakistaniDate } from './formatters';
+import { formatHeadToHtml } from '../components/AccountHeadTag';
 
 export interface CashBookStatementRow {
   id: string;
@@ -298,7 +299,19 @@ export function buildRawCashBookItems(
           srNo: v.srNo,
           voucherNo: vNoStr,
           paidToBy: 'Bank Charges',
-          accountHead: v.accountHead || 'A03101-BANK CHARGES',
+          accountHead:
+            v.accountHead ||
+            (key === 'AA'
+              ? 'A03101-BANK CHARGES-AAA'
+              : key === 'PF'
+              ? 'A00000PF-PUPIL FUND'
+              : key === 'SC'
+              ? 'A00000SC-SHORT COURSE'
+              : key === 'SEC'
+              ? 'A00000SS-STUDENT SEC.'
+              : key === 'FC'
+              ? 'A00000TFC-TEVTA FEE COL.'
+              : 'A03101-BANK CHARGES-NS'),
           particulars: v.description || 'Bank Service Charge',
           billNo: '',
           billDate: v.billDate || '',
@@ -1267,7 +1280,7 @@ export function generateOfficialStatementPrintHtml(params: {
           </td>
           <td style="padding: 4px; border: 1px solid #cbd5e1; font-family: monospace; font-weight: 800; color: #1d4ed8; white-space: nowrap;">${r.voucherNo}</td>
           <td style="padding: 4px; border: 1px solid #cbd5e1; font-weight: bold; color: #0f172a;">${r.paidToBy}</td>
-          <td style="padding: 4px; border: 1px solid #cbd5e1; font-size: 8.5px; color: #334155;">${r.accountHead}</td>
+          <td style="padding: 4px; border: 1px solid #cbd5e1; font-size: 8.5px; color: #334155;">${formatHeadToHtml(r.accountHead)}</td>
           <td style="padding: 4px; border: 1px solid #cbd5e1; font-size: 8.5px; word-break: break-word;">
             <div style="font-weight: 600; color: #0f172a; line-height: 1.25;">${r.particulars}</div>
             ${(params.reportType === 'CASHBOOK' || params.reportType === 'HEAD') ? `<div style="font-family: monospace; font-size: 7.5px; color: #0f172a; font-weight: normal; line-height: 1.2; margin-top: 2px;">${formatCashBookBillInfo(r.billNo, r.billDate)}</div>` : ''}

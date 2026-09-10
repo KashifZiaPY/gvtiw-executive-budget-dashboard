@@ -63,6 +63,7 @@ import {
   Landmark,
   Receipt,
 } from 'lucide-react';
+import { AccountHeadDisplay, parseAccountHead } from './AccountHeadTag';
 
 interface ReportsModuleProps {
   darkMode: boolean;
@@ -349,20 +350,29 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     };
 
     const headOpts: ComboboxOption[] = accountsStore.map((h) => {
-      let badgeColor = 'bg-slate-700 text-white';
-      if (h.category === 'Non Salary') badgeColor = 'bg-emerald-700 text-white';
-      else if (h.category === 'AAA') badgeColor = 'bg-amber-600 text-white';
-      else if (h.category === 'NAVTTC') badgeColor = 'bg-blue-700 text-white';
-      else if (h.category === 'Placement') badgeColor = 'bg-indigo-700 text-white';
-      else if (h.category === 'Own Fund' || h.head.includes('FEE') || h.head.includes('PUPIL')) badgeColor = 'bg-purple-700 text-white';
+      const parsed = parseAccountHead(h.head, h.category, h.code);
+      let badgeColor = 'bg-slate-700 text-white font-mono font-black';
+      if (parsed.tagType === 'NS') {
+        badgeColor = 'bg-sky-600 text-white font-mono font-black';
+      } else if (parsed.tagType === 'AAA') {
+        badgeColor = 'bg-amber-600 text-white font-mono font-black';
+      } else if (parsed.tagType === 'PLACEMENT') {
+        badgeColor = 'bg-indigo-700 text-white font-mono font-black';
+      } else if (parsed.tagType === 'NAVTTC') {
+        badgeColor = 'bg-purple-700 text-white font-mono font-black';
+      } else if (parsed.tagType === 'SALARY') {
+        badgeColor = 'bg-emerald-700 text-white font-mono font-black';
+      } else if (parsed.tagType === 'OWN_FUND') {
+        badgeColor = 'bg-rose-700 text-white font-mono font-black';
+      }
 
       return {
         value: h.head,
-        label: h.head,
+        label: parsed.baseTitle,
         code: h.code,
         subtitle: `Category: ${h.category || 'Standard'} • Sanctioned Opening: Rs. ${formatCurrency2Decimals(h.opening || 0)}`,
         category: h.category || 'Other',
-        badge: h.category || 'HEAD',
+        badge: parsed.tag || h.category || 'HEAD',
         badgeColor,
         icon: '📑',
       };
@@ -1863,26 +1873,47 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 {/* Quick Head Presets */}
                 <div className="flex items-center gap-1 overflow-x-auto pb-0.5 pt-0.5 scrollbar-none">
                   {[
-                    { label: 'ALL', val: 'ALL' },
-                    { label: 'Water (NS)', val: 'A03302-WATER CHARGES-NS' },
-                    { label: 'Water (AAA)', val: 'A03302-WATER CHARGES-AAA' },
-                    { label: 'Electricity (NS)', val: 'A03303-ELECTRICITY CHARGES-NS' },
-                    { label: 'Electricity (AAA)', val: 'A03303-ELECTRICITY CHARGES-AAA' },
-                    { label: 'Printing (NS)', val: 'A03902-PRINTING CHARGES-NS' },
-                    { label: 'Service Charges', val: 'A03933-SERVICE CHARGES' },
-                    { label: 'NAVTTC (A03970)', val: 'A03970-OTHERS(NAVTTC)' },
+                    { label: 'ALL', val: 'ALL', tag: null, tagType: null },
+                    { label: 'Water', val: 'A03302-WATER CHARGES-NS', tag: '-NS', tagType: 'NS' },
+                    { label: 'Water', val: 'A03302-WATER CHARGES-AAA', tag: '-AAA', tagType: 'AAA' },
+                    { label: 'Electricity', val: 'A03303-ELECTRICITY CHARGES-NS', tag: '-NS', tagType: 'NS' },
+                    { label: 'Electricity', val: 'A03303-ELECTRICITY CHARGES-AAA', tag: '-AAA', tagType: 'AAA' },
+                    { label: 'Printing', val: 'A03902-PRINTING CHARGES-NS', tag: '-NS', tagType: 'NS' },
+                    { label: 'POL', val: 'A03807-POL CHARGES-NS', tag: '-NS', tagType: 'NS' },
+                    { label: 'POL', val: 'A03807-POL CHARGES-AAA', tag: '-AAA', tagType: 'AAA' },
+                    { label: 'Bank Charges', val: 'A03101-BANK CHARGES-NS', tag: '-NS', tagType: 'NS' },
+                    { label: 'Bank Charges', val: 'A03101-BANK CHARGES-AAA', tag: '-AAA', tagType: 'AAA' },
+                    { label: 'Service Charges', val: 'A03933-SERVICE CHARGES', tag: null, tagType: null },
+                    { label: 'NAVTTC', val: 'A03970-OTHERS(NAVTTC)', tag: '-NAVTTC', tagType: 'NAVTTC' },
                   ].map((chip, idx) => (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => setSelectedHead(chip.val)}
-                      className={`px-1.5 py-0.5 text-[9px] font-bold rounded cursor-pointer whitespace-nowrap transition-colors ${
+                      className={`px-2 py-0.5 text-[9px] font-bold rounded cursor-pointer whitespace-nowrap transition-colors inline-flex items-center gap-1 ${
                         selectedHead === chip.val
                           ? 'bg-blue-600 text-white shadow-xs'
                           : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
                       }`}
                     >
-                      {chip.label}
+                      <span>{chip.label}</span>
+                      {chip.tag && (
+                        <span
+                          className={`px-1 py-0.2 rounded text-[8px] font-mono font-black uppercase tracking-wider ${
+                            chip.tagType === 'NS'
+                              ? selectedHead === chip.val
+                                ? 'bg-sky-300 text-slate-950'
+                                : 'bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-800'
+                              : chip.tagType === 'AAA'
+                              ? selectedHead === chip.val
+                                ? 'bg-amber-300 text-slate-950'
+                                : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                              : 'bg-slate-300 text-slate-900'
+                          }`}
+                        >
+                          {chip.tag}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -2177,7 +2208,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                         <td className="py-2 px-2.5 text-right font-mono text-amber-700 dark:text-amber-400 border-r border-slate-200 dark:border-slate-800/50">{Number(v.praTaxOnBill) > 0 ? formatPKR(Number(v.praTaxOnBill), false) : '-'}</td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800/50">{formatPKR(v.billAmountGross, false)}</td>
                         <td className="py-2 px-2.5 text-right font-mono text-purple-700 dark:text-purple-400 border-r border-slate-200 dark:border-slate-800/50">{v.gstAmount > 0 ? formatPKR(v.gstAmount, false) : '-'}</td>
-                        <td className="py-2 px-3 text-[11px] font-mono text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800/50">{v.accountHead}</td>
+                        <td className="py-2 px-3 text-[11px] font-mono text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800/50">
+                          <AccountHeadDisplay head={v.accountHead} />
+                        </td>
                         <td className="py-2 px-2 text-center font-mono text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800/50">{v.chequeNoNet || '—'}</td>
                         <td className="py-2 px-2.5 text-right font-mono text-rose-700 dark:text-rose-400 border-r border-slate-200 dark:border-slate-800/50">{v.incomeTaxAmount > 0 ? formatPKR(v.incomeTaxAmount, false) : '-'}</td>
                         <td className="py-2 px-2.5 text-right font-mono text-amber-700 dark:text-amber-400 border-r border-slate-200 dark:border-slate-800/50">{v.praAmount > 0 ? formatPKR(v.praAmount, false) : '-'}</td>

@@ -36,6 +36,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { AccountHeadDisplay } from './AccountHeadTag';
 
 interface CashBookModuleProps {
   darkMode: boolean;
@@ -819,9 +820,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
 
                       {/* Budget Head */}
                       <td className={`py-3 px-3 border-r ${darkMode ? 'border-slate-700/50' : 'border-slate-200'}`}>
-                        <span className={`font-bold text-[11px] block line-clamp-1 ${darkMode ? 'text-blue-300' : 'text-blue-950 font-black'}`} title={entry.accountHead}>
-                          {entry.accountHead}
-                        </span>
+                        <AccountHeadDisplay head={entry.accountHead} />
                       </td>
 
                       {/* Cheque # */}

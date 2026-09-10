@@ -199,8 +199,17 @@ export const SearchableCombobox: React.FC<SearchableComboboxProps> = ({
             <span className="text-base shrink-0">{selectedOption.icon}</span>
           )}
           <div className="min-w-0 flex-1">
-            <div className="truncate font-bold">
-              {selectedOption ? selectedOption.label : placeholder}
+            <div className="truncate font-bold flex items-center gap-1.5 flex-wrap">
+              <span>{selectedOption ? selectedOption.label : placeholder}</span>
+              {selectedOption?.badge && (
+                <span
+                  className={`px-1.5 py-0.5 text-[9px] font-mono font-black uppercase rounded tracking-wider ${
+                    selectedOption.badgeColor || (darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700')
+                  }`}
+                >
+                  {selectedOption.badge}
+                </span>
+              )}
             </div>
             {selectedOption?.subtitle && (
               <div className="text-[10px] font-mono text-slate-400 dark:text-slate-500 truncate">

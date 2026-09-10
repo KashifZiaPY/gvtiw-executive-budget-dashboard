@@ -8,6 +8,7 @@ import { formatPakistaniDate } from '../lib/formatters';
 import { InstituteEmblem, TevtaEmblem } from './Emblems';
 import { Printer, Download, BookOpen, Layers, FileText } from 'lucide-react';
 import { OFFICIAL_SIGNATORIES } from '../types';
+import { AccountHeadDisplay } from './AccountHeadTag';
 
 interface HeadExpenditureStatementViewProps {
   data: HeadExpenditureStatementData;
@@ -63,11 +64,15 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
           <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
             Samanabad, Faisalabad • Accounts & Finance Wing
           </p>
-          <div className="mt-1">
+          <div className="mt-1 flex flex-col items-center justify-center">
             <span className="text-sm sm:text-base font-black tracking-wide uppercase text-slate-900 dark:text-white block">
-              {data.title}
+              {!data.isGroupedAllHeads && data.subtitle ? (
+                <AccountHeadDisplay head={data.subtitle} badgeSize="md" />
+              ) : (
+                data.title
+              )}
             </span>
-            <span className="text-xs font-mono font-bold text-blue-700 dark:text-blue-400">
+            <span className="text-xs font-mono font-bold text-blue-700 dark:text-blue-400 mt-0.5">
               {data.headCodeText}
             </span>
           </div>
@@ -293,8 +298,9 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <span className="flex items-center gap-2">
                             <span>📋</span>
-                            <span>
-                              {group.headCode} — {group.headName}
+                            <span className="flex items-center gap-1.5 flex-wrap">
+                              <span>{group.headCode} —</span>
+                              <AccountHeadDisplay head={group.headName} />
                             </span>
                           </span>
                           <span className="font-mono text-blue-300 text-[11px]">
@@ -373,7 +379,7 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
                           {r.paidToBy}
                         </td>
                         <td className="py-2 px-3 text-[11px] font-mono text-slate-600 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800/60">
-                          {r.accountHead}
+                          <AccountHeadDisplay head={r.accountHead} />
                         </td>
                         <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800/60 min-w-[200px]">
                           <div className="font-semibold text-slate-900 dark:text-slate-100 text-[11px] leading-tight">

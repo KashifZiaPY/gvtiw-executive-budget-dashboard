@@ -8,6 +8,7 @@ import { formatPakistaniDate } from '../lib/formatters';
 import { InstituteEmblem, TevtaEmblem } from './Emblems';
 import { Printer, Download, Building, CreditCard, ShieldCheck, FileText } from 'lucide-react';
 import { OFFICIAL_SIGNATORIES } from '../types';
+import { AccountHeadDisplay } from './AccountHeadTag';
 
 interface CashBookStatementViewProps {
   data: CashBookStatementData;
@@ -372,7 +373,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
                           {r.paidToBy}
                         </td>
                         <td className="py-2 px-3 text-[11px] font-mono text-slate-600 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800/60">
-                          {r.accountHead}
+                          <AccountHeadDisplay head={r.accountHead} />
                         </td>
                         <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800/60 min-w-[200px]">
                           <div className="font-semibold text-slate-900 dark:text-slate-100 text-[11px] leading-tight">

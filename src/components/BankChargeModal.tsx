@@ -43,7 +43,11 @@ export const isBankChargeVoucher = (v: MasterVoucher | null | undefined): boolea
       return true;
     }
   }
-  if (accountHead === 'A03101-BANK CHARGES') {
+  if (
+    accountHead === 'A03101-BANK CHARGES' ||
+    accountHead === 'A03101-BANK CHARGES-NS' ||
+    accountHead === 'A03101-BANK CHARGES-AAA'
+  ) {
     return true;
   }
   return false;
@@ -105,7 +109,8 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Exact Google Sheets Script Logic for default heads:
-  // If NS (Non-Salary) or AA (AAA) => "A03101-BANK CHARGES"
+  // If NS (Non-Salary) => "A03101-BANK CHARGES-NS"
+  // If AA (AAA) => "A03101-BANK CHARGES-AAA"
   // If PF (Pupil Fund) => "A00000PF-PUPIL FUND"
   // If SC (Short Course) => "A00000SC-SHORT COURSE"
   // If SEC (Securities) => "A00000SS-STUDENT SEC."
@@ -115,7 +120,8 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
     if (accountKey === 'SC') return 'A00000SC-SHORT COURSE';
     if (accountKey === 'SEC') return 'A00000SS-STUDENT SEC.';
     if (accountKey === 'FC') return 'A00000TFC-TEVTA FEE COL.';
-    return 'A03101-BANK CHARGES';
+    if (accountKey === 'AA') return 'A03101-BANK CHARGES-AAA';
+    return 'A03101-BANK CHARGES-NS';
   }, [accountKey]);
 
   // Synchronize state when modal opens or target voucher changes
@@ -327,7 +333,7 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
                 </div>
                 <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                   {accountKey === 'NS' || accountKey === 'AA'
-                    ? '✓ Official rule: Strictly restricted to A03101-BANK CHARGES only.'
+                    ? '✓ Official rule: Strictly restricted to A03101-BANK CHARGES (NS / AAA) only.'
                     : `✓ Dedicated institutional fund head locked for ${INSTITUTIONAL_BANK_ACCOUNTS[accountKey]?.shortName}.`}
                 </div>
               </div>

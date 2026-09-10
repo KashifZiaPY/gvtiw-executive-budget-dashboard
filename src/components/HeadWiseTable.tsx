@@ -11,6 +11,7 @@ import {
   format12HourDate,
   getBurnRateBadge,
 } from '../lib/formatters';
+import { AccountHeadDisplay } from './AccountHeadTag';
 import {
   Search,
   SlidersHorizontal,
@@ -559,22 +560,15 @@ export const HeadWiseTable: React.FC<HeadWiseTableProps> = ({
                         <td className={`py-2.5 px-4 border-r font-medium ${
                           darkMode ? 'border-slate-700/60' : 'border-slate-200'
                         }`}>
-                          <div className="flex items-center gap-2">
-                            <span className={`font-semibold ${
-                              darkMode ? 'text-white' : 'text-slate-900'
-                            }`}>
-                              {item.head}
-                            </span>
-                            {item.head.endsWith('-NS') && (
-                              <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 border border-blue-500/20 whitespace-nowrap">
-                                NS
-                              </span>
-                            )}
-                            {item.head.endsWith('-AAA') && (
-                              <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 whitespace-nowrap">
-                                AAA
-                              </span>
-                            )}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <AccountHeadDisplay
+                              head={item.head}
+                              category={item.category}
+                              code={item.code}
+                              titleClassName={`font-semibold ${
+                                darkMode ? 'text-white' : 'text-slate-900'
+                              }`}
+                            />
                             {isSpotlight && (
                               <span className="flex items-center gap-1 text-[10px] bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full font-black whitespace-nowrap shadow-xs animate-pulse">
                                 <Sparkles className="w-3 h-3" />

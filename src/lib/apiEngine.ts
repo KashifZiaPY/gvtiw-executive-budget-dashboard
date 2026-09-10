@@ -1038,7 +1038,7 @@ export async function fetchAiAnalysis(): Promise<AiInsightResponse> {
     burnRateAnomalies: [
       {
         headCode: 'A03101',
-        headTitle: 'A03101-BANK CHARGES',
+        headTitle: 'A03101-BANK CHARGES-NS',
         burnRate: 1.9787,
         riskLevel: 'High',
         suggestion: 'Process immediate budget reappropriation from surplus heads (e.g. A03933 Service Charges or A13201 Repair of Furniture) to clear deficit.',

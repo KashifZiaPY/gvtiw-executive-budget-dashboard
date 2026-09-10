@@ -24,6 +24,7 @@ import {
   Trash2,
   Landmark,
 } from 'lucide-react';
+import { AccountHeadDisplay } from './AccountHeadTag';
 
 interface VoucherModuleProps {
   darkMode: boolean;
@@ -739,9 +740,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
 
                       {/* Account Head */}
                       <td className="py-3 px-3 border-r border-slate-700/50">
-                        <span className={`font-bold text-[11px] block line-clamp-1 ${darkMode ? 'text-amber-300' : 'text-blue-900'}`} title={v.accountHead}>
-                          {v.accountHead}
-                        </span>
+                        <AccountHeadDisplay head={v.accountHead} />
                         <span className="text-[10px] text-slate-400 block truncate">
                           {v.bankAccount.replace('Payment of ', '').replace(' For 2026-2027', '')}
                         </span>

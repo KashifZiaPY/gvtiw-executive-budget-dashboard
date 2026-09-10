@@ -492,6 +492,8 @@ function exportVoucherToPdfServer(q) {
     if (!found) return { success: false, message: 'Voucher "' + q + '" not found in Vouchers sheet.' };
 
     var isBankCharge = (found[8] === 'A03101-BANK CHARGES') ||
+                       (found[8] === 'A03101-BANK CHARGES-NS') ||
+                       (found[8] === 'A03101-BANK CHARGES-AAA') ||
                        (String(found[1] || '').toLowerCase().indexOf('bank charge') !== -1) ||
                        (String(found[21] || '').indexOf('BC-') === 0) ||
                        (String(found[3] || '') === 'BC');
@@ -1107,8 +1109,9 @@ function getMappedAccountHeadForBank_(bankKeyOrFullName) {
   if (bStr.indexOf('SHORT') !== -1 || bStr === 'SC') return 'A00000SC-SHORT COURSE';
   if (bStr.indexOf('SECURIT') !== -1 || bStr === 'SEC') return 'A00000SS-STUDENT SEC.';
   if (bStr.indexOf('FEE') !== -1 || bStr === 'FC') return 'A00000TFC-TEVTA FEE COL.';
-  // Default for Non-Salary (NS) and AAA (AA):
-  return 'A03101-BANK CHARGES';
+  if (bStr.indexOf('AAA') !== -1 || bStr === 'AA' || bStr.indexOf('ASSAN') !== -1) return 'A03101-BANK CHARGES-AAA';
+  // Default for Non-Salary (NS):
+  return 'A03101-BANK CHARGES-NS';
 }
 
 function saveBankChargeServer(data) {

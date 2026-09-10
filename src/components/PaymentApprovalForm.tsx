@@ -5,6 +5,7 @@ import { Printer, X, FileText, Layers } from 'lucide-react';
 import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO, DEFAULT_GOP_LOGO, INITIAL_ACCOUNTS } from '../data/initialData';
 import { formatPakistaniDate } from '../lib/formatters';
 import { OFFICIAL_SIGNATORIES } from '../types';
+import { AccountHeadDisplay } from './AccountHeadTag';
 import {
   computeHeadAvailableBalance,
   HEAD_ALLOCATIONS,
@@ -425,7 +426,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
             CODE / HEAD OF PAYMENT :
           </span>
           <span className="col-span-7 font-black font-mono text-slate-950 text-xs py-0.5 px-2.5">
-            {voucher.accountHead}
+            <AccountHeadDisplay head={voucher.accountHead} />
           </span>
         </div>
         <div className="grid grid-cols-12">
@@ -661,7 +662,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
 
       {/* Legal Powers Delegation Clause with Bolded Key Values */}
       <p className="relative z-10 text-xs print:text-[11px] text-justify leading-relaxed text-slate-900 mb-3 print:mb-2.5">
-        In exercise of the Powers Delegated to the undersigned vide Sr. No.06 Part 1st &amp; 2nd Schedule of Delegation of Financial Powers vides Notification No. TEVTA/GM (F&amp;A) Financial Powers/2012 dated September 22, 2012; the sanction is hereby accorded for Purchases, <strong className="font-black text-slate-950">{voucher.accountHead}</strong> of <strong className="font-black font-mono text-slate-950">Rs. {Number(voucher.billAmountGross).toLocaleString('en-US', { minimumFractionDigits: 2 })}/-</strong>.
+        In exercise of the Powers Delegated to the undersigned vide Sr. No.06 Part 1st &amp; 2nd Schedule of Delegation of Financial Powers vides Notification No. TEVTA/GM (F&amp;A) Financial Powers/2012 dated September 22, 2012; the sanction is hereby accorded for Purchases, <strong className="font-black text-slate-950 inline-flex items-center align-middle mx-1"><AccountHeadDisplay head={voucher.accountHead} /></strong> of <strong className="font-black font-mono text-slate-950">Rs. {Number(voucher.billAmountGross).toLocaleString('en-US', { minimumFractionDigits: 2 })}/-</strong>.
       </p>
 
       {/* Detail Table Header & Rows with Light Grey Styling (Sr.# as whole number 1) */}
@@ -682,7 +683,9 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
               <td className="border-r border-slate-900 p-1.5 text-center font-bold">1</td>
               <td className="border-r border-slate-900 p-1.5 text-center font-black text-slate-950 text-[11px]">{voucher.voucherNo}</td>
               <td className="border-r border-slate-900 p-1.5 font-sans font-black uppercase text-slate-950 tracking-wide text-xs">{voucher.payeeName}</td>
-              <td className="border-r border-slate-900 p-1.5 text-xs font-black text-slate-950">{voucher.accountHead}</td>
+              <td className="border-r border-slate-900 p-1.5 text-xs font-black text-slate-950">
+                <AccountHeadDisplay head={voucher.accountHead} />
+              </td>
               <td className="p-1.5 text-right font-black text-slate-950">
                 {Number(voucher.billAmountGross).toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </td>

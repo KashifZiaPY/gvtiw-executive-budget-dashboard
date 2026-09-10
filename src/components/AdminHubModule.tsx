@@ -242,7 +242,8 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   const [bcMemo, setBcMemo] = useState('Bank Charges / SMS / FED Charges');
 
   // Exact Google Sheets Script Logic:
-  // If NS (Non-Salary) or AA (AAA) => "A03101-BANK CHARGES"
+  // If NS (Non-Salary) => "A03101-BANK CHARGES-NS"
+  // If AA (AAA) => "A03101-BANK CHARGES-AAA"
   // If PF (Pupil Fund) => "A00000PF-PUPIL FUND"
   // If SC (Short Course) => "A00000SC-SHORT COURSE"
   // If SEC (Securities) => "A00000SS-STUDENT SEC."
@@ -252,10 +253,11 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     if (bcAccount === 'SC') return 'A00000SC-SHORT COURSE';
     if (bcAccount === 'SEC') return 'A00000SS-STUDENT SEC.';
     if (bcAccount === 'FC') return 'A00000TFC-TEVTA FEE COL.';
-    return 'A03101-BANK CHARGES';
+    if (bcAccount === 'AA') return 'A03101-BANK CHARGES-AAA';
+    return 'A03101-BANK CHARGES-NS';
   }, [bcAccount]);
 
-  const [bcSelectedHead, setBcSelectedHead] = useState<string>('A03101-BANK CHARGES');
+  const [bcSelectedHead, setBcSelectedHead] = useState<string>('A03101-BANK CHARGES-NS');
 
   useEffect(() => {
     setBcSelectedHead(mappedAccountHead);
