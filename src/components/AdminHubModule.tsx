@@ -106,9 +106,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   // -------------------------------------------------------------
   // 1. AUTHENTICATION & LOCK STATE
   // -------------------------------------------------------------
-  const [internalUnlocked, setInternalUnlocked] = useState<boolean>(() => {
-    return sessionStorage.getItem('gvtiw_admin_session') === 'unlocked';
-  });
+  const [internalUnlocked, setInternalUnlocked] = useState<boolean>(false);
   const isUnlocked = isUnlockedProp !== undefined ? isUnlockedProp : internalUnlocked;
 
   const [pinInput, setPinInput] = useState('');
@@ -1329,7 +1327,6 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         setIsVerifyingPin(false);
         if (onUnlockProp) onUnlockProp(cleanInput);
         setInternalUnlocked(true);
-        sessionStorage.setItem('gvtiw_admin_session', 'unlocked');
         setPinError(null);
         addAuditLog('ADMIN_AUTH', 'success', 'Admin session unlocked successfully via backend verification.');
       } else {
@@ -1347,7 +1344,6 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   const handleLock = () => {
     if (onLockProp) onLockProp();
     setInternalUnlocked(false);
-    sessionStorage.removeItem('gvtiw_admin_session');
     setPinInput('');
     addAuditLog('ADMIN_AUTH', 'success', 'Admin session locked.');
   };

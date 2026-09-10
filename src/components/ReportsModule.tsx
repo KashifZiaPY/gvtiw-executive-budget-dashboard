@@ -92,10 +92,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   customGopLogo,
   isUnlocked = false,
 }) => {
-  const isAuthUnlocked = Boolean(
-    isUnlocked ||
-    (typeof window !== 'undefined' && sessionStorage.getItem('gvtiw_admin_session') === 'unlocked')
-  );
+  const isAuthUnlocked = Boolean(isUnlocked);
   const [activeReportTab, setActiveReportTab] = useState<ReportTab>('CASHBOOK');
   const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
     try {

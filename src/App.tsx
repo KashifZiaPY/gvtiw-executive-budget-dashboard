@@ -55,7 +55,6 @@ class ModuleErrorBoundary extends React.Component<
           </p>
           <button
             onClick={() => {
-              sessionStorage.removeItem('gvtiw_admin_session');
               this.setState({ hasError: false, error: null });
               window.location.reload();
             }}
@@ -155,11 +154,18 @@ export default function App() {
   // Print Modal
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
-  // Shared Admin & Voucher PIN Authentication State
-  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
-    return typeof window !== 'undefined' && sessionStorage.getItem('gvtiw_admin_session') === 'unlocked';
-  });
+  // Shared Admin & Voucher PIN Authentication State (pure in-memory state, resets on page reload)
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
   const [storedPin, setStoredPin] = useState<string>('');
+
+  // One-time cleanup on app mount: wipe any stale admin session from previous versions
+  useEffect(() => {
+    try {
+      sessionStorage.removeItem('gvtiw_admin_session');
+    } catch {
+      // Safe fallback in restricted environments
+    }
+  }, []);
 
   // System Backend Sync Status (reflects recent write attempts)
   const [syncStatus, setSyncStatus] = useState<'connected' | 'failed'>('connected');
@@ -180,13 +186,11 @@ export default function App() {
     if (typedPin) {
       setStoredPin(typedPin);
     }
-    sessionStorage.setItem('gvtiw_admin_session', 'unlocked');
   }, []);
 
   const handleLock = useCallback(() => {
     setIsUnlocked(false);
     setStoredPin('');
-    sessionStorage.removeItem('gvtiw_admin_session');
   }, []);
 
   // Fetch Dashboard State from High-Performance Backend or Autonomous Engine
