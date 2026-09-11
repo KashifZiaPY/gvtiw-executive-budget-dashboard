@@ -217,7 +217,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const headContainerRef = useRef<HTMLDivElement>(null);
   const payeeListRef = useRef<HTMLDivElement>(null);
   const headListRef = useRef<HTMLDivElement>(null);
-  const activePayeeLookupRef = useRef<string>('');
+  const selectedPayeeRef = useRef<string>('');
 
   // Selected Bank Object
   const selectedBankObj = useMemo(() => {
@@ -304,7 +304,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       setPayeeSearch(voucherToAmend.payeeName || '');
       const initNtn = voucherToAmend.ntnCnic ? String(voucherToAmend.ntnCnic).trim() : 'N/A';
       setNtnCnic(initNtn || 'N/A');
-      activePayeeLookupRef.current = (voucherToAmend.payeeName || '').trim();
+      selectedPayeeRef.current = (voucherToAmend.payeeName || '').trim();
       setBankAccount(voucherToAmend.bankAccount || BANK_OPTIONS[0].fullName);
       setBillNo(voucherToAmend.billNo || '');
       setBillDate(voucherToAmend.billDate || todayISO);
@@ -327,7 +327,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       setPayeeName('');
       setPayeeSearch('');
       setNtnCnic('');
-      activePayeeLookupRef.current = '';
+      selectedPayeeRef.current = '';
       setBankAccount(BANK_OPTIONS[0].fullName);
       setBillNo('');
       setBillDate(todayISO);
@@ -540,123 +540,139 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     return '';
   };
 
-  // Live Backend NTN / CNIC Lookup with ~400ms Debounce & Strict Race-Condition Protection
-  // Only fires when a complete payee name is selected from dropdown or fully typed, never on in-progress partial text
-  useEffect(() => {
-    const trimmed = (payeeName || '').trim();
-    if (!trimmed) {
-      activePayeeLookupRef.current = '';
+  // Single robust async function for live NTN/CNIC lookup
+  const fetchPayeeNtnCnic = async (targetPayee: string) => {
+    const cleanName = (targetPayee || '').trim();
+    if (!cleanName) {
+      selectedPayeeRef.current = '';
       setNtnCnic('');
       setIsLoadingNtnCnic(false);
       return;
     }
 
-    // Check if trimmed matches a registered payee or existing voucherToAmend payee
-    const matchedPayee = MASTER_PAYEE_LIST.find(
-      (p) => p.name.trim().toLowerCase() === trimmed.toLowerCase()
-    );
-    const isAmendMatch =
-      voucherToAmend &&
-      voucherToAmend.payeeName &&
-      voucherToAmend.payeeName.trim().toLowerCase() === trimmed.toLowerCase();
-
-    const canonicalCompleteName = matchedPayee
-      ? matchedPayee.name
-      : isAmendMatch && voucherToAmend
-      ? voucherToAmend.payeeName.trim()
-      : null;
-
-    // If it's only partial in-progress search text (e.g. "amir"), DO NOT fire the backend call and clear NTN
-    if (!canonicalCompleteName) {
-      activePayeeLookupRef.current = '';
-      setIsLoadingNtnCnic(false);
-      setNtnCnic('');
-      return;
-    }
-
-    // Mark current active payee request to prevent stale async responses from overwriting
-    activePayeeLookupRef.current = canonicalCompleteName;
-    setIsLoadingNtnCnic(true);
+    // 1. Immediately set ntnCnic to 'Loading...' and update active selection ref
+    selectedPayeeRef.current = cleanName;
     setNtnCnic('Loading...');
+    setIsLoadingNtnCnic(true);
 
-    let isMounted = true;
-    const currentRequestedPayee = canonicalCompleteName;
+    // 2. Capture the payee name in a local variable
+    const requestedForPayee = cleanName;
+    console.log(`[NTN/CNIC Lookup START] Requesting lookup for payee: "${requestedForPayee}"`);
 
-    const timer = setTimeout(async () => {
+    // 3. Setup 8-second timeout controller so it never hangs indefinitely
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => {
       try {
-        const webAppUrl =
-          localStorage.getItem('gvtiw_admin_web_app_url') ||
-          'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
-        const activePin = getActiveSecurityPin();
+        abortController.abort();
+      } catch {
+        // Safe fallback
+      }
+    }, 8000);
 
-        const payload = {
-          pin: activePin,
-          action: 'getPayeeNtnCnic',
-          command: 'getPayeeNtnCnic',
-          payeeName: currentRequestedPayee,
-          name: currentRequestedPayee,
-          data: {
-            payeeName: currentRequestedPayee,
-            name: currentRequestedPayee,
-          },
-        };
+    let finalResolvedValue = 'N/A';
 
-        const response = await fetch(webAppUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload),
-        });
+    try {
+      const webAppUrl =
+        localStorage.getItem('gvtiw_admin_web_app_url') ||
+        'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
+      const activePin = getActiveSecurityPin();
 
-        // Guard against unmount or superseding payee selections
-        if (!isMounted || activePayeeLookupRef.current !== currentRequestedPayee) {
-          return;
-        }
+      const payload = {
+        pin: activePin,
+        action: 'getPayeeNtnCnic',
+        command: 'getPayeeNtnCnic',
+        payeeName: requestedForPayee,
+        name: requestedForPayee,
+        data: {
+          payeeName: requestedForPayee,
+          name: requestedForPayee,
+        },
+      };
 
-        let resolvedNtnCnic = '';
-        if (response.ok) {
-          const json = await response.json();
-          if (json && typeof json === 'object') {
-            const rawVal =
-              json.ntnCnic ??
-              json.ntn ??
-              json.cnic ??
-              json.value ??
-              json.data?.ntnCnic ??
-              json.data?.ntn ??
-              json.data?.cnic ??
-              json.data?.value;
+      const response = await fetch(webAppUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
+        signal: abortController.signal,
+      });
 
-            if (rawVal !== undefined && rawVal !== null) {
-              const strVal = String(rawVal).trim();
-              if (strVal && strVal !== '0' && strVal !== '—' && strVal !== 'null' && strVal !== 'undefined') {
-                resolvedNtnCnic = strVal;
-              }
+      if (response.ok) {
+        const json = await response.json().catch(() => null);
+        if (json && typeof json === 'object') {
+          const rawVal =
+            json.ntnCnic ??
+            json.ntn ??
+            json.cnic ??
+            json.value ??
+            json.data?.ntnCnic ??
+            json.data?.ntn ??
+            json.data?.cnic ??
+            json.data?.value;
+
+          if (rawVal !== undefined && rawVal !== null) {
+            const strVal = String(rawVal).trim();
+            if (
+              strVal &&
+              strVal !== '0' &&
+              strVal !== '—' &&
+              strVal !== '-' &&
+              strVal !== 'null' &&
+              strVal !== 'undefined'
+            ) {
+              finalResolvedValue = strVal;
             }
           }
         }
-
-        // Explicitly set based on new response — "N/A" if empty or payee has no NTN/CNIC
-        if (isMounted && activePayeeLookupRef.current === currentRequestedPayee) {
-          setNtnCnic(resolvedNtnCnic || 'N/A');
-          setIsLoadingNtnCnic(false);
-        }
-      } catch {
-        if (isMounted && activePayeeLookupRef.current === currentRequestedPayee) {
-          setNtnCnic('N/A');
-          setIsLoadingNtnCnic(false);
-        }
-      } finally {
-        if (isMounted && activePayeeLookupRef.current === currentRequestedPayee) {
-          setIsLoadingNtnCnic(false);
-        }
       }
-    }, 400);
+    } catch (err) {
+      console.warn(`[NTN/CNIC Lookup ERROR/TIMEOUT] Failed for "${requestedForPayee}":`, err);
+      finalResolvedValue = 'N/A';
+    } finally {
+      clearTimeout(timeoutId);
 
-    return () => {
-      isMounted = false;
-      clearTimeout(timer);
-    };
-  }, [payeeName, voucherToAmend, storedPin]);
+      // 4. Only update state if captured payee name STILL matches the currently selected payee
+      if (selectedPayeeRef.current === requestedForPayee) {
+        console.log(`[NTN/CNIC Lookup END] Completed for "${requestedForPayee}": "${finalResolvedValue}"`);
+        setNtnCnic(finalResolvedValue);
+        setIsLoadingNtnCnic(false);
+      } else {
+        console.log(
+          `[NTN/CNIC Lookup END IGNORED STALE] Discarding response for "${requestedForPayee}" because current active payee is "${selectedPayeeRef.current}"`
+        );
+      }
+    }
+  };
+
+  // Sync typed payee changes: triggers debounced lookup if full name typed, or clears if in-progress search text
+  useEffect(() => {
+    const trimmed = (payeeName || '').trim();
+    if (!trimmed) {
+      selectedPayeeRef.current = '';
+      setNtnCnic('');
+      setIsLoadingNtnCnic(false);
+      return;
+    }
+
+    const matchedPayee = MASTER_PAYEE_LIST.find(
+      (p) => p.name.trim().toLowerCase() === trimmed.toLowerCase()
+    );
+
+    if (matchedPayee) {
+      // If already active or loading for this exact payee, skip redundant dispatch
+      if (selectedPayeeRef.current === matchedPayee.name) {
+        return;
+      }
+      const timer = setTimeout(() => {
+        fetchPayeeNtnCnic(matchedPayee.name);
+      }, 400);
+      return () => clearTimeout(timer);
+    } else {
+      // Partial in-progress search text (e.g. "amir"), clear field and reset ref
+      selectedPayeeRef.current = '';
+      setNtnCnic('');
+      setIsLoadingNtnCnic(false);
+    }
+  }, [payeeName]);
 
   if (!isOpen) return null;
 
@@ -666,9 +682,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     setPayeeName(selectedName);
     setPayeeSearch(selectedName);
     setIsPayeeDropdownOpen(false);
-    activePayeeLookupRef.current = selectedName;
-    setNtnCnic('Loading...');
-    setIsLoadingNtnCnic(true);
+    fetchPayeeNtnCnic(selectedName);
   };
 
   // Handle Head Select
@@ -1172,7 +1186,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                         setPayeeHighlightedIndex(0);
                         const match = MASTER_PAYEE_LIST.find((p) => p.name.trim().toLowerCase() === val.trim().toLowerCase());
                         if (!match) {
-                          activePayeeLookupRef.current = '';
+                          selectedPayeeRef.current = '';
                           setNtnCnic('');
                           setIsLoadingNtnCnic(false);
                         }
@@ -1190,7 +1204,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                           onClick={() => {
                             setPayeeSearch('');
                             setPayeeName('');
-                            activePayeeLookupRef.current = '';
+                            selectedPayeeRef.current = '';
                             setNtnCnic('');
                             setIsLoadingNtnCnic(false);
                             setIsPayeeDropdownOpen(true);
