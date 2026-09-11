@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
   HeadExpenditureStatementData,
+  MultiHeadReportResult,
   formatCurrency2Decimals,
   formatCashBookBillInfo,
 } from '../lib/reportingEngine';
@@ -21,17 +22,20 @@ import {
 import { OFFICIAL_SIGNATORIES } from '../types';
 import { AccountHeadDisplay } from './AccountHeadTag';
 
-interface HeadExpenditureStatementViewProps {
+interface SingleHeadExpenditureReportSectionProps {
   data: HeadExpenditureStatementData;
   darkMode: boolean;
   customGvtiwLogo?: string | null;
   customTevtaLogo?: string | null;
-  onPrint: () => void;
-  onExportCSV: () => void;
+  onPrint?: () => void;
+  onExportCSV?: () => void;
   onOpenPAF?: (voucherNo: string) => void;
+  isEmbeddedInMultiHead?: boolean;
+  headIndex?: number;
+  totalHeads?: number;
 }
 
-export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementViewProps> = ({
+export const SingleHeadExpenditureReportSection: React.FC<SingleHeadExpenditureReportSectionProps> = ({
   data,
   darkMode,
   customGvtiwLogo,
@@ -39,6 +43,9 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
   onPrint,
   onExportCSV,
   onOpenPAF,
+  isEmbeddedInMultiHead = false,
+  headIndex,
+  totalHeads,
 }) => {
   let globalSr = 1;
   const tableRef = useRef<HTMLDivElement>(null);
@@ -95,72 +102,110 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
 
   return (
     <div
-      className={`rounded-2xl border transition-all shadow-xl p-5 md:p-7 space-y-6 ${
-        darkMode ? 'bg-[#0B132B] border-slate-700/80 text-white' : 'bg-white border-slate-300 text-slate-900'
-      }`}
+      className={
+        isEmbeddedInMultiHead
+          ? `p-4 sm:p-5 rounded-xl border space-y-4 shadow-sm transition-all ${
+              darkMode ? 'bg-slate-900/60 border-slate-700/80 text-white' : 'bg-slate-50/70 border-slate-200 text-slate-900'
+            }`
+          : `rounded-2xl border transition-all shadow-xl p-5 md:p-7 space-y-6 ${
+              darkMode ? 'bg-[#0B132B] border-slate-700/80 text-white' : 'bg-white border-slate-300 text-slate-900'
+            }`
+      }
     >
       {/* ------------------------------------------------------------- */}
-      {/* 1. OFFICIAL INSTITUTIONAL HEADER WITH DUAL LOGOS              */}
+      {/* 1. HEADER AREA                                                */}
       {/* ------------------------------------------------------------- */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-5 border-b-2 border-[#002b66] dark:border-blue-500">
-        {/* Left Emblem: GVTI(W) */}
-        <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 p-1 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
-            <InstituteEmblem className="w-12 h-12" src={customGvtiwLogo || undefined} />
+      {!isEmbeddedInMultiHead ? (
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-5 border-b-2 border-[#002b66] dark:border-blue-500">
+          {/* Left Emblem: GVTI(W) */}
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 p-1 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
+              <InstituteEmblem className="w-12 h-12" src={customGvtiwLogo || undefined} />
+            </div>
+            <div className="hidden sm:block">
+              <span className="text-[10px] font-mono tracking-widest text-slate-400 dark:text-slate-400 font-bold block uppercase">
+                Govt. of Punjab • TEVTA
+              </span>
+              <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase">
+                Head Expenditure Audit
+              </span>
+            </div>
           </div>
-          <div className="hidden sm:block">
-            <span className="text-[10px] font-mono tracking-widest text-slate-400 dark:text-slate-400 font-bold block uppercase">
-              Govt. of Punjab • TEVTA
-            </span>
-            <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase">
-              Head Expenditure Audit
-            </span>
+
+          {/* Center Title Block */}
+          <div className="text-center flex-1 px-2">
+            <h1 className="text-base sm:text-lg font-black tracking-wide uppercase text-[#002b66] dark:text-blue-300">
+              GOVERNMENT VOCATIONAL TRAINING INSTITUTE (W)
+            </h1>
+            <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+              Samanabad, Faisalabad • Accounts & Finance Wing
+            </p>
+            <div className="mt-1 flex flex-col items-center justify-center">
+              <span className="text-sm sm:text-base font-black tracking-wide uppercase text-slate-900 dark:text-white block">
+                {!data.isGroupedAllHeads && data.subtitle ? (
+                  <AccountHeadDisplay head={data.subtitle} badgeSize="md" />
+                ) : (
+                  data.title
+                )}
+              </span>
+              <span className="text-xs font-mono font-bold text-blue-700 dark:text-blue-400 mt-0.5">
+                {data.headCodeText}
+              </span>
+            </div>
+          </div>
+
+          {/* Right Emblem: TEVTA & Meta Details */}
+          <div className="flex items-center gap-3">
+            <div className="text-right text-[11px] font-mono leading-tight text-slate-600 dark:text-slate-300">
+              <div>
+                <span className="text-slate-400">Generated: </span>
+                <strong className="font-bold text-slate-900 dark:text-white">{data.generatedTimestamp}</strong>
+              </div>
+              <div>
+                <span className="text-slate-400">Period: </span>
+                <strong className="font-bold text-slate-900 dark:text-white">{data.periodLabel}</strong>
+              </div>
+              <div>
+                <span className="text-slate-400">Total Tx: </span>
+                <strong className="font-bold text-blue-600 dark:text-blue-400">{data.totalTransactionsCount}</strong>
+              </div>
+            </div>
+            <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 p-1 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
+              <TevtaEmblem className="w-12 h-12" src={customTevtaLogo || undefined} />
+            </div>
           </div>
         </div>
-
-        {/* Center Title Block */}
-        <div className="text-center flex-1 px-2">
-          <h1 className="text-base sm:text-lg font-black tracking-wide uppercase text-[#002b66] dark:text-blue-300">
-            GOVERNMENT VOCATIONAL TRAINING INSTITUTE (W)
-          </h1>
-          <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
-            Samanabad, Faisalabad • Accounts & Finance Wing
-          </p>
-          <div className="mt-1 flex flex-col items-center justify-center">
-            <span className="text-sm sm:text-base font-black tracking-wide uppercase text-slate-900 dark:text-white block">
-              {!data.isGroupedAllHeads && data.subtitle ? (
+      ) : (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 bg-white dark:bg-slate-800/90 rounded-xl border border-slate-200 dark:border-slate-700 shadow-xs">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {headIndex !== undefined && (
+              <span className="w-6 h-6 rounded-full bg-blue-600 text-white font-mono font-black text-xs flex items-center justify-center shrink-0 shadow-xs">
+                {headIndex}
+              </span>
+            )}
+            <span className="font-mono text-xs font-black text-blue-700 dark:text-blue-400">
+              {data.groups[0]?.headCode || data.title.split(' — ')[0]}
+            </span>
+            <span className="text-slate-300 dark:text-slate-600">—</span>
+            <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+              {data.subtitle ? (
                 <AccountHeadDisplay head={data.subtitle} badgeSize="md" />
               ) : (
                 data.title
               )}
             </span>
-            <span className="text-xs font-mono font-bold text-blue-700 dark:text-blue-400 mt-0.5">
+          </div>
+
+          <div className="flex items-center gap-3 text-xs font-mono">
+            <span className="text-slate-500 dark:text-slate-400 font-semibold">
+              {data.allRows.length} Line Items
+            </span>
+            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
               {data.headCodeText}
             </span>
           </div>
         </div>
-
-        {/* Right Emblem: TEVTA & Meta Details */}
-        <div className="flex items-center gap-3">
-          <div className="text-right text-[11px] font-mono leading-tight text-slate-600 dark:text-slate-300">
-            <div>
-              <span className="text-slate-400">Generated: </span>
-              <strong className="font-bold text-slate-900 dark:text-white">{data.generatedTimestamp}</strong>
-            </div>
-            <div>
-              <span className="text-slate-400">Period: </span>
-              <strong className="font-bold text-slate-900 dark:text-white">{data.periodLabel}</strong>
-            </div>
-            <div>
-              <span className="text-slate-400">Total Tx: </span>
-              <strong className="font-bold text-blue-600 dark:text-blue-400">{data.totalTransactionsCount}</strong>
-            </div>
-          </div>
-          <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 p-1 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
-            <TevtaEmblem className="w-12 h-12" src={customTevtaLogo || undefined} />
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* 2. 4 FINANCIAL KPI METRIC CARDS                                */}
@@ -280,24 +325,28 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
             <span className="hidden sm:inline">{isCompactView ? 'Sticky Viewport' : 'Full Page'}</span>
           </button>
 
-          <button
-            onClick={onExportCSV}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg border flex items-center gap-1.5 cursor-pointer transition-colors ${
-              darkMode
-                ? 'bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-200'
-                : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800'
-            }`}
-          >
-            <Download className="w-3.5 h-3.5 text-blue-500" />
-            <span>Export CSV</span>
-          </button>
-          <button
-            onClick={onPrint}
-            className="px-4 py-1.5 text-xs font-black rounded-lg bg-blue-600 hover:bg-blue-500 text-white shadow-md flex items-center gap-1.5 cursor-pointer transition-colors"
-          >
-            <Printer className="w-3.5 h-3.5 text-amber-300" />
-            <span>Print Official Report</span>
-          </button>
+          {!isEmbeddedInMultiHead && onExportCSV && (
+            <button
+              onClick={onExportCSV}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg border flex items-center gap-1.5 cursor-pointer transition-colors ${
+                darkMode
+                  ? 'bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-200'
+                  : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800'
+              }`}
+            >
+              <Download className="w-3.5 h-3.5 text-blue-500" />
+              <span>Export CSV</span>
+            </button>
+          )}
+          {!isEmbeddedInMultiHead && onPrint && (
+            <button
+              onClick={onPrint}
+              className="px-4 py-1.5 text-xs font-black rounded-lg bg-blue-600 hover:bg-blue-500 text-white shadow-md flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Printer className="w-3.5 h-3.5 text-amber-300" />
+              <span>Print Official Report</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -632,6 +681,284 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
       {/* ------------------------------------------------------------- */}
       {/* 5. OFFICIAL SIGNATURES BLOCK                                  */}
       {/* ------------------------------------------------------------- */}
+      {!isEmbeddedInMultiHead && (
+        <>
+          <div className="pt-8 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
+            {OFFICIAL_SIGNATORIES.map((sig) => (
+              <div key={sig.name} className="border-t border-slate-400 dark:border-slate-600 pt-2">
+                <strong className="block text-xs font-black text-slate-900 dark:text-white uppercase">
+                  {sig.name}
+                </strong>
+                <span className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold block">
+                  {sig.role}
+                </span>
+                <span className="text-[9px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block mt-0.5">
+                  {sig.label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* ------------------------------------------------------------- */}
+          {/* 6. INSTITUTIONAL WATERMARK FOOTER                             */}
+          {/* ------------------------------------------------------------- */}
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] font-mono text-slate-400">
+            <div>
+              Voucher / Cashbook Management System • Generated by Kashif Zia (Accounts Deptt.) • Version 3.14
+            </div>
+            <div>
+              Government Vocational Training Institute (W) Samanabad, Faisalabad
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export interface HeadExpenditureStatementViewProps {
+  data: HeadExpenditureStatementData;
+  multiHeadData?: MultiHeadReportResult | null;
+  darkMode: boolean;
+  customGvtiwLogo?: string | null;
+  customTevtaLogo?: string | null;
+  onPrint: () => void;
+  onExportCSV: () => void;
+  onOpenPAF?: (voucherNo: string) => void;
+}
+
+export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementViewProps> = ({
+  data,
+  multiHeadData,
+  darkMode,
+  customGvtiwLogo,
+  customTevtaLogo,
+  onPrint,
+  onExportCSV,
+  onOpenPAF,
+}) => {
+  // If not in multi-head mode (single head selected or ALL), render exactly as today
+  if (!multiHeadData || !multiHeadData.isMultiHead) {
+    return (
+      <SingleHeadExpenditureReportSection
+        data={data}
+        darkMode={darkMode}
+        customGvtiwLogo={customGvtiwLogo}
+        customTevtaLogo={customTevtaLogo}
+        onPrint={onPrint}
+        onExportCSV={onExportCSV}
+        onOpenPAF={onOpenPAF}
+        isEmbeddedInMultiHead={false}
+      />
+    );
+  }
+
+  // TWO OR MORE HEADS SELECTED:
+  // Render Grand Total Card at very top, followed by each head's report in a loop,
+  // then the signatures block and footer watermark at the end.
+  return (
+    <div
+      className={`rounded-2xl border transition-all shadow-xl p-5 md:p-7 space-y-8 ${
+        darkMode ? 'bg-[#0B132B] border-slate-700/80 text-white' : 'bg-white border-slate-300 text-slate-900'
+      }`}
+    >
+      {/* ------------------------------------------------------------- */}
+      {/* 1. GRAND TOTAL CARD (AT THE VERY TOP)                         */}
+      {/* ------------------------------------------------------------- */}
+      <div className="space-y-6">
+        {/* Dual Institutional Logos Header */}
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-5 border-b-2 border-[#002b66] dark:border-blue-500">
+          {/* Left Emblem */}
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 p-1 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
+              <InstituteEmblem className="w-12 h-12" src={customGvtiwLogo || undefined} />
+            </div>
+            <div className="hidden sm:block">
+              <span className="text-[10px] font-mono tracking-widest text-slate-400 dark:text-slate-400 font-bold block uppercase">
+                Govt. of Punjab • TEVTA
+              </span>
+              <span className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase">
+                Consolidated Audit
+              </span>
+            </div>
+          </div>
+
+          {/* Center Title & Head Badges */}
+          <div className="text-center flex-1 px-2">
+            <h1 className="text-base sm:text-lg font-black tracking-wide uppercase text-[#002b66] dark:text-blue-300">
+              GOVERNMENT VOCATIONAL TRAINING INSTITUTE (W)
+            </h1>
+            <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
+              Samanabad, Faisalabad • Accounts & Finance Wing
+            </p>
+            <div className="mt-1.5 flex flex-col items-center justify-center">
+              <span className="text-sm sm:text-base font-black tracking-wide uppercase text-slate-900 dark:text-white">
+                MULTI-HEAD EXPENDITURE STATEMENT (CONSOLIDATED)
+              </span>
+              <div className="mt-1.5 flex items-center justify-center gap-1.5 flex-wrap">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-600 text-white font-mono shadow-xs">
+                  {multiHeadData.headReports.length} Heads Selected
+                </span>
+                {multiHeadData.selectedHeadCodes.map((code) => (
+                  <span
+                    key={code}
+                    className="px-2 py-0.5 text-[10px] font-mono font-black uppercase rounded bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-600 shadow-xs"
+                  >
+                    {code}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Emblem & Meta Details */}
+          <div className="flex items-center gap-3">
+            <div className="text-right text-[11px] font-mono leading-tight text-slate-600 dark:text-slate-300">
+              <div>
+                <span className="text-slate-400">Generated: </span>
+                <strong className="font-bold text-slate-900 dark:text-white">{data.generatedTimestamp}</strong>
+              </div>
+              <div>
+                <span className="text-slate-400">Period: </span>
+                <strong className="font-bold text-slate-900 dark:text-white">{data.periodLabel}</strong>
+              </div>
+              <div>
+                <span className="text-slate-400">Total Tx: </span>
+                <strong className="font-bold text-blue-600 dark:text-blue-400">
+                  {multiHeadData.grandTotal.totalTransactionsCount}
+                </strong>
+              </div>
+            </div>
+            <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 p-1 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
+              <TevtaEmblem className="w-12 h-12" src={customTevtaLogo || undefined} />
+            </div>
+          </div>
+        </div>
+
+        {/* 4 Grand Total KPI Boxes (SUM across all selected heads) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Budget Allocation Opening Card */}
+          <div
+            className={`p-3.5 rounded-xl border text-center transition-all ${
+              darkMode
+                ? 'bg-blue-950/30 border-blue-800/80 text-white'
+                : 'bg-blue-50/70 border-blue-300 text-blue-950'
+            }`}
+          >
+            <span className="text-[10px] uppercase font-extrabold tracking-wider text-slate-500 dark:text-slate-400 block">
+              GRAND BUDGET ALLOCATION (B/D)
+            </span>
+            <span className="text-base sm:text-lg font-black font-mono text-blue-700 dark:text-blue-300 block mt-1">
+              Rs. {formatCurrency2Decimals(multiHeadData.grandTotal.budgetAllocationOpening)}
+            </span>
+          </div>
+
+          {/* Total Receipts / Reappropriation Card */}
+          <div
+            className={`p-3.5 rounded-xl border text-center transition-all ${
+              darkMode
+                ? 'bg-emerald-950/30 border-emerald-800/80 text-white'
+                : 'bg-emerald-50/70 border-emerald-300 text-emerald-950'
+            }`}
+          >
+            <span className="text-[10px] uppercase font-extrabold tracking-wider text-emerald-700 dark:text-emerald-400 block">
+              TOTAL RECEIPTS / REAPPR (+)
+            </span>
+            <span className="text-base sm:text-lg font-black font-mono text-emerald-600 dark:text-emerald-400 block mt-1">
+              Rs. {formatCurrency2Decimals(multiHeadData.grandTotal.receiptsReappr)}
+            </span>
+          </div>
+
+          {/* Total Expenditure Card */}
+          <div
+            className={`p-3.5 rounded-xl border text-center transition-all ${
+              darkMode
+                ? 'bg-rose-950/30 border-rose-800/80 text-white'
+                : 'bg-rose-50/70 border-rose-300 text-rose-950'
+            }`}
+          >
+            <span className="text-[10px] uppercase font-extrabold tracking-wider text-rose-700 dark:text-rose-400 block">
+              TOTAL EXPENDITURE (-)
+            </span>
+            <span className="text-base sm:text-lg font-black font-mono text-rose-600 dark:text-rose-400 block mt-1">
+              Rs. {formatCurrency2Decimals(multiHeadData.grandTotal.totalExpenditure)}
+            </span>
+          </div>
+
+          {/* Net Closing Unspent Budget Balance Card */}
+          <div
+            className={`p-3.5 rounded-xl border text-center transition-all ${
+              darkMode
+                ? 'bg-slate-900 border-slate-600 text-white shadow-md ring-1 ring-blue-400/40'
+                : 'bg-slate-100 border-slate-400 text-slate-900 shadow-sm'
+            }`}
+          >
+            <span className="text-[10px] uppercase font-extrabold tracking-wider text-slate-700 dark:text-slate-300 block">
+              NET UNSPENT CLOSING (C/D)
+            </span>
+            <span className="text-base sm:text-lg font-black font-mono text-[#002b66] dark:text-blue-300 block mt-1">
+              Rs. {formatCurrency2Decimals(multiHeadData.grandTotal.closingUnspentBalance)}
+            </span>
+          </div>
+        </div>
+
+        {/* Action Controls for Multi-Head Report */}
+        <div className="flex items-center justify-between flex-wrap gap-2 pt-1 pb-1">
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400">
+            <BookOpen className="w-4 h-4 text-blue-500" />
+            <span className="font-bold">Consolidated Statement</span>
+            <span>•</span>
+            <span>{multiHeadData.headReports.length} Heads</span>
+            <span>•</span>
+            <span>{multiHeadData.grandTotal.totalTransactionsCount} Total Transactions</span>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={onExportCSV}
+              className={`px-3 py-1.5 text-xs font-bold rounded-lg border flex items-center gap-1.5 cursor-pointer transition-colors ${
+                darkMode
+                  ? 'bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-200'
+                  : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800'
+              }`}
+            >
+              <Download className="w-3.5 h-3.5 text-blue-500" />
+              <span>Export CSV (All Selected Heads)</span>
+            </button>
+            <button
+              onClick={onPrint}
+              className="px-4 py-1.5 text-xs font-black rounded-lg bg-blue-600 hover:bg-blue-500 text-white shadow-md flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <Printer className="w-3.5 h-3.5 text-amber-300" />
+              <span>Print Official Report</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Subtle Divider between Grand Total Card and Per-Head Sections */}
+      <div className="border-b-2 border-slate-300 dark:border-slate-700" />
+
+      {/* ------------------------------------------------------------- */}
+      {/* 2. PER-HEAD SECTIONS (REUSED IN A LOOP)                       */}
+      {/* ------------------------------------------------------------- */}
+      <div className="space-y-8">
+        {multiHeadData.headReports.map((singleReport, idx) => (
+          <SingleHeadExpenditureReportSection
+            key={singleReport.groups[0]?.headCode || idx}
+            data={singleReport}
+            darkMode={darkMode}
+            onOpenPAF={onOpenPAF}
+            isEmbeddedInMultiHead={true}
+            headIndex={idx + 1}
+            totalHeads={multiHeadData.headReports.length}
+          />
+        ))}
+      </div>
+
+      {/* ------------------------------------------------------------- */}
+      {/* 3. OFFICIAL SIGNATURES BLOCK & WATERMARK FOOTER               */}
+      {/* ------------------------------------------------------------- */}
       <div className="pt-8 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
         {OFFICIAL_SIGNATORIES.map((sig) => (
           <div key={sig.name} className="border-t border-slate-400 dark:border-slate-600 pt-2">
@@ -648,9 +975,6 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
         ))}
       </div>
 
-      {/* ------------------------------------------------------------- */}
-      {/* 6. INSTITUTIONAL WATERMARK FOOTER                             */}
-      {/* ------------------------------------------------------------- */}
       <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2 text-[10px] font-mono text-slate-400">
         <div>
           Voucher / Cashbook Management System • Generated by Kashif Zia (Accounts Deptt.) • Version 3.14

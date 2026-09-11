@@ -18,8 +18,12 @@ export interface SearchableComboboxProps {
   placeholder?: string;
   searchPlaceholder?: string;
   options: ComboboxOption[];
-  value: string;
-  onChange: (value: string) => void;
+  value?: string;
+  onChange?: (value: string) => void;
+  // Multi-select props
+  multiSelect?: boolean;
+  selectedValues?: string[];
+  onMultiChange?: (values: string[]) => void;
   darkMode?: boolean;
   categories?: { label: string; value: string; count?: number }[];
   className?: string;
@@ -32,8 +36,11 @@ export const SearchableCombobox: React.FC<SearchableComboboxProps> = ({
   placeholder = 'Select an option...',
   searchPlaceholder = 'Type to search & filter...',
   options,
-  value,
+  value = '',
   onChange,
+  multiSelect = false,
+  selectedValues = ['ALL'],
+  onMultiChange,
   darkMode = false,
   categories,
   className = '',
@@ -48,10 +55,26 @@ export const SearchableCombobox: React.FC<SearchableComboboxProps> = ({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Find currently selected option
+  // Multi-select status computation
+  const isAllMultiSelected = useMemo(() => {
+    return !selectedValues || selectedValues.length === 0 || selectedValues.includes('ALL');
+  }, [selectedValues]);
+
+  const activeMultiValues = useMemo(() => {
+    return isAllMultiSelected ? [] : selectedValues.filter((v) => v !== 'ALL');
+  }, [isAllMultiSelected, selectedValues]);
+
+  // Find currently selected option for single-select mode
   const selectedOption = useMemo(() => {
+    if (multiSelect) return null;
     return options.find((opt) => opt.value === value) || null;
-  }, [options, value]);
+  }, [multiSelect, options, value]);
+
+  // First selected option in multi-select mode (for button display)
+  const firstSelectedMultiOption = useMemo(() => {
+    if (!multiSelect || isAllMultiSelected || activeMultiValues.length === 0) return null;
+    return options.find((opt) => opt.value === activeMultiValues[0]) || null;
+  }, [multiSelect, isAllMultiSelected, activeMultiValues, options]);
 
   // Filtered options based on search query and category
   const filteredOptions = useMemo(() => {
@@ -113,6 +136,32 @@ export const SearchableCombobox: React.FC<SearchableComboboxProps> = ({
     }
   }, [highlightedIndex, isOpen]);
 
+  // Handle selection (single or multi)
+  const handleSelect = (val: string) => {
+    if (multiSelect) {
+      if (val === 'ALL') {
+        onMultiChange?.(['ALL']);
+      } else {
+        if (isAllMultiSelected) {
+          onMultiChange?.([val]);
+        } else if (activeMultiValues.includes(val)) {
+          const next = activeMultiValues.filter((v) => v !== val);
+          onMultiChange?.(next.length === 0 ? ['ALL'] : next);
+        } else {
+          onMultiChange?.([...activeMultiValues, val]);
+        }
+      }
+      // In multi-select mode, do NOT close dropdown
+      return;
+    }
+
+    if (onChange) {
+      onChange(val);
+    }
+    setIsOpen(false);
+    setSearchQuery('');
+  };
+
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) {
@@ -139,12 +188,6 @@ export const SearchableCombobox: React.FC<SearchableComboboxProps> = ({
     }
   };
 
-  const handleSelect = (val: string) => {
-    onChange(val);
-    setIsOpen(false);
-    setSearchQuery('');
-  };
-
   // Highlight matching characters helper
   const highlightMatches = (text: string, query: string) => {
     if (!query.trim()) return text;
@@ -167,6 +210,66 @@ export const SearchableCombobox: React.FC<SearchableComboboxProps> = ({
     );
   };
 
+  // Compute trigger button display info
+  const buttonDisplay = useMemo(() => {
+    if (multiSelect) {
+      if (isAllMultiSelected) {
+        const allOpt = options.find((o) => o.value === 'ALL');
+        return {
+          label: allOpt?.label || 'All Budget Heads',
+          subtitle: allOpt?.subtitle || 'Comprehensive statement across all sanctioned budget heads',
+          code: undefined,
+          badge: 'ALL',
+          badgeColor: 'bg-blue-600 text-white',
+          icon: allOpt?.icon || '📋',
+          canReset: false,
+        };
+      }
+      if (activeMultiValues.length === 1) {
+        return {
+          label: firstSelectedMultiOption?.label || activeMultiValues[0],
+          subtitle: firstSelectedMultiOption?.subtitle,
+          code: firstSelectedMultiOption?.code,
+          badge: firstSelectedMultiOption?.badge || '1 HEAD',
+          badgeColor: firstSelectedMultiOption?.badgeColor || 'bg-blue-600 text-white',
+          icon: firstSelectedMultiOption?.icon || '📑',
+          canReset: true,
+        };
+      }
+      // 2 or more selected
+      const firstCodeOrLabel = firstSelectedMultiOption?.code || firstSelectedMultiOption?.label || activeMultiValues[0];
+      return {
+        label: `${firstCodeOrLabel} +${activeMultiValues.length - 1} more`,
+        subtitle: `${activeMultiValues.length} budget heads selected`,
+        code: undefined,
+        badge: `${activeMultiValues.length} HEADS`,
+        badgeColor: 'bg-blue-600 text-white font-mono font-black',
+        icon: '📑',
+        canReset: true,
+      };
+    }
+
+    // Single-select
+    return {
+      label: selectedOption ? selectedOption.label : placeholder,
+      subtitle: selectedOption?.subtitle,
+      code: selectedOption?.code,
+      badge: selectedOption?.badge,
+      badgeColor: selectedOption?.badgeColor,
+      icon: selectedOption?.icon,
+      canReset: Boolean(selectedOption && value !== 'ALL'),
+    };
+  }, [
+    multiSelect,
+    isAllMultiSelected,
+    activeMultiValues,
+    firstSelectedMultiOption,
+    options,
+    selectedOption,
+    placeholder,
+    value,
+  ]);
+
   return (
     <div className={`relative ${className}`} ref={containerRef} onKeyDown={handleKeyDown}>
       {label && (
@@ -175,7 +278,9 @@ export const SearchableCombobox: React.FC<SearchableComboboxProps> = ({
             {label}
           </label>
           <span className="text-[9px] font-mono text-blue-600 dark:text-blue-400 font-bold">
-            {options.length} Items
+            {multiSelect && !isAllMultiSelected
+              ? `${activeMultiValues.length} Selected / ${options.length} Items`
+              : `${options.length} Items`}
           </span>
         </div>
       )}
@@ -195,36 +300,40 @@ export const SearchableCombobox: React.FC<SearchableComboboxProps> = ({
         }`}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          {selectedOption?.icon && (
-            <span className="text-base shrink-0">{selectedOption.icon}</span>
+          {buttonDisplay.icon && (
+            <span className="text-base shrink-0">{buttonDisplay.icon}</span>
           )}
           <div className="min-w-0 flex-1">
             <div className="truncate font-bold flex items-center gap-1.5 flex-wrap">
-              <span>{selectedOption ? selectedOption.label : placeholder}</span>
-              {selectedOption?.badge && (
+              <span>{buttonDisplay.label}</span>
+              {buttonDisplay.badge && (
                 <span
                   className={`px-1.5 py-0.5 text-[9px] font-mono font-black uppercase rounded tracking-wider ${
-                    selectedOption.badgeColor || (darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700')
+                    buttonDisplay.badgeColor || (darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700')
                   }`}
                 >
-                  {selectedOption.badge}
+                  {buttonDisplay.badge}
                 </span>
               )}
             </div>
-            {selectedOption?.subtitle && (
+            {buttonDisplay.subtitle && (
               <div className="text-[10px] font-mono text-slate-400 dark:text-slate-500 truncate">
-                {selectedOption.subtitle}
+                {buttonDisplay.subtitle}
               </div>
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          {selectedOption && value !== 'ALL' && (
+          {buttonDisplay.canReset && (
             <span
               onClick={(e) => {
                 e.stopPropagation();
-                handleSelect('ALL');
+                if (multiSelect) {
+                  onMultiChange?.(['ALL']);
+                } else if (onChange) {
+                  onChange('ALL');
+                }
               }}
               title="Reset to ALL"
               className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -317,7 +426,11 @@ export const SearchableCombobox: React.FC<SearchableComboboxProps> = ({
               </div>
             ) : (
               filteredOptions.map((opt, idx) => {
-                const isSelected = opt.value === value;
+                const isSelected = multiSelect
+                  ? opt.value === 'ALL'
+                    ? isAllMultiSelected
+                    : !isAllMultiSelected && activeMultiValues.includes(opt.value)
+                  : opt.value === value;
                 const isHighlighted = idx === highlightedIndex;
 
                 return (
@@ -340,6 +453,21 @@ export const SearchableCombobox: React.FC<SearchableComboboxProps> = ({
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      {/* Multi-Select Checkbox */}
+                      {multiSelect && (
+                        <div
+                          className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected
+                              ? 'bg-blue-600 border-blue-600 text-white shadow-xs'
+                              : darkMode
+                              ? 'border-slate-600 bg-slate-800/80'
+                              : 'border-slate-300 bg-white'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                        </div>
+                      )}
+
                       {opt.icon && <span className="text-base shrink-0">{opt.icon}</span>}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -370,7 +498,7 @@ export const SearchableCombobox: React.FC<SearchableComboboxProps> = ({
                           {opt.badge}
                         </span>
                       )}
-                      {isSelected && (
+                      {!multiSelect && isSelected && (
                         <Check className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                       )}
                     </div>
@@ -384,10 +512,28 @@ export const SearchableCombobox: React.FC<SearchableComboboxProps> = ({
           <div className={`p-2 border-t text-[10px] font-mono flex items-center justify-between ${
             darkMode ? 'bg-slate-900/90 border-slate-700/80 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'
           }`}>
-            <span>Showing {filteredOptions.length} of {options.length}</span>
-            <span className="text-[9px] text-slate-400 dark:text-slate-500 hidden sm:inline">
-              Use ↑↓ keys & Enter to select
+            <span>
+              Showing {filteredOptions.length} of {options.length}
+              {multiSelect && (
+                <span className="ml-1.5 text-blue-600 dark:text-blue-400 font-bold">
+                  • {isAllMultiSelected ? 'ALL Selected' : `${activeMultiValues.length} Selected`}
+                </span>
+              )}
             </span>
+            <div className="flex items-center gap-2">
+              {multiSelect && !isAllMultiSelected && (
+                <button
+                  type="button"
+                  onClick={() => onMultiChange?.(['ALL'])}
+                  className="text-blue-600 dark:text-blue-400 font-bold hover:underline cursor-pointer"
+                >
+                  Reset to ALL
+                </button>
+              )}
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 hidden sm:inline">
+                {multiSelect ? 'Click to toggle selection' : 'Use ↑↓ keys & Enter to select'}
+              </span>
+            </div>
           </div>
         </div>
       )}

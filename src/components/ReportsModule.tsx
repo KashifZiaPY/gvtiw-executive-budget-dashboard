@@ -26,11 +26,14 @@ import { ChequeSearchInput } from './ChequeSearchInput';
 import {
   generateCashBookStatementData,
   generateHeadExpenditureStatementData,
+  generateMultiHeadExpenditureStatementData,
+  generateMultiHeadStatementPrintHtml,
   generateOfficialStatementPrintHtml,
   formatCurrency2Decimals,
   formatCashBookBillInfo,
   CashBookStatementData,
   HeadExpenditureStatementData,
+  MultiHeadReportResult,
   CashBookStatementRow,
   resolveBankKeyFromAccount,
   formatGeneratedTimestamp,
@@ -161,6 +164,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
   // Tab-Specific Filters
   const [selectedHead, setSelectedHead] = useState<string>('ALL');
+  const [selectedHeads, setSelectedHeads] = useState<string[]>(['ALL']);
   const [headSearchQuery, setHeadSearchQuery] = useState<string>('');
   const [selectedHeadCategory, setSelectedHeadCategory] = useState<string>('ALL');
   const [selectedPayee, setSelectedPayee] = useState<string>('ALL');
@@ -229,19 +233,36 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     );
   }, [vouchers, cashBookStates, selectedBank, fromDate, toDate]);
 
-  // Authoritative Head Expenditure Statement Data
-  const headExpenditureStatementData = useMemo(() => {
-    return generateHeadExpenditureStatementData(
+  // Authoritative Multi-Head Statement Data
+  const multiHeadExpenditureData = useMemo(() => {
+    return generateMultiHeadExpenditureStatementData(
       vouchers,
       accountsStore,
-      selectedHead,
+      selectedHeads,
       selectedBank,
       fromDate,
       toDate,
       headSearchQuery,
       cashBookStates
     );
-  }, [vouchers, accountsStore, selectedHead, selectedBank, fromDate, toDate, headSearchQuery, cashBookStates]);
+  }, [vouchers, accountsStore, selectedHeads, selectedBank, fromDate, toDate, headSearchQuery, cashBookStates]);
+
+  // Authoritative Head Expenditure Statement Data (Single Head fallback or first head if multi)
+  const headExpenditureStatementData = useMemo(() => {
+    if (multiHeadExpenditureData.isMultiHead && multiHeadExpenditureData.headReports.length > 0) {
+      return multiHeadExpenditureData.headReports[0];
+    }
+    return generateHeadExpenditureStatementData(
+      vouchers,
+      accountsStore,
+      selectedHeads.length === 1 ? selectedHeads[0] : selectedHead,
+      selectedBank,
+      fromDate,
+      toDate,
+      headSearchQuery,
+      cashBookStates
+    );
+  }, [multiHeadExpenditureData, vouchers, accountsStore, selectedHeads, selectedHead, selectedBank, fromDate, toDate, headSearchQuery, cashBookStates]);
 
   // Bank Combobox Options & Categories
   const bankCategories = [
@@ -425,8 +446,11 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       }
 
       // Tab-specific filters
-      if (activeReportTab === 'HEAD' && selectedHead !== 'ALL' && v.accountHead !== selectedHead) {
-        return false;
+      if (activeReportTab === 'HEAD') {
+        const isAll = selectedHeads.length === 0 || selectedHeads.includes('ALL');
+        if (!isAll && !selectedHeads.includes(v.accountHead)) {
+          return false;
+        }
       }
 
       if (activeReportTab === 'PAYEE' && selectedPayee !== 'ALL' && v.payeeName.toLowerCase() !== selectedPayee.toLowerCase()) {
@@ -596,6 +620,24 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     const printWin = window.open('', '_blank');
     if (!printWin) {
       window.print();
+      return;
+    }
+
+    if (multiHeadExpenditureData && multiHeadExpenditureData.isMultiHead) {
+      const html = generateMultiHeadStatementPrintHtml({
+        multiHeadData: multiHeadExpenditureData,
+        periodLabel: buildPeriodLabel(fromDate, toDate),
+        generatedTimestamp: formatGeneratedTimestamp(),
+        customGvtiwLogo,
+        customTevtaLogo,
+      });
+      printWin.document.open();
+      printWin.document.write(html);
+      printWin.document.close();
+      setTimeout(() => {
+        printWin.focus();
+        printWin.print();
+      }, 400);
       return;
     }
 
@@ -1273,6 +1315,132 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
   // EXPORT CSV: HEAD EXPENDITURE STATEMENT
   const handleExportHeadCSV = (data: HeadExpenditureStatementData) => {
+    if (multiHeadExpenditureData && multiHeadExpenditureData.isMultiHead) {
+      const headers = [
+        'Sr No',
+        'Date',
+        'Account',
+        'Voucher No',
+        'Vendor / Paid To',
+        'Account Head',
+        'Particulars / Narration',
+        'Cheque No',
+        'Receipts (Rs.)',
+        'Expenditure (Rs.)',
+        'Remaining Unspent Budget (Rs.)',
+      ];
+      const rows: any[] = [];
+
+      // Grand Summary row
+      rows.push([
+        '—',
+        '01-Jul-2026',
+        'ALL',
+        '—',
+        'CONSOLIDATED MULTI-HEAD BUDGET ALLOCATION (b/d)',
+        '—',
+        `Grand Sanctioned Budget Allocation across ${multiHeadExpenditureData.headReports.length} heads`,
+        '—',
+        '0.00',
+        '0.00',
+        multiHeadExpenditureData.grandTotal.budgetAllocationOpening.toFixed(2),
+      ]);
+
+      let globalSr = 1;
+      for (const hReport of multiHeadExpenditureData.headReports) {
+        const headCode = hReport.groups[0]?.headCode || hReport.headCodeText;
+        const headName = hReport.groups[0]?.headName || hReport.subtitle;
+        rows.push([
+          '—',
+          '—',
+          headCode,
+          '—',
+          `*** ${headCode} - ${headName} ***`,
+          '—',
+          `Sanctioned Allocation: Rs. ${hReport.budgetAllocationOpening.toFixed(2)}`,
+          '—',
+          '—',
+          '—',
+          '—',
+        ]);
+        rows.push([
+          '—',
+          '01-Jul-2026',
+          headCode,
+          '—',
+          'SANCTIONED BUDGET ALLOCATION (b/d)',
+          '—',
+          'Sanctioned Budget Allocation for FY 2026-27',
+          '—',
+          '0.00',
+          '0.00',
+          hReport.budgetAllocationOpening.toFixed(2),
+        ]);
+        for (const g of hReport.groups) {
+          for (const r of g.rows) {
+            const billText = formatCashBookBillInfo(r.billNo, r.billDate);
+            const particularsWithBill = r.particulars ? `${r.particulars}\n${billText}` : billText;
+            rows.push([
+              globalSr++,
+              r.date,
+              r.accountKey,
+              `"${r.voucherNo}"`,
+              `"${r.paidToBy}"`,
+              `"${r.accountHead}"`,
+              `"${particularsWithBill.replace(/"/g, '""')}"`,
+              `"${r.chequeNo}"`,
+              r.receipts.toFixed(2),
+              r.payments.toFixed(2),
+              r.balance.toFixed(2),
+            ]);
+          }
+        }
+        rows.push([
+          '—',
+          '—',
+          headCode,
+          '—',
+          `CLOSING BALANCE (c/d) - ${headCode}`,
+          '—',
+          `Total Receipts: Rs. ${hReport.receiptsReappr.toFixed(2)} | Total Exp: Rs. ${hReport.totalExpenditure.toFixed(2)}`,
+          '—',
+          hReport.receiptsReappr.toFixed(2),
+          hReport.totalExpenditure.toFixed(2),
+          hReport.closingUnspentBalance.toFixed(2),
+        ]);
+      }
+
+      // Grand totals row
+      rows.push([
+        '—',
+        '—',
+        'ALL',
+        '—',
+        'CONSOLIDATED GRAND TOTALS (Rs.)',
+        '—',
+        '—',
+        '—',
+        multiHeadExpenditureData.grandTotal.receiptsReappr.toFixed(2),
+        multiHeadExpenditureData.grandTotal.totalExpenditure.toFixed(2),
+        multiHeadExpenditureData.grandTotal.closingUnspentBalance.toFixed(2),
+      ]);
+
+      const csvContent =
+        'data:text/csv;charset=utf-8,' +
+        [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute(
+        'download',
+        `Consolidated_Multi_Head_Statement_${multiHeadExpenditureData.selectedHeadCodes.join('_')}_${new Date().toISOString().slice(0, 10)}.csv`
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
     const headers = [
       'Sr No',
       'Date',
@@ -1883,6 +2051,20 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                   value={selectedHead}
                   onChange={(val) => {
                     setSelectedHead(val);
+                    setSelectedHeads([val]);
+                    setHeadSearchQuery('');
+                  }}
+                  multiSelect={true}
+                  selectedValues={selectedHeads}
+                  onMultiChange={(vals) => {
+                    setSelectedHeads(vals);
+                    if (vals.length === 1) {
+                      setSelectedHead(vals[0]);
+                    } else if (vals.length === 0 || vals.includes('ALL')) {
+                      setSelectedHead('ALL');
+                    } else {
+                      setSelectedHead(vals[0]);
+                    }
                     setHeadSearchQuery('');
                   }}
                   darkMode={darkMode}
@@ -1904,37 +2086,45 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                     { label: 'Bank Charges', val: 'A03101-BANK CHARGES-AAA', tag: '-AAA', tagType: 'AAA' },
                     { label: 'Service Charges', val: 'A03933-SERVICE CHARGES', tag: null, tagType: null },
                     { label: 'NAVTTC', val: 'A03970-OTHERS(NAVTTC)', tag: '-NAVTTC', tagType: 'NAVTTC' },
-                  ].map((chip, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setSelectedHead(chip.val)}
-                      className={`px-2 py-0.5 text-[9px] font-bold rounded cursor-pointer whitespace-nowrap transition-colors inline-flex items-center gap-1 ${
-                        selectedHead === chip.val
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
-                      }`}
-                    >
-                      <span>{chip.label}</span>
-                      {chip.tag && (
-                        <span
-                          className={`px-1 py-0.2 rounded text-[8px] font-mono font-black uppercase tracking-wider ${
-                            chip.tagType === 'NS'
-                              ? selectedHead === chip.val
-                                ? 'bg-sky-300 text-slate-950'
-                                : 'bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-800'
-                              : chip.tagType === 'AAA'
-                              ? selectedHead === chip.val
-                                ? 'bg-amber-300 text-slate-950'
-                                : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
-                              : 'bg-slate-300 text-slate-900'
-                          }`}
-                        >
-                          {chip.tag}
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                  ].map((chip, idx) => {
+                    const isChipActive =
+                      (chip.val === 'ALL' && (selectedHeads.includes('ALL') || selectedHeads.length === 0)) ||
+                      (selectedHeads.length === 1 && selectedHeads[0] === chip.val);
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setSelectedHead(chip.val);
+                          setSelectedHeads([chip.val]);
+                        }}
+                        className={`px-2 py-0.5 text-[9px] font-bold rounded cursor-pointer whitespace-nowrap transition-colors inline-flex items-center gap-1 ${
+                          isChipActive
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        <span>{chip.label}</span>
+                        {chip.tag && (
+                          <span
+                            className={`px-1 py-0.2 rounded text-[8px] font-mono font-black uppercase tracking-wider ${
+                              chip.tagType === 'NS'
+                                ? isChipActive
+                                  ? 'bg-sky-300 text-slate-950'
+                                  : 'bg-sky-100 dark:bg-sky-950/80 text-sky-800 dark:text-sky-300 border border-sky-300 dark:border-sky-800'
+                                : chip.tagType === 'AAA'
+                                ? isChipActive
+                                  ? 'bg-amber-300 text-slate-950'
+                                  : 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800'
+                                : 'bg-slate-300 text-slate-900'
+                            }`}
+                          >
+                            {chip.tag}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -2105,6 +2295,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       {activeReportTab === 'HEAD' && (
         <HeadExpenditureStatementView
           data={headExpenditureStatementData}
+          multiHeadData={multiHeadExpenditureData}
           darkMode={darkMode}
           customGvtiwLogo={customGvtiwLogo}
           customTevtaLogo={customTevtaLogo}

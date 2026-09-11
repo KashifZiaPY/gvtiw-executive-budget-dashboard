@@ -94,19 +94,19 @@
 .voucher-left-scroll-container thead {
   position: sticky !important;
   top: 0 !important;
-  z-index: 30 !important;
+  z-index: 10 !important;
 }
 
 .voucher-left-scroll-container thead tr {
   position: sticky !important;
   top: 0 !important;
-  z-index: 30 !important;
+  z-index: 10 !important;
 }
 
 .voucher-left-scroll-container thead th {
   position: sticky !important;
   top: 0 !important;
-  z-index: 30 !important;
+  z-index: 10 !important;
 }
 
 .voucher-left-scroll-inner {

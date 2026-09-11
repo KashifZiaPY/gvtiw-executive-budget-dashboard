@@ -1713,7 +1713,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       {/* 20.25 CORPORATE DROPDOWN MENU BAR (Enterprise Accounting Suite) */}
       {/* ------------------------------------------------------------- */}
       <div
-        className={`relative ${activeDropdown || isMoreMenuOpen ? 'z-50' : 'z-20'} p-2.5 rounded-2xl border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shadow-xs transition-all ${
+        className={`relative ${activeDropdown ? 'z-[70]' : 'z-20'} p-2.5 rounded-2xl border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shadow-xs transition-all ${
           darkMode ? 'bg-[#0B132B] border-slate-800' : 'bg-white border-slate-200'
         }`}
       >
@@ -1726,9 +1726,9 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         )}
 
         {/* Left Side: Corporate Dropdown Menus */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap relative z-10">
           {/* MENU 1: VOUCHERS */}
-          <div className="relative">
+          <div className={`relative ${activeDropdown === 'vouchers' ? 'z-50' : ''}`}>
             <button
               type="button"
               onClick={() => setActiveDropdown(activeDropdown === 'vouchers' ? null : 'vouchers')}
@@ -1751,7 +1751,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
             {activeDropdown === 'vouchers' && (
               <div
-                className={`absolute left-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
+                className={`absolute left-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-[70] space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
                   darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'
                 }`}
               >
@@ -1853,7 +1853,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           </div>
 
           {/* MENU 2: CASHBOOKS & ACCOUNTING */}
-          <div className="relative">
+          <div className={`relative ${activeDropdown === 'cashbooks' ? 'z-50' : ''}`}>
             <button
               type="button"
               onClick={() => setActiveDropdown(activeDropdown === 'cashbooks' ? null : 'cashbooks')}
@@ -1876,7 +1876,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
             {activeDropdown === 'cashbooks' && (
               <div
-                className={`absolute left-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
+                className={`absolute left-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-[70] space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
                   darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'
                 }`}
               >
@@ -1935,7 +1935,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           </div>
 
           {/* MENU 3: GOOGLE DRIVE & BACKUP SUITE */}
-          <div className="relative">
+          <div className={`relative ${activeDropdown === 'backup' ? 'z-50' : ''}`}>
             <button
               type="button"
               onClick={() => setActiveDropdown(activeDropdown === 'backup' ? null : 'backup')}
@@ -1961,7 +1961,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
             {activeDropdown === 'backup' && (
               <div
-                className={`absolute left-0 top-full mt-2 w-80 rounded-2xl border shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
+                className={`absolute left-0 top-full mt-2 w-80 rounded-2xl border shadow-2xl p-2 z-[70] space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
                   darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'
                 }`}
               >
@@ -2088,7 +2088,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           </div>
 
           {/* MENU 4: COMPLIANCE & AUDIT */}
-          <div className="relative">
+          <div className={`relative ${activeDropdown === 'audit' ? 'z-50' : ''}`}>
             <button
               type="button"
               onClick={() => setActiveDropdown(activeDropdown === 'audit' ? null : 'audit')}
@@ -2111,7 +2111,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
             {activeDropdown === 'audit' && (
               <div
-                className={`absolute left-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
+                className={`absolute left-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-[70] space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
                   darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'
                 }`}
               >
@@ -2205,7 +2205,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       {/* 20.3 EXECUTIVE NAVIGATION BAR                                 */}
       {/* ------------------------------------------------------------- */}
       <div
-        className={`p-1.5 rounded-2xl border flex items-center justify-between gap-2 text-xs transition-all ${
+        className={`relative ${isMoreMenuOpen ? 'z-[60]' : 'z-10'} p-1.5 rounded-2xl border flex items-center justify-between gap-2 text-xs transition-all ${
           darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-100/90 border-slate-200/80'
         }`}
       >
@@ -2274,7 +2274,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsMoreMenuOpen(false)} />
               <div
-                className={`absolute right-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-50 space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
+                className={`absolute right-0 top-full mt-2 w-72 rounded-2xl border shadow-2xl p-2 z-[70] space-y-1 animate-in fade-in zoom-in-95 duration-100 ${
                   darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'
                 }`}
               >
