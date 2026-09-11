@@ -1799,9 +1799,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           >
             <div className="flex items-center gap-1.5 font-bold text-xs">
               <Building2 className="w-4 h-4 text-cyan-400" />
-              <span>Director BRS &amp; Cash Book</span>
+              <span>Accounting Data Entry</span>
             </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">Reconciliation &amp; Registers</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Director's Office Reconciliation &amp; Registers</p>
           </button>
 
           <button
@@ -3116,7 +3116,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             <PinLockScreen
               darkMode={darkMode}
               customGvtiwLogo={customGvtiwLogo}
-              title="Director's Office Reports Authentication"
+              title="Accounting Data Entry Authentication"
               onUnlock={(pin) => {
                 setShowPinModal(false);
                 if (onUnlock) {

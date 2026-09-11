@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { MasterVoucher, INSTITUTIONAL_BANK_ACCOUNTS, BankAccountKey } from '../data/cashBookData';
-import { MASTER_PAYEE_LIST, MASTER_ACCOUNT_HEADS, PayeeRecord } from '../data/voucherMasterLists';
+import { MASTER_PAYEE_LIST, MASTER_ACCOUNT_HEADS, PayeeRecord, filterAccountHeads } from '../data/voucherMasterLists';
 import { INITIAL_ACCOUNTS } from '../data/initialData';
 import { MiniCalculatorPopover } from './MiniCalculatorPopover';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
@@ -407,31 +407,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
 
   // Filter Heads: Multi-token search across Head Code, Description and Categories with relevance ranking
   const filteredHeads = useMemo(() => {
-    if (!headSearch || headSearch.trim() === '') return availableHeadsForBank;
-    const rawSearch = headSearch.trim().toLowerCase();
-    const tokens = rawSearch.split(/[\s,/-]+/).filter(Boolean);
-
-    return availableHeadsForBank
-      .filter((h) => {
-        const lowerHead = h.toLowerCase();
-        if (lowerHead.includes(rawSearch)) return true;
-        return tokens.every((tok) => lowerHead.includes(tok));
-      })
-      .sort((a, b) => {
-        const aLower = a.toLowerCase();
-        const bLower = b.toLowerCase();
-        // Exact match first
-        const aExact = aLower === rawSearch;
-        const bExact = bLower === rawSearch;
-        if (aExact && !bExact) return -1;
-        if (!aExact && bExact) return 1;
-        // Code prefix / Starts with first
-        const aStarts = aLower.startsWith(rawSearch);
-        const bStarts = bLower.startsWith(rawSearch);
-        if (aStarts && !bStarts) return -1;
-        if (!aStarts && bStarts) return 1;
-        return a.localeCompare(b);
-      });
+    return filterAccountHeads(availableHeadsForBank, headSearch);
   }, [headSearch, availableHeadsForBank]);
 
   // =========================================================================

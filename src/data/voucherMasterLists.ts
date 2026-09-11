@@ -663,3 +663,37 @@ export const MASTER_ACCOUNT_HEADS: string[] = [
   "A00000WB-FUND AGAINST DLI-4 WB PROJECT",
   "A03905-Newspapers & Books"
 ];
+
+/**
+ * Shared Account Head filtering and ranking logic.
+ * Used by Voucher Entry's New Entry form and Accounting Data Entry's Unpresented Cheques table.
+ * Supports multi-token search, fuzzy/partial substring matching across head codes and descriptions,
+ * with relevance ranking (exact match > prefix match > alphabetical).
+ */
+export function filterAccountHeads(heads: string[], query: string): string[] {
+  if (!query || query.trim() === '') return heads;
+  const rawSearch = query.trim().toLowerCase();
+  const tokens = rawSearch.split(/[\s,/-]+/).filter(Boolean);
+
+  return heads
+    .filter((h) => {
+      const lowerHead = h.toLowerCase();
+      if (lowerHead.includes(rawSearch)) return true;
+      return tokens.every((tok) => lowerHead.includes(tok));
+    })
+    .sort((a, b) => {
+      const aLower = a.toLowerCase();
+      const bLower = b.toLowerCase();
+      // Exact match first
+      const aExact = aLower === rawSearch;
+      const bExact = bLower === rawSearch;
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+      // Code prefix / Starts with first
+      const aStarts = aLower.startsWith(rawSearch);
+      const bStarts = bLower.startsWith(rawSearch);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return a.localeCompare(b);
+    });
+}

@@ -12,6 +12,8 @@ import {
   ChevronDown,
   Info,
   Lock,
+  Unlock,
+  X,
   Receipt,
   CreditCard,
   Scale,
@@ -26,6 +28,7 @@ import {
   CashBookAccountState,
   MasterVoucher,
 } from '../data/cashBookData';
+import { MASTER_ACCOUNT_HEADS, filterAccountHeads } from '../data/voucherMasterLists';
 import {
   fetchLiveCashBookFromGoogleSheet,
   STORAGE_KEY_LIVE_CASHBOOKS,
@@ -43,6 +46,7 @@ import {
   INITIAL_DIRECTOR_MONTHLY_GRID,
 } from '../data/directorReconData';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
+import { PinLockScreen } from './PinLockScreen';
 
 export interface DirectorReconReportProps {
   initialAccountKey?: BankAccountKey;
@@ -273,9 +277,411 @@ export interface ManualUnpresentedCheque {
   id: string;
   chequeNo: string;
   date: string;
+  accountHead?: string;
   amount: number;
   description: string;
 }
+
+// =========================================================================
+// Formatting & Number Utilities for Live Grouped-Digit Inputs & Calculations
+// =========================================================================
+
+/**
+ * Formats a numeric or partially typed string with thousands digit grouping (e.g. 1,765,919)
+ * while maintaining decimal points and live typing continuity.
+ */
+export function formatNumberLive(raw: string | number | null | undefined): string {
+  if (raw === null || raw === undefined) return '';
+  const str = String(raw).trim();
+  if (str === '') return '';
+
+  const isNegative = str.startsWith('-');
+  // Keep only digits and decimal points
+  const cleaned = str.replace(/[^0-9.]/g, '');
+  if (cleaned === '') return isNegative ? '-' : '';
+
+  const dotIndex = cleaned.indexOf('.');
+  let intPart: string;
+  let decPart: string;
+
+  if (dotIndex === -1) {
+    intPart = cleaned;
+    decPart = '';
+  } else {
+    intPart = cleaned.slice(0, dotIndex);
+    // Keep first dot and decimals, stripping any extra dots
+    decPart = '.' + cleaned.slice(dotIndex + 1).replace(/\./g, '');
+  }
+
+  let formattedInt = '';
+  if (intPart.length > 0) {
+    if (intPart.length > 1 && intPart.startsWith('0')) {
+      intPart = intPart.replace(/^0+/, '') || '0';
+    }
+    formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  } else if (dotIndex === 0) {
+    formattedInt = '0';
+  }
+
+  return (isNegative ? '-' : '') + formattedInt + decPart;
+}
+
+/**
+ * Parses any amount string or number to a clean float, stripping commas and whitespace.
+ * Safe for all downstream reconciliation and variance arithmetic.
+ */
+export function parseNumericAmount(val: any): number {
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  if (!val) return 0;
+  const cleaned = String(val).replace(/,/g, '').trim();
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+// =========================================================================
+// GroupedAmountInput: Live Digit Grouping (e.g. 1,765,919) + Save on Enter
+// =========================================================================
+interface GroupedAmountInputProps {
+  value: number | string;
+  onChange: (numVal: number, formattedStr: string) => void;
+  onCommit?: (numVal: number) => void;
+  disabled?: boolean;
+  className?: string;
+  placeholder?: string;
+  title?: string;
+}
+
+export const GroupedAmountInput: React.FC<GroupedAmountInputProps> = ({
+  value,
+  onChange,
+  onCommit,
+  disabled,
+  className,
+  placeholder = '0.00',
+  title,
+}) => {
+  const [displayStr, setDisplayStr] = useState<string>(() => {
+    if (value === '' || value === null || value === undefined) return '';
+    return formatNumberLive(value);
+  });
+  const isFocusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isFocusedRef.current) {
+      if (value === '' || value === null || value === undefined) {
+        setDisplayStr('');
+      } else {
+        setDisplayStr(formatNumberLive(value));
+      }
+    } else {
+      // If focused, only update if external value changed significantly (e.g. FY/account switch)
+      const currentNum = parseNumericAmount(displayStr);
+      const incomingNum = parseNumericAmount(value);
+      if (Math.abs(currentNum - incomingNum) > 0.0001) {
+        setDisplayStr(formatNumberLive(value));
+      }
+    }
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const originalValue = input.value;
+    const originalCursor = input.selectionStart || 0;
+
+    // Count non-comma characters before cursor in original input
+    const nonCommasBeforeCursor = originalValue.slice(0, originalCursor).replace(/,/g, '').length;
+
+    const formatted = formatNumberLive(originalValue);
+    setDisplayStr(formatted);
+
+    const numVal = parseNumericAmount(formatted);
+    onChange(numVal, formatted);
+
+    // Restore cursor position smoothly based on non-comma character count
+    requestAnimationFrame(() => {
+      if (input) {
+        let cursor = 0;
+        let counted = 0;
+        for (let i = 0; i < formatted.length; i++) {
+          if (counted >= nonCommasBeforeCursor) break;
+          if (formatted[i] !== ',') counted++;
+          cursor = i + 1;
+        }
+        input.setSelectionRange(cursor, cursor);
+      }
+    });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const numVal = parseNumericAmount(displayStr);
+      onCommit?.(numVal);
+      (e.target as HTMLInputElement).blur();
+    } else if (e.key === 'Backspace') {
+      const input = e.currentTarget;
+      const cursor = input.selectionStart || 0;
+      if (cursor > 0 && input.selectionStart === input.selectionEnd) {
+        if (input.value[cursor - 1] === ',') {
+          e.preventDefault();
+          const val = input.value;
+          // Delete character before comma
+          const newVal = val.slice(0, cursor - 2) + val.slice(cursor);
+          const formatted = formatNumberLive(newVal);
+          setDisplayStr(formatted);
+          const numVal = parseNumericAmount(formatted);
+          onChange(numVal, formatted);
+          requestAnimationFrame(() => {
+            input.setSelectionRange(cursor - 2, cursor - 2);
+          });
+        }
+      }
+    }
+  };
+
+  const handleBlur = () => {
+    isFocusedRef.current = false;
+    const numVal = parseNumericAmount(displayStr);
+    onCommit?.(numVal);
+    // Tidy up trailing period if left hanging
+    if (displayStr.endsWith('.')) {
+      setDisplayStr(displayStr.slice(0, -1));
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      disabled={disabled}
+      value={displayStr}
+      onFocus={() => {
+        isFocusedRef.current = true;
+      }}
+      onChange={handleChange}
+      onKeyDown={handleKeyDown}
+      onBlur={handleBlur}
+      placeholder={placeholder}
+      className={className}
+      title={title}
+    />
+  );
+};
+
+// Searchable Account Head Dropdown / Combobox Component for Unpresented Cheques
+interface SearchableAccountHeadCellProps {
+  value?: string;
+  onChange: (newHead: string) => void;
+  availableHeads: string[];
+  disabled: boolean;
+  darkMode?: boolean;
+}
+
+const SearchableAccountHeadCell: React.FC<SearchableAccountHeadCellProps> = ({
+  value = '',
+  onChange,
+  availableHeads,
+  disabled,
+  darkMode,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState(value);
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setSearch(value);
+  }, [value]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setSearch(value);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, value]);
+
+  // FIX 2: Exact same shared fuzzy/partial multi-token search logic from Voucher Entry
+  const filteredHeads = useMemo(() => {
+    return filterAccountHeads(availableHeads, search);
+  }, [search, availableHeads]);
+
+  // Keep highlighted item visible on arrow key navigation
+  useEffect(() => {
+    if (isOpen && listRef.current) {
+      const items = listRef.current.querySelectorAll('.head-item');
+      if (items[highlightedIndex]) {
+        (items[highlightedIndex] as HTMLElement).scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [highlightedIndex, isOpen]);
+
+  const handleSelect = (head: string) => {
+    onChange(head);
+    setSearch(head);
+    setIsOpen(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen) {
+      if (e.key === 'ArrowDown' || e.key === 'Enter') {
+        setIsOpen(true);
+        setHighlightedIndex(0);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev + 1 < filteredHeads.length ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev - 1 >= 0 ? prev - 1 : filteredHeads.length - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (filteredHeads[highlightedIndex]) {
+        handleSelect(filteredHeads[highlightedIndex]);
+      }
+    } else if (e.key === 'Escape' || e.key === 'Tab') {
+      setIsOpen(false);
+    }
+  };
+
+  if (disabled) {
+    return (
+      <div
+        className={`px-2 py-1 rounded text-[11px] font-mono truncate max-w-[190px] border ${
+          darkMode
+            ? 'bg-slate-800/80 border-slate-700 text-slate-300'
+            : 'bg-slate-100 border-slate-300 text-slate-700'
+        }`}
+        title={value || 'No Account Head assigned'}
+      >
+        {value || '—'}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <div className="relative flex items-center">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            if (!isOpen) setIsOpen(true);
+            setHighlightedIndex(0);
+          }}
+          onFocus={() => {
+            setIsOpen(true);
+            setHighlightedIndex(0);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder="Search Head (e.g. water, ch, elect)..."
+          className={`w-full px-2 py-1 pr-5 rounded text-xs font-mono border focus:outline-hidden ${
+            darkMode
+              ? 'bg-slate-800 border-purple-800/60 text-white focus:border-purple-400'
+              : 'bg-white border-purple-300 text-slate-900 focus:border-purple-600'
+          }`}
+        />
+        {search ? (
+          <button
+            type="button"
+            onClick={() => {
+              setSearch('');
+              onChange('');
+              setIsOpen(true);
+              setHighlightedIndex(0);
+            }}
+            className="absolute right-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] p-0.5 cursor-pointer"
+            title="Clear"
+          >
+            ✕
+          </button>
+        ) : (
+          <ChevronDown className="w-3 h-3 absolute right-1 text-slate-400 pointer-events-none" />
+        )}
+      </div>
+
+      {isOpen && (
+        <div
+          ref={listRef}
+          className={`absolute top-full left-0 mt-1 w-80 max-h-56 overflow-y-auto rounded-lg shadow-2xl z-50 divide-y text-xs border ${
+            darkMode
+              ? 'bg-slate-900 border-purple-700 divide-slate-800 text-white'
+              : 'bg-white border-purple-400 divide-slate-100 text-slate-900'
+          }`}
+        >
+          <div
+            className={`p-1.5 text-[10px] font-bold flex items-center justify-between sticky top-0 z-10 border-b ${
+              darkMode
+                ? 'bg-purple-950 text-purple-200 border-purple-800'
+                : 'bg-purple-50 text-purple-900 border-purple-200'
+            }`}
+          >
+            <span className="flex items-center gap-1">
+              <Search className="w-3 h-3 text-purple-500" />
+              <span>Select Head ({filteredHeads.length} matching • ↑ ↓ Arrows + Enter)</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                setSearch(value);
+              }}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+          {filteredHeads.length === 0 ? (
+            <div className="p-3 text-center text-slate-400 text-[11px] italic">
+              No matching account heads found for &ldquo;{search}&rdquo;
+            </div>
+          ) : (
+            filteredHeads.map((h, idx) => {
+              const isHighlighted = idx === highlightedIndex;
+              const isSelected = h === value;
+              return (
+                <div
+                  key={h}
+                  onClick={() => handleSelect(h)}
+                  className={`head-item px-2.5 py-1.5 cursor-pointer text-[11px] truncate transition-colors flex items-center justify-between ${
+                    isHighlighted
+                      ? darkMode
+                        ? 'bg-purple-900 text-white font-bold'
+                        : 'bg-purple-100 text-purple-950 font-bold'
+                      : isSelected
+                      ? darkMode
+                        ? 'bg-purple-950/70 text-purple-300 font-semibold'
+                        : 'bg-purple-50 text-purple-900 font-semibold'
+                      : darkMode
+                      ? 'hover:bg-slate-800 text-slate-200'
+                      : 'hover:bg-slate-50 text-slate-800'
+                  }`}
+                  title={h}
+                >
+                  <span className="truncate">{h}</span>
+                  {isSelected && (
+                    <span className="text-[10px] text-emerald-500 font-bold ml-1 shrink-0">✓</span>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export function DirectorReconciliationReport({
   initialAccountKey = 'NS',
@@ -286,12 +692,42 @@ export function DirectorReconciliationReport({
   customGvtiwLogo,
   customTevtaLogo,
   customGopLogo,
+  isUnlocked = false,
+  onUnlockRequest,
   vouchers: propVouchers,
   cashBookStates: propCashBookStates,
+  accountsStore,
   onOpenPAF,
 }: DirectorReconReportProps) {
   // Navigation Tabs: 'RECON' | 'RECEIPTS' | 'PAYMENTS'
   const [activeTab, setActiveTab] = useState<DirectorReportTab>('RECON');
+
+  // Manual Edit Unlock State (gated by live Security PIN verification)
+  const [internalUnlocked, setInternalUnlocked] = useState(false);
+  const [showLocalPinModal, setShowLocalPinModal] = useState(false);
+
+  // Gated manual edit permission: check parent prop, internal unlock, or active session PIN
+  const isEffectiveUnlocked = useMemo(() => {
+    if (isUnlocked || internalUnlocked) return true;
+    try {
+      const sessPin = sessionStorage.getItem('gvtiw_active_session_pin');
+      if (sessPin && sessPin.trim().length > 0) return true;
+    } catch {}
+    return false;
+  }, [isUnlocked, internalUnlocked]);
+
+  const handleRequestUnlock = () => {
+    if (onUnlockRequest) {
+      onUnlockRequest();
+    } else {
+      setShowLocalPinModal(true);
+    }
+  };
+
+  const handleLocalPinSuccess = (_pin: string) => {
+    setInternalUnlocked(true);
+    setShowLocalPinModal(false);
+  };
 
   // Account selection: NS, PF, FC, SEC, SC, AA
   const [selectedAccountKey, setSelectedAccountKey] = useState<BankAccountKey>(initialAccountKey);
@@ -934,40 +1370,74 @@ export function DirectorReconciliationReport({
     try {
       const saved = localStorage.getItem(bankStmtStorageKey);
       if (saved !== null && saved !== '') {
-        const val = parseFloat(saved);
+        const val = parseNumericAmount(saved);
         if (!isNaN(val)) return val;
       }
     } catch {}
     return selectedFY === '2025-26' ? 3044164.95 : 1743235.0;
   });
 
-  const [editingBankBalanceStr, setEditingBankBalanceStr] = useState<string>(String(bankStatementBalance));
+  const [editingBankBalanceStr, setEditingBankBalanceStr] = useState<string>(() =>
+    formatNumberLive(bankStatementBalance)
+  );
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem(bankStmtStorageKey);
       if (saved !== null && saved !== '') {
-        const val = parseFloat(saved);
+        const val = parseNumericAmount(saved);
         if (!isNaN(val)) {
           setBankStatementBalance(val);
-          setEditingBankBalanceStr(String(val));
+          setEditingBankBalanceStr(formatNumberLive(val));
           return;
         }
       }
     } catch {}
     const def = selectedFY === '2025-26' ? 3044164.95 : 1743235.0;
     setBankStatementBalance(def);
-    setEditingBankBalanceStr(String(def));
+    setEditingBankBalanceStr(formatNumberLive(def));
   }, [bankStmtStorageKey, selectedFY]);
 
-  const handleBankBalanceBlur = () => {
-    const val = parseFloat(editingBankBalanceStr.replace(/,/g, ''));
-    if (!isNaN(val)) {
-      setBankStatementBalance(val);
-      try {
-        localStorage.setItem(bankStmtStorageKey, String(val));
-      } catch {}
+  // Dedicated own-fund heads list (mirroring Voucher Entry rules)
+  const DEDICATED_OWN_FUND_HEADS = useMemo(
+    () => [
+      'A00000PF-PUPIL FUND',
+      'A00000SC-SHORT COURSE',
+      'A00000SS-STUDENT SEC.',
+      'A00000TFC-TEVTA FEE COL.',
+    ],
+    []
+  );
+
+  // Available account heads scoped to active bank account
+  const availableHeadsForBank = useMemo(() => {
+    if (selectedAccountKey === 'PF') {
+      return ['A00000PF-PUPIL FUND'];
     }
+    if (selectedAccountKey === 'SC') {
+      return ['A00000SC-SHORT COURSE'];
+    }
+    if (selectedAccountKey === 'SEC') {
+      return ['A00000SS-STUDENT SEC.'];
+    }
+    if (selectedAccountKey === 'FC') {
+      return ['A00000TFC-TEVTA FEE COL.'];
+    }
+    return MASTER_ACCOUNT_HEADS.filter((h) => !DEDICATED_OWN_FUND_HEADS.includes(h));
+  }, [selectedAccountKey, DEDICATED_OWN_FUND_HEADS]);
+
+  const commitBankBalance = (valOrNum?: number | string) => {
+    if (!isEffectiveUnlocked) return;
+    const num = parseNumericAmount(valOrNum !== undefined ? valOrNum : editingBankBalanceStr);
+    setBankStatementBalance(num);
+    setEditingBankBalanceStr(formatNumberLive(num));
+    try {
+      localStorage.setItem(bankStmtStorageKey, String(num));
+    } catch {}
+  };
+
+  const handleBankBalanceBlur = () => {
+    commitBankBalance();
   };
 
   // Difference: Bank Statement Balance − Cash Book Balance
@@ -1008,14 +1478,20 @@ export function DirectorReconciliationReport({
   }, [manualCheques, unpresentedStorageKey]);
 
   const totalManualChequesAmount = useMemo(() => {
-    return manualCheques.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+    return manualCheques.reduce((sum, c) => sum + parseNumericAmount(c.amount), 0);
   }, [manualCheques]);
 
   const handleAddManualChequeRow = () => {
+    if (!isEffectiveUnlocked) {
+      handleRequestUnlock();
+      return;
+    }
+    const defaultHead = availableHeadsForBank.length === 1 ? availableHeadsForBank[0] : '';
     const newRow: ManualUnpresentedCheque = {
       id: `UC-${Date.now()}`,
       chequeNo: '',
       date: asOnDate || '31-08-2026',
+      accountHead: defaultHead,
       amount: 0,
       description: '',
     };
@@ -1027,12 +1503,14 @@ export function DirectorReconciliationReport({
     field: keyof ManualUnpresentedCheque,
     value: any
   ) => {
+    if (!isEffectiveUnlocked) return;
     setManualCheques((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
   };
 
   const handleRemoveManualCheque = (id: string) => {
+    if (!isEffectiveUnlocked) return;
     setManualCheques((prev) => prev.filter((item) => item.id !== id));
   };
 
@@ -1061,7 +1539,7 @@ export function DirectorReconciliationReport({
   const exportReceiptsCSV = () => {
     const lines: string[] = [];
     lines.push(`"${instituteName}"`);
-    lines.push(`"DATE WISE RECEIPTS IN ${activeAccountName.toUpperCase()} GRANTS"`);
+    lines.push(`"ACCOUNTING DATA ENTRY — DATE WISE RECEIPTS IN ${activeAccountName.toUpperCase()} GRANTS"`);
     lines.push(`"Period: ${fromMonth} to ${toMonth} | Head: ${activeAccountConfig.short}"`);
     lines.push('');
     lines.push('"Sr #","Date of Receipt (dd-mm-yy)","Challan/Cheque No","Head of Account","Amount (Rs.)","Remarks"');
@@ -1074,13 +1552,13 @@ export function DirectorReconciliationReport({
 
     lines.push(`"","","","Total Amount","${totalReceiptsAmount.toFixed(2)}",""`);
 
-    downloadCSVBlob(lines.join('\n'), `Receipts_Register_${selectedAccountKey}_${fromMonth}_to_${toMonth}.csv`);
+    downloadCSVBlob(lines.join('\n'), `Accounting_Data_Entry_Receipts_${selectedAccountKey}_${fromMonth}_to_${toMonth}.csv`);
   };
 
   const exportPaymentsCSV = () => {
     const lines: string[] = [];
     lines.push(`"${instituteName}"`);
-    lines.push(`"DATE WISE PAYMENTS FROM ${activeAccountName.toUpperCase()} GRANTS"`);
+    lines.push(`"ACCOUNTING DATA ENTRY — DATE WISE PAYMENTS FROM ${activeAccountName.toUpperCase()} GRANTS"`);
     lines.push(`"Period: ${fromMonth} to ${toMonth} | Head: ${activeAccountConfig.short}"`);
     lines.push('');
     lines.push(
@@ -1098,11 +1576,12 @@ export function DirectorReconciliationReport({
       `"","Grand Total","","","${paymentsTotals.totalBill.toFixed(2)}","${paymentsTotals.incomeTax.toFixed(2)}","${paymentsTotals.praAmount.toFixed(2)}","${paymentsTotals.security.toFixed(2)}","${paymentsTotals.netPaid.toFixed(2)}","",""`
     );
 
-    downloadCSVBlob(lines.join('\n'), `Payments_Register_${selectedAccountKey}_${fromMonth}_to_${toMonth}.csv`);
+    downloadCSVBlob(lines.join('\n'), `Accounting_Data_Entry_Payments_${selectedAccountKey}_${fromMonth}_to_${toMonth}.csv`);
   };
 
   const exportReconciliationCSV = () => {
     const lines: string[] = [];
+    lines.push(`"ACCOUNTING DATA ENTRY — BANK RECONCILIATION STATEMENT"`);
     lines.push(`"NAME OF DISTRICT: ${districtName}"`);
     lines.push(`"INSTITUTE NAME: ${instituteName}"`);
     lines.push(`"HEAD OF ACCOUNT: ${activeAccountName}"`);
@@ -1130,13 +1609,15 @@ export function DirectorReconciliationReport({
     lines.push(`"Difference if Any (Unpresented Cheques / Uncredited Cheques):","${differenceAmount.toFixed(2)}"`);
     lines.push('');
     lines.push('"DETAILS OF UNPRESENTED CHEQUE / UNCREDITED CHEQUES"');
-    lines.push('"Cheque No","Date","Amount (Rs.)","Description"');
+    lines.push('"Cheque No","Date","Account Head","Amount (Rs.)","Description"');
     manualCheques.forEach((c) => {
-      lines.push(`"${c.chequeNo}","${c.date}","${Number(c.amount).toFixed(2)}","${c.description.replace(/"/g, '""')}"`);
+      lines.push(
+        `"${c.chequeNo}","${c.date}","${(c.accountHead || '').replace(/"/g, '""')}","${parseNumericAmount(c.amount).toFixed(2)}","${c.description.replace(/"/g, '""')}"`
+      );
     });
-    lines.push(`"Total","","${totalManualChequesAmount.toFixed(2)}",""`);
+    lines.push(`"Total","","","${totalManualChequesAmount.toFixed(2)}",""`);
 
-    downloadCSVBlob(lines.join('\n'), `Reconciliation_${selectedAccountKey}_${asOnDate}.csv`);
+    downloadCSVBlob(lines.join('\n'), `Accounting_Data_Entry_Reconciliation_${selectedAccountKey}_${asOnDate}.csv`);
   };
 
   const downloadCSVBlob = (content: string, filename: string) => {
@@ -1180,7 +1661,7 @@ export function DirectorReconciliationReport({
       <!DOCTYPE html>
       <html>
       <head>
-        <title>${activeTab === 'RECON' ? 'Reconciliation' : activeTab === 'RECEIPTS' ? 'Date Wise Receipts' : 'Date Wise Payments'} - ${activeAccountConfig.short}</title>
+        <title>${activeTab === 'RECON' ? 'Accounting Data Entry - Reconciliation' : activeTab === 'RECEIPTS' ? 'Accounting Data Entry - Date Wise Receipts' : 'Accounting Data Entry - Date Wise Payments'} - ${activeAccountConfig.short}</title>
         <style>
           @page {
             size: ${activeTab === 'RECON' ? 'landscape' : 'landscape'};
@@ -1347,7 +1828,7 @@ export function DirectorReconciliationReport({
 
     return {
       headerSnippet: `
-        <div class="report-title">DATE WISE RECEIPTS IN ${activeAccountName.toUpperCase()} GRANTS</div>
+        <div class="report-title">ACCOUNTING DATA ENTRY &bull; DATE WISE RECEIPTS IN ${activeAccountName.toUpperCase()} GRANTS</div>
         <div class="sub-info">Period: ${fromMonth} to ${toMonth} &bull; Bank: ${activeAccountConfig.bankName} &bull; A/C: ${activeAccountConfig.defaultAccountNo}</div>
       `,
       mainSnippet: `
@@ -1400,7 +1881,7 @@ export function DirectorReconciliationReport({
 
     return {
       headerSnippet: `
-        <div class="report-title">DATE WISE PAYMENTS FROM ${activeAccountName.toUpperCase()} GRANTS</div>
+        <div class="report-title">ACCOUNTING DATA ENTRY &bull; DATE WISE PAYMENTS FROM ${activeAccountName.toUpperCase()} GRANTS</div>
         <div class="sub-info">Period: ${fromMonth} to ${toMonth} &bull; Bank: ${activeAccountConfig.bankName} &bull; A/C: ${activeAccountConfig.defaultAccountNo}</div>
       `,
       mainSnippet: `
@@ -1467,7 +1948,8 @@ export function DirectorReconciliationReport({
         <tr>
           <td class="center">${c.chequeNo}</td>
           <td class="center">${c.date}</td>
-          <td class="num">${formatAmount(Number(c.amount) || 0, 2)}</td>
+          <td>${c.accountHead || '—'}</td>
+          <td class="num">${formatAmount(parseNumericAmount(c.amount), 2)}</td>
           <td>${c.description}</td>
         </tr>
       `;
@@ -1475,13 +1957,16 @@ export function DirectorReconciliationReport({
 
     return {
       headerSnippet: `
-        <div class="sub-info" style="font-weight: bold; margin-top: 4px;">
+        <div class="report-title" style="margin-top: 4px; font-size: 11pt;">
+          ACCOUNTING DATA ENTRY &bull; BANK RECONCILIATION STATEMENT
+        </div>
+        <div class="sub-info" style="font-weight: bold; margin-top: 2px;">
           NAME OF DISTRICT: ${districtName} &bull; INSTITUTE NAME: ${instituteName}
         </div>
         <div class="sub-info">
           HEAD OF ACCOUNT: ${activeAccountName} &bull; BANK NAME & ACCOUNT: ${activeAccountConfig.bankName} (${activeAccountConfig.defaultAccountNo}) &bull; As on: ${asOnDate}
         </div>
-        <div class="report-title" style="margin-top: 6px; font-size: 10pt;">
+        <div class="sub-info" style="margin-top: 3px; font-weight: bold;">
           Opening Balance as per Cash Book at the Start of Year ${selectedFY}: Rs. ${formatAmount(openingBalance, 2)}
         </div>
       `,
@@ -1531,7 +2016,7 @@ export function DirectorReconciliationReport({
         </table>
 
         <div style="margin-top: 15px; display: table; width: 100%;">
-          <div style="display: table-cell; width: 55%; vertical-align: top; padding-right: 15px;">
+          <div style="display: table-cell; width: 50%; vertical-align: top; padding-right: 15px;">
             <div style="font-weight: 900; font-size: 8.5pt; text-transform: uppercase; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px;">
               Reconciliation Summary
             </div>
@@ -1557,25 +2042,26 @@ export function DirectorReconciliationReport({
             </table>
           </div>
 
-          <div style="display: table-cell; width: 45%; vertical-align: top;">
+          <div style="display: table-cell; width: 50%; vertical-align: top;">
             <div style="font-weight: 900; font-size: 8.5pt; text-transform: uppercase; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px;">
               DETAILS OF UNPRESENTED CHEQUE / UNCREDITED CHEQUES
             </div>
             <table class="register-table" style="font-size: 8pt; margin-top: 0;">
               <thead>
                 <tr>
-                  <th style="width: 70px;">Cheque No</th>
-                  <th style="width: 65px;">Date</th>
+                  <th style="width: 65px;">Cheque No</th>
+                  <th style="width: 60px;">Date</th>
+                  <th style="width: 110px;">Account Head</th>
                   <th style="width: 75px;">Amount</th>
                   <th>Description</th>
                 </tr>
               </thead>
               <tbody>
-                ${chequesRowsHtml || '<tr><td colspan="4" class="center">No unpresented cheques recorded</td></tr>'}
+                ${chequesRowsHtml || '<tr><td colspan="5" class="center">No unpresented cheques recorded</td></tr>'}
               </tbody>
               <tfoot>
                 <tr>
-                  <td colspan="2" style="text-align: right;">Total:</td>
+                  <td colspan="3" style="text-align: right;">Total:</td>
                   <td class="num">Rs. ${formatAmount(totalManualChequesAmount, 2)}</td>
                   <td></td>
                 </tr>
@@ -1635,7 +2121,7 @@ export function DirectorReconciliationReport({
               {instituteName}
             </h1>
             <p className="text-xs font-mono text-slate-400">
-              TEVTA Official Cash Book &amp; Bank Reconciliation Register
+              Accounting Data Entry &bull; TEVTA Official Cash Book &amp; Bank Reconciliation Register
             </p>
           </div>
         </div>
@@ -2178,14 +2664,32 @@ export function DirectorReconciliationReport({
                 <span className="text-slate-600 dark:text-slate-400">Balance As per Bank Statement at End of Period:</span>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-slate-500 font-mono">Rs.</span>
-                  <input
-                    type="text"
-                    value={editingBankBalanceStr}
-                    onChange={(e) => setEditingBankBalanceStr(e.target.value)}
-                    onBlur={handleBankBalanceBlur}
-                    className="w-36 px-2.5 py-1 text-right font-mono font-bold text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 focus:outline-hidden focus:border-cyan-600"
-                    title="Manual entry from physical bank statement"
-                  />
+                  {isEffectiveUnlocked ? (
+                    <GroupedAmountInput
+                      value={editingBankBalanceStr}
+                      onChange={(numVal, strVal) => {
+                        setEditingBankBalanceStr(strVal);
+                        setBankStatementBalance(numVal);
+                      }}
+                      onCommit={(numVal) => {
+                        commitBankBalance(numVal);
+                      }}
+                      className="w-36 px-2.5 py-1 text-right font-mono font-bold text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-amber-700 dark:text-amber-300 focus:outline-hidden focus:border-cyan-600"
+                      title="Manual entry from physical bank statement with thousands grouping (Press Enter to save)"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleRequestUnlock}
+                      className="group flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/80 hover:border-amber-400 dark:hover:border-amber-500 cursor-pointer transition-colors"
+                      title="Locked: Click to enter Admin PIN to edit"
+                    >
+                      <Lock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                      <span className="font-mono font-bold text-xs text-amber-700 dark:text-amber-300">
+                        {formatNumberLive(editingBankBalanceStr) || formatAmount(bankStatementBalance, 2)}
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -2219,34 +2723,53 @@ export function DirectorReconciliationReport({
             {/* Right: DETAILS OF UNPRESENTED CHEQUE / UNCREDITED CHEQUES (MANUAL DATA ENTRY) */}
             <div className="p-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/80 space-y-3 shadow-2xs">
               <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-300">
-                  DETAILS OF UNPRESENTED CHEQUE / UNCREDITED CHEQUES
-                </h4>
-                <button
-                  onClick={handleAddManualChequeRow}
-                  className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>Add Row</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-300">
+                    DETAILS OF UNPRESENTED CHEQUE / UNCREDITED CHEQUES
+                  </h4>
+                  {!isEffectiveUnlocked && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 px-1.5 py-0.5 rounded">
+                      <Lock className="w-2.5 h-2.5" /> Read-Only
+                    </span>
+                  )}
+                </div>
+                {isEffectiveUnlocked ? (
+                  <button
+                    onClick={handleAddManualChequeRow}
+                    className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Row</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleRequestUnlock}
+                    className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                    title="Unlock with Admin PIN to add or edit cheques"
+                  >
+                    <Lock className="w-3 h-3" />
+                    <span>Unlock to Edit</span>
+                  </button>
+                )}
               </div>
 
               <div className="overflow-x-auto max-h-56 overflow-y-auto rounded-lg border border-slate-300 dark:border-slate-700">
                 <table className="w-full text-xs border-collapse">
                   <thead>
                     <tr className="bg-[#0b2545] text-white border-b border-slate-600 font-bold text-[10px] uppercase">
-                      <th className="p-1.5 text-center w-24">Cheque No</th>
+                      <th className="p-1.5 text-center w-20">Cheque No</th>
                       <th className="p-1.5 text-center w-24">Date</th>
+                      <th className="p-1.5 text-left min-w-[170px]">Account Head</th>
                       <th className="p-1.5 text-right w-24">Amount</th>
-                      <th className="p-1.5 text-left">Description</th>
+                      <th className="p-1.5 text-left min-w-[140px]">Description</th>
                       <th className="p-1.5 text-center w-8"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {manualCheques.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="p-4 text-center text-slate-500 text-[11px] bg-white dark:bg-slate-900/40">
-                          No manual unpresented cheques entered. Click &quot;Add Row&quot; to enter items.
+                        <td colSpan={6} className="p-4 text-center text-slate-500 text-[11px] bg-white dark:bg-slate-900/40">
+                          No manual unpresented cheques entered. {isEffectiveUnlocked ? 'Click "Add Row" to enter items.' : 'Unlock to enter items.'}
                         </td>
                       </tr>
                     ) : (
@@ -2255,50 +2778,83 @@ export function DirectorReconciliationReport({
                           <td className="p-1">
                             <input
                               type="text"
+                              disabled={!isEffectiveUnlocked}
                               value={c.chequeNo}
                               onChange={(e) => handleUpdateManualCheque(c.id, 'chequeNo', e.target.value)}
                               placeholder="Cheque #"
-                              className="w-full px-1.5 py-0.5 rounded bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-mono text-slate-900 dark:text-white"
+                              className={`w-full px-1.5 py-0.5 rounded border text-xs font-mono text-slate-900 dark:text-white ${
+                                !isEffectiveUnlocked
+                                  ? 'bg-slate-100 dark:bg-slate-850 border-slate-200 dark:border-slate-800 opacity-80 cursor-not-allowed'
+                                  : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700'
+                              }`}
                             />
                           </td>
                           <td className="p-1">
                             <input
                               type="text"
+                              disabled={!isEffectiveUnlocked}
                               value={c.date}
                               onChange={(e) => handleUpdateManualCheque(c.id, 'date', e.target.value)}
                               placeholder="dd-mm-yyyy"
-                              className="w-full px-1.5 py-0.5 rounded bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-mono text-center text-slate-900 dark:text-white"
+                              className={`w-full px-1.5 py-0.5 rounded border text-xs font-mono text-center text-slate-900 dark:text-white ${
+                                !isEffectiveUnlocked
+                                  ? 'bg-slate-100 dark:bg-slate-850 border-slate-200 dark:border-slate-800 opacity-80 cursor-not-allowed'
+                                  : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700'
+                              }`}
                             />
                           </td>
                           <td className="p-1">
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={c.amount || ''}
-                              onChange={(e) =>
-                                handleUpdateManualCheque(c.id, 'amount', parseFloat(e.target.value) || 0)
-                              }
+                            <SearchableAccountHeadCell
+                              value={c.accountHead || ''}
+                              disabled={!isEffectiveUnlocked}
+                              availableHeads={availableHeadsForBank}
+                              darkMode={darkMode}
+                              onChange={(val) => handleUpdateManualCheque(c.id, 'accountHead', val)}
+                            />
+                          </td>
+                          <td className="p-1">
+                            <GroupedAmountInput
+                              disabled={!isEffectiveUnlocked}
+                              value={c.amount}
+                              onChange={(numVal) => {
+                                handleUpdateManualCheque(c.id, 'amount', numVal);
+                              }}
+                              onCommit={(numVal) => {
+                                handleUpdateManualCheque(c.id, 'amount', numVal);
+                              }}
                               placeholder="0.00"
-                              className="w-full px-1.5 py-0.5 rounded bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs font-mono text-right text-slate-900 dark:text-white font-bold"
+                              className={`w-full px-1.5 py-0.5 rounded border text-xs font-mono text-right text-slate-900 dark:text-white font-bold ${
+                                !isEffectiveUnlocked
+                                  ? 'bg-slate-100 dark:bg-slate-850 border-slate-200 dark:border-slate-800 opacity-80 cursor-not-allowed'
+                                  : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700'
+                              }`}
+                              title="Enter cheque amount (e.g. 1,765,919) • Press Enter to save"
                             />
                           </td>
                           <td className="p-1">
                             <input
                               type="text"
+                              disabled={!isEffectiveUnlocked}
                               value={c.description}
                               onChange={(e) => handleUpdateManualCheque(c.id, 'description', e.target.value)}
                               placeholder="Payee / Narration"
-                              className="w-full px-1.5 py-0.5 rounded bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                              className={`w-full px-1.5 py-0.5 rounded border text-xs text-slate-900 dark:text-white ${
+                                !isEffectiveUnlocked
+                                  ? 'bg-slate-100 dark:bg-slate-850 border-slate-200 dark:border-slate-800 opacity-80 cursor-not-allowed'
+                                  : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700'
+                              }`}
                             />
                           </td>
                           <td className="p-1 text-center">
-                            <button
-                              onClick={() => handleRemoveManualCheque(c.id)}
-                              className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer p-0.5 transition-colors"
-                              title="Delete row"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            {isEffectiveUnlocked && (
+                              <button
+                                onClick={() => handleRemoveManualCheque(c.id)}
+                                className="text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer p-0.5 transition-colors"
+                                title="Delete row"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -2306,7 +2862,7 @@ export function DirectorReconciliationReport({
                   </tbody>
                   <tfoot>
                     <tr className="bg-[#0b2545] text-white font-bold text-[11px]">
-                      <td colSpan={2} className="p-1.5 text-right uppercase">
+                      <td colSpan={3} className="p-1.5 text-right uppercase">
                         Total Unpresented:
                       </td>
                       <td className="p-1.5 text-right font-mono text-emerald-300">
@@ -2500,6 +3056,29 @@ export function DirectorReconciliationReport({
           customTevtaLogo={customTevtaLogo}
           customGopLogo={customGopLogo}
         />
+      )}
+
+      {/* Admin Security PIN Unlock Modal (Local Fallback) */}
+      {showLocalPinModal && !isEffectiveUnlocked && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-md">
+            <button
+              onClick={() => setShowLocalPinModal(false)}
+              className="absolute -top-10 right-0 text-white hover:text-slate-300 p-2 cursor-pointer font-bold text-sm flex items-center gap-1"
+            >
+              <X className="w-4 h-4" />
+              <span>Close</span>
+            </button>
+            <PinLockScreen
+              darkMode={darkMode}
+              customGvtiwLogo={customGvtiwLogo}
+              title="Accounting Data Entry Authentication"
+              onUnlock={(pin) => {
+                handleLocalPinSuccess(pin);
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
