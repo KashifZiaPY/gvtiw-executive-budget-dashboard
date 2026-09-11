@@ -66,6 +66,11 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
       if (json && json.success) {
         setIsVerifying(false);
         setPinError(null);
+        try {
+          sessionStorage.setItem('gvtiw_active_session_pin', cleanInput);
+        } catch {
+          // Safe fallback in restricted environments
+        }
         onUnlock(cleanInput);
       } else {
         setIsVerifying(false);

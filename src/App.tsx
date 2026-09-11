@@ -156,7 +156,13 @@ export default function App() {
 
   // Shared Admin & Voucher PIN Authentication State (pure in-memory state, resets on page reload)
   const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
-  const [storedPin, setStoredPin] = useState<string>('');
+  const [storedPin, setStoredPin] = useState<string>(() => {
+    try {
+      return sessionStorage.getItem('gvtiw_active_session_pin') || '';
+    } catch {
+      return '';
+    }
+  });
 
   // One-time cleanup on app mount: wipe any stale admin session from previous versions
   useEffect(() => {
@@ -185,12 +191,22 @@ export default function App() {
     setIsUnlocked(true);
     if (typedPin) {
       setStoredPin(typedPin);
+      try {
+        sessionStorage.setItem('gvtiw_active_session_pin', typedPin);
+      } catch {
+        // Safe fallback
+      }
     }
   }, []);
 
   const handleLock = useCallback(() => {
     setIsUnlocked(false);
     setStoredPin('');
+    try {
+      sessionStorage.removeItem('gvtiw_active_session_pin');
+    } catch {
+      // Safe fallback
+    }
   }, []);
 
   // Fetch Dashboard State from High-Performance Backend or Autonomous Engine
@@ -475,6 +491,7 @@ export default function App() {
                 customGvtiwLogo={customGvtiwLogo}
                 customTevtaLogo={customTevtaLogo}
                 customGopLogo={customGopLogo}
+                storedPin={storedPin}
               />
             )}
           </section>

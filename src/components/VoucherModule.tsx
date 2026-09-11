@@ -31,6 +31,7 @@ interface VoucherModuleProps {
   customGvtiwLogo?: string | null;
   customTevtaLogo?: string | null;
   customGopLogo?: string | null;
+  storedPin?: string;
 }
 
 export const VoucherModule: React.FC<VoucherModuleProps> = ({
@@ -38,7 +39,20 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
   customGvtiwLogo,
   customTevtaLogo,
   customGopLogo,
+  storedPin,
 }) => {
+  const getResolvedPin = (): string => {
+    if (storedPin && storedPin.trim()) return storedPin.trim();
+    try {
+      const sessionPin = sessionStorage.getItem('gvtiw_active_session_pin');
+      if (sessionPin && sessionPin.trim()) return sessionPin.trim();
+    } catch {}
+    try {
+      const customPin = localStorage.getItem('gvtiw_admin_custom_pin');
+      if (customPin && customPin.trim()) return customPin.trim();
+    } catch {}
+    return '';
+  };
   const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
     try {
       const cached = localStorage.getItem('gvtiw_live_vouchers_v3');
@@ -141,7 +155,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
       const webAppUrl =
         localStorage.getItem('gvtiw_admin_web_app_url') ||
         'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
-      const activePin = localStorage.getItem('gvtiw_admin_custom_pin') || '';
+      const activePin = getResolvedPin();
 
       const requestPayload = {
         pin: activePin,
@@ -255,7 +269,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
       const webAppUrl =
         localStorage.getItem('gvtiw_admin_web_app_url') ||
         'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
-      const activePin = (localStorage.getItem('gvtiw_admin_custom_pin') || '').trim();
+      const activePin = getResolvedPin();
 
       const postPayload = JSON.stringify({
         pin: activePin,
@@ -367,7 +381,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
       const webAppUrl =
         localStorage.getItem('gvtiw_admin_web_app_url') ||
         'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
-      const activePin = (localStorage.getItem('gvtiw_admin_custom_pin') || '').trim();
+      const activePin = getResolvedPin();
 
       const requestPayload = isAmend
         ? {
@@ -862,6 +876,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
         customTevtaLogo={customTevtaLogo}
         customGopLogo={customGopLogo}
         onSwitchToBankChargeAmend={handleInitiateAmend}
+        storedPin={getResolvedPin()}
       />
 
       {/* ------------------------------------------------------------- */}

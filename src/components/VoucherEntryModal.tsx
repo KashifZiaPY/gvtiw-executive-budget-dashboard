@@ -53,6 +53,7 @@ interface VoucherEntryModalProps {
   customTevtaLogo?: string | null;
   customGopLogo?: string | null;
   onSwitchToBankChargeAmend?: (voucher: MasterVoucher) => void;
+  storedPin?: string;
 }
 
 // Institutional Bank Options (v3.14 Aligned)
@@ -132,6 +133,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   customTevtaLogo,
   customGopLogo,
   onSwitchToBankChargeAmend,
+  storedPin,
 }) => {
   const isAmend = Boolean(voucherToAmend);
   const todayISO = new Date().toISOString().slice(0, 10);
@@ -522,12 +524,53 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const reconciliationDifference = grossBillAmount - totalDisbursedAndTaxes;
   const isReconciled = Math.abs(reconciliationDifference) < 0.01;
 
+  // Robust helper to resolve verified PIN from props, sessionStorage, or localStorage
+  const getActiveSecurityPin = (): string => {
+    if (storedPin && storedPin.trim()) return storedPin.trim();
+    try {
+      const sessionPin = sessionStorage.getItem('gvtiw_active_session_pin');
+      if (sessionPin && sessionPin.trim()) return sessionPin.trim();
+    } catch {
+      // Safe fallback
+    }
+    try {
+      const customPin = localStorage.getItem('gvtiw_admin_custom_pin');
+      if (customPin && customPin.trim()) return customPin.trim();
+    } catch {
+      // Safe fallback
+    }
+    return '';
+  };
+
   // Live Backend NTN / CNIC Lookup with ~400ms Debounce
+  // Only fires when a complete payee name is selected from dropdown or fully typed, never on in-progress partial text
   useEffect(() => {
     const trimmed = (payeeName || '').trim();
     if (!trimmed) {
       setNtnCnic('');
       setIsLoadingNtnCnic(false);
+      return;
+    }
+
+    // Check if trimmed matches a registered payee or existing voucherToAmend payee
+    const matchedPayee = MASTER_PAYEE_LIST.find(
+      (p) => p.name.trim().toLowerCase() === trimmed.toLowerCase()
+    );
+    const isAmendMatch =
+      voucherToAmend &&
+      voucherToAmend.payeeName &&
+      voucherToAmend.payeeName.trim().toLowerCase() === trimmed.toLowerCase();
+
+    const canonicalCompleteName = matchedPayee
+      ? matchedPayee.name
+      : isAmendMatch && voucherToAmend
+      ? voucherToAmend.payeeName.trim()
+      : null;
+
+    // If it's only partial in-progress search text (e.g. "amir"), DO NOT fire the backend call
+    if (!canonicalCompleteName) {
+      setIsLoadingNtnCnic(false);
+      setNtnCnic('');
       return;
     }
 
@@ -540,17 +583,17 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
         const webAppUrl =
           localStorage.getItem('gvtiw_admin_web_app_url') ||
           'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
-        const activePin = localStorage.getItem('gvtiw_admin_custom_pin') || '';
+        const activePin = getActiveSecurityPin();
 
         const payload = {
           pin: activePin,
           action: 'getPayeeNtnCnic',
           command: 'getPayeeNtnCnic',
-          payeeName: trimmed,
-          name: trimmed,
+          payeeName: canonicalCompleteName,
+          name: canonicalCompleteName,
           data: {
-            payeeName: trimmed,
-            name: trimmed,
+            payeeName: canonicalCompleteName,
+            name: canonicalCompleteName,
           },
         };
 
@@ -598,7 +641,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       isMounted = false;
       clearTimeout(timer);
     };
-  }, [payeeName]);
+  }, [payeeName, voucherToAmend, storedPin]);
 
   if (!isOpen) return null;
 
