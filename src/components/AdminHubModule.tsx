@@ -1713,7 +1713,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       {/* 20.25 CORPORATE DROPDOWN MENU BAR (Enterprise Accounting Suite) */}
       {/* ------------------------------------------------------------- */}
       <div
-        className={`relative z-30 p-2.5 rounded-2xl border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shadow-xs transition-all ${
+        className={`relative ${activeDropdown || isMoreMenuOpen ? 'z-50' : 'z-20'} p-2.5 rounded-2xl border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shadow-xs transition-all ${
           darkMode ? 'bg-[#0B132B] border-slate-800' : 'bg-white border-slate-200'
         }`}
       >
@@ -2387,22 +2387,22 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
               style={{ direction: 'rtl' }}
             >
               <table className="w-full min-w-[900px] text-left text-xs border-separate border-spacing-0 voucher-left-scroll-inner" style={{ direction: 'ltr' }}>
-                <thead className="sticky top-0 z-30 shadow-xs">
+                <thead className="sticky top-0 z-10 shadow-xs">
                   <tr
-                    className={`border-b font-mono font-bold uppercase text-[10px] tracking-wider sticky top-0 z-30 ${
+                    className={`border-b font-mono font-bold uppercase text-[10px] tracking-wider sticky top-0 z-10 ${
                       darkMode
                         ? 'bg-slate-900 text-slate-400 border-slate-800'
                         : 'bg-slate-100 text-slate-600 border-slate-200'
                     }`}
                   >
-                    <th className="py-3 px-3 sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Sr.#</th>
-                    <th className="py-3 px-3 sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Voucher No</th>
-                    <th className="py-3 px-3 sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Date</th>
-                    <th className="py-3 px-3 sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Payee &amp; Account Head</th>
-                    <th className="py-3 px-3 sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Bank Account</th>
-                    <th className="py-3 px-3 text-right sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Net Amount</th>
-                    <th className="py-3 px-3 text-center sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">LIFO Status</th>
-                    <th className="py-3 px-3 text-right sticky top-0 z-30 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Operations</th>
+                    <th className="py-3 px-3 sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Sr.#</th>
+                    <th className="py-3 px-3 sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Voucher No</th>
+                    <th className="py-3 px-3 sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Date</th>
+                    <th className="py-3 px-3 sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Payee &amp; Account Head</th>
+                    <th className="py-3 px-3 sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Bank Account</th>
+                    <th className="py-3 px-3 text-right sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Net Amount</th>
+                    <th className="py-3 px-3 text-center sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">LIFO Status</th>
+                    <th className="py-3 px-3 text-right sticky top-0 z-10 bg-slate-100 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 whitespace-nowrap shadow-2xs">Operations</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
