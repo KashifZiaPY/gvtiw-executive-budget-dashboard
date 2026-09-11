@@ -168,6 +168,7 @@ export default function App() {
   useEffect(() => {
     try {
       sessionStorage.removeItem('gvtiw_admin_session');
+      sessionStorage.removeItem('gvtiw_active_session_pin');
       localStorage.removeItem('gvtiw_admin_custom_pin');
     } catch {
       // Safe fallback in restricted environments

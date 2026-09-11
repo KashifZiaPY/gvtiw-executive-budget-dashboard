@@ -706,14 +706,9 @@ export function DirectorReconciliationReport({
   const [internalUnlocked, setInternalUnlocked] = useState(false);
   const [showLocalPinModal, setShowLocalPinModal] = useState(false);
 
-  // Gated manual edit permission: check parent prop, internal unlock, or active session PIN
+  // Gated manual edit permission: check parent prop or internal unlock
   const isEffectiveUnlocked = useMemo(() => {
-    if (isUnlocked || internalUnlocked) return true;
-    try {
-      const sessPin = sessionStorage.getItem('gvtiw_active_session_pin');
-      if (sessPin && sessPin.trim().length > 0) return true;
-    } catch {}
-    return false;
+    return Boolean(isUnlocked || internalUnlocked);
   }, [isUnlocked, internalUnlocked]);
 
   const handleRequestUnlock = () => {

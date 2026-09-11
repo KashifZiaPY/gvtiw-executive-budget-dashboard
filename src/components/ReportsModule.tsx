@@ -101,7 +101,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   isUnlocked = false,
   onUnlock,
 }) => {
-  const isAuthUnlocked = Boolean(isUnlocked);
+  const [internalUnlocked, setInternalUnlocked] = useState(false);
+  const isAuthUnlocked = Boolean(isUnlocked || internalUnlocked);
   const [showPinModal, setShowPinModal] = useState(false);
   const [activeReportTab, setActiveReportTab] = useState<ReportTab>('DIRECTOR_RECON');
   const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
@@ -3119,6 +3120,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               title="Accounting Data Entry Authentication"
               onUnlock={(pin) => {
                 setShowPinModal(false);
+                setInternalUnlocked(true);
                 if (onUnlock) {
                   onUnlock(pin);
                 }
