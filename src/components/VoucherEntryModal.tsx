@@ -149,6 +149,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const [isPayeeDropdownOpen, setIsPayeeDropdownOpen] = useState(false);
   const [payeeHighlightedIndex, setPayeeHighlightedIndex] = useState(0);
   const [ntnCnic, setNtnCnic] = useState('');
+  const [isLoadingNtnCnic, setIsLoadingNtnCnic] = useState(false);
 
   const [bankAccount, setBankAccount] = useState(BANK_OPTIONS[0].fullName);
   const [billNo, setBillNo] = useState('');
@@ -521,13 +522,90 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const reconciliationDifference = grossBillAmount - totalDisbursedAndTaxes;
   const isReconciled = Math.abs(reconciliationDifference) < 0.01;
 
+  // Live Backend NTN / CNIC Lookup with ~400ms Debounce
+  useEffect(() => {
+    const trimmed = (payeeName || '').trim();
+    if (!trimmed) {
+      setNtnCnic('');
+      setIsLoadingNtnCnic(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoadingNtnCnic(true);
+    setNtnCnic('Loading...');
+
+    const timer = setTimeout(async () => {
+      try {
+        const webAppUrl =
+          localStorage.getItem('gvtiw_admin_web_app_url') ||
+          'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
+        const activePin = localStorage.getItem('gvtiw_admin_custom_pin') || '';
+
+        const payload = {
+          pin: activePin,
+          action: 'getPayeeNtnCnic',
+          command: 'getPayeeNtnCnic',
+          payeeName: trimmed,
+          name: trimmed,
+          data: {
+            payeeName: trimmed,
+            name: trimmed,
+          },
+        };
+
+        const response = await fetch(webAppUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload),
+        });
+
+        if (!isMounted) return;
+
+        if (response.ok) {
+          const json = await response.json();
+          const ntnValue =
+            json.ntnCnic ??
+            json.ntn ??
+            json.cnic ??
+            json.value ??
+            json.data?.ntnCnic ??
+            json.data?.ntn ??
+            json.data?.cnic ??
+            json.data?.value;
+
+          const finalVal = ntnValue !== undefined && ntnValue !== null ? String(ntnValue).trim() : '';
+          if (isMounted) {
+            setNtnCnic(finalVal || 'N/A');
+          }
+        } else {
+          if (isMounted) {
+            setNtnCnic('N/A');
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setNtnCnic('N/A');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingNtnCnic(false);
+        }
+      }
+    }, 400);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [payeeName]);
+
   if (!isOpen) return null;
 
   // Handle Payee Select
   const handleSelectPayee = (payee: PayeeRecord) => {
     setPayeeName(payee.name);
     setPayeeSearch(payee.name);
-    setNtnCnic(payee.ntn || payee.cnic || 'N/A');
     setIsPayeeDropdownOpen(false);
   };
 
@@ -1028,16 +1106,6 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                         const val = e.target.value;
                         setPayeeSearch(val);
                         setPayeeName(val);
-                        const matchedPayee = MASTER_PAYEE_LIST.find(
-                          (p) => p.name.trim().toLowerCase() === val.trim().toLowerCase()
-                        );
-                        if (matchedPayee) {
-                          setNtnCnic(matchedPayee.ntn || matchedPayee.cnic || 'N/A');
-                        } else if (!val.trim()) {
-                          setNtnCnic('');
-                        } else {
-                          setNtnCnic('N/A');
-                        }
                         setIsPayeeDropdownOpen(true);
                         setPayeeHighlightedIndex(0);
                       }}
@@ -1134,21 +1202,36 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                 </div>
               </div>
 
-              {/* NTN / CNIC Auto-filled (READ-ONLY Lock) */}
+              {/* NTN / CNIC Auto-filled (READ-ONLY Lock, Live Backend Synchronized) */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
                     <Lock className="w-3 h-3 text-slate-400" />
-                    <span>NTN / CNIC Number (Auto-Populated from Master Directory — Read-Only)</span>
+                    <span>NTN / CNIC Number (Live Backend Directory — Read-Only)</span>
                   </label>
+                  {isLoadingNtnCnic && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Loading...
+                    </span>
+                  )}
                 </div>
-                <input
-                  type="text"
-                  value={ntnCnic}
-                  readOnly
-                  placeholder="Select Payee above to populate verified NTN / CNIC"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-900/90 text-slate-600 dark:text-slate-300 font-mono font-bold text-xs cursor-not-allowed select-all"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={ntnCnic}
+                    readOnly
+                    placeholder="Select Payee above to populate verified NTN / CNIC"
+                    className={`w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/90 dark:bg-slate-900/90 text-slate-600 dark:text-slate-300 font-mono font-bold text-xs cursor-not-allowed select-all ${
+                      isLoadingNtnCnic ? 'animate-pulse text-emerald-600 dark:text-emerald-400 font-semibold' : ''
+                    }`}
+                  />
+                  {isLoadingNtnCnic && (
+                    <div className="absolute right-3 top-2.5">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

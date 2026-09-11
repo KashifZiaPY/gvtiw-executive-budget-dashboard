@@ -62,8 +62,11 @@ import {
   Sparkles,
   Landmark,
   Receipt,
+  Building2,
 } from 'lucide-react';
 import { AccountHeadDisplay, parseAccountHead } from './AccountHeadTag';
+import { DirectorReconciliationReport } from './DirectorReconReport';
+import { PinLockScreen } from './PinLockScreen';
 
 interface ReportsModuleProps {
   darkMode: boolean;
@@ -71,9 +74,11 @@ interface ReportsModuleProps {
   customTevtaLogo?: string | null;
   customGopLogo?: string | null;
   isUnlocked?: boolean;
+  onUnlock?: (typedPin: string) => void;
 }
 
 type ReportTab =
+  | 'DIRECTOR_RECON'
   | 'CASHBOOK'
   | 'HEAD'
   | 'PAYEE'
@@ -91,9 +96,11 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   customTevtaLogo,
   customGopLogo,
   isUnlocked = false,
+  onUnlock,
 }) => {
   const isAuthUnlocked = Boolean(isUnlocked);
-  const [activeReportTab, setActiveReportTab] = useState<ReportTab>('CASHBOOK');
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [activeReportTab, setActiveReportTab] = useState<ReportTab>('DIRECTOR_RECON');
   const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
     try {
       const cached = localStorage.getItem('gvtiw_live_vouchers_v3');
@@ -1615,6 +1622,21 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       }`}>
         <div className="flex items-center gap-2 overflow-x-auto p-1 scrollbar-none">
           <button
+            onClick={() => setActiveReportTab('DIRECTOR_RECON')}
+            className={`flex-1 min-w-[170px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+              activeReportTab === 'DIRECTOR_RECON'
+                ? darkMode ? 'bg-cyan-900/50 border-cyan-400 text-white shadow-md ring-1 ring-cyan-400/40' : 'bg-cyan-50 border-cyan-600 text-cyan-950 shadow-md ring-1 ring-cyan-500'
+                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 font-bold text-xs">
+              <Building2 className="w-4 h-4 text-cyan-400" />
+              <span>Director BRS &amp; Cash Book</span>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-0.5">Reconciliation &amp; Registers</p>
+          </button>
+
+          <button
             onClick={() => setActiveReportTab('CASHBOOK')}
             className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'CASHBOOK'
@@ -2040,6 +2062,26 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 3. REPORT DATA DISPLAY: DIRECTOR BRS & CASH BOOK REPORT       */}
+      {/* ------------------------------------------------------------- */}
+      {activeReportTab === 'DIRECTOR_RECON' && (
+        <DirectorReconciliationReport
+          initialAccountKey="NS"
+          districtName="FAISALABAD"
+          instituteName="GVTIW SAMANABAD FAISALABAD"
+          isUnlocked={isAuthUnlocked}
+          darkMode={darkMode}
+          customGvtiwLogo={customGvtiwLogo}
+          customTevtaLogo={customTevtaLogo}
+          customGopLogo={customGopLogo}
+          onUnlockRequest={() => setShowPinModal(true)}
+          vouchers={vouchers}
+          cashBookStates={cashBookStates}
+          accountsStore={accountsStore}
+        />
       )}
 
       {/* ------------------------------------------------------------- */}
@@ -2867,6 +2909,32 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           customTevtaLogo={customTevtaLogo}
           customGopLogo={customGopLogo}
         />
+      )}
+
+      {/* Admin Security PIN Unlock Modal */}
+      {showPinModal && !isAuthUnlocked && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-md">
+            <button
+              onClick={() => setShowPinModal(false)}
+              className="absolute -top-10 right-0 text-white hover:text-slate-300 p-2 cursor-pointer font-bold text-sm flex items-center gap-1"
+            >
+              <X className="w-4 h-4" />
+              <span>Close</span>
+            </button>
+            <PinLockScreen
+              darkMode={darkMode}
+              customGvtiwLogo={customGvtiwLogo}
+              title="Director's Office Reports Authentication"
+              onUnlock={(pin) => {
+                setShowPinModal(false);
+                if (onUnlock) {
+                  onUnlock(pin);
+                }
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

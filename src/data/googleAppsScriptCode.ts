@@ -877,7 +877,38 @@ function doPost(e) {
 }
 
 function handleApiRequest_(pin, action, data) {
-  // 1. PIN Security Authentication (MAIN SHEET C24)
+  // 1. Read-only Lookups and PIN Verification (Do not block with 401)
+  if (action === "getPayeeNtnCnic") {
+    try {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var targetPayee = (data && (data.payeeName || data.name)) || '';
+      var foundVal = lookupPayeeNtnCnic_(ss, targetPayee);
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        ntnCnic: foundVal || 'N/A',
+        ntn: foundVal || 'N/A',
+        value: foundVal || 'N/A'
+      })).setMimeType(ContentService.MimeType.JSON);
+    } catch (lookupErr) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        ntnCnic: 'N/A',
+        error: lookupErr.message
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  if (action === "verifyPassword" || action === "verifyPin") {
+    var cleanPinAuth = pin ? String(pin).trim() : '';
+    var masterPasswordAuth = getMasterPassword_();
+    var isValid = !!(masterPasswordAuth && cleanPinAuth === masterPasswordAuth);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: isValid,
+      verified: isValid
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 2. PIN Security Authentication (MAIN SHEET C24) for modifying actions
   var cleanPin = pin ? String(pin).trim() : '';
   var masterPassword = getMasterPassword_();
   if (!masterPassword || cleanPin !== masterPassword) {
@@ -887,7 +918,7 @@ function handleApiRequest_(pin, action, data) {
     })).setMimeType(ContentService.MimeType.JSON);
   }
 
-  // 2. Action Router
+  // 3. Action Router
   try {
     if (action === "submitNewVoucher") {
       var res = processVoucherDialog(data);

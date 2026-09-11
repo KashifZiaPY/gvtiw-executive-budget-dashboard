@@ -488,6 +488,7 @@ export default function App() {
               customTevtaLogo={customTevtaLogo}
               customGopLogo={customGopLogo}
               isUnlocked={isUnlocked}
+              onUnlock={handleUnlock}
             />
           </section>
         )}
