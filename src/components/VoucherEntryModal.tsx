@@ -217,6 +217,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const headContainerRef = useRef<HTMLDivElement>(null);
   const payeeListRef = useRef<HTMLDivElement>(null);
   const headListRef = useRef<HTMLDivElement>(null);
+  const activePayeeLookupRef = useRef<string>('');
 
   // Selected Bank Object
   const selectedBankObj = useMemo(() => {
@@ -301,7 +302,9 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
 
       setPayeeName(voucherToAmend.payeeName || '');
       setPayeeSearch(voucherToAmend.payeeName || '');
-      setNtnCnic(voucherToAmend.ntnCnic || 'N/A');
+      const initNtn = voucherToAmend.ntnCnic ? String(voucherToAmend.ntnCnic).trim() : 'N/A';
+      setNtnCnic(initNtn || 'N/A');
+      activePayeeLookupRef.current = (voucherToAmend.payeeName || '').trim();
       setBankAccount(voucherToAmend.bankAccount || BANK_OPTIONS[0].fullName);
       setBillNo(voucherToAmend.billNo || '');
       setBillDate(voucherToAmend.billDate || todayISO);
@@ -324,6 +327,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       setPayeeName('');
       setPayeeSearch('');
       setNtnCnic('');
+      activePayeeLookupRef.current = '';
       setBankAccount(BANK_OPTIONS[0].fullName);
       setBillNo('');
       setBillDate(todayISO);
@@ -524,7 +528,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const reconciliationDifference = grossBillAmount - totalDisbursedAndTaxes;
   const isReconciled = Math.abs(reconciliationDifference) < 0.01;
 
-  // Robust helper to resolve verified PIN from props, sessionStorage, or localStorage
+  // Robust helper to resolve verified PIN from in-memory props or active session storage only
   const getActiveSecurityPin = (): string => {
     if (storedPin && storedPin.trim()) return storedPin.trim();
     try {
@@ -533,20 +537,15 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     } catch {
       // Safe fallback
     }
-    try {
-      const customPin = localStorage.getItem('gvtiw_admin_custom_pin');
-      if (customPin && customPin.trim()) return customPin.trim();
-    } catch {
-      // Safe fallback
-    }
     return '';
   };
 
-  // Live Backend NTN / CNIC Lookup with ~400ms Debounce
+  // Live Backend NTN / CNIC Lookup with ~400ms Debounce & Strict Race-Condition Protection
   // Only fires when a complete payee name is selected from dropdown or fully typed, never on in-progress partial text
   useEffect(() => {
     const trimmed = (payeeName || '').trim();
     if (!trimmed) {
+      activePayeeLookupRef.current = '';
       setNtnCnic('');
       setIsLoadingNtnCnic(false);
       return;
@@ -567,16 +566,21 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       ? voucherToAmend.payeeName.trim()
       : null;
 
-    // If it's only partial in-progress search text (e.g. "amir"), DO NOT fire the backend call
+    // If it's only partial in-progress search text (e.g. "amir"), DO NOT fire the backend call and clear NTN
     if (!canonicalCompleteName) {
+      activePayeeLookupRef.current = '';
       setIsLoadingNtnCnic(false);
       setNtnCnic('');
       return;
     }
 
-    let isMounted = true;
+    // Mark current active payee request to prevent stale async responses from overwriting
+    activePayeeLookupRef.current = canonicalCompleteName;
     setIsLoadingNtnCnic(true);
     setNtnCnic('Loading...');
+
+    let isMounted = true;
+    const currentRequestedPayee = canonicalCompleteName;
 
     const timer = setTimeout(async () => {
       try {
@@ -589,11 +593,11 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
           pin: activePin,
           action: 'getPayeeNtnCnic',
           command: 'getPayeeNtnCnic',
-          payeeName: canonicalCompleteName,
-          name: canonicalCompleteName,
+          payeeName: currentRequestedPayee,
+          name: currentRequestedPayee,
           data: {
-            payeeName: canonicalCompleteName,
-            name: canonicalCompleteName,
+            payeeName: currentRequestedPayee,
+            name: currentRequestedPayee,
           },
         };
 
@@ -603,35 +607,46 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
           body: JSON.stringify(payload),
         });
 
-        if (!isMounted) return;
+        // Guard against unmount or superseding payee selections
+        if (!isMounted || activePayeeLookupRef.current !== currentRequestedPayee) {
+          return;
+        }
 
+        let resolvedNtnCnic = '';
         if (response.ok) {
           const json = await response.json();
-          const ntnValue =
-            json.ntnCnic ??
-            json.ntn ??
-            json.cnic ??
-            json.value ??
-            json.data?.ntnCnic ??
-            json.data?.ntn ??
-            json.data?.cnic ??
-            json.data?.value;
+          if (json && typeof json === 'object') {
+            const rawVal =
+              json.ntnCnic ??
+              json.ntn ??
+              json.cnic ??
+              json.value ??
+              json.data?.ntnCnic ??
+              json.data?.ntn ??
+              json.data?.cnic ??
+              json.data?.value;
 
-          const finalVal = ntnValue !== undefined && ntnValue !== null ? String(ntnValue).trim() : '';
-          if (isMounted) {
-            setNtnCnic(finalVal || 'N/A');
+            if (rawVal !== undefined && rawVal !== null) {
+              const strVal = String(rawVal).trim();
+              if (strVal && strVal !== '0' && strVal !== '—' && strVal !== 'null' && strVal !== 'undefined') {
+                resolvedNtnCnic = strVal;
+              }
+            }
           }
-        } else {
-          if (isMounted) {
-            setNtnCnic('N/A');
-          }
+        }
+
+        // Explicitly set based on new response — "N/A" if empty or payee has no NTN/CNIC
+        if (isMounted && activePayeeLookupRef.current === currentRequestedPayee) {
+          setNtnCnic(resolvedNtnCnic || 'N/A');
+          setIsLoadingNtnCnic(false);
         }
       } catch {
-        if (isMounted) {
+        if (isMounted && activePayeeLookupRef.current === currentRequestedPayee) {
           setNtnCnic('N/A');
+          setIsLoadingNtnCnic(false);
         }
       } finally {
-        if (isMounted) {
+        if (isMounted && activePayeeLookupRef.current === currentRequestedPayee) {
           setIsLoadingNtnCnic(false);
         }
       }
@@ -647,9 +662,13 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
 
   // Handle Payee Select
   const handleSelectPayee = (payee: PayeeRecord) => {
-    setPayeeName(payee.name);
-    setPayeeSearch(payee.name);
+    const selectedName = payee.name;
+    setPayeeName(selectedName);
+    setPayeeSearch(selectedName);
     setIsPayeeDropdownOpen(false);
+    activePayeeLookupRef.current = selectedName;
+    setNtnCnic('Loading...');
+    setIsLoadingNtnCnic(true);
   };
 
   // Handle Head Select
@@ -1151,6 +1170,12 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                         setPayeeName(val);
                         setIsPayeeDropdownOpen(true);
                         setPayeeHighlightedIndex(0);
+                        const match = MASTER_PAYEE_LIST.find((p) => p.name.trim().toLowerCase() === val.trim().toLowerCase());
+                        if (!match) {
+                          activePayeeLookupRef.current = '';
+                          setNtnCnic('');
+                          setIsLoadingNtnCnic(false);
+                        }
                       }}
                       onFocus={() => setIsPayeeDropdownOpen(true)}
                       onKeyDown={handlePayeeKeyDown}
@@ -1165,7 +1190,9 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                           onClick={() => {
                             setPayeeSearch('');
                             setPayeeName('');
+                            activePayeeLookupRef.current = '';
                             setNtnCnic('');
+                            setIsLoadingNtnCnic(false);
                             setIsPayeeDropdownOpen(true);
                           }}
                           className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-400 hover:text-slate-600 text-xs"

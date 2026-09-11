@@ -46,11 +46,9 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
     try {
       const sessionPin = sessionStorage.getItem('gvtiw_active_session_pin');
       if (sessionPin && sessionPin.trim()) return sessionPin.trim();
-    } catch {}
-    try {
-      const customPin = localStorage.getItem('gvtiw_admin_custom_pin');
-      if (customPin && customPin.trim()) return customPin.trim();
-    } catch {}
+    } catch {
+      // Safe fallback
+    }
     return '';
   };
   const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {

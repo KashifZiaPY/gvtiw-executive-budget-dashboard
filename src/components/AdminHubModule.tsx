@@ -1360,9 +1360,14 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       return;
     }
     setStoredPin(cleanNew);
-    localStorage.setItem('gvtiw_admin_custom_pin', cleanNew);
-    setPinChangeMsg('✅ Security PIN updated successfully!');
-    addAuditLog('PIN_UPDATE', 'success', 'Admin master PIN updated.');
+    try {
+      sessionStorage.setItem('gvtiw_active_session_pin', cleanNew);
+      localStorage.removeItem('gvtiw_admin_custom_pin');
+    } catch {
+      // Safe fallback
+    }
+    setPinChangeMsg('✅ Security PIN updated for active session!');
+    addAuditLog('PIN_UPDATE', 'success', 'Admin session PIN updated.');
     setTimeout(() => {
       setIsPinSettingsOpen(false);
       setPinChangeMsg(null);
@@ -1373,9 +1378,14 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
   const handleClearPin = () => {
     setStoredPin('');
-    localStorage.removeItem('gvtiw_admin_custom_pin');
-    setPinChangeMsg('PIN configuration cleared.');
-    addAuditLog('PIN_CLEAR', 'success', 'Admin custom PIN cleared.');
+    try {
+      sessionStorage.removeItem('gvtiw_active_session_pin');
+      localStorage.removeItem('gvtiw_admin_custom_pin');
+    } catch {
+      // Safe fallback
+    }
+    setPinChangeMsg('PIN configuration cleared from active session.');
+    addAuditLog('PIN_CLEAR', 'success', 'Admin session PIN cleared.');
     setTimeout(() => {
       setIsPinSettingsOpen(false);
       setPinChangeMsg(null);

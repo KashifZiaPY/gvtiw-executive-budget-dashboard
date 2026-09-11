@@ -164,10 +164,11 @@ export default function App() {
     }
   });
 
-  // One-time cleanup on app mount: wipe any stale admin session from previous versions
+  // One-time cleanup on app mount: wipe any stale admin session or persisted PIN from previous versions
   useEffect(() => {
     try {
       sessionStorage.removeItem('gvtiw_admin_session');
+      localStorage.removeItem('gvtiw_admin_custom_pin');
     } catch {
       // Safe fallback in restricted environments
     }
