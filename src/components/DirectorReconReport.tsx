@@ -38,8 +38,13 @@ import {
   resolveBankKeyFromAccount,
   parseDateToTimestamp,
   formatCurrency2Decimals,
+  formatCashBookBillInfo,
 } from '../lib/reportingEngine';
-import { getOpeningBalance } from '../lib/balanceEngine';
+import {
+  getOpeningBalance,
+  normalizeDateToStartTimestamp,
+  normalizeDateToEndTimestamp,
+} from '../lib/balanceEngine';
 import { AccountHead, OFFICIAL_SIGNATORIES } from '../types';
 import {
   INITIAL_DIRECTOR_RECEIPTS,
@@ -730,8 +735,8 @@ export function DirectorReconciliationReport({
 
   // Financial Year and Period Controls
   const [selectedFY, setSelectedFY] = useState<'2026-27' | '2025-26' | 'ALL'>('2026-27');
-  const [fromMonth, setFromMonth] = useState<string>('2026-07');
-  const [toMonth, setToMonth] = useState<string>('2026-08');
+  const [fromDate, setFromDate] = useState<string>('2026-07-01');
+  const [toDate, setToDate] = useState<string>('2026-08-31');
 
   // As on date with persistent local storage
   const [asOnDate, setAsOnDate] = useState<string>(() => {
@@ -850,12 +855,9 @@ export function DirectorReconciliationReport({
       localStorage.setItem(`gvtiw_recon_as_on_${selectedAccountKey}_${selectedFY}`, displayVal);
     } catch {}
 
-    // If date contains a valid year-month, synchronize toMonth if within options
-    if (isoVal && isoVal.length >= 7) {
-      const mk = isoVal.substring(0, 7);
-      if (activeMonthOptions.some((opt) => opt.key === mk)) {
-        setToMonth(mk);
-      }
+    // If date contains a valid year-month-day, synchronize toDate
+    if (isoVal && isoVal.length === 10) {
+      setToDate(isoVal);
     }
   };
 
@@ -865,16 +867,16 @@ export function DirectorReconciliationReport({
     setSelectedSingleMonth('ALL');
     let defaultAsOn = '31-08-2026';
     if (fy === '2026-27') {
-      setFromMonth('2026-07');
-      setToMonth('2026-08');
+      setFromDate('2026-07-01');
+      setToDate('2026-08-31');
       defaultAsOn = '31-08-2026';
     } else if (fy === '2025-26') {
-      setFromMonth('2025-07');
-      setToMonth('2026-06');
+      setFromDate('2025-07-01');
+      setToDate('2026-06-30');
       defaultAsOn = '30-06-2026';
     } else {
-      setFromMonth('2025-07');
-      setToMonth('2027-06');
+      setFromDate('2025-07-01');
+      setToDate('2027-06-30');
       defaultAsOn = '31-08-2026';
     }
     const saved = localStorage.getItem(`gvtiw_recon_as_on_${selectedAccountKey}_${fy}`);
@@ -941,34 +943,27 @@ export function DirectorReconciliationReport({
   // 1. DATA SOURCE DERIVATION (LIVE GVIZ / CASHBOOK PATTERN)
   // ---------------------------------------------------------------------------
 
-  // Period start date ISO format
-  const periodStartDate = useMemo(() => {
-    return `${fromMonth}-01`;
-  }, [fromMonth]);
+  // Period timestamps (day-level precision)
+  const fromTs = useMemo(() => normalizeDateToStartTimestamp(fromDate), [fromDate]);
+  const toTs = useMemo(() => normalizeDateToEndTimestamp(toDate), [toDate]);
 
   // Live Opening Balance rolled forward to start of selected period (reference implementation from balanceEngine)
   const openingBalance = useMemo(() => {
-    if (selectedFY === '2025-26') {
+    if (selectedFY === '2025-26' && fromDate === '2025-07-01') {
       return 2387207.0; // Official baseline 2025-26
     }
-    return getOpeningBalance(selectedAccountKey, periodStartDate, {
+    return getOpeningBalance(selectedAccountKey, fromDate, {
       vouchers: liveVouchers,
       cashBookStates: liveCashBookStates,
     });
-  }, [selectedAccountKey, periodStartDate, selectedFY, liveVouchers, liveCashBookStates]);
+  }, [selectedAccountKey, fromDate, selectedFY, liveVouchers, liveCashBookStates]);
 
   const periodOpeningLabel = useMemo(() => {
-    if (fromMonth === '2026-07' || fromMonth === '2025-07') {
+    if (fromDate === '2026-07-01' || fromDate === '2025-07-01') {
       return `Opening Balance as per Cash Book at the Start of Year ${selectedFY}`;
     }
-    const monthNames: Record<string, string> = {
-      '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'May', '06': 'Jun',
-      '07': 'Jul', '08': 'Aug', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec',
-    };
-    const [y, m] = fromMonth.split('-');
-    const mName = monthNames[m] || m;
-    return `Opening Balance as per Cash Book (as on 01-${mName}-${y})`;
-  }, [fromMonth, selectedFY]);
+    return `Opening Balance as per Cash Book (as on ${formatDateDDMMYY(fromDate)})`;
+  }, [fromDate, selectedFY]);
 
   // Master live receipts for selectedAccountKey
   const allAccountReceipts = useMemo<LiveReceiptRow[]>(() => {
@@ -1169,7 +1164,7 @@ export function DirectorReconciliationReport({
       if (selectedSingleMonth !== 'ALL') {
         return r.monthKey === selectedSingleMonth;
       }
-      return r.monthKey >= fromMonth && r.monthKey <= toMonth;
+      return r.dateTs >= fromTs && r.dateTs <= toTs;
     });
 
     if (receiptSearch.trim()) {
@@ -1183,7 +1178,7 @@ export function DirectorReconciliationReport({
       );
     }
     return list;
-  }, [allAccountReceipts, selectedSingleMonth, fromMonth, toMonth, receiptSearch]);
+  }, [allAccountReceipts, selectedSingleMonth, fromTs, toTs, receiptSearch]);
 
   const totalReceiptsAmount = useMemo(() => {
     return filteredReceipts.reduce((sum, r) => sum + r.amount, 0);
@@ -1198,7 +1193,7 @@ export function DirectorReconciliationReport({
       if (selectedSingleMonth !== 'ALL') {
         return p.monthKey === selectedSingleMonth;
       }
-      return rDateInPeriod(p.monthKey, fromMonth, toMonth);
+      return p.dateTs >= fromTs && p.dateTs <= toTs;
     });
 
     if (paymentSearch.trim()) {
@@ -1214,11 +1209,7 @@ export function DirectorReconciliationReport({
       );
     }
     return list;
-  }, [allAccountPayments, selectedSingleMonth, fromMonth, toMonth, paymentSearch]);
-
-  function rDateInPeriod(mk: string, from: string, to: string) {
-    return mk >= from && mk <= to;
-  }
+  }, [allAccountPayments, selectedSingleMonth, fromTs, toTs, paymentSearch]);
 
   const paymentsTotals = useMemo(() => {
     return filteredPayments.reduce(
@@ -1238,12 +1229,21 @@ export function DirectorReconciliationReport({
   // 4. TAB 2: MONTH-WISE RECONCILIATION TABLE DATA & CALCULATIONS
   // ---------------------------------------------------------------------------
   const reconciliationMonthRows = useMemo<TEVTAReconMonthRow[]>(() => {
+    const fromMonthKey = fromDate.substring(0, 7);
+    const toMonthKey = toDate.substring(0, 7);
+
     return activeMonthOptions.map((opt) => {
       const mKey = opt.key;
-      const isInPeriod = mKey >= fromMonth && mKey <= toMonth;
+      const isInPeriod = mKey >= fromMonthKey && mKey <= toMonthKey;
 
-      // Receipts in month
-      const mReceipts = allAccountReceipts.filter((r) => r.monthKey === mKey);
+      // Receipts in month (filtered by exact timestamp boundary if in period)
+      const mReceipts = allAccountReceipts.filter((r) => {
+        if (r.monthKey !== mKey) return false;
+        if (isInPeriod) {
+          return r.dateTs >= fromTs && r.dateTs <= toTs;
+        }
+        return true;
+      });
       let directR = 0;
       let shortCourseR = 0;
       let profitR = 0;
@@ -1264,8 +1264,14 @@ export function DirectorReconciliationReport({
         }
       });
 
-      // Payments in month
-      const mPayments = allAccountPayments.filter((p) => p.monthKey === mKey);
+      // Payments in month (filtered by exact timestamp boundary if in period)
+      const mPayments = allAccountPayments.filter((p) => {
+        if (p.monthKey !== mKey) return false;
+        if (isInPeriod) {
+          return p.dateTs >= fromTs && p.dateTs <= toTs;
+        }
+        return true;
+      });
       let directP = 0;
       let chargesP = 0;
       let cmsdiP = 0;
@@ -1335,7 +1341,7 @@ export function DirectorReconciliationReport({
         isInSelectedPeriod: isInPeriod,
       };
     });
-  }, [activeMonthOptions, allAccountReceipts, allAccountPayments, selectedFY, fromMonth, toMonth]);
+  }, [activeMonthOptions, allAccountReceipts, allAccountPayments, selectedFY, fromDate, toDate, fromTs, toTs]);
 
   // Selected period rows & column-wise grand totals
   const periodReconRows = useMemo(() => {
@@ -1378,10 +1384,12 @@ export function DirectorReconciliationReport({
   }, [openingBalance, reconTotals.totalReceipt, reconTotals.totalPayment]);
 
   // Manual Bank Statement Balance (persisted in localStorage per account + period)
-  const bankStmtStorageKey = `gvtiw_tevta_bank_stmt_${selectedAccountKey}_${selectedFY}_${fromMonth}_${toMonth}`;
+  const bankStmtStorageKey = `gvtiw_tevta_bank_stmt_${selectedAccountKey}_${selectedFY}_${fromDate}_${toDate}`;
   const [bankStatementBalance, setBankStatementBalance] = useState<number>(() => {
     try {
-      const saved = localStorage.getItem(bankStmtStorageKey);
+      const saved =
+        localStorage.getItem(bankStmtStorageKey) ||
+        localStorage.getItem(`gvtiw_tevta_bank_stmt_${selectedAccountKey}_${selectedFY}_${fromDate.substring(0, 7)}_${toDate.substring(0, 7)}`);
       if (saved !== null && saved !== '') {
         const val = parseNumericAmount(saved);
         if (!isNaN(val)) return val;
@@ -1396,7 +1404,9 @@ export function DirectorReconciliationReport({
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(bankStmtStorageKey);
+      const saved =
+        localStorage.getItem(bankStmtStorageKey) ||
+        localStorage.getItem(`gvtiw_tevta_bank_stmt_${selectedAccountKey}_${selectedFY}_${fromDate.substring(0, 7)}_${toDate.substring(0, 7)}`);
       if (saved !== null && saved !== '') {
         const val = parseNumericAmount(saved);
         if (!isNaN(val)) {
@@ -1409,7 +1419,7 @@ export function DirectorReconciliationReport({
     const def = selectedFY === '2025-26' ? 3044164.95 : 1743235.0;
     setBankStatementBalance(def);
     setEditingBankBalanceStr(formatNumberLive(def));
-  }, [bankStmtStorageKey, selectedFY]);
+  }, [bankStmtStorageKey, selectedFY, fromDate, toDate]);
 
   // Dedicated own-fund heads list (mirroring Voucher Entry rules)
   const DEDICATED_OWN_FUND_HEADS = useMemo(
@@ -1461,11 +1471,12 @@ export function DirectorReconciliationReport({
   // ---------------------------------------------------------------------------
   // 5. DETAILS OF UNPRESENTED / UNCREDITED CHEQUES (MANUAL DATA ENTRY ONLY)
   // ---------------------------------------------------------------------------
-  const unpresentedStorageKey = `gvtiw_tevta_unpresented_manual_${selectedAccountKey}_${selectedFY}_${fromMonth}_${toMonth}`;
+  const unpresentedStorageKey = `gvtiw_tevta_unpresented_manual_${selectedAccountKey}_${selectedFY}_${fromDate}_${toDate}`;
   const [manualCheques, setManualCheques] = useState<ManualUnpresentedCheque[]>(() => {
     try {
       const saved =
-        localStorage.getItem(`gvtiw_tevta_unpresented_manual_${initialAccountKey}_2026-27_${fromMonth}_${toMonth}`) ||
+        localStorage.getItem(unpresentedStorageKey) ||
+        localStorage.getItem(`gvtiw_tevta_unpresented_manual_${selectedAccountKey}_${selectedFY}_${fromDate.substring(0, 7)}_${toDate.substring(0, 7)}`) ||
         localStorage.getItem(`gvtiw_tevta_unpresented_manual_${initialAccountKey}_2026-27`);
       if (saved) return JSON.parse(saved);
     } catch {}
@@ -1527,13 +1538,14 @@ export function DirectorReconciliationReport({
     setManualCheques((prev) => prev.filter((item) => item.id !== id));
   };
 
-  // Helper to format Remarks with Bill/Invoice # and Date
+  // Helper to format Remarks with standardized Bill/Invoice # and Date
   const getFullPaymentRemarks = (p: LivePaymentRow) => {
-    const parts: string[] = [];
-    if (p.billNo && p.billNo !== '—') parts.push(`Bill #${p.billNo}`);
-    if (p.billDate && p.billDate !== '—') parts.push(`Date: ${formatDateDDMMYY(p.billDate)}`);
-    if (p.remarks && p.remarks !== '—') parts.push(p.remarks);
-    return parts.length > 0 ? parts.join(' | ') : (p.remarks || '—');
+    const billInfo = formatCashBookBillInfo(p.billNo, p.billDate);
+    const rem = p.remarks && p.remarks !== '—' && p.remarks !== 'null' && p.remarks !== 'undefined' ? p.remarks : '';
+    if (billInfo && rem) {
+      return `${rem}\n${billInfo}`;
+    }
+    return billInfo || rem || '—';
   };
 
   // ---------------------------------------------------------------------------
@@ -1551,9 +1563,10 @@ export function DirectorReconciliationReport({
 
   const exportReceiptsCSV = () => {
     const lines: string[] = [];
+    lines.push(`"Source: Reports & Statements → Date Wise Receipts (${activeAccountConfig.short})"`);
     lines.push(`"${instituteName}"`);
     lines.push(`"ACCOUNTING DATA ENTRY — DATE WISE RECEIPTS IN ${activeAccountName.toUpperCase()} GRANTS"`);
-    lines.push(`"Period: ${fromMonth} to ${toMonth} | Head: ${activeAccountConfig.short}"`);
+    lines.push(`"Period: ${fromDate} to ${toDate} | Head: ${activeAccountConfig.short}"`);
     lines.push('');
     lines.push('"Sr #","Date of Receipt (dd-mm-yy)","Challan/Cheque No","Head of Account","Amount (Rs.)","Remarks"');
 
@@ -1564,15 +1577,18 @@ export function DirectorReconciliationReport({
     });
 
     lines.push(`"","","","Total Amount","${totalReceiptsAmount.toFixed(2)}",""`);
+    lines.push('');
+    lines.push('"e-CashBook & Voucher System developed by MKZ for institute 33028"');
 
-    downloadCSVBlob(lines.join('\n'), `Accounting_Data_Entry_Receipts_${selectedAccountKey}_${fromMonth}_to_${toMonth}.csv`);
+    downloadCSVBlob(lines.join('\n'), `Accounting_Data_Entry_Receipts_${selectedAccountKey}_${fromDate}_to_${toDate}.csv`);
   };
 
   const exportPaymentsCSV = () => {
     const lines: string[] = [];
+    lines.push(`"Source: Reports & Statements → Date Wise Payments (${activeAccountConfig.short})"`);
     lines.push(`"${instituteName}"`);
     lines.push(`"ACCOUNTING DATA ENTRY — DATE WISE PAYMENTS FROM ${activeAccountName.toUpperCase()} GRANTS"`);
-    lines.push(`"Period: ${fromMonth} to ${toMonth} | Head: ${activeAccountConfig.short}"`);
+    lines.push(`"Period: ${fromDate} to ${toDate} | Head: ${activeAccountConfig.short}"`);
     lines.push('');
     lines.push(
       '"Sr #","Non Salary Head of Account","Cheque Date (dd-mm)","Cheque No.","Total Bill Amount","Income Tax","Sales Tax PRA 16%","Security","Net Amount Paid","Remarks","Paid to"'
@@ -1588,12 +1604,15 @@ export function DirectorReconciliationReport({
     lines.push(
       `"","Grand Total","","","${paymentsTotals.totalBill.toFixed(2)}","${paymentsTotals.incomeTax.toFixed(2)}","${paymentsTotals.praAmount.toFixed(2)}","${paymentsTotals.security.toFixed(2)}","${paymentsTotals.netPaid.toFixed(2)}","",""`
     );
+    lines.push('');
+    lines.push('"e-CashBook & Voucher System developed by MKZ for institute 33028"');
 
-    downloadCSVBlob(lines.join('\n'), `Accounting_Data_Entry_Payments_${selectedAccountKey}_${fromMonth}_to_${toMonth}.csv`);
+    downloadCSVBlob(lines.join('\n'), `Accounting_Data_Entry_Payments_${selectedAccountKey}_${fromDate}_to_${toDate}.csv`);
   };
 
   const exportReconciliationCSV = () => {
     const lines: string[] = [];
+    lines.push('"Source: Reports & Statements → Bank Reconciliation"');
     lines.push(`"ACCOUNTING DATA ENTRY — BANK RECONCILIATION STATEMENT"`);
     lines.push(`"NAME OF DISTRICT: ${districtName}"`);
     lines.push(`"INSTITUTE NAME: ${instituteName}"`);
@@ -1629,6 +1648,8 @@ export function DirectorReconciliationReport({
       );
     });
     lines.push(`"Total","","","${totalManualChequesAmount.toFixed(2)}",""`);
+    lines.push('');
+    lines.push('"e-CashBook & Voucher System developed by MKZ for institute 33028"');
 
     downloadCSVBlob(lines.join('\n'), `Accounting_Data_Entry_Reconciliation_${selectedAccountKey}_${asOnDate}.csv`);
   };
@@ -1656,6 +1677,13 @@ export function DirectorReconciliationReport({
 
     const gvtiwLogo = customGvtiwLogo || '/gvtiw-logo.jpg';
     const tevtaLogo = customTevtaLogo || '/tevta-logo.png';
+
+    const sourceLabel =
+      activeTab === 'RECON'
+        ? 'Source: Reports & Statements → Bank Reconciliation'
+        : activeTab === 'RECEIPTS'
+        ? `Source: Reports & Statements → Date Wise Receipts (${activeAccountConfig.short})`
+        : `Source: Reports & Statements → Date Wise Payments (${activeAccountConfig.short})`;
 
     let bodyContent: { headerSnippet: string; mainSnippet: string } = {
       headerSnippet: '',
@@ -1705,6 +1733,13 @@ export function DirectorReconciliationReport({
             font-weight: 900;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+          }
+          .source-label {
+            font-size: 8pt;
+            color: #475569;
+            font-family: monospace;
+            margin-top: 1px;
+            font-weight: bold;
           }
           .report-title {
             font-size: 11pt;
@@ -1794,6 +1829,15 @@ export function DirectorReconciliationReport({
             font-size: 8pt;
             color: #444;
           }
+          .official-credit-footer {
+            margin-top: 25px;
+            padding-top: 6px;
+            border-top: 1px dotted #94a3b8;
+            font-size: 8pt;
+            color: #64748b;
+            font-family: monospace;
+            text-align: center;
+          }
         </style>
       </head>
       <body>
@@ -1804,6 +1848,7 @@ export function DirectorReconciliationReport({
             </td>
             <td class="title-block">
               <div class="inst-name">${instituteName}</div>
+              <div class="source-label">${sourceLabel}</div>
               ${bodyContent.headerSnippet}
             </td>
             <td style="width: 75px; text-align: right;">
@@ -1812,6 +1857,9 @@ export function DirectorReconciliationReport({
           </tr>
         </table>
         ${bodyContent.mainSnippet}
+        <div class="official-credit-footer">
+          e-CashBook &amp; Voucher System developed by MKZ for institute 33028
+        </div>
       </body>
       </html>
     `;
@@ -1823,6 +1871,21 @@ export function DirectorReconciliationReport({
       printWin.print();
     }, 500);
   };
+
+  const generateSignatoryBlockHTML = () => `
+    <div class="signatory-grid">
+      ${OFFICIAL_SIGNATORIES.map(
+        (sig) => `
+        <div class="signatory-cell">
+          <div style="height: 35px;"></div>
+          <div class="sig-line"></div>
+          <div class="sig-name">${sig.name}</div>
+          <div class="sig-title">${sig.role} / ${sig.label}</div>
+        </div>
+      `
+      ).join('')}
+    </div>
+  `;
 
   const generateReceiptsPrintHTML = () => {
     let rowsHtml = '';
@@ -1842,7 +1905,7 @@ export function DirectorReconciliationReport({
     return {
       headerSnippet: `
         <div class="report-title">ACCOUNTING DATA ENTRY &bull; DATE WISE RECEIPTS IN ${activeAccountName.toUpperCase()} GRANTS</div>
-        <div class="sub-info">Period: ${fromMonth} to ${toMonth} &bull; Bank: ${activeAccountConfig.bankName} &bull; A/C: ${activeAccountConfig.defaultAccountNo}</div>
+        <div class="sub-info">Period: ${formatDateDDMMYY(fromDate)} to ${formatDateDDMMYY(toDate)} &bull; Bank: ${activeAccountConfig.bankName} &bull; A/C: ${activeAccountConfig.defaultAccountNo}</div>
       `,
       mainSnippet: `
         <table class="register-table">
@@ -1867,6 +1930,7 @@ export function DirectorReconciliationReport({
             </tr>
           </tfoot>
         </table>
+        ${generateSignatoryBlockHTML()}
       `,
     };
   };
@@ -1886,7 +1950,7 @@ export function DirectorReconciliationReport({
           <td class="num">${formatAmount(p.praAmount, 2)}</td>
           <td class="num">${formatAmount(p.security, 2, true)}</td>
           <td class="num">${formatAmount(p.netAmountPaid, 2)}</td>
-          <td>${formattedRemarks}</td>
+          <td>${formattedRemarks.replace(/\n/g, '<br>')}</td>
           <td>${p.paidTo}</td>
         </tr>
       `;
@@ -1895,7 +1959,7 @@ export function DirectorReconciliationReport({
     return {
       headerSnippet: `
         <div class="report-title">ACCOUNTING DATA ENTRY &bull; DATE WISE PAYMENTS FROM ${activeAccountName.toUpperCase()} GRANTS</div>
-        <div class="sub-info">Period: ${fromMonth} to ${toMonth} &bull; Bank: ${activeAccountConfig.bankName} &bull; A/C: ${activeAccountConfig.defaultAccountNo}</div>
+        <div class="sub-info">Period: ${formatDateDDMMYY(fromDate)} to ${formatDateDDMMYY(toDate)} &bull; Bank: ${activeAccountConfig.bankName} &bull; A/C: ${activeAccountConfig.defaultAccountNo}</div>
       `,
       mainSnippet: `
         <table class="register-table">
@@ -1929,6 +1993,7 @@ export function DirectorReconciliationReport({
             </tr>
           </tfoot>
         </table>
+        ${generateSignatoryBlockHTML()}
       `,
     };
   };
@@ -1977,7 +2042,7 @@ export function DirectorReconciliationReport({
           NAME OF DISTRICT: ${districtName} &bull; INSTITUTE NAME: ${instituteName}
         </div>
         <div class="sub-info">
-          HEAD OF ACCOUNT: ${activeAccountName} &bull; BANK NAME & ACCOUNT: ${activeAccountConfig.bankName} (${activeAccountConfig.defaultAccountNo}) &bull; As on: ${asOnDate}
+          HEAD OF ACCOUNT: ${activeAccountName} &bull; BANK NAME & ACCOUNT: ${activeAccountConfig.bankName} (${activeAccountConfig.defaultAccountNo}) &bull; Period: ${formatDateDDMMYY(fromDate)} to ${formatDateDDMMYY(toDate)} &bull; As on: ${asOnDate}
         </div>
         <div class="sub-info" style="margin-top: 3px; font-weight: bold;">
           ${periodOpeningLabel}: Rs. ${formatAmount(openingBalance, 2)}
@@ -2083,27 +2148,7 @@ export function DirectorReconciliationReport({
           </div>
         </div>
 
-        <!-- Official Signatory Block -->
-        <div class="signatory-grid">
-          <div class="signatory-cell">
-            <div style="height: 35px;"></div>
-            <div class="sig-line"></div>
-            <div class="sig-name">Kashif Zia</div>
-            <div class="sig-title">Accountant / Prepared By</div>
-          </div>
-          <div class="signatory-cell">
-            <div style="height: 35px;"></div>
-            <div class="sig-line"></div>
-            <div class="sig-name">Aneeba Jamil</div>
-            <div class="sig-title">CO-Signatory / Checked By</div>
-          </div>
-          <div class="signatory-cell">
-            <div style="height: 35px;"></div>
-            <div class="sig-line"></div>
-            <div class="sig-name">Shazia Khadim</div>
-            <div class="sig-title">Acting Principal / DDO / Approved By</div>
-          </div>
-        </div>
+        ${generateSignatoryBlockHTML()}
       `,
     };
   };
@@ -2130,6 +2175,9 @@ export function DirectorReconciliationReport({
             <Building2 className="w-6 h-6" />
           </div>
           <div>
+            <div className="text-[11px] font-mono text-cyan-600 dark:text-cyan-400 font-bold mb-0.5">
+              Source: Reports &amp; Statements &rarr; {activeTab === 'RECON' ? 'Bank Reconciliation' : activeTab === 'RECEIPTS' ? `Date Wise Receipts (${activeAccountConfig.short})` : `Date Wise Payments (${activeAccountConfig.short})`}
+            </div>
             <h1 className="text-base sm:text-lg font-black tracking-wide uppercase">
               {instituteName}
             </h1>
@@ -2243,43 +2291,39 @@ export function DirectorReconciliationReport({
           </div>
         </div>
 
-        {/* Month Range Filter */}
+        {/* Day-Level Period (From → To) */}
         <div>
           <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
             Period (From &rarr; To)
           </label>
           <div className="grid grid-cols-2 gap-1.5">
-            <select
-              value={fromMonth}
-              onChange={(e) => setFromMonth(e.target.value)}
-              className={`px-2 py-1.5 rounded-xl text-xs font-mono border focus:outline-hidden ${
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => {
+                if (e.target.value) setFromDate(e.target.value);
+              }}
+              className={`w-full px-2 py-1.5 rounded-xl text-xs font-mono font-bold border focus:outline-hidden ${
                 darkMode
                   ? 'bg-slate-800 border-slate-700 text-white focus:border-cyan-500'
                   : 'bg-white border-slate-300 text-slate-900 focus:border-cyan-600'
               }`}
-            >
-              {activeMonthOptions.map((opt) => (
-                <option key={opt.key} value={opt.key}>
-                  {opt.shortLabel}
-                </option>
-              ))}
-            </select>
+              title="Select From Date"
+            />
 
-            <select
-              value={toMonth}
-              onChange={(e) => setToMonth(e.target.value)}
-              className={`px-2 py-1.5 rounded-xl text-xs font-mono border focus:outline-hidden ${
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => {
+                if (e.target.value) setToDate(e.target.value);
+              }}
+              className={`w-full px-2 py-1.5 rounded-xl text-xs font-mono font-bold border focus:outline-hidden ${
                 darkMode
                   ? 'bg-slate-800 border-slate-700 text-white focus:border-cyan-500'
                   : 'bg-white border-slate-300 text-slate-900 focus:border-cyan-600'
               }`}
-            >
-              {activeMonthOptions.map((opt) => (
-                <option key={opt.key} value={opt.key}>
-                  {opt.shortLabel}
-                </option>
-              ))}
-            </select>
+              title="Select To Date"
+            />
           </div>
         </div>
 
@@ -2368,7 +2412,7 @@ export function DirectorReconciliationReport({
             <div className="flex items-center justify-center gap-4 mt-2 text-xs font-mono text-slate-600 dark:text-slate-400">
               <span>Account: {activeAccountConfig.defaultAccountNo}</span>
               <span>&bull;</span>
-              <span>Period: {fromMonth} to {toMonth}</span>
+              <span>Period: {formatDateDDMMYY(fromDate)} to {formatDateDDMMYY(toDate)}</span>
             </div>
           </div>
 
@@ -2381,9 +2425,9 @@ export function DirectorReconciliationReport({
                 onChange={(e) => setSelectedSingleMonth(e.target.value)}
                 className="px-3 py-1.5 rounded-xl text-xs font-mono border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:border-emerald-600"
               >
-                <option value="ALL">All Months in Selected Period ({fromMonth} to {toMonth})</option>
+                <option value="ALL">All Months in Selected Period ({formatDateDDMMYY(fromDate)} to {formatDateDDMMYY(toDate)})</option>
                 {activeMonthOptions
-                  .filter((opt) => opt.key >= fromMonth && opt.key <= toMonth)
+                  .filter((opt) => opt.key >= fromDate.substring(0, 7) && opt.key <= toDate.substring(0, 7))
                   .map((opt) => (
                     <option key={opt.key} value={opt.key}>
                       {opt.label}
@@ -2465,6 +2509,23 @@ export function DirectorReconciliationReport({
                 </tr>
               </tfoot>
             </table>
+          </div>
+
+          {/* Official Signatures Block */}
+          <div className="pt-6 pb-2 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center border-t border-slate-200 dark:border-slate-800">
+            {OFFICIAL_SIGNATORIES.map((sig) => (
+              <div key={sig.name} className="border-t border-slate-400 dark:border-slate-600 pt-2">
+                <strong className="block text-xs font-black text-slate-900 dark:text-white uppercase">
+                  {sig.name}
+                </strong>
+                <span className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold block">
+                  {sig.role}
+                </span>
+                <span className="text-[9px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block mt-0.5">
+                  {sig.label}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -2771,7 +2832,7 @@ export function DirectorReconciliationReport({
                   <thead>
                     <tr className="bg-[#0b2545] text-white border-b border-slate-600 font-bold text-[10px] uppercase">
                       <th className="p-1.5 text-center w-20">Cheque No</th>
-                      <th className="p-1.5 text-center w-24">Date</th>
+                      <th className="p-1.5 text-center w-36 min-w-[130px]">Date</th>
                       <th className="p-1.5 text-left min-w-[170px]">Account Head</th>
                       <th className="p-1.5 text-right w-24">Amount</th>
                       <th className="p-1.5 text-left min-w-[140px]">Description</th>
@@ -2804,16 +2865,20 @@ export function DirectorReconciliationReport({
                           </td>
                           <td className="p-1">
                             <input
-                              type="text"
+                              type="date"
                               disabled={!isEffectiveUnlocked}
-                              value={c.date}
-                              onChange={(e) => handleUpdateManualCheque(c.id, 'date', e.target.value)}
-                              placeholder="dd-mm-yyyy"
-                              className={`w-full px-1.5 py-0.5 rounded border text-xs font-mono text-center text-slate-900 dark:text-white ${
+                              value={c.date ? (c.date.includes('-') && c.date.split('-')[0].length === 4 ? c.date : ddmmyyyyToIso(c.date)) : ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                const ddmmyyyy = val ? isoToDdmmyyyy(val) : '';
+                                handleUpdateManualCheque(c.id, 'date', ddmmyyyy);
+                              }}
+                              className={`w-full min-w-[125px] px-2 py-0.5 rounded border text-xs font-mono text-center text-slate-900 dark:text-white font-medium ${
                                 !isEffectiveUnlocked
                                   ? 'bg-slate-100 dark:bg-slate-850 border-slate-200 dark:border-slate-800 opacity-80 cursor-not-allowed'
-                                  : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700'
+                                  : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 focus:border-cyan-500'
                               }`}
+                              title="Select Cheque Date"
                             />
                           </td>
                           <td className="p-1">
@@ -2888,6 +2953,23 @@ export function DirectorReconciliationReport({
               </div>
             </div>
           </div>
+
+          {/* Official Signatures Block */}
+          <div className="pt-6 pb-2 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center border-t border-slate-200 dark:border-slate-800">
+            {OFFICIAL_SIGNATORIES.map((sig) => (
+              <div key={sig.name} className="border-t border-slate-400 dark:border-slate-600 pt-2">
+                <strong className="block text-xs font-black text-slate-900 dark:text-white uppercase">
+                  {sig.name}
+                </strong>
+                <span className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold block">
+                  {sig.role}
+                </span>
+                <span className="text-[9px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block mt-0.5">
+                  {sig.label}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -2907,7 +2989,7 @@ export function DirectorReconciliationReport({
             <div className="flex items-center justify-center gap-4 mt-2 text-xs font-mono text-slate-600 dark:text-slate-400">
               <span>Account: {activeAccountConfig.defaultAccountNo}</span>
               <span>&bull;</span>
-              <span>Period: {fromMonth} to {toMonth}</span>
+              <span>Period: {formatDateDDMMYY(fromDate)} to {formatDateDDMMYY(toDate)}</span>
             </div>
           </div>
 
@@ -2920,9 +3002,9 @@ export function DirectorReconciliationReport({
                 onChange={(e) => setSelectedSingleMonth(e.target.value)}
                 className="px-3 py-1.5 rounded-xl text-xs font-mono border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:border-blue-600"
               >
-                <option value="ALL">All Months in Selected Period ({fromMonth} to {toMonth})</option>
+                <option value="ALL">All Months in Selected Period ({formatDateDDMMYY(fromDate)} to {formatDateDDMMYY(toDate)})</option>
                 {activeMonthOptions
-                  .filter((opt) => opt.key >= fromMonth && opt.key <= toMonth)
+                  .filter((opt) => opt.key >= fromDate.substring(0, 7) && opt.key <= toDate.substring(0, 7))
                   .map((opt) => (
                     <option key={opt.key} value={opt.key}>
                       {opt.label}
@@ -3055,6 +3137,23 @@ export function DirectorReconciliationReport({
                 </tr>
               </tfoot>
             </table>
+          </div>
+
+          {/* Official Signatures Block */}
+          <div className="pt-6 pb-2 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center border-t border-slate-200 dark:border-slate-800">
+            {OFFICIAL_SIGNATORIES.map((sig) => (
+              <div key={sig.name} className="border-t border-slate-400 dark:border-slate-600 pt-2">
+                <strong className="block text-xs font-black text-slate-900 dark:text-white uppercase">
+                  {sig.name}
+                </strong>
+                <span className="text-[11px] text-slate-700 dark:text-slate-300 font-semibold block">
+                  {sig.role}
+                </span>
+                <span className="text-[9px] text-slate-500 dark:text-slate-400 font-extrabold uppercase tracking-wider block mt-0.5">
+                  {sig.label}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}

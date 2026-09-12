@@ -175,10 +175,12 @@ export function getBurnRateBadge(burnRate: number): {
 /**
  * Export dataset to CSV string
  */
-export function exportToCSV(filename: string, rows: Record<string, any>[]): void {
+export function exportToCSV(filename: string, rows: Record<string, any>[], sourceLabel?: string): void {
   if (!rows || !rows.length) return;
   const headers = Object.keys(rows[0]);
+  const source = sourceLabel ? `"${sourceLabel}"` : '"Source: e-CashBook & Voucher System (33028)"';
   const csvContent = [
+    source,
     headers.join(','),
     ...rows.map((row) =>
       headers
@@ -191,6 +193,7 @@ export function exportToCSV(filename: string, rows: Record<string, any>[]): void
         })
         .join(',')
     ),
+    '"e-CashBook & Voucher System developed by MKZ for institute 33028"',
   ].join('\r\n');
 
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

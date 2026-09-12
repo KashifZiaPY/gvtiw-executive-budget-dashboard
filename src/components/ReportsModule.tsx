@@ -876,6 +876,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             <img src="${gvtiwLogoSrc}" alt="GVTIW Logo" onerror="this.style.display='none'" />
           </div>
           <div class="header-text-block">
+            <div style="font-size: 7.5px; font-family: monospace; color: #475569; font-weight: bold; margin-bottom: 2px;">Source: Reports &amp; Statements → ${mainReportTitle}</div>
             <h1 style="font-size: 13px; font-weight: 900; color: #0b2545; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">
               GOVT. VOCATIONAL TRAINING INSTITUTE (W) SAMANABAD, FAISALABAD
             </h1>
@@ -1173,6 +1174,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             </div>
           `).join('')}
         </div>
+
+        <div style="margin-top: 25px; padding-top: 6px; border-top: 1px dotted #94a3b8; font-size: 7.5px; font-family: monospace; color: #64748b; text-align: center;">
+          e-CashBook &amp; Voucher System developed by MKZ for institute 33028
+        </div>
       </body>
     </html>
     `;
@@ -1304,7 +1309,13 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
     const csvContent =
       'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      [
+        '"Source: Reports & Statements → Cashbook Statement"',
+        headers.join(','),
+        ...rows.map((r) => r.join(',')),
+        '',
+        '"e-CashBook & Voucher System developed by MKZ for institute 33028"',
+      ].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
@@ -1428,7 +1439,13 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
       const csvContent =
         'data:text/csv;charset=utf-8,' +
-        [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+        [
+          '"Source: Reports & Statements → Head Expenditure Statement (Multi-Head)"',
+          headers.join(','),
+          ...rows.map((e) => e.join(',')),
+          '',
+          '"e-CashBook & Voucher System developed by MKZ for institute 33028"',
+        ].join('\n');
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement('a');
       link.setAttribute('href', encodedUri);
@@ -1558,7 +1575,13 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
     const csvContent =
       'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      [
+        '"Source: Reports & Statements → Head Expenditure Statement"',
+        headers.join(','),
+        ...rows.map((r) => r.join(',')),
+        '',
+        '"e-CashBook & Voucher System developed by MKZ for institute 33028"',
+      ].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
@@ -1618,7 +1641,13 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
       const csvContent =
         'data:text/csv;charset=utf-8,' +
-        [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+        [
+          '"Source: Reports & Statements → FBR Withholding Statement"',
+          headers.join(','),
+          ...rows.map((r) => r.join(',')),
+          '',
+          '"e-CashBook & Voucher System developed by MKZ for institute 33028"',
+        ].join('\n');
 
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement('a');
@@ -1681,7 +1710,13 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
       const csvContent =
         'data:text/csv;charset=utf-8,' +
-        [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+        [
+          '"Source: Reports & Statements → PRA Sales Tax Statement"',
+          headers.join(','),
+          ...rows.map((r) => r.join(',')),
+          '',
+          '"e-CashBook & Voucher System developed by MKZ for institute 33028"',
+        ].join('\n');
 
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement('a');
@@ -1759,7 +1794,13 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
     const csvContent =
       'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      [
+        `"Source: Reports & Statements → ${reportName}"`,
+        headers.join(','),
+        ...rows.map((r) => r.join(',')),
+        '',
+        '"e-CashBook & Voucher System developed by MKZ for institute 33028"',
+      ].join('\n');
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');

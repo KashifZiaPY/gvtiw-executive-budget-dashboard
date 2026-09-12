@@ -324,10 +324,13 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     const csvContent =
       'data:text/csv;charset=utf-8,' +
       [
+        '"Source: CashBook → Double-Column Folio"',
         `CashBook: ${currentAccount.meta.fullName} - Account No: ${currentAccount.meta.accountNo}`,
         `Period: ${periodDateRange.label} | Opening Balance: ${periodFinancials.openingBalance} | Total Receipts: ${periodFinancials.totalReceipts} | Total Payments: ${periodFinancials.totalPayments} | Closing Balance: ${periodFinancials.closingBalance}`,
         headers.join(','),
         ...rows.map((r) => r.join(',')),
+        '',
+        '"e-CashBook & Voucher System developed by MKZ for institute 33028"',
       ].join('\n');
 
     const encodedUri = encodeURI(csvContent);
@@ -390,6 +393,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         </head>
         <body>
           <div class="header-box">
+            <div style="font-size: 8px; font-family: monospace; color: #475569; font-weight: bold; margin-bottom: 3px;">Source: CashBook → Double-Column Folio</div>
             <p>TECHNICAL EDUCATION & VOCATIONAL TRAINING AUTHORITY • GOVERNMENT OF PUNJAB</p>
             <h1>GOVT. VOCATIONAL TRAINING INSTITUTE FOR WOMEN SAMANABAD, FAISALABAD</h1>
             <h2>OFFICIAL CASH BOOK FOLIO — FY 2026-2027</h2>
@@ -464,6 +468,10 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
               <strong>SHAZIA KHADIM</strong>
               <span>Approved by: Acting Principal / DDO</span>
             </div>
+          </div>
+
+          <div style="margin-top: 25px; padding-top: 6px; border-top: 1px dotted #94a3b8; font-size: 8px; font-family: monospace; color: #64748b; text-align: center;">
+            e-CashBook &amp; Voucher System developed by MKZ for institute 33028
           </div>
         </body>
       </html>

@@ -72,6 +72,7 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
 
             {/* Center Text */}
             <div className="text-center flex-1 space-y-0.5">
+              <div style={{ fontSize: '9px', fontFamily: 'monospace', color: '#475569', fontWeight: 'bold' }}>Source: Dashboard → Executive Report</div>
               <h1 className="text-lg font-black tracking-wide uppercase">{data.instituteName}</h1>
               <p className="text-xs font-bold text-slate-700">Technical Education & Vocational Training Authority (TEVTA), Govt of Punjab</p>
               <h2 className="text-sm font-bold text-blue-900 uppercase pt-0.5">{data.reportTitle}</h2>
@@ -79,8 +80,6 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
                 <span className="whitespace-nowrap font-bold text-slate-800">{data.financialYear}</span>
                 <span className="text-slate-400">•</span>
                 <span className="whitespace-nowrap">Generated: {format12HourDate(new Date(), true)}</span>
-                <span className="text-slate-400">•</span>
-                <span className="font-mono whitespace-nowrap text-slate-700">{data.developerWatermark}</span>
               </div>
             </div>
 
@@ -188,6 +187,10 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
             <div className="border-t-2 border-slate-700 pt-2 font-bold">
               Approved by: HOI / DDO
             </div>
+          </div>
+
+          <div style={{ marginTop: '20px', paddingTop: '6px', borderTop: '1px dotted #94a3b8', fontSize: '8px', fontFamily: 'monospace', color: '#64748b', textAlign: 'center' }}>
+            e-CashBook &amp; Voucher System developed by MKZ for institute 33028
           </div>
         </div>
       </div>
