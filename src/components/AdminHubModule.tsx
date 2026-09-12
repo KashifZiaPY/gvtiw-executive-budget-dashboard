@@ -290,6 +290,26 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
   // Dedicated Backup Status Modal State (Clear ACTIVE status on top)
   const [isBackupStatusModalOpen, setIsBackupStatusModalOpen] = useState(false);
+  const [lastBackupTimestamp, setLastBackupTimestamp] = useState<string | null>(null);
+  const [isDailyBackupEnabled, setIsDailyBackupEnabled] = useState<boolean>(true);
+
+  const formatBackupTime = (ts?: string | null) => {
+    if (!ts || ts === 'None recorded') return null;
+    try {
+      const d = new Date(ts);
+      if (!isNaN(d.getTime())) {
+        const day = d.getDate();
+        const month = d.toLocaleString('en-US', { month: 'short' });
+        const hours = d.getHours();
+        const minutes = d.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const formattedHour = hours % 12 === 0 ? 12 : hours % 12;
+        return `${day}-${month} ${formattedHour}:${minutes} ${ampm}`;
+      }
+    } catch {}
+    return ts;
+  };
+
   const [backupModalData, setBackupModalData] = useState<{
     status: 'ACTIVE' | 'INACTIVE';
     schedule: string;
@@ -305,6 +325,61 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     lastBackupTime: 'Daily Automated 4:00 PM PST Schedule',
     liveMessage: 'Connected to GVTIW Google Drive Archive',
   });
+
+  const fetchServerBackupStatus = async () => {
+    const activeUrl = webAppUrl.trim();
+    if (!activeUrl) return;
+    const currentPin = (storedPin || '').trim();
+
+    try {
+      const url = `${activeUrl}?action=getBackupStatus&pin=${encodeURIComponent(currentPin)}`;
+      let data: any = null;
+
+      try {
+        const res = await fetch(url, { method: 'GET' });
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch {
+        try {
+          const postRes = await fetch(activeUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ pin: currentPin, action: 'getBackupStatus' }),
+          });
+          if (postRes.ok) {
+            data = await postRes.json();
+          }
+        } catch {}
+      }
+
+      if (data) {
+        const val = data.value || data.data || data;
+        const isSuccess = data.success !== false;
+        if (isSuccess) {
+          const timestamp = val.lastBackupTimestamp || data.lastBackupTimestamp || val.lastBackupTime || data.lastBackupTime;
+          if (timestamp && timestamp !== 'None recorded') {
+            setLastBackupTimestamp(timestamp);
+            setBackupModalData((prev) => ({
+              ...prev,
+              lastBackupTime: formatBackupTime(timestamp) || prev.lastBackupTime,
+            }));
+          }
+          const enabled = typeof val.enabled === 'boolean' ? val.enabled : (typeof data.enabled === 'boolean' ? data.enabled : undefined);
+          if (typeof enabled === 'boolean') {
+            setIsDailyBackupEnabled(enabled);
+            setBackupModalData((prev) => ({
+              ...prev,
+              status: enabled ? 'ACTIVE' : 'INACTIVE',
+              schedule: enabled ? 'Active (Every day at 4:00 PM PST)' : 'Inactive / Paused by Admin',
+            }));
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch backup status:', err);
+    }
+  };
 
   // -------------------------------------------------------------
   // 7. AUDIT TRAIL LOGS & SERVER PAGINATION
@@ -407,6 +482,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
   useEffect(() => {
     fetchServerAuditLog(200, false);
+    fetchServerBackupStatus();
   }, []);
 
   const addAuditLog = (action: string, status: 'pending' | 'success' | 'failed', details: string) => {
@@ -717,6 +793,13 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     );
 
     if (res.success) {
+      const nowIso = new Date().toISOString();
+      setLastBackupTimestamp(nowIso);
+      setBackupModalData((prev) => ({
+        ...prev,
+        lastBackupTime: formatBackupTime(nowIso) || prev.lastBackupTime,
+      }));
+      fetchServerBackupStatus();
       setPopupModal({
         isOpen: true,
         type: 'success',
@@ -786,7 +869,10 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         suppressPopup: true,
       }
     );
-    if (res.success) {
+    const isSuccess = res.success || (res.message && res.message.toLowerCase().includes('enabled')) || (res as any).enabled === true;
+    if (isSuccess) {
+      setIsDailyBackupEnabled(true);
+      fetchServerBackupStatus();
       setBackupModalData((prev) => ({
         ...prev,
         status: 'ACTIVE',
@@ -797,11 +883,11 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     }
     setPopupModal({
       isOpen: true,
-      type: res.success ? 'success' : 'error',
-      title: res.success ? 'Daily Backup Enabled' : 'Configuration Failed',
+      type: isSuccess ? 'success' : 'error',
+      title: isSuccess ? 'Daily Backup Enabled' : 'Configuration Failed',
       message:
         res.message ||
-        (res.success
+        (isSuccess
           ? 'Automated Daily Backup scheduled daily at 4:00 PM PST. All 7 files will be archived automatically.'
           : 'Could not enable daily backup trigger.'),
     });
@@ -820,7 +906,10 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         suppressPopup: true,
       }
     );
-    if (res.success) {
+    const isSuccess = res.success || (res.message && (res.message.toLowerCase().includes('disabled') || res.message.toLowerCase().includes('paused'))) || (res as any).enabled === false;
+    if (isSuccess) {
+      setIsDailyBackupEnabled(false);
+      fetchServerBackupStatus();
       setBackupModalData((prev) => ({
         ...prev,
         status: 'INACTIVE',
@@ -830,11 +919,11 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     }
     setPopupModal({
       isOpen: true,
-      type: res.success ? 'success' : 'error',
-      title: res.success ? 'Daily Backup Disabled' : 'Disable Failed',
+      type: isSuccess ? 'success' : 'error',
+      title: isSuccess ? 'Daily Backup Disabled' : 'Disable Failed',
       message:
         res.message ||
-        (res.success
+        (isSuccess
           ? 'Automated daily 4:00 PM backup trigger has been safely disabled.'
           : 'Could not disable daily backup trigger.'),
     });
@@ -2264,12 +2353,21 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           <button
             type="button"
             onClick={handleCheckBackupStatus}
-            className="px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold flex items-center gap-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 transition-all cursor-pointer shadow-2xs whitespace-nowrap"
-            title="Click to view detailed backup status report"
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-2 border transition-all cursor-pointer shadow-2xs whitespace-nowrap ${
+              isDailyBackupEnabled
+                ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border-amber-500/30'
+            }`}
+            title={lastBackupTimestamp ? `Last Backup: ${formatBackupTime(lastBackupTimestamp)} • Click for details` : 'Click to view detailed backup status report'}
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
-            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Backup: ACTIVE (4 PM)</span>
+            <span className={`w-2 h-2 rounded-full inline-block shrink-0 ${isDailyBackupEnabled ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`} />
+            <ShieldCheck className={`w-4 h-4 shrink-0 ${isDailyBackupEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`} />
+            <div className="flex flex-col items-start leading-tight text-left">
+              <span>Backup: {isDailyBackupEnabled ? 'ACTIVE (4 PM)' : 'DISABLED'}</span>
+              <span className="text-[10px] font-normal opacity-90">
+                {lastBackupTimestamp ? `Last: ${formatBackupTime(lastBackupTimestamp)}` : (isDailyBackupEnabled ? 'Last: 4:00 PM Daily' : 'Daily Backup Paused')}
+              </span>
+            </div>
           </button>
 
           {/* Quick Refresh */}

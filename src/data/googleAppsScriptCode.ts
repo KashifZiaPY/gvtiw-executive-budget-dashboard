@@ -1351,12 +1351,14 @@ function enableDailyBackup() {
   ScriptApp.newTrigger('runFullSystemDeepBackup').timeBased().atHour(16).nearMinute(0).everyDays(1).create();
   PropertiesService.getDocumentProperties().setProperty('BACKUP_ENABLED', 'true');
   try { SpreadsheetApp.getUi().alert('🟢 Daily Full System Backup (Master + 6 Cashbooks) ENABLED — 4:00 PM daily.'); } catch (e) {}
+  return { success: true, enabled: true, message: 'Daily Full System Backup (4:00 PM daily) enabled.' };
 }
 
 function disableDailyBackup() {
   disableDailyBackup_();
   PropertiesService.getDocumentProperties().setProperty('BACKUP_ENABLED', 'false');
   try { SpreadsheetApp.getUi().alert('🔴 Daily Backup DISABLED.'); } catch (e) {}
+  return { success: true, enabled: false, message: 'Daily Backup trigger disabled.' };
 }
 
 function disableDailyBackup_() {
@@ -1371,7 +1373,18 @@ function disableDailyBackup_() {
 
 function checkBackupStatus() {
   var enabled = PropertiesService.getDocumentProperties().getProperty('BACKUP_ENABLED') === 'true';
+  var lastBackup = PropertiesService.getDocumentProperties().getProperty('LAST_BACKUP_TIMESTAMP') || PropertiesService.getScriptProperties().getProperty('LAST_BACKUP_TIME') || 'None recorded';
+  var lastUrl = PropertiesService.getScriptProperties().getProperty('LAST_BACKUP_URL') || '';
   try { SpreadsheetApp.getUi().alert('Daily Full System Backup: ' + (enabled ? 'ON ✅ (Master + 6 Cashbooks at 4:00 PM)' : 'OFF 🛑')); } catch (e) {}
+  return {
+    success: true,
+    enabled: enabled,
+    dailyBackupSchedule: enabled ? 'Active (Every day at 4:00 PM PST)' : 'Disabled',
+    lastBackupTime: lastBackup,
+    lastBackupTimestamp: PropertiesService.getDocumentProperties().getProperty('LAST_BACKUP_TIMESTAMP') || null,
+    lastBackupUrl: lastUrl,
+    message: 'Daily Full System Backup: ' + (enabled ? 'ON (4:00 PM daily)' : 'OFF')
+  };
 }
 
 function getBackupStatusInfo_() {
