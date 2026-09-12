@@ -898,9 +898,11 @@ function handleApiRequest_(pin, action, data) {
     }
   }
 
-  if (action === "getBackupStatus") {
+  if (action === "getBackupStatus" || action === "checkBackupStatus" || action === "backupStatus" || action === "getBackupInfo") {
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
+      enabled: getBackupStatusInfo_().enabled,
+      data: getBackupStatusInfo_(),
       value: getBackupStatusInfo_()
     })).setMimeType(ContentService.MimeType.JSON);
   }

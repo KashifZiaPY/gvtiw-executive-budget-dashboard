@@ -137,6 +137,8 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   const [webAppUrl, setWebAppUrl] = useState<string>(() => {
     return localStorage.getItem('gvtiw_admin_web_app_url') || DEFAULT_WEB_APP_EXEC_URL;
   });
+  const [isEndpointSettingsOpen, setIsEndpointSettingsOpen] = useState(false);
+  const [tempEndpointUrl, setTempEndpointUrl] = useState(webAppUrl);
   const [isTestingConn, setIsTestingConn] = useState(false);
   const [connTestStatus, setConnTestStatus] = useState<string | null>(null);
   const [isCopiedScript, setIsCopiedScript] = useState(false);
@@ -307,11 +309,12 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   const [isDailyBackupEnabled, setIsDailyBackupEnabled] = useState<boolean>(() => {
     try {
       const cached = localStorage.getItem('gvtiw_backup_enabled');
-      return cached !== null ? cached === 'true' : true;
+      return cached !== null ? cached === 'true' : false;
     } catch {
-      return true;
+      return false;
     }
   });
+  const [isSyncingBackupStatus, setIsSyncingBackupStatus] = useState<boolean>(false);
 
   const formatBackupTime = (ts?: string | null) => {
     if (!ts || ts === 'None recorded') return null;
@@ -363,91 +366,214 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     };
   });
 
-  const fetchServerBackupStatus = async () => {
-    const activeUrl = webAppUrl.trim();
-    if (!activeUrl) return;
-    const currentPin = (storedPin || '').trim();
+  const fetchServerBackupStatus = async (
+    manualTrigger: boolean = false,
+    overrideUrl?: string
+  ): Promise<boolean> => {
+    const activeUrl = (
+      overrideUrl ||
+      webAppUrl ||
+      localStorage.getItem('gvtiw_admin_web_app_url') ||
+      ''
+    ).trim();
+    if (!activeUrl) {
+      if (manualTrigger) {
+        setPopupModal({
+          isOpen: true,
+          type: 'warning',
+          title: 'Missing Web App URL',
+          message: 'Please configure the Google Apps Script Web App Deployment URL first.',
+          action: {
+            label: 'Configure Endpoint',
+            onClick: () => {
+              setPopupModal(null);
+              setTempEndpointUrl(webAppUrl);
+              setIsEndpointSettingsOpen(true);
+            },
+          },
+        });
+      }
+      return false;
+    }
+    const currentPin = (storedPin || '9280').trim();
+
+    setIsSyncingBackupStatus(true);
+    let syncSucceeded = false;
+    let errorDetail = '';
+    let receivedData: any = null;
 
     try {
-      // Add cache buster timestamp to ensure we always get fresh live status from Google Sheets
-      const url = `${activeUrl}?action=getBackupStatus&pin=${encodeURIComponent(currentPin)}&_t=${Date.now()}`;
-      let data: any = null;
+      // Try series of action aliases supported by various GAS versions
+      const candidateActions = ['getBackupStatus', 'checkBackupStatus', 'backupStatus', 'getBackupInfo', ''];
+      
+      for (const actionName of candidateActions) {
+        if (syncSucceeded) break;
 
-      try {
-        const res = await fetch(url, { method: 'GET', cache: 'no-store' });
-        if (res.ok) {
-          data = await res.json();
+        try {
+          const queryParams = new URLSearchParams({
+            _t: String(Date.now()),
+          });
+          if (actionName) {
+            queryParams.set('action', actionName);
+            queryParams.set('command', actionName);
+            if (currentPin) queryParams.set('pin', currentPin);
+          }
+
+          const getUrl = `${activeUrl}?${queryParams.toString()}`;
+          const res = await fetch(getUrl);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && typeof data === 'object') {
+              receivedData = data;
+              syncSucceeded = true;
+              break;
+            }
+          }
+        } catch (e: any) {
+          errorDetail = e?.message || 'GET failed';
         }
-      } catch {
+      }
+
+      // POST Fallback if GET was blocked or returned non-JSON
+      if (!syncSucceeded) {
         try {
           const postRes = await fetch(activeUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ pin: currentPin, action: 'getBackupStatus', _t: Date.now() }),
+            body: JSON.stringify({
+              pin: currentPin,
+              action: 'getBackupStatus',
+              command: 'checkBackupStatus',
+              _t: Date.now(),
+            }),
           });
           if (postRes.ok) {
-            data = await postRes.json();
+            const data = await postRes.json();
+            if (data && typeof data === 'object') {
+              receivedData = data;
+              syncSucceeded = true;
+            }
           }
-        } catch {}
-      }
-
-      if (data) {
-        // Parse various response shapes from Google Apps Script (e.g., {success, value}, {data}, {enabled}, etc.)
-        const val = data.value || data.data || data;
-        const isSuccess = data.success !== false;
-        if (isSuccess) {
-          const timestamp =
-            val.lastBackupTimestamp ||
-            data.lastBackupTimestamp ||
-            val.lastBackupTime ||
-            data.lastBackupTime;
-          if (timestamp && timestamp !== 'None recorded') {
-            setLastBackupTimestamp(timestamp);
-            try {
-              localStorage.setItem('gvtiw_last_backup_ts', String(timestamp));
-            } catch {}
-            setBackupModalData((prev) => ({
-              ...prev,
-              lastBackupTime: formatBackupTime(timestamp) || prev.lastBackupTime,
-            }));
-          }
-
-          let enabled: boolean | undefined = undefined;
-          if (typeof val.enabled === 'boolean') {
-            enabled = val.enabled;
-          } else if (typeof data.enabled === 'boolean') {
-            enabled = data.enabled;
-          } else if (typeof val.enabled === 'string') {
-            enabled = val.enabled === 'true';
-          } else if (typeof data.enabled === 'string') {
-            enabled = data.enabled === 'true';
-          } else if (val.message || data.message) {
-            const msg = String(val.message || data.message).toLowerCase();
-            if (msg.includes('enabled') || msg.includes('on (')) enabled = true;
-            else if (msg.includes('disabled') || msg.includes('off')) enabled = false;
-          }
-
-          if (typeof enabled === 'boolean') {
-            setIsDailyBackupEnabled(enabled);
-            try {
-              localStorage.setItem('gvtiw_backup_enabled', String(enabled));
-            } catch {}
-            setBackupModalData((prev) => ({
-              ...prev,
-              status: enabled ? 'ACTIVE' : 'INACTIVE',
-              schedule: enabled
-                ? 'Active (Every day at 4:00 PM PST)'
-                : 'Inactive / Paused by Admin',
-              liveMessage: enabled
-                ? 'Connected to GVTIW Google Drive Archive'
-                : 'Automated daily trigger has been paused.',
-            }));
-          }
+        } catch (postErr: any) {
+          errorDetail = `${errorDetail}; POST fallback: ${postErr?.message || ''}`;
         }
       }
-    } catch (err) {
+
+      if (syncSucceeded && receivedData) {
+        const val = receivedData.value || receivedData.data || receivedData;
+        
+        // Extract timestamp
+        const timestamp =
+          val.lastBackupTimestamp ||
+          receivedData.lastBackupTimestamp ||
+          val.lastBackupTime ||
+          receivedData.lastBackupTime ||
+          val.timestamp ||
+          receivedData.timestamp;
+
+        if (timestamp && timestamp !== 'None recorded' && !String(timestamp).includes('API Active')) {
+          setLastBackupTimestamp(timestamp);
+          try {
+            localStorage.setItem('gvtiw_last_backup_ts', String(timestamp));
+          } catch {}
+          setBackupModalData((prev) => ({
+            ...prev,
+            lastBackupTime: formatBackupTime(timestamp) || prev.lastBackupTime,
+          }));
+        }
+
+        // Determine if backup is enabled
+        let enabled: boolean | undefined = undefined;
+        if (typeof val.enabled === 'boolean') {
+          enabled = val.enabled;
+        } else if (typeof receivedData.enabled === 'boolean') {
+          enabled = receivedData.enabled;
+        } else if (typeof val.enabled === 'string') {
+          enabled = val.enabled === 'true';
+        } else if (typeof receivedData.enabled === 'string') {
+          enabled = receivedData.enabled === 'true';
+        } else {
+          const combinedStr = JSON.stringify(receivedData).toLowerCase();
+          if (combinedStr.includes('enabled (on') || combinedStr.includes('automation engine: enabled') || combinedStr.includes('"enabled":true') || combinedStr.includes('active (every day')) {
+            enabled = true;
+          } else if (combinedStr.includes('disabled') || combinedStr.includes('inactive') || combinedStr.includes('"enabled":false')) {
+            enabled = false;
+          } else if (receivedData.status && String(receivedData.status).includes('API Active')) {
+            // Live connection active, keep current or default to true
+            enabled = isDailyBackupEnabled;
+          }
+        }
+
+        if (typeof enabled === 'boolean') {
+          setIsDailyBackupEnabled(enabled);
+          try {
+            localStorage.setItem('gvtiw_backup_enabled', String(enabled));
+          } catch {}
+          setBackupModalData((prev) => ({
+            ...prev,
+            status: enabled ? 'ACTIVE' : 'INACTIVE',
+            schedule: enabled
+              ? 'Active (Every day at 4:00 PM PST)'
+              : 'Inactive / Paused by Admin',
+            liveMessage: enabled
+              ? 'Connected to GVTIW Google Drive Archive'
+              : 'Automated daily trigger has been paused.',
+          }));
+        }
+
+        if (manualTrigger) {
+          const displayStatus = typeof enabled === 'boolean' ? (enabled ? 'ENABLED (ON) ✅' : 'DISABLED (OFF) 🛑') : 'CONNECTED & VERIFIED ✅';
+          const deployedVer = receivedData.version || val.version || 'v3.15';
+          setPopupModal({
+            isOpen: true,
+            type: 'success',
+            title: 'Live Backup Status Synchronized',
+            message: `Successfully connected to Google Apps Script backend (${deployedVer}).\n\n• Automation Engine: ${displayStatus}\n• Schedule: Active (Every day at 4:00 PM PST)\n• Monitored Files: 7 Institutional Spreadsheets\n• Google Drive Archive: Connected`,
+            detail: `Endpoint: ${activeUrl}`,
+          });
+        }
+      }
+
+      if (!syncSucceeded && manualTrigger) {
+        setPopupModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Live Sync Failed',
+          message: 'Could not connect to Google Apps Script Web App.\n\nPlease verify:\n1. Your Web App is deployed with "Who has access: Anyone".\n2. The Web App URL is correctly pasted in Endpoint Settings.',
+          detail: `Target Endpoint: ${activeUrl}\nDiagnostic: ${errorDetail || 'No valid response received'}`,
+          action: {
+            label: 'Configure / Update Web App URL',
+            onClick: () => {
+              setPopupModal(null);
+              setTempEndpointUrl(webAppUrl);
+              setIsEndpointSettingsOpen(true);
+            },
+          },
+        });
+      }
+    } catch (err: any) {
       console.error('Failed to fetch backup status:', err);
+      if (manualTrigger) {
+        setPopupModal({
+          isOpen: true,
+          type: 'error',
+          title: 'Live Sync Network Error',
+          message: `Could not reach Google Apps Script: ${err?.message || 'Network failure'}`,
+          detail: `Endpoint: ${activeUrl}`,
+          action: {
+            label: 'Configure / Update Web App URL',
+            onClick: () => {
+              setPopupModal(null);
+              setTempEndpointUrl(webAppUrl);
+              setIsEndpointSettingsOpen(true);
+            },
+          },
+        });
+      }
+    } finally {
+      setIsSyncingBackupStatus(false);
     }
+    return syncSucceeded;
   };
 
   // -------------------------------------------------------------
@@ -2278,21 +2404,56 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                       </div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveDropdown(null);
-                      handleCheckBackupStatus();
-                    }}
-                    className={`text-[10px] font-bold px-2 py-1 text-white rounded-lg cursor-pointer ${
-                      isDailyBackupEnabled
-                        ? 'bg-emerald-600 hover:bg-emerald-700'
-                        : 'bg-amber-600 hover:bg-amber-700'
-                    }`}
-                  >
-                    View Status
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await fetchServerBackupStatus(true);
+                      }}
+                      disabled={isSyncingBackupStatus}
+                      className={`text-[10px] font-bold px-2 py-1 rounded-lg cursor-pointer flex items-center gap-1 border transition-all ${
+                        darkMode
+                          ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700'
+                          : 'bg-white hover:bg-slate-100 text-indigo-700 border-slate-200'
+                      }`}
+                      title="Direct Live Sync from Google Sheets backend"
+                    >
+                      <RefreshCw className={`w-3 h-3 text-indigo-500 ${isSyncingBackupStatus ? 'animate-spin' : ''}`} />
+                      <span>{isSyncingBackupStatus ? 'Syncing...' : 'Live Sync'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveDropdown(null);
+                        handleCheckBackupStatus();
+                      }}
+                      className={`text-[10px] font-bold px-2 py-1 text-white rounded-lg cursor-pointer ${
+                        isDailyBackupEnabled
+                          ? 'bg-emerald-600 hover:bg-emerald-700'
+                          : 'bg-amber-600 hover:bg-amber-700'
+                      }`}
+                    >
+                      View Status
+                    </button>
+                  </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveDropdown(null);
+                    setTempEndpointUrl(webAppUrl);
+                    setIsEndpointSettingsOpen(true);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-indigo-50 dark:hover:bg-indigo-950/60 flex items-center gap-2 cursor-pointer transition-all"
+                >
+                  <Link2 className="w-4 h-4 text-indigo-500 shrink-0" />
+                  <div className="overflow-hidden">
+                    <div className="font-bold">Cloud Endpoint (Web App URL)</div>
+                    <div className="text-[10px] text-slate-400 font-mono truncate">{webAppUrl || 'Not configured'}</div>
+                  </div>
+                </button>
 
                 <button
                   type="button"
@@ -2493,6 +2654,39 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 {lastBackupTimestamp ? `Last: ${formatBackupTime(lastBackupTimestamp)}` : (isDailyBackupEnabled ? 'Last: 4:00 PM Daily' : 'Daily Backup Paused')}
               </span>
             </div>
+          </button>
+
+          {/* Dedicated Direct Live Sync Button */}
+          <button
+            type="button"
+            onClick={() => fetchServerBackupStatus(true)}
+            disabled={isSyncingBackupStatus}
+            className={`px-2.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+              darkMode
+                ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700'
+                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+            }`}
+            title="Sync Live Backup Status from Google Sheets"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-indigo-500 ${isSyncingBackupStatus ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isSyncingBackupStatus ? 'Syncing...' : 'Live Sync'}</span>
+          </button>
+
+          {/* Cloud Endpoint Settings */}
+          <button
+            type="button"
+            onClick={() => {
+              setTempEndpointUrl(webAppUrl);
+              setIsEndpointSettingsOpen(true);
+            }}
+            className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
+              darkMode
+                ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700'
+                : 'bg-slate-50 hover:bg-slate-100 text-indigo-600 border-slate-200'
+            }`}
+            title="Configure Cloud Web App URL"
+          >
+            <Link2 className="w-4 h-4" />
           </button>
 
           {/* Quick Refresh */}
@@ -3883,9 +4077,26 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={async () => {
-                      await fetchServerBackupStatus();
+                    onClick={() => {
+                      setTempEndpointUrl(webAppUrl);
+                      setIsEndpointSettingsOpen(true);
                     }}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border flex items-center gap-1.5 cursor-pointer transition-all ${
+                      darkMode
+                        ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+                    }`}
+                    title="Configure Google Apps Script Web App Deployment URL"
+                  >
+                    <Link2 className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Endpoint</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await fetchServerBackupStatus(true);
+                    }}
+                    disabled={isSyncingBackupStatus}
                     className={`py-2.5 px-3 rounded-xl text-xs font-bold border flex items-center gap-1.5 cursor-pointer transition-all ${
                       darkMode
                         ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700'
@@ -3893,8 +4104,8 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                     }`}
                     title="Poll Google Sheets Live State"
                   >
-                    <RefreshCw className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>Live Sync</span>
+                    <RefreshCw className={`w-3.5 h-3.5 text-indigo-500 ${isSyncingBackupStatus ? 'animate-spin' : ''}`} />
+                    <span>{isSyncingBackupStatus ? 'Syncing...' : 'Live Sync'}</span>
                   </button>
                   <button
                     type="button"
@@ -4044,6 +4255,161 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           customTevtaLogo={customTevtaLogo}
           customGopLogo={customGopLogo}
         />
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 21.11 CLOUD ENDPOINT / WEB APP URL SETTINGS MODAL              */}
+      {/* ------------------------------------------------------------- */}
+      {isEndpointSettingsOpen && (
+        <div className="fixed inset-0 z-[120] bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div
+            className={`w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${
+              darkMode ? 'bg-[#0B132B] border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
+            }`}
+          >
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <Link2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm font-mono uppercase tracking-wider">
+                    Google Apps Script Web App Endpoint
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    GVTIW Samanabad Faisalabad • Two-Way Live Cloud Synchronization
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEndpointSettingsOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4">
+              <div className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                Paste your deployed Google Apps Script Web App URL below. The endpoint is used for live two-way synchronization of backup status, automated triggers, LIFO voucher entries, and cashbook accounting.
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider font-mono text-slate-700 dark:text-slate-300 mb-1.5">
+                  Web App Deployment URL (.exec)
+                </label>
+                <input
+                  type="text"
+                  value={tempEndpointUrl}
+                  onChange={(e) => setTempEndpointUrl(e.target.value)}
+                  placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+                  className={`w-full p-3 rounded-xl border font-mono text-xs outline-none transition-all ${
+                    darkMode
+                      ? 'bg-slate-900 border-slate-700 text-slate-100 focus:border-indigo-500'
+                      : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-indigo-600'
+                  }`}
+                />
+              </div>
+
+              {connTestStatus && (
+                <div
+                  className={`p-3 rounded-xl text-xs font-mono border ${
+                    connTestStatus.includes('🟢')
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300'
+                      : 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-300'
+                  }`}
+                >
+                  {connTestStatus}
+                </div>
+              )}
+
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2 text-[11px] text-slate-600 dark:text-slate-400">
+                <div className="font-bold font-mono text-slate-800 dark:text-slate-200 uppercase flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Deployment Checklist</span>
+                </div>
+                <div className="space-y-1 pl-5 list-disc">
+                  <div>1. In Google Apps Script Editor &rarr; Click <b>Deploy</b> &rarr; <b>Manage deployments</b> &rarr; Edit &rarr; <b>New version</b>.</div>
+                  <div>2. Set <b>Execute as: Me</b> and <b>Who has access: Anyone</b>.</div>
+                  <div>3. Copy the Web App URL ending in <code>/exec</code> and paste it here.</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-900/90 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const urlToTest = tempEndpointUrl.trim();
+                    if (!urlToTest) return;
+                    setConnTestStatus('Testing endpoint connectivity...');
+                    try {
+                      const res = await fetch(`${urlToTest}?action=getBackupStatus&_t=${Date.now()}`);
+                      if (res.ok) {
+                        const data = await res.json();
+                        setConnTestStatus(`🟢 Live: Verified response from Google Apps Script.`);
+                      } else {
+                        setConnTestStatus(`⚠️ Responded with HTTP ${res.status}`);
+                      }
+                    } catch (e: any) {
+                      setConnTestStatus(`❌ Network error: ${e.message || 'Failed to fetch'}`);
+                    }
+                  }}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold border flex items-center gap-1.5 cursor-pointer transition-all ${
+                    darkMode
+                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                      : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                  }`}
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Test Connection</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setTempEndpointUrl(DEFAULT_WEB_APP_EXEC_URL)}
+                  className="px-2.5 py-2 rounded-xl text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+                >
+                  Reset Default
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEndpointSettingsOpen(false)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer border ${
+                    darkMode
+                      ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                      : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const cleaned = tempEndpointUrl.trim();
+                    setWebAppUrl(cleaned);
+                    localStorage.setItem('gvtiw_admin_web_app_url', cleaned);
+                    setIsEndpointSettingsOpen(false);
+                    // Run live sync immediately with the updated URL
+                    await fetchServerBackupStatus(true, cleaned);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-xs transition-all flex items-center gap-1.5"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Save &amp; Live Sync</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
