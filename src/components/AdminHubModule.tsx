@@ -328,9 +328,10 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
     setIsLoadingAuditLogs(true);
     const offsetToUse = append ? auditLogOffset : 0;
+    const currentPin = (storedPin || '').trim();
 
     try {
-      const url = `${activeUrl}?action=getAuditLog&limit=${limit}&offset=${offsetToUse}`;
+      const url = `${activeUrl}?action=getAuditLog&limit=${limit}&offset=${offsetToUse}&pin=${encodeURIComponent(currentPin)}`;
       let data: any = null;
 
       try {
@@ -343,7 +344,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           const postRes = await fetch(activeUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'getAuditLog', data: { limit, offset: offsetToUse } }),
+            body: JSON.stringify({ pin: currentPin, action: 'getAuditLog', data: { limit, offset: offsetToUse } }),
           });
           if (postRes.ok) {
             data = await postRes.json();
