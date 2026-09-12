@@ -1374,7 +1374,23 @@ function disableDailyBackup_() {
 }
 
 function checkBackupStatus() {
-  return getBackupStatusInfo_();
+  var stat = getBackupStatusInfo_();
+  var isEnabled = stat.enabled;
+  var lastBackup = stat.lastBackupTime || 'None recorded';
+  var schedText = isEnabled ? 'Active (Every day at 4:00 PM PST)' : 'Disabled / Paused';
+
+  try {
+    SpreadsheetApp.getUi().alert(
+      '📋 Institutional Backup Status Report\n\n' +
+      '• Automation Engine: ' + (isEnabled ? 'ENABLED (ON) ✅' : 'DISABLED (OFF) 🛑') + '\n' +
+      '• Schedule: ' + schedText + '\n' +
+      '• Last Backup: ' + lastBackup + '\n' +
+      '• Protected Spreadsheets: 7 Institutional Files\n' +
+      '• Archive Folder: Google Drive (1-Kdti-UAkCDivGgqWTJgki1zGnRKiDOB)'
+    );
+  } catch (e) {}
+
+  return stat;
 }
 
 function getBackupStatusInfo_() {
@@ -1393,6 +1409,7 @@ function getBackupStatusInfo_() {
   var propDoc = docProps.getProperty('BACKUP_ENABLED');
   var propScript = scriptProps.getProperty('BACKUP_ENABLED');
 
+  // Exact state determination: If explicitly false, false. If explicitly true, true. Otherwise fallback to active triggers count.
   var isEnabled = false;
   if (propDoc === 'false' || propScript === 'false') {
     isEnabled = false;
@@ -1404,10 +1421,6 @@ function getBackupStatusInfo_() {
 
   var lastBackup = docProps.getProperty('LAST_BACKUP_TIMESTAMP') || scriptProps.getProperty('LAST_BACKUP_TIMESTAMP') || scriptProps.getProperty('LAST_BACKUP_TIME') || 'None recorded';
   var lastUrl = scriptProps.getProperty('LAST_BACKUP_URL') || docProps.getProperty('LAST_BACKUP_URL') || '';
-
-  try {
-    SpreadsheetApp.getUi().alert('Daily Full System Backup: ' + (isEnabled ? 'ON ✅ (Master + 6 Cashbooks at 4:00 PM)' : 'OFF 🛑'));
-  } catch (e) {}
 
   return {
     success: true,
