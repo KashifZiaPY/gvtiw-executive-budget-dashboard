@@ -290,8 +290,21 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
   // Dedicated Backup Status Modal State (Clear ACTIVE status on top)
   const [isBackupStatusModalOpen, setIsBackupStatusModalOpen] = useState(false);
-  const [lastBackupTimestamp, setLastBackupTimestamp] = useState<string | null>(null);
-  const [isDailyBackupEnabled, setIsDailyBackupEnabled] = useState<boolean>(true);
+  const [lastBackupTimestamp, setLastBackupTimestamp] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('gvtiw_last_backup_ts') || null;
+    } catch {
+      return null;
+    }
+  });
+  const [isDailyBackupEnabled, setIsDailyBackupEnabled] = useState<boolean>(() => {
+    try {
+      const cached = localStorage.getItem('gvtiw_backup_enabled');
+      return cached !== null ? cached === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
 
   const formatBackupTime = (ts?: string | null) => {
     if (!ts || ts === 'None recorded') return null;
@@ -317,13 +330,30 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     driveFolderUrl: string;
     lastBackupTime?: string;
     liveMessage?: string;
-  }>({
-    status: 'ACTIVE',
-    schedule: 'Active (Every day at 4:00 PM PST)',
-    folderId: '1-Kdti-UAkCDivGgqWTJgki1zGnRKiDOB',
-    driveFolderUrl: 'https://drive.google.com/drive/folders/1-Kdti-UAkCDivGgqWTJgki1zGnRKiDOB',
-    lastBackupTime: 'Daily Automated 4:00 PM PST Schedule',
-    liveMessage: 'Connected to GVTIW Google Drive Archive',
+  }>(() => {
+    let initialEnabled = true;
+    let initialLastTs: string | null = null;
+    try {
+      const cachedEnabled = localStorage.getItem('gvtiw_backup_enabled');
+      if (cachedEnabled !== null) initialEnabled = cachedEnabled === 'true';
+      initialLastTs = localStorage.getItem('gvtiw_last_backup_ts');
+    } catch {}
+
+    return {
+      status: initialEnabled ? 'ACTIVE' : 'INACTIVE',
+      schedule: initialEnabled
+        ? 'Active (Every day at 4:00 PM PST)'
+        : 'Inactive / Paused by Admin',
+      folderId: '1-Kdti-UAkCDivGgqWTJgki1zGnRKiDOB',
+      driveFolderUrl:
+        'https://drive.google.com/drive/folders/1-Kdti-UAkCDivGgqWTJgki1zGnRKiDOB',
+      lastBackupTime: initialLastTs
+        ? formatBackupTime(initialLastTs) || 'Daily Automated 4:00 PM PST Schedule'
+        : 'Daily Automated 4:00 PM PST Schedule',
+      liveMessage: initialEnabled
+        ? 'Connected to GVTIW Google Drive Archive'
+        : 'Automated daily trigger has been paused.',
+    };
   });
 
   const fetchServerBackupStatus = async () => {
@@ -357,21 +387,38 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         const val = data.value || data.data || data;
         const isSuccess = data.success !== false;
         if (isSuccess) {
-          const timestamp = val.lastBackupTimestamp || data.lastBackupTimestamp || val.lastBackupTime || data.lastBackupTime;
+          const timestamp =
+            val.lastBackupTimestamp ||
+            data.lastBackupTimestamp ||
+            val.lastBackupTime ||
+            data.lastBackupTime;
           if (timestamp && timestamp !== 'None recorded') {
             setLastBackupTimestamp(timestamp);
+            try {
+              localStorage.setItem('gvtiw_last_backup_ts', String(timestamp));
+            } catch {}
             setBackupModalData((prev) => ({
               ...prev,
               lastBackupTime: formatBackupTime(timestamp) || prev.lastBackupTime,
             }));
           }
-          const enabled = typeof val.enabled === 'boolean' ? val.enabled : (typeof data.enabled === 'boolean' ? data.enabled : undefined);
+          const enabled =
+            typeof val.enabled === 'boolean'
+              ? val.enabled
+              : typeof data.enabled === 'boolean'
+              ? data.enabled
+              : undefined;
           if (typeof enabled === 'boolean') {
             setIsDailyBackupEnabled(enabled);
+            try {
+              localStorage.setItem('gvtiw_backup_enabled', String(enabled));
+            } catch {}
             setBackupModalData((prev) => ({
               ...prev,
               status: enabled ? 'ACTIVE' : 'INACTIVE',
-              schedule: enabled ? 'Active (Every day at 4:00 PM PST)' : 'Inactive / Paused by Admin',
+              schedule: enabled
+                ? 'Active (Every day at 4:00 PM PST)'
+                : 'Inactive / Paused by Admin',
             }));
           }
         }
@@ -872,6 +919,9 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     const isSuccess = res.success || (res.message && res.message.toLowerCase().includes('enabled')) || (res as any).enabled === true;
     if (isSuccess) {
       setIsDailyBackupEnabled(true);
+      try {
+        localStorage.setItem('gvtiw_backup_enabled', 'true');
+      } catch {}
       fetchServerBackupStatus();
       setBackupModalData((prev) => ({
         ...prev,
@@ -909,6 +959,9 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     const isSuccess = res.success || (res.message && (res.message.toLowerCase().includes('disabled') || res.message.toLowerCase().includes('paused'))) || (res as any).enabled === false;
     if (isSuccess) {
       setIsDailyBackupEnabled(false);
+      try {
+        localStorage.setItem('gvtiw_backup_enabled', 'false');
+      } catch {}
       fetchServerBackupStatus();
       setBackupModalData((prev) => ({
         ...prev,
