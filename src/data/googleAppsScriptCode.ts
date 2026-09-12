@@ -898,6 +898,13 @@ function handleApiRequest_(pin, action, data) {
     }
   }
 
+  if (action === "getBackupStatus") {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      value: getBackupStatusInfo_()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
   if (action === "getAuditLog") {
     try {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1319,10 +1326,12 @@ function executeFullSystemBackup_(e, isAuto) {
       } catch (eCopy) {}
     });
 
+    PropertiesService.getDocumentProperties().setProperty('LAST_BACKUP_TIMESTAMP', new Date().toISOString());
+    var backupType = isAuto ? 'AUTO DAILY BACKUP (7 Files)' : 'MANUAL FULL BACKUP (7 Files)';
     PropertiesService.getScriptProperties().setProperty('LAST_BACKUP_TIME', Utilities.formatDate(new Date(), tz, 'dd-MMM-yyyy hh:mm a'));
     PropertiesService.getScriptProperties().setProperty('LAST_BACKUP_URL', subFolder.getUrl());
 
-    logAuditActivity_('SYSTEM BACKUP', '7 Files', 'All 6 Accounts', 'GVTIW System', 'Backup Engine', null, 'Backup Folder: ' + subFolder.getName());
+    logAuditActivity_('SYSTEM BACKUP', '7 Files', 'All 6 Accounts', 'GVTIW System', 'Backup Engine', null, 'Backup Folder: ' + subFolder.getName() + ' • ' + backupType);
 
     return {
       success: true,
@@ -1337,47 +1346,48 @@ function executeFullSystemBackup_(e, isAuto) {
 }
 
 function enableDailyBackup() {
-  disableDailyBackup();
-  ScriptApp.newTrigger('runDailyBackupTrigger_')
-    .timeBased()
-    .atHour(16)
-    .everyDays(1)
-    .inTimezone('Asia/Karachi')
-    .create();
-  PropertiesService.getScriptProperties().setProperty('DAILY_BACKUP_ENABLED', 'true');
-  return { success: true, message: 'Daily Backup trigger enabled (Runs every day at 4:00 PM PST).' };
+  disableDailyBackup_();
+  ScriptApp.newTrigger('dailyVoucherBackup').timeBased().atHour(16).nearMinute(0).everyDays(1).create();
+  ScriptApp.newTrigger('runFullSystemDeepBackup').timeBased().atHour(16).nearMinute(0).everyDays(1).create();
+  PropertiesService.getDocumentProperties().setProperty('BACKUP_ENABLED', 'true');
+  try { SpreadsheetApp.getUi().alert('🟢 Daily Full System Backup (Master + 6 Cashbooks) ENABLED — 4:00 PM daily.'); } catch (e) {}
 }
 
 function disableDailyBackup() {
+  disableDailyBackup_();
+  PropertiesService.getDocumentProperties().setProperty('BACKUP_ENABLED', 'false');
+  try { SpreadsheetApp.getUi().alert('🔴 Daily Backup DISABLED.'); } catch (e) {}
+}
+
+function disableDailyBackup_() {
   var triggers = ScriptApp.getProjectTriggers();
-  for (var i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === 'runDailyBackupTrigger_') {
-      ScriptApp.deleteTrigger(triggers[i]);
+  triggers.forEach(function (t) {
+    var fn = t.getHandlerFunction();
+    if (fn === 'dailyVoucherBackup' || fn === 'runFullSystemDeepBackup' || fn === 'runDailyBackupTrigger_') {
+      ScriptApp.deleteTrigger(t);
     }
-  }
-  PropertiesService.getScriptProperties().setProperty('DAILY_BACKUP_ENABLED', 'false');
-  return { success: true, message: 'Daily 4:00 PM Backup trigger disabled.' };
+  });
+}
+
+function checkBackupStatus() {
+  var enabled = PropertiesService.getDocumentProperties().getProperty('BACKUP_ENABLED') === 'true';
+  try { SpreadsheetApp.getUi().alert('Daily Full System Backup: ' + (enabled ? 'ON ✅ (Master + 6 Cashbooks at 4:00 PM)' : 'OFF 🛑')); } catch (e) {}
+}
+
+function getBackupStatusInfo_() {
+  var props = PropertiesService.getDocumentProperties();
+  return {
+    enabled: props.getProperty('BACKUP_ENABLED') === 'true',
+    lastBackupTimestamp: props.getProperty('LAST_BACKUP_TIMESTAMP') || null
+  };
 }
 
 function runDailyBackupTrigger_() {
   executeFullSystemBackup_(null, true);
 }
 
-function checkBackupStatus() {
-  var lastBackup = PropertiesService.getScriptProperties().getProperty('LAST_BACKUP_TIME') || 'None recorded';
-  var lastUrl = PropertiesService.getScriptProperties().getProperty('LAST_BACKUP_URL') || '';
-  var dailyEnabled = PropertiesService.getScriptProperties().getProperty('DAILY_BACKUP_ENABLED') === 'true';
-
-  return {
-    success: true,
-    backupFolderId: BACKUP_FOLDER_ID,
-    backupFolderUrl: 'https://drive.google.com/drive/folders/' + BACKUP_FOLDER_ID,
-    lastBackupTime: lastBackup,
-    lastBackupUrl: lastUrl,
-    dailyBackupSchedule: dailyEnabled ? 'Active (Every day at 4:00 PM PST)' : 'Disabled',
-    filesMonitored: 7,
-    message: 'Backup Status: Daily schedule is ' + (dailyEnabled ? 'Active (4 PM)' : 'Disabled') + '. Last full backup: ' + lastBackup
-  };
+function dailyVoucherBackup() {
+  executeFullSystemBackup_(null, true);
 }
 
 function restoreSystemFromBackup(point) {
