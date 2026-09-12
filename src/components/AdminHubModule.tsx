@@ -277,18 +277,25 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         setVouchers(INITIAL_MASTER_VOUCHERS);
       }
     } catch {}
+
+    // Live sync with Google Sheets for backup status & audit log
+    fetchServerBackupStatus();
+    fetchServerAuditLog(200, false);
+
     setTimeout(() => {
       setIsRefreshingRegistry(false);
       setPopupModal({
         isOpen: true,
         type: 'success',
-        title: 'Registry Ledger Refreshed',
-        message: 'Synchronized live vouchers ledger with local store and Google Sheets cache.',
+        title: 'Registry & Cloud Status Synchronized',
+        message: 'Synchronized live vouchers ledger, audit logs, and latest Google Sheets cloud backup state.',
       });
     }, 400);
   };
 
-  // Dedicated Backup Status Modal State (Clear ACTIVE status on top)
+  // -------------------------------------------------------------
+  // 6. DEDICATED BACKUP STATUS STATE & LIVE POLLING
+  // -------------------------------------------------------------
   const [isBackupStatusModalOpen, setIsBackupStatusModalOpen] = useState(false);
   const [lastBackupTimestamp, setLastBackupTimestamp] = useState<string | null>(() => {
     try {
@@ -362,11 +369,12 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     const currentPin = (storedPin || '').trim();
 
     try {
-      const url = `${activeUrl}?action=getBackupStatus&pin=${encodeURIComponent(currentPin)}`;
+      // Add cache buster timestamp to ensure we always get live status from Google Sheets
+      const url = `${activeUrl}?action=getBackupStatus&pin=${encodeURIComponent(currentPin)}&_t=${Date.now()}`;
       let data: any = null;
 
       try {
-        const res = await fetch(url, { method: 'GET' });
+        const res = await fetch(url, { method: 'GET', cache: 'no-store' });
         if (res.ok) {
           data = await res.json();
         }
@@ -375,7 +383,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           const postRes = await fetch(activeUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ pin: currentPin, action: 'getBackupStatus' }),
+            body: JSON.stringify({ pin: currentPin, action: 'getBackupStatus', _t: Date.now() }),
           });
           if (postRes.ok) {
             data = await postRes.json();
@@ -419,6 +427,9 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
               schedule: enabled
                 ? 'Active (Every day at 4:00 PM PST)'
                 : 'Inactive / Paused by Admin',
+              liveMessage: enabled
+                ? 'Connected to GVTIW Google Drive Archive'
+                : 'Automated daily trigger has been paused.',
             }));
           }
         }
@@ -530,6 +541,13 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   useEffect(() => {
     fetchServerAuditLog(200, false);
     fetchServerBackupStatus();
+
+    // Periodic live sync (every 30s) so changes made directly in Google Sheets reflect in UI
+    const syncInterval = setInterval(() => {
+      fetchServerBackupStatus();
+    }, 30000);
+
+    return () => clearInterval(syncInterval);
   }, []);
 
   const addAuditLog = (action: string, status: 'pending' | 'success' | 'failed', details: string) => {
