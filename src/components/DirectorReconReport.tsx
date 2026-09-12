@@ -39,6 +39,7 @@ import {
   parseDateToTimestamp,
   formatCurrency2Decimals,
 } from '../lib/reportingEngine';
+import { getOpeningBalance } from '../lib/balanceEngine';
 import { AccountHead, OFFICIAL_SIGNATORIES } from '../types';
 import {
   INITIAL_DIRECTOR_RECEIPTS,
@@ -940,17 +941,34 @@ export function DirectorReconciliationReport({
   // 1. DATA SOURCE DERIVATION (LIVE GVIZ / CASHBOOK PATTERN)
   // ---------------------------------------------------------------------------
 
-  // Live Opening Balance
+  // Period start date ISO format
+  const periodStartDate = useMemo(() => {
+    return `${fromMonth}-01`;
+  }, [fromMonth]);
+
+  // Live Opening Balance rolled forward to start of selected period (reference implementation from balanceEngine)
   const openingBalance = useMemo(() => {
     if (selectedFY === '2025-26') {
       return 2387207.0; // Official baseline 2025-26
     }
-    const state = liveCashBookStates[selectedAccountKey];
-    if (state && typeof state.openingBalance === 'number' && !isNaN(state.openingBalance)) {
-      return state.openingBalance;
+    return getOpeningBalance(selectedAccountKey, periodStartDate, {
+      vouchers: liveVouchers,
+      cashBookStates: liveCashBookStates,
+    });
+  }, [selectedAccountKey, periodStartDate, selectedFY, liveVouchers, liveCashBookStates]);
+
+  const periodOpeningLabel = useMemo(() => {
+    if (fromMonth === '2026-07' || fromMonth === '2025-07') {
+      return `Opening Balance as per Cash Book at the Start of Year ${selectedFY}`;
     }
-    return activeAccountMeta.openingBalance || 2387207.0;
-  }, [liveCashBookStates, selectedAccountKey, selectedFY, activeAccountMeta]);
+    const monthNames: Record<string, string> = {
+      '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'May', '06': 'Jun',
+      '07': 'Jul', '08': 'Aug', '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec',
+    };
+    const [y, m] = fromMonth.split('-');
+    const mName = monthNames[m] || m;
+    return `Opening Balance as per Cash Book (as on 01-${mName}-${y})`;
+  }, [fromMonth, selectedFY]);
 
   // Master live receipts for selectedAccountKey
   const allAccountReceipts = useMemo<LiveReceiptRow[]>(() => {
@@ -1582,7 +1600,7 @@ export function DirectorReconciliationReport({
     lines.push(`"HEAD OF ACCOUNT: ${activeAccountName}"`);
     lines.push(`"BANK NAME & ACCOUNT: ${activeAccountConfig.bankName} - A/C: ${activeAccountConfig.defaultAccountNo}"`);
     lines.push(`"As on: ${asOnDate}"`);
-    lines.push(`"Opening Balance as per Cash Book at the Start of Year ${selectedFY}: Rs. ${openingBalance.toFixed(2)}"`);
+    lines.push(`"${periodOpeningLabel}: Rs. ${openingBalance.toFixed(2)}"`);
     lines.push('');
     lines.push(
       '"RECEIPTS GROUP: Month","Description","Direct Receipts (Budget)","CMSDI/NAVTTC Short Course","Other Receipts & (Bank Profit)","From Other Bank Account","Total Receipt","PAYMENTS GROUP: Description","Direct Payments","Other Payments & (Bank Charges)","Direct Payments CMSDI/NAVTTC","Total Payment"'
@@ -1962,7 +1980,7 @@ export function DirectorReconciliationReport({
           HEAD OF ACCOUNT: ${activeAccountName} &bull; BANK NAME & ACCOUNT: ${activeAccountConfig.bankName} (${activeAccountConfig.defaultAccountNo}) &bull; As on: ${asOnDate}
         </div>
         <div class="sub-info" style="margin-top: 3px; font-weight: bold;">
-          Opening Balance as per Cash Book at the Start of Year ${selectedFY}: Rs. ${formatAmount(openingBalance, 2)}
+          ${periodOpeningLabel}: Rs. ${formatAmount(openingBalance, 2)}
         </div>
       `,
       mainSnippet: `
@@ -2484,7 +2502,7 @@ export function DirectorReconciliationReport({
           {/* Title: Opening Balance as per Cash Book */}
           <div className="p-3.5 rounded-xl bg-slate-100 dark:bg-cyan-950/30 border border-slate-300 dark:border-cyan-800/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div className="text-xs font-bold uppercase tracking-wide text-slate-800 dark:text-cyan-300">
-              Opening Balance as per Cash Book at the Start of Year {selectedFY}
+              {periodOpeningLabel}
             </div>
             <div className="text-base font-mono font-black text-amber-700 dark:text-amber-300">
               Rs. {formatAmount(openingBalance, 2)}

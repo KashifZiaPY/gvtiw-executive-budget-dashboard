@@ -16,7 +16,8 @@ import {
   STORAGE_KEY_LIVE_SYNC_TS,
 } from '../lib/apiEngine';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
-import { formatCashBookBillInfo } from '../lib/reportingEngine';
+import { formatCashBookBillInfo, parseDateToTimestamp } from '../lib/reportingEngine';
+import { getOpeningBalance } from '../lib/balanceEngine';
 import { formatPKR, format12HourDate, formatPakistaniDate } from '../lib/formatters';
 import {
   BookOpen,
@@ -173,6 +174,41 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
 
   const currentAccount = cashBookStates[activeAccountKey];
 
+  // Map period filter to date range and label
+  const periodDateRange = useMemo(() => {
+    if (periodFilter === 'JUL') {
+      return { fromDate: '2026-07-01', toDate: '2026-07-31', label: 'July 2026', displayStartDate: '01-Jul-2026', displayMonth: 'July' };
+    }
+    if (periodFilter === 'AUG') {
+      return { fromDate: '2026-08-01', toDate: '2026-08-31', label: 'August 2026', displayStartDate: '01-Aug-2026', displayMonth: 'August' };
+    }
+    if (periodFilter === 'SEP') {
+      return { fromDate: '2026-09-01', toDate: '2026-09-30', label: 'September 2026', displayStartDate: '01-Sep-2026', displayMonth: 'September' };
+    }
+    if (periodFilter === 'Q1') {
+      return { fromDate: '2026-07-01', toDate: '2026-09-30', label: 'Quarter 1 (Jul-Sep 2026)', displayStartDate: '01-Jul-2026', displayMonth: 'July' };
+    }
+    if (periodFilter === 'Q2') {
+      return { fromDate: '2026-10-01', toDate: '2026-12-31', label: 'Quarter 2 (Oct-Dec 2026)', displayStartDate: '01-Oct-2026', displayMonth: 'October' };
+    }
+    if (periodFilter === 'CUSTOM') {
+      const from = customFromDate ? customFromDate : undefined;
+      const to = customToDate ? customToDate : undefined;
+      const displayStartDate = from ? formatPakistaniDate(from) : '01-Jul-2026';
+      const displayMonth = from ? '' : 'July';
+      return { fromDate: from, toDate: to, label: `${from ? formatPakistaniDate(from) : 'Start'} to ${to ? formatPakistaniDate(to) : 'End'}`, displayStartDate, displayMonth };
+    }
+    return { fromDate: undefined, toDate: undefined, label: 'All FY 2026-27', displayStartDate: '01-Jul-2026', displayMonth: 'July' };
+  }, [periodFilter, customFromDate, customToDate]);
+
+  // Rolling running opening balance before the selected period starts (reference from balanceEngine)
+  const periodOpeningBalance = useMemo(() => {
+    return getOpeningBalance(activeAccountKey, periodDateRange.fromDate, {
+      vouchers: liveVouchers,
+      cashBookStates,
+    });
+  }, [activeAccountKey, periodDateRange.fromDate, liveVouchers, cashBookStates]);
+
   // Filtered Ledger Entries by Search & Period Range
   const filteredEntries = useMemo(() => {
     if (!currentAccount) return [];
@@ -186,9 +222,11 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       if (periodFilter === 'Q1' && !['jul', 'aug', 'sep'].some((term) => m.includes(term) || d.includes(term))) return false;
       if (periodFilter === 'Q2' && !['oct', 'nov', 'dec'].some((term) => m.includes(term) || d.includes(term))) return false;
       if (periodFilter === 'CUSTOM' && (customFromDate || customToDate)) {
-        const entryTs = new Date(entry.date).getTime();
-        if (customFromDate && entryTs < new Date(customFromDate).getTime()) return false;
-        if (customToDate && entryTs > new Date(customToDate).getTime()) return false;
+        const entryTs = parseDateToTimestamp(entry.date);
+        const fromTs = customFromDate ? parseDateToTimestamp(customFromDate) : 0;
+        const toTs = customToDate ? parseDateToTimestamp(customToDate) + 86400000 - 1 : Infinity;
+        if (fromTs > 0 && entryTs < fromTs) return false;
+        if (toTs < Infinity && entryTs > toTs) return false;
       }
 
       // Search filter
@@ -205,6 +243,31 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       return true;
     });
   }, [currentAccount, searchTerm, periodFilter, customFromDate, customToDate]);
+
+  // Period-aware financial totals (opening balance, total receipts, total payments, net closing balance)
+  const periodFinancials = useMemo(() => {
+    if (periodFilter === 'ALL' && !searchTerm && currentAccount) {
+      return {
+        openingBalance: periodOpeningBalance,
+        totalReceipts: currentAccount.totalReceipts,
+        totalPayments: currentAccount.totalPayments,
+        closingBalance: currentAccount.closingBalance,
+      };
+    }
+    let totRec = 0;
+    let totPay = 0;
+    for (const e of filteredEntries) {
+      totRec += e.receipts || 0;
+      totPay += e.payments || 0;
+    }
+    const closeBal = Math.round((periodOpeningBalance + totRec - totPay) * 100) / 100;
+    return {
+      openingBalance: periodOpeningBalance,
+      totalReceipts: Math.round(totRec * 100) / 100,
+      totalPayments: Math.round(totPay * 100) / 100,
+      closingBalance: closeBal,
+    };
+  }, [periodFilter, searchTerm, currentAccount, filteredEntries, periodOpeningBalance]);
 
   // Find linked voucher for a given entry
   const voucherMap = useMemo(() => {
@@ -262,7 +325,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       'data:text/csv;charset=utf-8,' +
       [
         `CashBook: ${currentAccount.meta.fullName} - Account No: ${currentAccount.meta.accountNo}`,
-        `Opening Balance: ${currentAccount.openingBalance} | Closing Balance: ${currentAccount.closingBalance}`,
+        `Period: ${periodDateRange.label} | Opening Balance: ${periodFinancials.openingBalance} | Total Receipts: ${periodFinancials.totalReceipts} | Total Payments: ${periodFinancials.totalPayments} | Closing Balance: ${periodFinancials.closingBalance}`,
         headers.join(','),
         ...rows.map((r) => r.join(',')),
       ].join('\n');
@@ -335,7 +398,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
 
           <div class="meta-strip">
             <div><span>Account: </span>${currentAccount.meta.shortName} (${currentAccount.meta.code})</div>
-            <div><span>Period Filter: </span>${periodFilter === 'ALL' ? 'Complete FY 2026-27' : periodFilter}</div>
+            <div><span>Period Filter: </span>${periodDateRange.label}</div>
             <div><span>Total Records: </span>${filteredEntries.length}</div>
             <div><span>Printed Date: </span>${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
           </div>
@@ -343,19 +406,19 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           <div class="metrics-strip">
             <div class="metric-card">
               <span>1. Opening Balance</span>
-              <strong style="color: #1e3a8a;">Rs. ${Number(currentAccount.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+              <strong style="color: #1e3a8a;">Rs. ${Number(periodFinancials.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
             </div>
             <div class="metric-card">
               <span>2. Total Receipts</span>
-              <strong style="color: #047857;">Rs. ${Number(currentAccount.totalReceipts).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+              <strong style="color: #047857;">Rs. ${Number(periodFinancials.totalReceipts).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
             </div>
             <div class="metric-card">
               <span>3. Total Payments</span>
-              <strong style="color: #be123c;">Rs. ${Number(currentAccount.totalPayments).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+              <strong style="color: #be123c;">Rs. ${Number(periodFinancials.totalPayments).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
             </div>
             <div class="metric-card" style="background-color: #fef3c7; border-color: #f59e0b;">
               <span style="color: #92400e;">4. Net Closing Balance</span>
-              <strong style="color: #b45309;">Rs. ${Number(currentAccount.closingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+              <strong style="color: #b45309;">Rs. ${Number(periodFinancials.closingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
             </div>
           </div>
 
@@ -378,11 +441,11 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
             <tbody>
               <tr style="background-color: #f8fafc; font-weight: bold;">
                 <td style="text-align: center; border: 1px solid #cbd5e1;">-</td>
-                <td style="border: 1px solid #cbd5e1;">${periodFilter === 'CUSTOM' && customFromDate ? formatPakistaniDate(customFromDate) : '01-Jul-2026'}</td>
-                <td style="border: 1px solid #cbd5e1;">${periodFilter === 'CUSTOM' && customFromDate ? '' : 'July'}</td>
+                <td style="border: 1px solid #cbd5e1;">${periodDateRange.displayStartDate}</td>
+                <td style="border: 1px solid #cbd5e1;">${periodDateRange.displayMonth}</td>
                 <td style="text-align: center; border: 1px solid #cbd5e1;">-</td>
-                <td style="border: 1px solid #cbd5e1;" colspan="6">OPENING BALANCE BROUGHT FORWARD (FY 2026-27)</td>
-                <td style="text-align: right; border: 1px solid #cbd5e1; font-family: monospace;">${Number(currentAccount.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                <td style="border: 1px solid #cbd5e1;" colspan="6">OPENING BALANCE BROUGHT FORWARD (${periodDateRange.label})</td>
+                <td style="text-align: right; border: 1px solid #cbd5e1; font-family: monospace;">${Number(periodFinancials.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
               </tr>
               ${rowsHtml}
             </tbody>
@@ -534,7 +597,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
               {activeAccountKey === 'AA' ? '1. Opening Assigned Ceiling' : '1. Opening Cash Balance'}
             </span>
             <span className="text-base font-black text-blue-300">
-              {formatPKR(currentAccount.openingBalance, false)}
+              {formatPKR(periodFinancials.openingBalance, false)}
             </span>
           </div>
 
@@ -544,7 +607,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
               {activeAccountKey === 'AA' ? '2. Budget Allocation Ceiling' : '2. Total Receipts'}
             </span>
             <span className="text-base font-black text-emerald-400">
-              {currentAccount.totalReceipts > 0 ? formatPKR(currentAccount.totalReceipts, false) : '0.00'}
+              {periodFinancials.totalReceipts > 0 ? formatPKR(periodFinancials.totalReceipts, false) : '0.00'}
             </span>
           </div>
 
@@ -554,7 +617,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
               {activeAccountKey === 'AA' ? '3. District Sanctions / Bills' : '3. Total Cheque Payments'}
             </span>
             <span className="text-base font-black text-rose-400">
-              {currentAccount.totalPayments > 0 ? formatPKR(currentAccount.totalPayments, false) : '0.00'}
+              {periodFinancials.totalPayments > 0 ? formatPKR(periodFinancials.totalPayments, false) : '0.00'}
             </span>
           </div>
 
@@ -563,7 +626,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
               {activeAccountKey === 'AA' ? '4. Available Budget Ceiling' : '4. Net Bank Closing Balance'}
             </span>
             <span className="text-base font-black text-amber-300">
-              {formatPKR(currentAccount.closingBalance, false)}
+              {formatPKR(periodFinancials.closingBalance, false)}
             </span>
           </div>
         </div>
@@ -684,20 +747,20 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
               <tr className={`font-bold ${darkMode ? 'bg-slate-900/60 text-slate-300' : 'bg-slate-100 text-slate-900'}`}>
                 <td className={`py-2.5 px-2 text-center font-mono ${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>—</td>
                 <td className={`py-2.5 px-3 font-mono font-bold ${darkMode ? 'text-slate-300' : 'text-slate-950'}`}>
-                  {periodFilter === 'CUSTOM' && customFromDate ? formatPakistaniDate(customFromDate) : '01-Jul-2026'}
+                  {periodDateRange.displayStartDate}
                 </td>
                 <td className={`py-2.5 px-2 font-mono font-bold ${darkMode ? 'text-slate-400' : 'text-slate-800'}`}>
-                  {periodFilter === 'CUSTOM' && customFromDate ? '' : 'July'}
+                  {periodDateRange.displayMonth}
                 </td>
                 <td className={`py-2.5 px-2 text-center font-mono ${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>—</td>
                 <td colSpan={3} className={`py-2.5 px-4 font-black uppercase ${darkMode ? 'text-blue-400' : 'text-blue-950'}`}>
-                  OPENING BALANCE BROUGHT FORWARD (FY 2026-27)
+                  OPENING BALANCE BROUGHT FORWARD ({periodDateRange.label})
                 </td>
                 <td className={`py-2.5 px-3 text-center font-mono ${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>—</td>
                 <td className={`py-2.5 px-3 text-right font-mono font-bold ${darkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>—</td>
                 <td className={`py-2.5 px-3 text-right font-mono font-bold ${darkMode ? 'text-rose-400' : 'text-rose-700'}`}>—</td>
                 <td className={`py-2.5 px-3 text-right font-mono font-black ${darkMode ? 'text-amber-300' : 'text-amber-900'}`}>
-                  {formatPKR(currentAccount.openingBalance, false)}
+                  {formatPKR(periodFinancials.openingBalance, false)}
                 </td>
                 <td className="py-2.5 px-2 text-center text-slate-400">—</td>
               </tr>
@@ -911,13 +974,13 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                   CASHBOOK TOTAL & CLOSING RECONCILED POSITION:
                 </td>
                 <td className="py-3 px-3 text-right font-mono text-emerald-400">
-                  {formatPKR(currentAccount.totalReceipts, false)}
+                  {formatPKR(periodFinancials.totalReceipts, false)}
                 </td>
                 <td className="py-3 px-3 text-right font-mono text-rose-400">
-                  {formatPKR(currentAccount.totalPayments, false)}
+                  {formatPKR(periodFinancials.totalPayments, false)}
                 </td>
                 <td className="py-3 px-3 text-right font-mono font-black text-amber-300 text-sm">
-                  {formatPKR(currentAccount.closingBalance, false)}
+                  {formatPKR(periodFinancials.closingBalance, false)}
                 </td>
                 <td></td>
               </tr>
