@@ -2114,6 +2114,24 @@ export function DirectorReconciliationReport({
                   Rs. ${formatAmount(differenceAmount, 2)}
                 </td>
               </tr>
+              <tr>
+                <td style="padding: 3px 0; font-size: 8pt; color: #475569;">
+                  ${
+                    Math.abs(Math.abs(differenceAmount) - totalManualChequesAmount) < 0.05
+                      ? '✓ Difference fully explained by unpresented cheques table'
+                      : `<strong>Variance to explain:</strong> Rs. ${formatAmount(Math.abs(differenceAmount) - totalManualChequesAmount, 2)}`
+                  }
+                </td>
+                <td style="padding: 3px 0; text-align: right; font-family: 'Courier New', Courier, monospace; font-size: 8pt; font-weight: bold; color: ${
+                  Math.abs(Math.abs(differenceAmount) - totalManualChequesAmount) < 0.05 ? '#047857' : '#b45309'
+                };">
+                  ${
+                    Math.abs(Math.abs(differenceAmount) - totalManualChequesAmount) < 0.05
+                      ? 'Reconciled'
+                      : `Rs. ${formatAmount(Math.abs(differenceAmount) - totalManualChequesAmount, 2)}`
+                  }
+                </td>
+              </tr>
             </table>
           </div>
 

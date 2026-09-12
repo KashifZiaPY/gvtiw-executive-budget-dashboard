@@ -16,7 +16,11 @@ import {
   STORAGE_KEY_LIVE_SYNC_TS,
 } from '../lib/apiEngine';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
-import { formatCashBookBillInfo, parseDateToTimestamp } from '../lib/reportingEngine';
+import {
+  formatCashBookBillInfo,
+  parseDateToTimestamp,
+  generateCashBookStatementData,
+} from '../lib/reportingEngine';
 import { getOpeningBalance } from '../lib/balanceEngine';
 import { formatPKR, format12HourDate, formatPakistaniDate } from '../lib/formatters';
 import {
@@ -201,57 +205,86 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     return { fromDate: undefined, toDate: undefined, label: 'All FY 2026-27', displayStartDate: '01-Jul-2026', displayMonth: 'July' };
   }, [periodFilter, customFromDate, customToDate]);
 
-  // Rolling running opening balance before the selected period starts (reference from balanceEngine)
-  const periodOpeningBalance = useMemo(() => {
-    return getOpeningBalance(activeAccountKey, periodDateRange.fromDate, {
-      vouchers: liveVouchers,
+  // Statement data generated via authoritative reporting engine
+  const statementData = useMemo(() => {
+    return generateCashBookStatementData(
+      liveVouchers,
       cashBookStates,
-    });
-  }, [activeAccountKey, periodDateRange.fromDate, liveVouchers, cashBookStates]);
+      activeAccountKey,
+      periodDateRange.fromDate,
+      periodDateRange.toDate
+    );
+  }, [liveVouchers, cashBookStates, activeAccountKey, periodDateRange.fromDate, periodDateRange.toDate]);
 
-  // Filtered Ledger Entries by Search & Period Range
+  // Rolling running opening balance before the selected period starts
+  const periodOpeningBalance = useMemo(() => {
+    return statementData.openingBalance;
+  }, [statementData.openingBalance]);
+
+  // Filtered Ledger Entries by Search & Period Range (interleaved chronologically with running balances)
   const filteredEntries = useMemo(() => {
-    if (!currentAccount) return [];
-    return currentAccount.entries.filter((entry) => {
-      // Period filter
-      const m = (entry.month || '').toLowerCase();
-      const d = (entry.date || '').toLowerCase();
-      if (periodFilter === 'JUL' && !m.includes('jul') && !d.includes('jul')) return false;
-      if (periodFilter === 'AUG' && !m.includes('aug') && !d.includes('aug')) return false;
-      if (periodFilter === 'SEP' && !m.includes('sep') && !d.includes('sep') && !d.includes('-09-') && !d.includes('/09/')) return false;
-      if (periodFilter === 'Q1' && !['jul', 'aug', 'sep'].some((term) => m.includes(term) || d.includes(term))) return false;
-      if (periodFilter === 'Q2' && !['oct', 'nov', 'dec'].some((term) => m.includes(term) || d.includes(term))) return false;
-      if (periodFilter === 'CUSTOM' && (customFromDate || customToDate)) {
-        const entryTs = parseDateToTimestamp(entry.date);
-        const fromTs = customFromDate ? parseDateToTimestamp(customFromDate) : 0;
-        const toTs = customToDate ? parseDateToTimestamp(customToDate) + 86400000 - 1 : Infinity;
-        if (fromTs > 0 && entryTs < fromTs) return false;
-        if (toTs < Infinity && entryTs > toTs) return false;
+    const rawRows = statementData.groups.length > 0 ? statementData.groups[0].rows : [];
+    
+    // Map CashBookStatementRow to CashBookEntry format compatible with table and exports
+    const mappedEntries: CashBookEntry[] = rawRows.map((r, idx) => {
+      // Extract month name from date string e.g. "03-Sep-2026"
+      const dateParts = (r.date || '').split(/[-/ ]/);
+      let month = '';
+      if (dateParts.length >= 2) {
+        const mStr = dateParts[1].toLowerCase();
+        const months: Record<string, string> = {
+          '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+          '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+          '09': 'September', '10': 'October', '11': 'November', '12': 'December',
+          jan: 'July', feb: 'February', mar: 'March', apr: 'April',
+          may: 'May', jun: 'June', jul: 'July', aug: 'August',
+          sep: 'September', oct: 'October', nov: 'November', dec: 'December'
+        };
+        month = months[mStr] || mStr;
       }
 
-      // Search filter
-      if (searchTerm) {
-        const t = searchTerm.toLowerCase();
-        return (
-          entry.particulars.toLowerCase().includes(t) ||
-          entry.paidToBy.toLowerCase().includes(t) ||
-          entry.accountHead.toLowerCase().includes(t) ||
-          entry.chequeNo.toLowerCase().includes(t) ||
-          entry.voucherSerial.toLowerCase().includes(t)
-        );
-      }
-      return true;
+      return {
+        id: r.id,
+        srNo: idx + 1,
+        date: r.date,
+        month: month,
+        vNo: r.voucherNo || '',
+        voucherSerial: r.voucherNo || '',
+        particulars: r.particulars || '',
+        paidToBy: r.paidToBy || '',
+        accountHead: r.accountHead || '',
+        chequeNo: r.chequeNo || '',
+        receipts: r.receipts || 0,
+        payments: r.payments || 0,
+        runningBalance: r.balance || 0,
+        entryType: r.entryType === 'RECEIPT' ? 'RECEIPT' : 'PAYMENT',
+      };
     });
-  }, [currentAccount, searchTerm, periodFilter, customFromDate, customToDate]);
+
+    if (!searchTerm) {
+      return mappedEntries;
+    }
+
+    const t = searchTerm.toLowerCase();
+    return mappedEntries.filter((entry) => {
+      return (
+        entry.particulars.toLowerCase().includes(t) ||
+        entry.paidToBy.toLowerCase().includes(t) ||
+        entry.accountHead.toLowerCase().includes(t) ||
+        entry.chequeNo.toLowerCase().includes(t) ||
+        entry.voucherSerial.toLowerCase().includes(t)
+      );
+    });
+  }, [statementData, searchTerm]);
 
   // Period-aware financial totals (opening balance, total receipts, total payments, net closing balance)
   const periodFinancials = useMemo(() => {
-    if (periodFilter === 'ALL' && !searchTerm && currentAccount) {
+    if (!searchTerm) {
       return {
-        openingBalance: periodOpeningBalance,
-        totalReceipts: currentAccount.totalReceipts,
-        totalPayments: currentAccount.totalPayments,
-        closingBalance: currentAccount.closingBalance,
+        openingBalance: statementData.openingBalance,
+        totalReceipts: statementData.totalReceipts,
+        totalPayments: statementData.totalPayments,
+        closingBalance: statementData.closingBalance,
       };
     }
     let totRec = 0;
@@ -267,7 +300,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       totalPayments: Math.round(totPay * 100) / 100,
       closingBalance: closeBal,
     };
-  }, [periodFilter, searchTerm, currentAccount, filteredEntries, periodOpeningBalance]);
+  }, [searchTerm, statementData, filteredEntries, periodOpeningBalance]);
 
   // Find linked voucher for a given entry
   const voucherMap = useMemo(() => {
