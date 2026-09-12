@@ -369,7 +369,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     const currentPin = (storedPin || '').trim();
 
     try {
-      // Add cache buster timestamp to ensure we always get live status from Google Sheets
+      // Add cache buster timestamp to ensure we always get fresh live status from Google Sheets
       const url = `${activeUrl}?action=getBackupStatus&pin=${encodeURIComponent(currentPin)}&_t=${Date.now()}`;
       let data: any = null;
 
@@ -392,6 +392,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       }
 
       if (data) {
+        // Parse various response shapes from Google Apps Script (e.g., {success, value}, {data}, {enabled}, etc.)
         const val = data.value || data.data || data;
         const isSuccess = data.success !== false;
         if (isSuccess) {
@@ -410,12 +411,22 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
               lastBackupTime: formatBackupTime(timestamp) || prev.lastBackupTime,
             }));
           }
-          const enabled =
-            typeof val.enabled === 'boolean'
-              ? val.enabled
-              : typeof data.enabled === 'boolean'
-              ? data.enabled
-              : undefined;
+
+          let enabled: boolean | undefined = undefined;
+          if (typeof val.enabled === 'boolean') {
+            enabled = val.enabled;
+          } else if (typeof data.enabled === 'boolean') {
+            enabled = data.enabled;
+          } else if (typeof val.enabled === 'string') {
+            enabled = val.enabled === 'true';
+          } else if (typeof data.enabled === 'string') {
+            enabled = data.enabled === 'true';
+          } else if (val.message || data.message) {
+            const msg = String(val.message || data.message).toLowerCase();
+            if (msg.includes('enabled') || msg.includes('on (')) enabled = true;
+            else if (msg.includes('disabled') || msg.includes('off')) enabled = false;
+          }
+
           if (typeof enabled === 'boolean') {
             setIsDailyBackupEnabled(enabled);
             try {
@@ -3870,6 +3881,21 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 </button>
 
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await fetchServerBackupStatus();
+                    }}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border flex items-center gap-1.5 cursor-pointer transition-all ${
+                      darkMode
+                        ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700'
+                        : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+                    }`}
+                    title="Poll Google Sheets Live State"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-indigo-500" />
+                    <span>Live Sync</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
