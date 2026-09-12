@@ -1016,7 +1016,7 @@ export const INITIAL_MASTER_VOUCHERS: MasterVoucher[] = [
     "chequeNoPra": "8061065833",
     "incomeTaxAmount": 2262.0,
     "chequeNoIncomeTax": "8061065832",
-    "billAmountGross": 15180.0,
+    "billAmountGross": 15080.0,
     "description": "14 Aug Independance day lighting etc exp service chgs",
     "entryStatus": "New",
     "timestamp": "24-Aug-2026 16:03",
