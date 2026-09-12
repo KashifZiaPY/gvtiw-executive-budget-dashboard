@@ -963,19 +963,34 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     const driveFolderUrl = `https://drive.google.com/drive/folders/${folderId}`;
     const dailySchedule = cloudStat?.dailyBackupSchedule || 'Active (Every day at 4:00 PM PST)';
 
+    const isEnabled =
+      cloudStat && typeof cloudStat.enabled === 'boolean'
+        ? cloudStat.enabled
+        : cloudStat?.value && typeof cloudStat.value.enabled === 'boolean'
+        ? cloudStat.value.enabled
+        : isDailyBackupEnabled;
+
+    if (typeof isEnabled === 'boolean') {
+      setIsDailyBackupEnabled(isEnabled);
+    }
+
     setBackupModalData({
-      status: 'ACTIVE',
-      schedule: dailySchedule,
+      status: isEnabled ? 'ACTIVE' : 'INACTIVE',
+      schedule: isEnabled ? dailySchedule : 'Inactive / Paused by Admin',
       folderId,
       driveFolderUrl,
       lastBackupTime:
         cloudStat?.lastBackupTime && cloudStat.lastBackupTime !== 'None recorded'
           ? cloudStat.lastBackupTime
+          : lastBackupTimestamp
+          ? formatBackupTime(lastBackupTimestamp) || 'Recorded'
           : 'Ready for 4:00 PM PST Automated Execution',
       liveMessage:
         cloudMessage && !cloudMessage.toLowerCase().includes('unknown')
           ? cloudMessage
-          : 'All 7 institutional spreadsheets are actively synchronized to Google Drive.',
+          : isEnabled
+          ? 'All 7 institutional spreadsheets are actively synchronized to Google Drive.'
+          : 'Automated daily backup schedule is currently disabled/paused.',
     });
     setIsBackupStatusModalOpen(true);
   };
@@ -2126,10 +2141,16 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                   : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
               }`}
             >
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+              <ShieldCheck className={`w-4 h-4 ${isDailyBackupEnabled ? 'text-emerald-500' : 'text-amber-500'}`} />
               <span>Backup Suite</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                ACTIVE
+              <span
+                className={`px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase border ${
+                  isDailyBackupEnabled
+                    ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                    : 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                }`}
+              >
+                {isDailyBackupEnabled ? 'ACTIVE' : 'DISABLED'}
               </span>
               <ChevronDown
                 className={`w-3.5 h-3.5 transition-transform ${
@@ -2145,15 +2166,33 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 }`}
               >
                 {/* PROMINENT TOP STATUS BANNER INSIDE MENU */}
-                <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 mb-1 flex items-center justify-between">
+                <div
+                  className={`p-2.5 rounded-xl border mb-1 flex items-center justify-between ${
+                    isDailyBackupEnabled
+                      ? 'bg-emerald-500/15 border-emerald-500/30'
+                      : 'bg-amber-500/15 border-amber-500/30'
+                  }`}
+                >
                   <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                    <div
+                      className={`w-2.5 h-2.5 rounded-full ${
+                        isDailyBackupEnabled ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'
+                      }`}
+                    />
                     <div>
-                      <div className="text-[11px] font-mono font-black text-emerald-700 dark:text-emerald-300 uppercase">
-                        BACKUP STATUS: ACTIVE
+                      <div
+                        className={`text-[11px] font-mono font-black uppercase ${
+                          isDailyBackupEnabled
+                            ? 'text-emerald-700 dark:text-emerald-300'
+                            : 'text-amber-700 dark:text-amber-300'
+                        }`}
+                      >
+                        BACKUP STATUS: {isDailyBackupEnabled ? 'ACTIVE' : 'DISABLED'}
                       </div>
                       <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-                        Google Cloud Cron: 4:00 PM PST
+                        {isDailyBackupEnabled
+                          ? 'Google Cloud Cron: 4:00 PM PST'
+                          : 'Daily Automated Trigger: Paused'}
                       </div>
                     </div>
                   </div>
@@ -2163,7 +2202,11 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                       setActiveDropdown(null);
                       handleCheckBackupStatus();
                     }}
-                    className="text-[10px] font-bold px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg cursor-pointer"
+                    className={`text-[10px] font-bold px-2 py-1 text-white rounded-lg cursor-pointer ${
+                      isDailyBackupEnabled
+                        ? 'bg-emerald-600 hover:bg-emerald-700'
+                        : 'bg-amber-600 hover:bg-amber-700'
+                    }`}
                   >
                     View Status
                   </button>
@@ -3565,24 +3608,34 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
             }`}
           >
             {/* PROMINENT TOP STATUS HEADER */}
-            <div className="p-6 bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 text-white relative overflow-hidden">
+            <div
+              className={`p-6 text-white relative overflow-hidden transition-all ${
+                isDailyBackupEnabled
+                  ? 'bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800'
+                  : 'bg-gradient-to-br from-amber-600 via-amber-700 to-orange-800'
+              }`}
+            >
               <div className="absolute right-0 top-0 translate-x-4 -translate-y-4 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
               
               <div className="flex items-start justify-between relative z-10">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-white/15 border border-white/30 flex items-center justify-center shrink-0 shadow-inner">
-                    <ShieldCheck className="w-7 h-7 text-emerald-100 animate-pulse" />
+                    <ShieldCheck className="w-7 h-7 text-white animate-pulse" />
                   </div>
                   <div>
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 border border-white/30 text-white font-mono text-[11px] font-black uppercase tracking-wider mb-1">
-                      <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping" />
-                      <span>SYSTEM BACKUP ENGINE: {backupModalData.status}</span>
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          isDailyBackupEnabled ? 'bg-emerald-300 animate-ping' : 'bg-amber-300'
+                        }`}
+                      />
+                      <span>SYSTEM BACKUP ENGINE: {isDailyBackupEnabled ? 'ACTIVE' : 'DISABLED'}</span>
                     </div>
                     <h3 className="text-lg font-black tracking-tight text-white leading-tight">
                       Institutional 7-File Google Drive Backup
                     </h3>
-                    <p className="text-xs text-emerald-100/90 font-mono mt-0.5">
-                      Schedule: {backupModalData.schedule}
+                    <p className="text-xs text-white/90 font-mono mt-0.5">
+                      Schedule: {isDailyBackupEnabled ? backupModalData.schedule : 'Inactive / Paused by Admin'}
                     </p>
                   </div>
                 </div>
@@ -3606,14 +3659,22 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                   }`}
                 >
                   <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-xs mb-1">
-                    <Clock className="w-4 h-4 text-emerald-500" />
+                    <Clock
+                      className={`w-4 h-4 ${isDailyBackupEnabled ? 'text-emerald-500' : 'text-amber-500'}`}
+                    />
                     <span className="font-semibold">Automation Schedule</span>
                   </div>
                   <div className="font-bold text-sm text-slate-900 dark:text-white font-mono">
-                    4:00 PM PST Daily
+                    {isDailyBackupEnabled ? '4:00 PM PST Daily' : 'Paused / Inactive'}
                   </div>
-                  <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold font-mono mt-0.5">
-                    ✓ Google Cloud Cron Active
+                  <div
+                    className={`text-[10px] font-bold font-mono mt-0.5 ${
+                      isDailyBackupEnabled
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-amber-600 dark:text-amber-400'
+                    }`}
+                  >
+                    {isDailyBackupEnabled ? '✓ Google Cloud Cron Active' : '✕ Daily Automated Trigger Disabled'}
                   </div>
                 </div>
 
