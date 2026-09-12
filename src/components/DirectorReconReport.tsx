@@ -1563,7 +1563,7 @@ export function DirectorReconciliationReport({
 
   const exportReceiptsCSV = () => {
     const lines: string[] = [];
-    lines.push(`"Source: Reports & Statements → Date Wise Receipts (${activeAccountConfig.short})"`);
+    lines.push(`"Source: Reports & Statements → Accounting Data Entry → Date Wise Receipts (${activeAccountConfig.short})"`);
     lines.push(`"${instituteName}"`);
     lines.push(`"ACCOUNTING DATA ENTRY — DATE WISE RECEIPTS IN ${activeAccountName.toUpperCase()} GRANTS"`);
     lines.push(`"Period: ${fromDate} to ${toDate} | Head: ${activeAccountConfig.short}"`);
@@ -1585,7 +1585,7 @@ export function DirectorReconciliationReport({
 
   const exportPaymentsCSV = () => {
     const lines: string[] = [];
-    lines.push(`"Source: Reports & Statements → Date Wise Payments (${activeAccountConfig.short})"`);
+    lines.push(`"Source: Reports & Statements → Accounting Data Entry → Date Wise Payments (${activeAccountConfig.short})"`);
     lines.push(`"${instituteName}"`);
     lines.push(`"ACCOUNTING DATA ENTRY — DATE WISE PAYMENTS FROM ${activeAccountName.toUpperCase()} GRANTS"`);
     lines.push(`"Period: ${fromDate} to ${toDate} | Head: ${activeAccountConfig.short}"`);
@@ -1612,7 +1612,7 @@ export function DirectorReconciliationReport({
 
   const exportReconciliationCSV = () => {
     const lines: string[] = [];
-    lines.push('"Source: Reports & Statements → Bank Reconciliation"');
+    lines.push(`"Source: Reports & Statements → Accounting Data Entry → Bank Reconciliation (${activeAccountConfig.short})"`);
     lines.push(`"ACCOUNTING DATA ENTRY — BANK RECONCILIATION STATEMENT"`);
     lines.push(`"NAME OF DISTRICT: ${districtName}"`);
     lines.push(`"INSTITUTE NAME: ${instituteName}"`);
@@ -1680,10 +1680,10 @@ export function DirectorReconciliationReport({
 
     const sourceLabel =
       activeTab === 'RECON'
-        ? 'Source: Reports & Statements → Bank Reconciliation'
+        ? `Source: Reports & Statements → Accounting Data Entry → Bank Reconciliation (${activeAccountConfig.short})`
         : activeTab === 'RECEIPTS'
-        ? `Source: Reports & Statements → Date Wise Receipts (${activeAccountConfig.short})`
-        : `Source: Reports & Statements → Date Wise Payments (${activeAccountConfig.short})`;
+        ? `Source: Reports & Statements → Accounting Data Entry → Date Wise Receipts (${activeAccountConfig.short})`
+        : `Source: Reports & Statements → Accounting Data Entry → Date Wise Payments (${activeAccountConfig.short})`;
 
     let bodyContent: { headerSnippet: string; mainSnippet: string } = {
       headerSnippet: '',
@@ -2037,9 +2037,6 @@ export function DirectorReconciliationReport({
       headerSnippet: `
         <div class="report-title" style="margin-top: 4px; font-size: 11pt;">
           ACCOUNTING DATA ENTRY &bull; BANK RECONCILIATION STATEMENT
-        </div>
-        <div class="sub-info" style="font-weight: bold; margin-top: 2px;">
-          NAME OF DISTRICT: ${districtName} &bull; INSTITUTE NAME: ${instituteName}
         </div>
         <div class="sub-info">
           HEAD OF ACCOUNT: ${activeAccountName} &bull; BANK NAME & ACCOUNT: ${activeAccountConfig.bankName} (${activeAccountConfig.defaultAccountNo}) &bull; Period: ${formatDateDDMMYY(fromDate)} to ${formatDateDDMMYY(toDate)} &bull; As on: ${asOnDate}
