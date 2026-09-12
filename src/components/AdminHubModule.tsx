@@ -307,7 +307,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   });
 
   // -------------------------------------------------------------
-  // 7. AUDIT TRAIL LOGS
+  // 7. AUDIT TRAIL LOGS & SERVER PAGINATION
   // -------------------------------------------------------------
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([
     {
@@ -318,6 +318,95 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       details: 'Admin Operations Hub v3.15 initialized for GVTIW Samanabad.',
     },
   ]);
+  const [auditLogOffset, setAuditLogOffset] = useState<number>(0);
+  const [hasMoreAuditLogs, setHasMoreAuditLogs] = useState<boolean>(true);
+  const [isLoadingAuditLogs, setIsLoadingAuditLogs] = useState<boolean>(false);
+
+  const fetchServerAuditLog = async (limit = 200, append = false) => {
+    const activeUrl = webAppUrl.trim();
+    if (!activeUrl) return;
+
+    setIsLoadingAuditLogs(true);
+    const offsetToUse = append ? auditLogOffset : 0;
+
+    try {
+      const url = `${activeUrl}?action=getAuditLog&limit=${limit}&offset=${offsetToUse}`;
+      let data: any = null;
+
+      try {
+        const res = await fetch(url, { method: 'GET' });
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch (getErr) {
+        try {
+          const postRes = await fetch(activeUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'getAuditLog', data: { limit, offset: offsetToUse } }),
+          });
+          if (postRes.ok) {
+            data = await postRes.json();
+          }
+        } catch {}
+      }
+
+      if (data && data.success && Array.isArray(data.entries)) {
+        const mappedEntries: AuditLogEntry[] = data.entries.map((item: any, idx: number) => {
+          const detailParts: string[] = [];
+          if (item.refNo && item.refNo !== '—') detailParts.push(`Ref: ${item.refNo}`);
+          if (item.bankAccount && item.bankAccount !== '—') detailParts.push(`Bank: ${item.bankAccount}`);
+          if (item.payee && item.payee !== '—') detailParts.push(`Payee: ${item.payee}`);
+          if (item.amount && item.amount !== '—') detailParts.push(`Rs. ${item.amount}`);
+          if (item.details && item.details !== '—') detailParts.push(item.details);
+          if (item.performedBy && item.performedBy !== '—') detailParts.push(`By: ${item.performedBy}`);
+          const details = detailParts.length > 0 ? detailParts.join(' • ') : (item.details || 'Audit record logged');
+
+          return {
+            id: `srv-${item.timestamp}-${item.activityType}-${idx}-${Math.random().toString(36).substring(2, 7)}`,
+            timestamp: item.timestamp || new Date().toLocaleTimeString(),
+            action: item.activityType || 'AUDIT_LOG',
+            status: 'success' as const,
+            details: details,
+          };
+        });
+
+        setAuditLogs((prev) => {
+          let combined: AuditLogEntry[];
+          if (!append) {
+            // Replace 'init-1' seed and prior server entries, keep in-session non-'success' entries
+            const inSessionNonSuccess = prev.filter((log) => log.status !== 'success' && log.id !== 'init-1');
+            combined = [...inSessionNonSuccess, ...mappedEntries];
+          } else {
+            combined = [...prev, ...mappedEntries];
+          }
+
+          // Dedupe by timestamp+details
+          const seen = new Set<string>();
+          return combined.filter((entry) => {
+            const key = `${entry.timestamp}|${entry.details}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+        });
+
+        const returnedCount = data.returned !== undefined ? data.returned : mappedEntries.length;
+        setAuditLogOffset(offsetToUse + returnedCount);
+        setHasMoreAuditLogs(!!data.hasMore);
+      } else if (data && !data.success) {
+        if (!append) setHasMoreAuditLogs(false);
+      }
+    } catch (err) {
+      console.error('Failed to fetch server audit log:', err);
+    } finally {
+      setIsLoadingAuditLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchServerAuditLog(200, false);
+  }, []);
 
   const addAuditLog = (action: string, status: 'pending' | 'success' | 'failed', details: string) => {
     const entry: AuditLogEntry = {
@@ -1726,7 +1815,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         )}
 
         {/* Left Side: Corporate Dropdown Menus */}
-        <div className="flex items-center gap-2 flex-wrap relative z-10">
+        <div className="flex items-center gap-2 flex-wrap relative z-50">
           {/* MENU 1: VOUCHERS */}
           <div className={`relative ${activeDropdown === 'vouchers' ? 'z-50' : ''}`}>
             <button
@@ -3012,12 +3101,29 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 <Terminal className="w-4 h-4 text-indigo-500" />
                 <span>Live Administrative Audit Trail ({auditLogs.length} events)</span>
               </div>
-              <button
-                onClick={() => setAuditLogs([])}
-                className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-              >
-                Clear Log
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => fetchServerAuditLog(200, false)}
+                  disabled={isLoadingAuditLogs}
+                  className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  title="Refresh newest 200 entries from Google Sheets Audit Log"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingAuditLogs ? 'animate-spin' : ''}`} />
+                  <span>Refresh from Sheet</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuditLogs([]);
+                    setAuditLogOffset(0);
+                    setHasMoreAuditLogs(false);
+                  }}
+                  className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                >
+                  Clear Log
+                </button>
+              </div>
             </div>
 
             <div className="divide-y divide-slate-100 dark:divide-slate-800/60 max-h-96 overflow-y-auto font-mono text-xs">
@@ -3039,6 +3145,35 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                   <span className="text-slate-600 dark:text-slate-300 break-all">{log.details}</span>
                 </div>
               ))}
+            </div>
+
+            {/* Pagination / Load Older Entries Footer */}
+            <div className="p-3 bg-slate-50/60 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-center">
+              {hasMoreAuditLogs ? (
+                <button
+                  type="button"
+                  onClick={() => fetchServerAuditLog(200, true)}
+                  disabled={isLoadingAuditLogs}
+                  className="px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                >
+                  {isLoadingAuditLogs ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Loading older entries...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                      <span>Load older entries (200)</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <div className="text-[11px] text-slate-400 dark:text-slate-500 font-mono flex items-center gap-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>No older entries • Full audit log history loaded</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -898,6 +898,68 @@ function handleApiRequest_(pin, action, data) {
     }
   }
 
+  if (action === "getAuditLog") {
+    try {
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var logSheet = getOrCreateAuditLogSheet_(ss);
+      var lastRow = logSheet.getLastRow();
+      var totalRows = Math.max(0, lastRow - 1);
+
+      var limit = 200;
+      var offset = 0;
+      if (data) {
+        if (data.limit !== undefined && data.limit !== null && !isNaN(Number(data.limit))) {
+          limit = Math.max(1, parseInt(data.limit, 10));
+        }
+        if (data.offset !== undefined && data.offset !== null && !isNaN(Number(data.offset))) {
+          offset = Math.max(0, parseInt(data.offset, 10));
+        }
+      }
+
+      var entries = [];
+      if (totalRows > 0 && offset < totalRows) {
+        var topRow = lastRow - offset;
+        var bottomRow = Math.max(2, lastRow - offset - limit + 1);
+        var numRows = topRow - bottomRow + 1;
+
+        if (numRows > 0) {
+          var rawValues = logSheet.getRange(bottomRow, 1, numRows, 9).getDisplayValues();
+          for (var r = rawValues.length - 1; r >= 0; r--) {
+            var row = rawValues[r];
+            entries.push({
+              timestamp: row[0] || '',
+              activityType: row[1] || '',
+              refNo: row[2] || '',
+              bankAccount: row[3] || '',
+              payee: row[4] || '',
+              accountHead: row[5] || '',
+              amount: row[6] || '',
+              performedBy: row[7] || '',
+              details: row[8] || ''
+            });
+          }
+        }
+      }
+
+      var returned = entries.length;
+      var hasMore = (offset + returned) < totalRows;
+
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        totalRows: totalRows,
+        returned: returned,
+        hasMore: hasMore,
+        entries: entries
+      })).setMimeType(ContentService.MimeType.JSON);
+    } catch (auditErr) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        entries: [],
+        error: auditErr.message
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   if (action === "verifyPassword" || action === "verifyPin") {
     var cleanPinAuth = pin ? String(pin).trim() : '';
     var masterPasswordAuth = getMasterPassword_();
