@@ -1021,44 +1021,6 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   };
 
   // -------------------------------------------------------------
-  // 11.2 RESTORE SYSTEM FROM BACKUP
-  // -------------------------------------------------------------
-  const handleRestoreFromBackup = () => {
-    setPopupModal({
-      isOpen: true,
-      type: 'warning',
-      title: 'Restore System from Backup?',
-      message:
-        'This administrative action verifies archive integrity and restores all 6 Bank Cashbooks + 1 Master Vouchers spreadsheet from Google Drive Backup Folder (1-Kdti-UAkCDivGgqWTJgki1zGnRKiDOB).\n\nAre you sure you want to proceed?',
-      action: {
-        label: 'Confirm & Restore Archive',
-        onClick: async () => {
-          setPopupModal(null);
-          const res = await triggerAppScriptCommand(
-            'restoreSystemFromBackup',
-            { backupPoint: 'latest' },
-            {
-              busyTitle: 'Verifying & Restoring System...',
-              busyMessage: 'Synchronizing 6 Cashbooks and Vouchers ledger from Google Drive backup snapshot...',
-              suppressPopup: true,
-            }
-          );
-          setPopupModal({
-            isOpen: true,
-            type: res.success ? 'success' : 'error',
-            title: res.success ? 'System Backup Verified' : 'Restore Failed',
-            message:
-              res.message ||
-              (res.success
-                ? 'System backup snapshot verified in Google Drive folder. All 7 institutional files are intact.'
-                : 'Could not restore system backup.'),
-          });
-        },
-      },
-    });
-  };
-
-  // -------------------------------------------------------------
   // 11.3 ENABLE DAILY BACKUP (4 PM)
   // -------------------------------------------------------------
   const handleEnableDailyBackup = async () => {
@@ -2523,21 +2485,6 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                   type="button"
                   onClick={() => {
                     setActiveDropdown(null);
-                    handleRestoreFromBackup();
-                  }}
-                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-amber-50 dark:hover:bg-amber-950/60 flex items-center gap-2 cursor-pointer transition-all"
-                >
-                  <RotateCcw className="w-4 h-4 text-amber-500" />
-                  <div>
-                    <div className="font-bold">Restore System from Backup</div>
-                    <div className="text-[10px] text-slate-400">Verifies drive archive &amp; restores files</div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveDropdown(null);
                     setIsScriptViewerOpen(true);
                   }}
                   className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2 cursor-pointer transition-all"
@@ -3182,34 +3129,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 </button>
               </div>
 
-              {/* Option 2: Restore System from Backup */}
-              <div
-                className={`p-4 rounded-xl border flex flex-col justify-between ${
-                  darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-50 border-slate-200'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-mono font-bold text-amber-600 dark:text-amber-400 uppercase">
-                      Option 2
-                    </span>
-                    <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
-                  </div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">Restore System</h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                    Verifies archive integrity and prepares restore of vouchers and cashbooks.
-                  </p>
-                </div>
-                <button
-                  onClick={handleRestoreFromBackup}
-                  className="mt-3 w-full py-2 px-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-lg flex items-center justify-center gap-1 cursor-pointer shadow-xs active:translate-y-px"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>⏮️ Restore Backup</span>
-                </button>
-              </div>
-
-              {/* Option 3: Enable Daily Backup (4 PM) */}
+              {/* Option 2: Enable Daily Backup (4 PM) */}
               <div
                 className={`p-4 rounded-xl border flex flex-col justify-between ${
                   darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-50 border-slate-200'
@@ -3218,7 +3138,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase">
-                      Option 3
+                      Option 2
                     </span>
                     <Clock className="w-3.5 h-3.5 text-emerald-500" />
                   </div>

@@ -46,7 +46,6 @@ import {
 import {
   FileSpreadsheet,
   Building,
-  History,
   Printer,
   FileCheck,
   Search,
@@ -90,7 +89,6 @@ type ReportTab =
   | 'CHEQUE'
   | 'AMOUNT'
   | 'BRS'
-  | 'AUDIT'
   | 'PRINT_CENTER'
   | 'FBR'
   | 'PRA';
@@ -1813,16 +1811,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     document.body.removeChild(link);
   };
 
-  // Audit Log sample entries
-  const auditEntries = [
-    { id: 'AUD-101', timestamp: '02-Sep-2026 05:20 pm', action: 'NEW_VOUCHER', user: 'kashifzia.tevta@gmail.com', details: 'Recorded Voucher #SC-SEP26-002 for Muddasara Saeed (Net: Rs. 8,480).' },
-    { id: 'AUD-102', timestamp: '02-Sep-2026 05:14 pm', action: 'NEW_VOUCHER', user: 'kashifzia.tevta@gmail.com', details: 'Recorded Voucher #SC-SEP26-001 for Akbar Ali (Net: Rs. 1,200).' },
-    { id: 'AUD-103', timestamp: '02-Sep-2026 05:10 pm', action: 'NEW_VOUCHER', user: 'kashifzia.tevta@gmail.com', details: 'Recorded Voucher #NS-SEP26-001 for Kashif Zia (Net: Rs. 1,500).' },
-    { id: 'AUD-104', timestamp: '02-Sep-2026 05:08 pm', action: 'NEW_VOUCHER', user: 'kashifzia.tevta@gmail.com', details: 'Recorded Voucher #PF-SEP26-001 for Kashif Zia (Net: Rs. 1,664).' },
-    { id: 'AUD-105', timestamp: '01-Sep-2026 11:20 am', action: 'NEW_VOUCHER', user: 'kashifzia.tevta@gmail.com', details: 'Recorded Voucher #AA-SEP26-001 for FESCO (Electricity Rs. 137,325).' },
-    { id: 'AUD-106', timestamp: '30-Aug-2026 01:14 pm', action: 'DEEP_BACKUP', user: 'kashifzia.tevta@gmail.com', details: 'Full System Deep Backup generated (7 Workbooks + Manifest) to GDrive Folder.' },
-  ];
-
   return (
     <div className="space-y-6">
       
@@ -1981,21 +1969,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               <span>Bank BRS</span>
             </div>
             <p className="text-[10px] text-slate-400 mt-0.5">Reconciliation</p>
-          </button>
-
-          <button
-            onClick={() => setActiveReportTab('AUDIT')}
-            className={`flex-1 min-w-[140px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-              activeReportTab === 'AUDIT'
-                ? darkMode ? 'bg-purple-900/40 border-purple-400 text-white shadow-md' : 'bg-purple-50 border-purple-600 text-purple-950 shadow-md'
-                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <History className="w-4 h-4 text-purple-400" />
-              <span>Audit Trail</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">System Logs</p>
           </button>
 
           <button
@@ -3081,42 +3054,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 </div>
               );
             })}
-          </div>
-        </div>
-      )}
-
-      {/* TAB: AUDIT TRAIL */}
-      {activeReportTab === 'AUDIT' && (
-        <div className={`p-5 rounded-2xl border ${
-          darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-md'
-        }`}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-extrabold text-sm uppercase tracking-wide flex items-center gap-2">
-              <History className="w-4 h-4 text-purple-400" />
-              <span>Institutional Audit Log & System Activity</span>
-            </h3>
-            <span className="text-xs text-slate-400 font-mono">Real-Time Tamper-Resistant</span>
-          </div>
-
-          <div className="space-y-2.5">
-            {auditEntries.map((a) => (
-              <div
-                key={a.id}
-                className="p-3 rounded-xl border border-slate-800 bg-slate-900/40 flex items-start justify-between gap-3 text-xs"
-              >
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono font-bold text-purple-400">{a.id}</span>
-                    <span className="text-[10px] font-bold px-2 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-800">
-                      {a.action}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono">{a.timestamp}</span>
-                  </div>
-                  <p className="text-slate-200">{a.details}</p>
-                </div>
-                <span className="text-[10px] font-mono text-slate-500 shrink-0">{a.user}</span>
-              </div>
-            ))}
           </div>
         </div>
       )}
