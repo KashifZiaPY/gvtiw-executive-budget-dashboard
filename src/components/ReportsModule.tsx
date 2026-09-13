@@ -1838,7 +1838,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             className={`flex-1 min-w-[170px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'DIRECTOR_RECON'
                 ? darkMode ? 'bg-cyan-900/50 border-cyan-400 text-white shadow-md ring-1 ring-cyan-400/40' : 'bg-cyan-50 border-cyan-600 text-cyan-950 shadow-md ring-1 ring-cyan-500'
-                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <div className="flex items-center gap-1.5 font-bold text-xs">
@@ -1853,7 +1853,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'CASHBOOK'
                 ? darkMode ? 'bg-blue-900/40 border-blue-400 text-white shadow-md' : 'bg-blue-50 border-blue-600 text-blue-950 shadow-md'
-                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <div className="flex items-center gap-1.5 font-bold text-xs">
@@ -1868,7 +1868,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'HEAD'
                 ? darkMode ? 'bg-indigo-900/40 border-indigo-400 text-white shadow-md' : 'bg-indigo-50 border-indigo-600 text-indigo-950 shadow-md'
-                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <div className="flex items-center gap-1.5 font-bold text-xs">
@@ -1883,7 +1883,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             className={`flex-1 min-w-[175px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'NS_OWN_FY26_27'
                 ? darkMode ? 'bg-teal-900/40 border-teal-400 text-white shadow-md' : 'bg-teal-50 border-teal-600 text-teal-950 shadow-md'
-                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <div className="flex items-center gap-1.5 font-bold text-xs">
@@ -1898,7 +1898,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'PAYEE'
                 ? darkMode ? 'bg-emerald-900/40 border-emerald-400 text-white shadow-md' : 'bg-emerald-50 border-emerald-600 text-emerald-950 shadow-md'
-                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <div className="flex items-center gap-1.5 font-bold text-xs">
@@ -1913,7 +1913,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'FBR'
                 ? darkMode ? 'bg-purple-900/40 border-purple-400 text-white shadow-md' : 'bg-purple-50 border-purple-600 text-purple-950 shadow-md'
-                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <div className="flex items-center gap-1.5 font-bold text-xs">
@@ -1928,7 +1928,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'PRA'
                 ? darkMode ? 'bg-amber-900/40 border-amber-400 text-white shadow-md' : 'bg-amber-50 border-amber-600 text-amber-950 shadow-md'
-                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <div className="flex items-center gap-1.5 font-bold text-xs">
@@ -1943,7 +1943,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'CHEQUE'
                 ? darkMode ? 'bg-amber-900/40 border-amber-400 text-white shadow-md' : 'bg-amber-50 border-amber-600 text-amber-950 shadow-md'
-                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <div className="flex items-center gap-1.5 font-bold text-xs">
@@ -1958,7 +1958,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'AMOUNT'
                 ? darkMode ? 'bg-rose-900/40 border-rose-400 text-white shadow-md' : 'bg-rose-50 border-rose-600 text-rose-950 shadow-md'
-                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <div className="flex items-center gap-1.5 font-bold text-xs">
@@ -1973,7 +1973,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             className={`flex-1 min-w-[140px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'BRS'
                 ? darkMode ? 'bg-teal-900/40 border-teal-400 text-white shadow-md' : 'bg-teal-50 border-teal-600 text-teal-950 shadow-md'
-                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <div className="flex items-center gap-1.5 font-bold text-xs">
@@ -1988,7 +1988,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             className={`flex-1 min-w-[140px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'AUDIT'
                 ? darkMode ? 'bg-purple-900/40 border-purple-400 text-white shadow-md' : 'bg-purple-50 border-purple-600 text-purple-950 shadow-md'
-                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <div className="flex items-center gap-1.5 font-bold text-xs">
