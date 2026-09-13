@@ -200,29 +200,63 @@ export function extractMonthKey(dtStr: string): string {
   return `${y}-${m}`;
 }
 
-// Helper: Convert dd-mm-yyyy or dd-mm-yy to YYYY-MM-DD for native <input type="date">
+// Helper: Convert any date representation (dd-mm-yyyy, dd-mmm-yyyy, etc.) to YYYY-MM-DD for native <input type="date">
 export function ddmmyyyyToIso(d: string): string {
   if (!d) return '';
-  const parts = d.split('-');
-  if (parts.length === 3) {
-    if (parts[0].length === 4) return d; // already ISO
-    const [day, month, year] = parts;
+  const s = String(d).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; // already ISO
+
+  // Try timestamp parsing first (handles 30-Jun-2026, 30/06/2026, etc.)
+  const ts = parseDateToTimestamp(s);
+  if (ts > 0) {
+    const dt = new Date(ts);
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  // Fallback for split parts
+  const parts = s.split(/[-/ ]+/);
+  if (parts.length >= 3) {
+    let [day, month, year] = parts;
+    if (day.length === 4) {
+      year = parts[0];
+      month = parts[1];
+      day = parts[2];
+    }
     const y = year.length === 2 ? `20${year}` : year;
-    return `${y}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    const monthMap: Record<string, string> = {
+      jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+      jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+    };
+    const m = monthMap[month.toLowerCase().slice(0, 3)] || month.padStart(2, '0');
+    return `${y}-${m}-${day.padStart(2, '0')}`;
   }
   return '';
 }
 
-// Helper: Convert YYYY-MM-DD to dd-mm-yyyy
+// Helper: Convert YYYY-MM-DD (or any date representation) to dd-mm-yyyy
 export function isoToDdmmyyyy(iso: string): string {
   if (!iso) return '';
-  const parts = iso.split('-');
+  const s = String(iso).trim();
+  if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s; // already dd-mm-yyyy
+
+  const parts = s.split('-');
   if (parts.length === 3) {
-    if (parts[2].length === 4) return iso; // already dd-mm-yyyy
-    const [y, m, d] = parts;
+    if (parts[2].length === 4 && parts[0].length <= 2) return s; // already dd-mm-yyyy
+    if (parts[0].length === 4) {
+      const [y, m, d] = parts;
+      return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
+    }
+  }
+
+  const isoClean = ddmmyyyyToIso(s);
+  if (isoClean && isoClean.includes('-')) {
+    const [y, m, d] = isoClean.split('-');
     return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
   }
-  return iso;
+  return s;
 }
 
 // Internal row representation for Date-Wise Receipts
@@ -1529,6 +1563,117 @@ export function DirectorReconciliationReport({
     setManualCheques((prev) => [...prev, newRow]);
   };
 
+  const isChequeMatch = (candidate?: string, input?: string): boolean => {
+    if (!candidate || !input) return false;
+    const c = String(candidate).trim().toLowerCase();
+    const i = String(input).trim().toLowerCase();
+    if (!c || !i || c === '—' || c === '0' || c === 'debit') return false;
+    if (c === i) return true;
+
+    // Compare pure digits if both have numbers (handles leading zeroes, "Chq #" prefix)
+    const cDigits = c.replace(/\D/g, '');
+    const iDigits = i.replace(/\D/g, '');
+    if (cDigits.length >= 3 && iDigits.length >= 3) {
+      if (cDigits === iDigits) return true;
+      if (cDigits.replace(/^0+/, '') === iDigits.replace(/^0+/, '')) return true;
+    }
+    return false;
+  };
+
+  const lookupChequeDetails = (
+    chequeNoInput: string
+  ): {
+    paidTo: string;
+    date: string;
+    accountHead: string;
+    amount: number;
+    description: string;
+  } | null => {
+    const cleanInput = (chequeNoInput || '').trim();
+    if (!cleanInput || cleanInput.length < 2) return null;
+
+    // 1. Search in live vouchers (scoped to active bank account first, then fallback to all)
+    const vouchersForAccount = liveVouchers.filter(
+      (v) => resolveBankKeyFromAccount(v.bankAccount) === selectedAccountKey
+    );
+    const searchVouchers = vouchersForAccount.length > 0 ? vouchersForAccount : liveVouchers;
+
+    for (const v of searchVouchers) {
+      const vRawDate = v.chequeDate || v.billDate || asOnDate;
+      const vDate = isoToDdmmyyyy(vRawDate) || vRawDate;
+
+      // Check Income Tax Cheque
+      if (v.chequeNoIncomeTax && isChequeMatch(v.chequeNoIncomeTax, cleanInput)) {
+        return {
+          paidTo: 'Income Tax',
+          date: vDate,
+          accountHead: v.accountHead || 'Non Salary Expenditure',
+          amount: Number(v.incomeTaxAmount) || 0,
+          description: v.description ? `IT Deducted - ${v.description}` : `Income Tax Deduction (${v.payeeName || 'Voucher'})`,
+        };
+      }
+
+      // Check PRA Tax Cheque
+      if (v.chequeNoPra && isChequeMatch(v.chequeNoPra, cleanInput)) {
+        return {
+          paidTo: 'PRA Tax',
+          date: vDate,
+          accountHead: v.accountHead || 'Non Salary Expenditure',
+          amount: Number(v.praAmount) || 0,
+          description: v.description ? `PRA Deducted - ${v.description}` : `PRA Sales Tax Deduction (${v.payeeName || 'Voucher'})`,
+        };
+      }
+
+      // Check Net Cheque
+      if (v.chequeNoNet && isChequeMatch(v.chequeNoNet, cleanInput)) {
+        return {
+          paidTo: v.payeeName || '—',
+          date: vDate,
+          accountHead: v.accountHead || 'Non Salary Expenditure',
+          amount: Number(v.chequeAmountNet) || 0,
+          description: v.description || '—',
+        };
+      }
+    }
+
+    // 2. Search in live Cash Book entries for current bank account
+    const state = liveCashBookStates[selectedAccountKey];
+    if (state && Array.isArray(state.entries)) {
+      for (const e of state.entries) {
+        if (
+          e.chequeNo &&
+          e.chequeNo !== '0' &&
+          e.chequeNo !== '—' &&
+          isChequeMatch(e.chequeNo, cleanInput) &&
+          (Number(e.payments) > 0 || e.entryType === 'PAYMENT' || e.entryType === 'TAX_DEDUCTION')
+        ) {
+          return {
+            paidTo: e.paidToBy || '—',
+            date: isoToDdmmyyyy(e.date) || e.date || asOnDate,
+            accountHead: e.accountHead || 'Non Salary Expenditure',
+            amount: Number(e.payments) || 0,
+            description: e.particulars || '—',
+          };
+        }
+      }
+    }
+
+    // 3. Search in allAccountPayments
+    for (const p of allAccountPayments) {
+      if (p.chequeNo && p.chequeNo !== '—' && isChequeMatch(p.chequeNo, cleanInput)) {
+        return {
+          paidTo: p.paidTo || '—',
+          date: isoToDdmmyyyy(p.chequeDate) || p.chequeDate || asOnDate,
+          accountHead: p.headOfAccount || 'Non Salary Expenditure',
+          amount: p.netAmountPaid,
+          description: p.remarks || '—',
+        };
+      }
+    }
+
+    return null;
+  };
+
   const handleUpdateManualCheque = (
     id: string,
     field: keyof ManualUnpresentedCheque,
@@ -1541,38 +1686,77 @@ export function DirectorReconciliationReport({
 
         const updated: ManualUnpresentedCheque = { ...item, [field]: value };
 
-        // Intelligent Auto-Fill from Cash Book Payments when Cheque No is entered
+        // Intelligent Auto-Fill from Net Cheque, Income Tax, PRA Tax, or Cash Book Payments
+        // Whenever Cheque No is entered or changed within the box, immediately update
         if (field === 'chequeNo' && typeof value === 'string') {
-          const cleanInput = value.trim().toLowerCase();
-          if (cleanInput.length >= 2) {
-            const matchedPayment = allAccountPayments.find(
-              (p) =>
-                p.chequeNo &&
-                p.chequeNo.trim().toLowerCase() === cleanInput
-            );
-            if (matchedPayment) {
-              if (matchedPayment.paidTo && (!item.paidTo || item.paidTo.trim() === '')) {
-                updated.paidTo = matchedPayment.paidTo;
-              }
-              if (matchedPayment.chequeDate && (!item.date || item.date === '31-08-2026' || item.date === asOnDate)) {
-                updated.date = matchedPayment.chequeDate;
-              }
-              if (matchedPayment.headOfAccount && (!item.accountHead || item.accountHead === '—' || item.accountHead === '')) {
-                updated.accountHead = matchedPayment.headOfAccount;
-              }
-              if (matchedPayment.netAmountPaid > 0 && (!item.amount || item.amount === 0)) {
-                updated.amount = matchedPayment.netAmountPaid;
-              }
-              if (matchedPayment.remarks && (!item.description || item.description.trim() === '')) {
-                updated.description = matchedPayment.remarks;
-              }
-            }
+          const matched = lookupChequeDetails(value);
+          if (matched) {
+            updated.paidTo = matched.paidTo;
+            updated.date = matched.date;
+            updated.accountHead = matched.accountHead;
+            updated.amount = matched.amount;
+            updated.description = matched.description;
           }
         }
 
         return updated;
       })
     );
+  };
+
+  const handleChequeNoEnter = (currentId: string, currentChequeNo: string) => {
+    if (!isEffectiveUnlocked) return;
+
+    const matched = lookupChequeDetails(currentChequeNo);
+
+    setManualCheques((prev) => {
+      const updated = prev.map((item) => {
+        if (item.id === currentId && matched) {
+          return {
+            ...item,
+            paidTo: matched.paidTo,
+            date: matched.date,
+            accountHead: matched.accountHead,
+            amount: matched.amount,
+            description: matched.description,
+          };
+        }
+        return item;
+      });
+
+      const currentIndex = updated.findIndex((item) => item.id === currentId);
+      const nextItem =
+        currentIndex >= 0 && currentIndex < updated.length - 1
+          ? updated[currentIndex + 1]
+          : null;
+
+      // If the subsequent row already exists and is empty, move focus to it
+      if (nextItem && (!nextItem.chequeNo || nextItem.chequeNo.trim() === '')) {
+        setTimeout(() => {
+          document.getElementById(`cheque-no-input-${nextItem.id}`)?.focus();
+        }, 50);
+        return updated;
+      }
+
+      // Otherwise, automatically insert a new blank row and focus it
+      const defaultHead = availableHeadsForBank.length === 1 ? availableHeadsForBank[0] : '';
+      const newId = `UC-${Date.now()}`;
+      const newRow: ManualUnpresentedCheque = {
+        id: newId,
+        chequeNo: '',
+        date: asOnDate || '31-08-2026',
+        paidTo: '',
+        accountHead: defaultHead,
+        amount: 0,
+        description: '',
+      };
+
+      setTimeout(() => {
+        document.getElementById(`cheque-no-input-${newId}`)?.focus();
+      }, 60);
+
+      return [...updated, newRow];
+    });
   };
 
   const handleRemoveManualCheque = (id: string) => {
@@ -2986,10 +3170,17 @@ export function DirectorReconciliationReport({
                         <tr key={c.id} className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60">
                           <td className="p-1">
                             <input
+                              id={`cheque-no-input-${c.id}`}
                               type="text"
                               disabled={!isEffectiveUnlocked}
                               value={c.chequeNo}
                               onChange={(e) => handleUpdateManualCheque(c.id, 'chequeNo', e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleChequeNoEnter(c.id, c.chequeNo);
+                                }
+                              }}
                               placeholder="Cheque #"
                               className={`w-full px-1.5 py-0.5 rounded border text-xs font-mono text-slate-900 dark:text-white ${
                                 !isEffectiveUnlocked
@@ -3002,7 +3193,7 @@ export function DirectorReconciliationReport({
                             <input
                               type="date"
                               disabled={!isEffectiveUnlocked}
-                              value={c.date ? (c.date.includes('-') && c.date.split('-')[0].length === 4 ? c.date : ddmmyyyyToIso(c.date)) : ''}
+                              value={ddmmyyyyToIso(c.date)}
                               onChange={(e) => {
                                 const val = e.target.value;
                                 const ddmmyyyy = val ? isoToDdmmyyyy(val) : '';
