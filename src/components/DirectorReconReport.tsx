@@ -753,13 +753,16 @@ export function DirectorReconciliationReport({
   // Manual Edit Unlock State (gated by live Security PIN verification)
   const [internalUnlocked, setInternalUnlocked] = useState(false);
   const [showLocalPinModal, setShowLocalPinModal] = useState(false);
+  const [pendingActionAfterUnlock, setPendingActionAfterUnlock] = useState<'NONE' | 'OPEN_AI_MODAL'>('NONE');
 
   // Gated manual edit permission: check parent prop or internal unlock
   const isEffectiveUnlocked = useMemo(() => {
     return Boolean(isUnlocked || internalUnlocked);
   }, [isUnlocked, internalUnlocked]);
 
-  const handleRequestUnlock = () => {
+  const handleRequestUnlock = (action?: 'NONE' | 'OPEN_AI_MODAL' | React.MouseEvent) => {
+    const targetAction = action === 'OPEN_AI_MODAL' ? 'OPEN_AI_MODAL' : 'NONE';
+    setPendingActionAfterUnlock(targetAction);
     if (onUnlockRequest) {
       onUnlockRequest();
     } else {
@@ -770,6 +773,10 @@ export function DirectorReconciliationReport({
   const handleLocalPinSuccess = (_pin: string) => {
     setInternalUnlocked(true);
     setShowLocalPinModal(false);
+    if (pendingActionAfterUnlock === 'OPEN_AI_MODAL') {
+      setIsAiDiffModalOpen(true);
+      setPendingActionAfterUnlock('NONE');
+    }
   };
 
   // Account selection: NS, PF, FC, SEC, SC, AA
@@ -1549,6 +1556,15 @@ export function DirectorReconciliationReport({
 
   // AI Difference Analyzer Modal State
   const [isAiDiffModalOpen, setIsAiDiffModalOpen] = useState(false);
+
+  // Trigger AI modal with PIN gating
+  const handleOpenAiDiffModal = () => {
+    if (!isEffectiveUnlocked) {
+      handleRequestUnlock('OPEN_AI_MODAL');
+      return;
+    }
+    setIsAiDiffModalOpen(true);
+  };
 
   // Apply matched cheques into the unpresented cheques list
   const handleApplyAiCheques = (newCheques: ManualUnpresentedCheque[], mode: 'APPEND' | 'REPLACE') => {
@@ -3152,11 +3168,19 @@ export function DirectorReconciliationReport({
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setIsAiDiffModalOpen(true)}
+                    onClick={handleOpenAiDiffModal}
                     className="px-2.5 py-1 rounded-lg bg-linear-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
-                    title="Find cheques totaling or near the reconciliation difference"
+                    title={
+                      isEffectiveUnlocked
+                        ? 'Find cheques totaling or near the reconciliation difference'
+                        : 'Unlock with Admin PIN to run AI Match Difference'
+                    }
                   >
-                    <Sparkles className="w-3 h-3 text-cyan-200" />
+                    {!isEffectiveUnlocked ? (
+                      <Lock className="w-3 h-3 text-amber-300" />
+                    ) : (
+                      <Sparkles className="w-3 h-3 text-cyan-200" />
+                    )}
                     <span>AI Match Difference</span>
                   </button>
                   {isEffectiveUnlocked ? (
