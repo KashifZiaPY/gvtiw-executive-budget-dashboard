@@ -45,7 +45,6 @@ import {
 } from '../lib/apiEngine';
 import {
   FileSpreadsheet,
-  Building,
   Printer,
   FileCheck,
   Search,
@@ -88,7 +87,6 @@ type ReportTab =
   | 'PAYEE'
   | 'CHEQUE'
   | 'AMOUNT'
-  | 'BRS'
   | 'PRINT_CENTER'
   | 'FBR'
   | 'PRA';
@@ -1957,21 +1955,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveReportTab('BRS')}
-            className={`flex-1 min-w-[140px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-              activeReportTab === 'BRS'
-                ? darkMode ? 'bg-teal-900/40 border-teal-400 text-white shadow-md' : 'bg-teal-50 border-teal-600 text-teal-950 shadow-md'
-                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <Building className="w-4 h-4 text-teal-400" />
-              <span>Bank BRS</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">Reconciliation</p>
-          </button>
-
-          <button
             onClick={() => setActiveReportTab('PRINT_CENTER')}
             className={`flex-1 min-w-[140px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'PRINT_CENTER'
@@ -3008,52 +2991,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 </span>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* TAB: BANK RECONCILIATION STATEMENT (BRS) */}
-      {activeReportTab === 'BRS' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(Object.keys(INSTITUTIONAL_BANK_ACCOUNTS) as BankAccountKey[]).map((key) => {
-              const meta = INSTITUTIONAL_BANK_ACCOUNTS[key];
-              const state = cashBookStates[key] || INITIAL_CASHBOOK_STATES[key];
-
-              return (
-                <div
-                  key={key}
-                  className={`p-5 rounded-2xl border ${
-                    darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-md'
-                  }`}
-                >
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-700/60 mb-3">
-                    <div>
-                      <span className="font-extrabold text-sm uppercase block text-white">{meta.shortName}</span>
-                      <span className="text-[10px] text-slate-400 font-mono">A/C: {meta.accountNo}</span>
-                    </div>
-                    <span className="text-xs font-mono px-2 py-0.5 rounded bg-blue-600/30 text-blue-300 font-bold">
-                      {meta.code}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 text-xs font-mono">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Cashbook Closing Balance:</span>
-                      <strong className="text-amber-300">{formatPKR(state.closingBalance, false)}</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">Unpresented Cheques:</span>
-                      <span className="text-slate-400">Rs. 0.00</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-slate-700 font-bold">
-                      <span className="text-emerald-400">Reconciled Bank Balance:</span>
-                      <strong className="text-emerald-400">{formatPKR(state.reconciledBankBalance, false)}</strong>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}
