@@ -18,6 +18,7 @@ import {
 import {
   HeadExpenditureStatementView,
 } from './HeadExpenditureStatementView';
+import { NsOwnWorkingReportView } from './NsOwnWorkingReportView';
 import {
   SearchableCombobox,
   ComboboxOption,
@@ -84,6 +85,7 @@ type ReportTab =
   | 'DIRECTOR_RECON'
   | 'CASHBOOK'
   | 'HEAD'
+  | 'NS_OWN_FY26_27'
   | 'PAYEE'
   | 'CHEQUE'
   | 'AMOUNT'
@@ -1877,6 +1879,21 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveReportTab('NS_OWN_FY26_27')}
+            className={`flex-1 min-w-[175px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+              activeReportTab === 'NS_OWN_FY26_27'
+                ? darkMode ? 'bg-teal-900/40 border-teal-400 text-white shadow-md' : 'bg-teal-50 border-teal-600 text-teal-950 shadow-md'
+                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 font-bold text-xs">
+              <FileSpreadsheet className="w-4 h-4 text-teal-400" />
+              <span>NS &amp; OWN Working</span>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-0.5">FY 26-27 (GID: 1689777979)</p>
+          </button>
+
+          <button
             onClick={() => setActiveReportTab('PAYEE')}
             className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
               activeReportTab === 'PAYEE'
@@ -2344,6 +2361,18 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           onPrint={() => handlePrintHeadExpenditure(headExpenditureStatementData)}
           onExportCSV={() => handleExportHeadCSV(headExpenditureStatementData)}
           onOpenPAF={handleOpenPAFByVoucherNo}
+        />
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* 4B. REPORT DATA DISPLAY: NS & OWN WORKING FY 26-27 (GID: 1689777979) */}
+      {/* ------------------------------------------------------------- */}
+      {activeReportTab === 'NS_OWN_FY26_27' && (
+        <NsOwnWorkingReportView
+          darkMode={darkMode}
+          customGvtiwLogo={customGvtiwLogo}
+          customTevtaLogo={customTevtaLogo}
+          customGopLogo={customGopLogo}
         />
       )}
 
