@@ -44,6 +44,11 @@ import {
   sanitizeCashBookStates,
 } from '../lib/apiEngine';
 import {
+  exportCashBookStatementExcel,
+  exportHeadExpenditureExcel,
+  exportGeneralReportExcel,
+} from '../lib/excelExportEngine';
+import {
   FileSpreadsheet,
   Printer,
   FileCheck,
@@ -1189,8 +1194,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     }, 400);
   };
 
-  // EXPORT CSV: CASH BOOK STATEMENT
-  const handleExportCashBookCSV = (data: CashBookStatementData) => {
+  // EXPORT EXCEL & CSV: CASH BOOK STATEMENT
+  const exportCashBookCSVFallback = (data: CashBookStatementData) => {
     const headers = [
       'Sr No',
       'Date',
@@ -1323,8 +1328,51 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     document.body.removeChild(link);
   };
 
-  // EXPORT CSV: HEAD EXPENDITURE STATEMENT
-  const handleExportHeadCSV = (data: HeadExpenditureStatementData) => {
+  const handleExportCashBookCSV = async (data: CashBookStatementData) => {
+    try {
+      await exportCashBookStatementExcel({
+        isConsolidated: data.isConsolidated,
+        openingBalance: data.openingBalance,
+        totalReceipts: data.totalReceipts,
+        totalPayments: data.totalPayments,
+        closingBalance: data.closingBalance,
+        groups: data.groups.map((g) => ({
+          accountKey: g.accountKey,
+          meta: g.meta,
+          openingBalance: g.openingBalance,
+          totalReceipts: g.totalReceipts,
+          totalPayments: g.totalPayments,
+          closingBalance: g.closingBalance,
+          rows: g.rows.map((r) => {
+            const billText = formatCashBookBillInfo(r.billNo, r.billDate);
+            const particularsWithBill = r.particulars
+              ? `${r.particulars}${billText ? `\n${billText}` : ''}`
+              : billText;
+            return {
+              date: r.date,
+              voucherNo: r.voucherNo,
+              paidToBy: r.paidToBy,
+              accountHead: r.accountHead,
+              particulars: particularsWithBill,
+              chequeNo: r.chequeNo,
+              receipts: r.receipts,
+              payments: r.payments,
+              balance: r.balance,
+              billNo: r.billNo,
+              billDate: r.billDate,
+            };
+          }),
+        })),
+        filename: `GVTIW_CashBook_Statement_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      });
+    } catch (err) {
+      console.error('Error generating Cash Book Excel, falling back to CSV:', err);
+      exportCashBookCSVFallback(data);
+    }
+  };
+
+  // EXPORT EXCEL & CSV: HEAD EXPENDITURE STATEMENT
+  const exportHeadCSVFallback = (data: HeadExpenditureStatementData) => {
     if (multiHeadExpenditureData && multiHeadExpenditureData.isMultiHead) {
       const headers = [
         'Sr No',
@@ -1589,8 +1637,96 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     document.body.removeChild(link);
   };
 
-  // Export General CSV
-  const handleExportCSV = (reportName: string) => {
+  const handleExportHeadCSV = async (data: HeadExpenditureStatementData) => {
+    try {
+      if (multiHeadExpenditureData && multiHeadExpenditureData.isMultiHead) {
+        await exportHeadExpenditureExcel({
+          isMultiHead: true,
+          title: 'HEAD EXPENDITURE STATEMENT (MULTI-HEAD)',
+          subtitle: `CONSOLIDATED ACROSS ${multiHeadExpenditureData.headReports.length} HEADS`,
+          budgetAllocationOpening: multiHeadExpenditureData.grandTotal.budgetAllocationOpening,
+          totalReceipts: multiHeadExpenditureData.grandTotal.receiptsReappr,
+          totalExpenditure: multiHeadExpenditureData.grandTotal.totalExpenditure,
+          closingUnspentBalance: multiHeadExpenditureData.grandTotal.closingUnspentBalance,
+          groups: multiHeadExpenditureData.headReports.map((hReport) => {
+            const headCode = hReport.groups[0]?.headCode || hReport.headCodeText;
+            const headName = hReport.groups[0]?.headName || hReport.subtitle;
+            const allRows: any[] = [];
+            hReport.groups.forEach((g) => {
+              g.rows.forEach((r) => {
+                const billText = formatCashBookBillInfo(r.billNo, r.billDate);
+                const particularsWithBill = r.particulars ? `${r.particulars}${billText ? `\n${billText}` : ''}` : billText;
+                allRows.push({
+                  date: r.date,
+                  accountKey: r.accountKey,
+                  voucherNo: r.voucherNo,
+                  paidToBy: r.paidToBy,
+                  accountHead: r.accountHead,
+                  particulars: particularsWithBill,
+                  chequeNo: r.chequeNo,
+                  receipts: r.receipts,
+                  payments: r.payments,
+                  balance: r.balance,
+                });
+              });
+            });
+            return {
+              headCode,
+              headName,
+              allocationOpening: hReport.budgetAllocationOpening,
+              receiptsReappr: hReport.receiptsReappr,
+              totalExpenditure: hReport.totalExpenditure,
+              closingUnspentBalance: hReport.closingUnspentBalance,
+              rows: allRows,
+            };
+          }),
+          filename: `Consolidated_Multi_Head_Statement_${multiHeadExpenditureData.selectedHeadCodes.join('_')}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+        });
+        return;
+      }
+
+      await exportHeadExpenditureExcel({
+        isMultiHead: data.isGroupedAllHeads,
+        title: 'HEAD EXPENDITURE STATEMENT',
+        subtitle: data.isGroupedAllHeads ? 'ALL SANCTIONED HEADS' : `${data.groups[0]?.headCode || 'HEAD'} - ${data.groups[0]?.headName || ''}`,
+        budgetAllocationOpening: data.budgetAllocationOpening,
+        totalReceipts: data.receiptsReappr,
+        totalExpenditure: data.totalExpenditure,
+        closingUnspentBalance: data.closingUnspentBalance,
+        groups: data.groups.map((g) => ({
+          headCode: g.headCode,
+          headName: g.headName,
+          allocationOpening: g.allocationOpening,
+          receiptsReappr: g.receiptsReappr,
+          totalExpenditure: g.totalExpenditure,
+          closingUnspentBalance: g.closingUnspentBalance,
+          rows: g.rows.map((r) => {
+            const billText = formatCashBookBillInfo(r.billNo, r.billDate);
+            const particularsWithBill = r.particulars ? `${r.particulars}${billText ? `\n${billText}` : ''}` : billText;
+            return {
+              date: r.date,
+              accountKey: r.accountKey,
+              voucherNo: r.voucherNo,
+              paidToBy: r.paidToBy,
+              accountHead: r.accountHead,
+              particulars: particularsWithBill,
+              chequeNo: r.chequeNo,
+              receipts: r.receipts,
+              payments: r.payments,
+              balance: r.balance,
+            };
+          }),
+        })),
+        filename: `GVTIW_Head_Expenditure_Statement_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      });
+    } catch (err) {
+      console.error('Error exporting Head Expenditure to Excel, falling back to CSV:', err);
+      exportHeadCSVFallback(data);
+    }
+  };
+
+  // EXPORT EXCEL & CSV: GENERAL REPORTS (FBR, PRA, PAYEE, AMOUNT, CHEQUE)
+  const exportGeneralCSVFallback = (reportName: string) => {
     if (reportName === 'FBR' || activeReportTab === 'FBR') {
       const headers = [
         'Sr No',
@@ -1807,6 +1943,150 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleExportCSV = async (reportName: string) => {
+    try {
+      if (reportName === 'FBR' || activeReportTab === 'FBR') {
+        const headers = [
+          'Sr No',
+          'Date',
+          'Cheque No',
+          'Payee / Vendor',
+          'Particulars / Description',
+          'NTN / CNIC',
+          'Bill / Inv # & Date',
+          'Gross Bill (Rs.)',
+          'Amount Excl. Tax (Rs.)',
+          'GST / Sales Tax Withheld (Rs.)',
+          'Net Paid (Rs.)',
+          'Voucher No',
+        ];
+
+        const rows = filteredVouchers.map((v, i) => [
+          i + 1,
+          v.chequeDate || v.billDate,
+          v.chequeNoNet || '',
+          v.payeeName,
+          v.description || '',
+          v.ntnCnic || '',
+          `${v.billNo || ''}${v.billDate ? (v.billNo ? ' (' + v.billDate + ')' : v.billDate) : ''}`,
+          v.billAmountGross,
+          Number(v.billAmtExclTax || v.billAmountGross),
+          v.gstAmount || 0,
+          v.chequeAmountNet,
+          v.voucherNo,
+        ]);
+
+        await exportGeneralReportExcel({
+          title: 'FBR MONTHLY WITHHOLDING TAX STATEMENT',
+          subtitle: `PERIOD: ${fromDate || 'Start'} to ${toDate || 'End'}`,
+          headers,
+          rows,
+          numericColIndices: [8, 9, 10, 11],
+          filename: `GVTIW_FBR_Monthly_Withholding_Statement_${new Date().toISOString().slice(0, 10)}.xlsx`,
+        });
+        return;
+      }
+
+      if (reportName === 'PRA' || activeReportTab === 'PRA') {
+        const headers = [
+          'Sr No',
+          'Date',
+          'PRA Cheque No',
+          'Payee / Vendor',
+          'Particulars / Description',
+          'NTN / CNIC',
+          'Bill / Inv # & Date',
+          'Bill Amount (Rs.)',
+          'Amount Excl. Tax (Rs.)',
+          'PRA (Bill) (Rs.)',
+          'PRA Withheld (Rs.)',
+          'Net Paid (Rs.)',
+          'Voucher No',
+        ];
+
+        const rows = filteredVouchers.map((v, i) => [
+          i + 1,
+          v.chequeDate || v.billDate,
+          v.chequeNoPra || '',
+          v.payeeName,
+          v.description || '',
+          v.ntnCnic || '',
+          `${v.billNo || ''}${v.billDate ? (v.billNo ? ' (' + v.billDate + ')' : v.billDate) : ''}`,
+          v.billAmountGross,
+          Number(v.billAmtExclTax || v.billAmountGross),
+          v.praTaxOnBill || 0,
+          v.praAmount || 0,
+          v.chequeAmountNet,
+          v.voucherNo,
+        ]);
+
+        await exportGeneralReportExcel({
+          title: 'PRA MONTHLY SALES TAX STATEMENT',
+          subtitle: `PERIOD: ${fromDate || 'Start'} to ${toDate || 'End'}`,
+          headers,
+          rows,
+          numericColIndices: [8, 9, 10, 11, 12],
+          filename: `GVTIW_PRA_Monthly_Sales_Tax_Statement_${new Date().toISOString().slice(0, 10)}.xlsx`,
+        });
+        return;
+      }
+
+      const headers = [
+        'Sr No',
+        'Voucher No',
+        'Cheque Date',
+        'Payee Name',
+        'NTN/CNIC',
+        'Bill No',
+        'Bill Date',
+        'Amount Excl. Tax',
+        'PRA (Bill)',
+        'Gross Bill Amount',
+        'GST Amount',
+        'Account Head',
+        'Cheque No Net',
+        'Income Tax Amount (WHT)',
+        'PRA Amount',
+        'Cheque Net Amount',
+        'Bank Account',
+        'Narration',
+      ];
+
+      const rows = filteredVouchers.map((v, i) => [
+        i + 1,
+        v.voucherNo,
+        v.chequeDate || v.billDate,
+        v.payeeName,
+        v.ntnCnic,
+        v.billNo,
+        v.billDate,
+        Number(v.billAmtExclTax || v.billAmountGross),
+        v.praTaxOnBill || 0,
+        v.billAmountGross,
+        v.gstAmount || 0,
+        v.accountHead,
+        v.chequeNoNet,
+        v.incomeTaxAmount,
+        v.praAmount,
+        v.chequeAmountNet,
+        v.bankAccount,
+        v.description,
+      ]);
+
+      await exportGeneralReportExcel({
+        title: reportName,
+        subtitle: `PAYEE / VOUCHER DISBURSEMENT REPORT (${fromDate || 'Start'} to ${toDate || 'End'})`,
+        headers,
+        rows,
+        numericColIndices: [8, 9, 10, 11, 14, 15, 16],
+        filename: `GVTIW_${reportName}_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      });
+    } catch (err) {
+      console.error('Error generating Excel report, falling back to CSV:', err);
+      exportGeneralCSVFallback(reportName);
+    }
   };
 
   return (
@@ -2360,9 +2640,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               <button
                 onClick={() => handleExportCSV(activeReportTab === 'PAYEE' && selectedPayee !== 'ALL' ? `Payee_${selectedPayee.replace(/\s+/g, '_')}` : activeReportTab)}
                 className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold text-xs rounded-lg flex items-center gap-1 cursor-pointer"
+                title="Download structured Excel workbook (.xlsx)"
               >
-                <Download className="w-3.5 h-3.5 text-blue-400" />
-                <span>Export CSV</span>
+                <Download className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Export Excel</span>
               </button>
               <button
                 onClick={() => handlePrintGeneralReport(
@@ -2582,9 +2863,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               <button
                 onClick={() => handleExportCSV('FBR')}
                 className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold text-xs rounded-lg flex items-center gap-1.5 cursor-pointer transition-all"
+                title="Download structured Excel workbook (.xlsx)"
               >
                 <Download className="w-3.5 h-3.5 text-purple-500" />
-                <span>Export CSV</span>
+                <span>Export Excel</span>
               </button>
               <button
                 onClick={() => handlePrintGeneralReport('FBR')}
@@ -2802,9 +3084,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               <button
                 onClick={() => handleExportCSV('PRA')}
                 className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-white font-bold text-xs rounded-lg flex items-center gap-1.5 cursor-pointer transition-all"
+                title="Download structured Excel workbook (.xlsx)"
               >
                 <Download className="w-3.5 h-3.5 text-amber-500" />
-                <span>Export CSV</span>
+                <span>Export Excel</span>
               </button>
               <button
                 onClick={() => handlePrintGeneralReport('PRA')}

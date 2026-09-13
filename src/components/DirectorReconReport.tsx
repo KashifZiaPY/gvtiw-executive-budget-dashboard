@@ -41,6 +41,11 @@ import {
   formatCashBookBillInfo,
 } from '../lib/reportingEngine';
 import {
+  exportReconciliationExcel,
+  exportReceiptsRegisterExcel,
+  exportPaymentsRegisterExcel,
+} from '../lib/excelExportEngine';
+import {
   getOpeningBalance,
   normalizeDateToStartTimestamp,
   normalizeDateToEndTimestamp,
@@ -1549,15 +1554,89 @@ export function DirectorReconciliationReport({
   };
 
   // ---------------------------------------------------------------------------
-  // 6. SCOPED EXCEL / CSV EXPORT HANDLERS
+  // 6. SCOPED EXCEL / CSV EXPORT HANDLERS (PROFESSIONAL .XLSX WITH FORMULAS)
   // ---------------------------------------------------------------------------
-  const handleExportCSV = () => {
-    if (activeTab === 'RECEIPTS') {
-      exportReceiptsCSV();
-    } else if (activeTab === 'PAYMENTS') {
-      exportPaymentsCSV();
-    } else {
-      exportReconciliationCSV();
+  const handleExportCSV = async () => {
+    try {
+      if (activeTab === 'RECEIPTS') {
+        await exportReceiptsRegisterExcel(
+          instituteName,
+          activeAccountName,
+          `${fromDate} to ${toDate}`,
+          filteredReceipts.map((r, idx) => ({
+            sr: idx + 1,
+            date: formatDateDDMMYY(r.date),
+            challanChequeNo: r.challanChequeNo,
+            headOfAccount: r.headOfAccount,
+            amount: r.amount,
+            remarks: r.remarks,
+          })),
+          `Accounting_Data_Entry_Receipts_${selectedAccountKey}_${fromDate}_to_${toDate}.xlsx`
+        );
+      } else if (activeTab === 'PAYMENTS') {
+        await exportPaymentsRegisterExcel(
+          instituteName,
+          activeAccountName,
+          `${fromDate} to ${toDate}`,
+          filteredPayments.map((p, idx) => ({
+            sr: idx + 1,
+            headOfAccount: p.headOfAccount,
+            chequeDate: formatDateDDMM(p.chequeDate),
+            chequeNo: p.chequeNo,
+            totalBillAmount: p.totalBillAmount,
+            incomeTax: p.incomeTax,
+            praAmount: p.praAmount,
+            security: p.security,
+            netAmountPaid: p.netAmountPaid,
+            remarks: getFullPaymentRemarks(p),
+            paidTo: p.paidTo,
+          })),
+          `Accounting_Data_Entry_Payments_${selectedAccountKey}_${fromDate}_to_${toDate}.xlsx`
+        );
+      } else {
+        await exportReconciliationExcel({
+          instituteName,
+          districtName,
+          activeAccountName,
+          bankName: activeAccountConfig.bankName,
+          accountNo: activeAccountConfig.defaultAccountNo,
+          asOnDate,
+          openingBalance,
+          periodOpeningLabel,
+          rows: periodReconRows.map((r) => ({
+            monthShortLabel: r.monthShortLabel,
+            receiptDesc: r.receiptDesc,
+            directReceipts: r.directReceipts,
+            cmsdiNavttcShortCourse: r.cmsdiNavttcShortCourse,
+            otherReceiptsProfit: r.otherReceiptsProfit,
+            fromOtherBankAccount: r.fromOtherBankAccount,
+            totalReceipt: r.totalReceipt,
+            paymentDesc: r.paymentDesc,
+            directPayments: r.directPayments,
+            otherPaymentsBankCharges: r.otherPaymentsBankCharges,
+            directPaymentsCMSDI: r.directPaymentsCMSDI,
+            totalPayment: r.totalPayment,
+          })),
+          bankStatementBalance,
+          manualCheques: manualCheques.map((c) => ({
+            chequeNo: c.chequeNo,
+            date: c.date,
+            accountHead: c.accountHead,
+            amount: parseNumericAmount(c.amount),
+            description: c.description,
+          })),
+          filename: `Accounting_Data_Entry_Reconciliation_${selectedAccountKey}_${asOnDate}.xlsx`,
+        });
+      }
+    } catch (err) {
+      console.error('Error generating Excel workbook, falling back to CSV:', err);
+      if (activeTab === 'RECEIPTS') {
+        exportReceiptsCSV();
+      } else if (activeTab === 'PAYMENTS') {
+        exportPaymentsCSV();
+      } else {
+        exportReconciliationCSV();
+      }
     }
   };
 

@@ -333,9 +333,10 @@ export const SingleHeadExpenditureReportSection: React.FC<SingleHeadExpenditureR
                   ? 'bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-200'
                   : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800'
               }`}
+              title="Download structured Excel workbook (.xlsx) with formulas"
             >
-              <Download className="w-3.5 h-3.5 text-blue-500" />
-              <span>Export CSV</span>
+              <Download className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Export Excel</span>
             </button>
           )}
           {!isEmbeddedInMultiHead && onPrint && (
@@ -921,9 +922,10 @@ export const HeadExpenditureStatementView: React.FC<HeadExpenditureStatementView
                   ? 'bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-200'
                   : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800'
               }`}
+              title="Download structured Excel workbook (.xlsx) with formulas"
             >
-              <Download className="w-3.5 h-3.5 text-blue-500" />
-              <span>Export CSV (All Selected Heads)</span>
+              <Download className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Export Excel (All Selected Heads)</span>
             </button>
             <button
               onClick={onPrint}

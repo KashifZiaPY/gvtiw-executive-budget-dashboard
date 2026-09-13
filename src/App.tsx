@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { DashboardResponse, CategoryType } from './types';
 import { exportToCSV } from './lib/formatters';
+import { exportBudgetMatrixExcel } from './lib/excelExportEngine';
 import { Header } from './components/Header';
 import { CategoryDeck } from './components/CategoryDeck';
 import { HeadWiseTable } from './components/HeadWiseTable';
@@ -253,23 +254,32 @@ export default function App() {
     return () => clearInterval(timer);
   }, [autoSyncInterval, fetchDashboardData]);
 
-  // Export CSV Handler
-  const handleExportCSV = () => {
+  // Export Excel / CSV Handler
+  const handleExportCSV = async () => {
     if (!data) return;
-    const csvRows = data.accounts.map((acc, index) => ({
-      'Sr.#': index + 1,
-      'Head Code': acc.code,
-      'Account Head Description': acc.head,
-      Category: acc.category,
-      'Opening Budget (PKR)': acc.opening,
-      'Reappropriation (PKR)': acc.reappr,
-      'Receipts (PKR)': acc.receipts,
-      'Payments (PKR)': acc.payments,
-      'Net Balance (PKR)': acc.balance,
-      'Burn Rate %': (acc.burnRate * 100).toFixed(1) + '%',
-      'Last Activity': acc.lastActivity,
-    }));
-    exportToCSV(`GVTIW_Budget_Position_${new Date().toISOString().split('T')[0]}.csv`, csvRows);
+    try {
+      await exportBudgetMatrixExcel(
+        data.accounts,
+        data.financialYear || '2026-2027',
+        `GVTIW_Budget_Position_${new Date().toISOString().split('T')[0]}.xlsx`
+      );
+    } catch (err) {
+      console.error('Error exporting budget matrix to Excel, falling back to CSV:', err);
+      const csvRows = data.accounts.map((acc, index) => ({
+        'Sr.#': index + 1,
+        'Head Code': acc.code,
+        'Account Head Description': acc.head,
+        Category: acc.category,
+        'Opening Budget (PKR)': acc.opening,
+        'Reappropriation (PKR)': acc.reappr,
+        'Receipts (PKR)': acc.receipts,
+        'Payments (PKR)': acc.payments,
+        'Net Balance (PKR)': acc.balance,
+        'Burn Rate %': (acc.burnRate * 100).toFixed(1) + '%',
+        'Last Activity': acc.lastActivity,
+      }));
+      exportToCSV(`GVTIW_Budget_Position_${new Date().toISOString().split('T')[0]}.csv`, csvRows);
+    }
   };
 
   if (loading && !data) {

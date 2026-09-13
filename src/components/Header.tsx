@@ -177,10 +177,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <button
                   onClick={onExportCSV}
                   className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
-                  title="Download full head-wise statement as CSV"
+                  title="Download full 38-head budget position matrix as styled Excel (.xlsx)"
                 >
-                  <Download className="w-3 h-3 text-blue-400" />
-                  <span>Export CSV</span>
+                  <Download className="w-3 h-3 text-emerald-400" />
+                  <span>Export Excel</span>
                 </button>
 
                 <button
