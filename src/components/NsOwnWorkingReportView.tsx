@@ -11,6 +11,8 @@ import {
   Calendar,
   Check,
   CheckSquare,
+  Square,
+  RotateCcw,
   X,
   ChevronDown,
   Filter,
@@ -133,7 +135,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
-  const suggestionItemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const suggestionItemRefs = useRef<(HTMLElement | null)[]>([]);
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'ACTIVE' | 'SUBTOTALS'>('ALL');
   
   // Monthly filter and Custom Date Range
@@ -482,42 +484,143 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
     };
   };
 
-  // Toggle account multi-selection
-  const handleToggleSelectAccount = (code: string) => {
-    setSelectedCodes((prev) =>
-      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+  // Check if a specific head is selected (Excel/Sheets model: if selectedCodes is empty, all are selected by default)
+  const isHeadSelected = (keyId: string) => {
+    if (selectedCodes.length === 0) return true;
+    if (selectedCodes.includes('__NONE__')) return false;
+    return selectedCodes.includes(keyId);
+  };
+
+  // Active selected count
+  const activeSelectedCount = useMemo(() => {
+    if (selectedCodes.length === 0) return availableAccounts.length;
+    if (selectedCodes.includes('__NONE__')) return 0;
+    return selectedCodes.length;
+  }, [selectedCodes, availableAccounts.length]);
+
+  // Is filter currently active (i.e. not all heads selected)
+  const isFilterActive = useMemo(() => {
+    if (selectedCodes.length === 0) return false;
+    if (selectedCodes.includes('__NONE__')) return true;
+    return selectedCodes.length < availableAccounts.length;
+  }, [selectedCodes, availableAccounts.length]);
+
+  // Excluded accounts list (heads not selected)
+  const excludedAccounts = useMemo(() => {
+    if (selectedCodes.length === 0) return [];
+    if (selectedCodes.includes('__NONE__')) return availableAccounts;
+    const selectedSet = new Set(selectedCodes);
+    return availableAccounts.filter(
+      (acc) => !selectedSet.has(acc.code) && !selectedSet.has(acc.particulars)
     );
+  }, [selectedCodes, availableAccounts]);
+
+  // Selected accounts objects list
+  const selectedAccountObjects = useMemo(() => {
+    if (selectedCodes.length === 0) return availableAccounts;
+    if (selectedCodes.includes('__NONE__')) return [];
+    const selectedSet = new Set(selectedCodes);
+    return availableAccounts.filter(
+      (acc) => selectedSet.has(acc.code) || selectedSet.has(acc.particulars)
+    );
+  }, [selectedCodes, availableAccounts]);
+
+  // Toggle account selection in Excel / Google Sheets fashion:
+  // E.g. If all are currently active and user unchecks one, we populate all except that one!
+  const handleToggleSelectAccount = (keyId: string) => {
+    if (selectedCodes.length === 0) {
+      // All heads were active. Unchecking this keyId leaves all other heads selected.
+      const allKeys = availableAccounts.map((a) => a.code || a.particulars);
+      setSelectedCodes(allKeys.filter((k) => k !== keyId));
+    } else if (selectedCodes.includes('__NONE__')) {
+      // None were active. Checking this keyId selects only this one.
+      setSelectedCodes([keyId]);
+    } else {
+      const isSelected = selectedCodes.includes(keyId);
+      if (isSelected) {
+        const next = selectedCodes.filter((c) => c !== keyId);
+        setSelectedCodes(next.length === 0 ? ['__NONE__'] : next);
+      } else {
+        const next = [...selectedCodes, keyId];
+        if (next.length >= availableAccounts.length) {
+          setSelectedCodes([]); // All selected -> reset to clean default
+        } else {
+          setSelectedCodes(next);
+        }
+      }
+    }
   };
 
-  const handleRemoveSelectedCode = (code: string) => {
-    setSelectedCodes((prev) => prev.filter((c) => c !== code));
+  // Re-include an excluded account
+  const handleReIncludeAccount = (keyId: string) => {
+    if (selectedCodes.length === 0) return;
+    if (selectedCodes.includes('__NONE__')) {
+      setSelectedCodes([keyId]);
+      return;
+    }
+    const next = [...selectedCodes, keyId];
+    if (next.length >= availableAccounts.length) {
+      setSelectedCodes([]);
+    } else {
+      setSelectedCodes(next);
+    }
   };
 
-  const handleClearAllSelections = () => {
+  // Remove / Exclude a selected account
+  const handleExcludeAccount = (keyId: string) => {
+    handleToggleSelectAccount(keyId);
+  };
+
+  // Select Only This Head (1-click quick filter)
+  const handleSelectOnly = (keyId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedCodes([keyId]);
+  };
+
+  // Select All (Google Sheets / Excel Style)
+  const handleSelectAll = () => {
+    if (searchQuery.trim()) {
+      // Check all items matching current search query
+      const queryKeys = searchSuggestions.map((a) => a.code || a.particulars);
+      const current = selectedCodes.includes('__NONE__')
+        ? []
+        : selectedCodes.length === 0
+        ? availableAccounts.map((a) => a.code || a.particulars)
+        : selectedCodes;
+      const union = Array.from(new Set([...current, ...queryKeys]));
+      if (union.length >= availableAccounts.length) {
+        setSelectedCodes([]);
+      } else {
+        setSelectedCodes(union);
+      }
+    } else {
+      setSelectedCodes([]); // All 73 accounts selected
+    }
+  };
+
+  // Clear / Deselect All (Google Sheets / Excel Style)
+  const handleClearAll = () => {
+    if (searchQuery.trim()) {
+      // Uncheck all items matching current search query
+      const queryKeys = new Set(searchSuggestions.map((a) => a.code || a.particulars));
+      const current =
+        selectedCodes.length === 0
+          ? availableAccounts.map((a) => a.code || a.particulars)
+          : selectedCodes.includes('__NONE__')
+          ? []
+          : selectedCodes;
+      const next = current.filter((k) => !queryKeys.has(k));
+      setSelectedCodes(next.length === 0 ? ['__NONE__'] : next);
+    } else {
+      setSelectedCodes(['__NONE__']); // Deselect all (0 selected)
+    }
+  };
+
+  // Reset to All
+  const handleResetToAll = () => {
     setSelectedCodes([]);
     setSearchQuery('');
     setHighlightedIndex(-1);
-  };
-
-  // Check if all current search suggestions are selected
-  const isAllSuggestionsSelected = useMemo(() => {
-    if (searchSuggestions.length === 0) return false;
-    return searchSuggestions.every((acc) => {
-      const keyId = acc.code || acc.particulars;
-      return selectedCodes.includes(keyId);
-    });
-  }, [searchSuggestions, selectedCodes]);
-
-  // Select or Deselect All currently suggested accounts
-  const handleSelectAll = () => {
-    if (searchSuggestions.length === 0) return;
-    const keys = searchSuggestions.map((acc) => acc.code || acc.particulars);
-    if (isAllSuggestionsSelected) {
-      const toRemove = new Set(keys);
-      setSelectedCodes((prev) => prev.filter((c) => !toRemove.has(c)));
-    } else {
-      setSelectedCodes((prev) => Array.from(new Set([...prev, ...keys])));
-    }
   };
 
   // Scroll suggestion item smoothly into view
@@ -1564,7 +1667,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
           </div>
         </div>
 
-        {/* Row B: Search Autocomplete & Multi-Selection Box */}
+        {/* Row B: Excel / Google Sheets Filter Search & Multi-Selection Box */}
         <div ref={searchContainerRef} className="relative">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
@@ -1593,157 +1696,293 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
                     setSearchQuery('');
                     setHighlightedIndex(-1);
                   }}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs p-1"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs p-1 cursor-pointer"
+                  title="Clear search input"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            {/* Select All / Deselect All Option */}
+            {/* Google Sheets / Excel Filter Menu Toggle Button */}
             <button
               type="button"
-              onClick={handleSelectAll}
-              title={isAllSuggestionsSelected ? 'Deselect all accounts' : 'Select all accounts in list'}
-              className="h-9 px-3 rounded-xl border text-xs font-semibold text-[#0b2545] dark:text-indigo-300 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs"
+              onClick={() => setShowSuggestions((prev) => !prev)}
+              title="Open Excel / Google Sheets style filter checklist"
+              className={`h-9 px-3 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs ${
+                isFilterActive
+                  ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700'
+                  : 'bg-white dark:bg-slate-800 text-[#0b2545] dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+              }`}
             >
-              <CheckSquare className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span>{isAllSuggestionsSelected ? 'Deselect All' : `Select All (${searchSuggestions.length})`}</span>
+              <Filter className={`w-3.5 h-3.5 ${isFilterActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500'}`} />
+              <span>
+                {isFilterActive
+                  ? `Filtered (${activeSelectedCount}/${availableAccounts.length})`
+                  : `Filter Heads (${availableAccounts.length})`}
+              </span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${showSuggestions ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* Show selection count if any */}
-            {selectedCodes.length > 0 && (
+            {/* Reset / Show All Button when filter is active */}
+            {isFilterActive && (
               <button
                 type="button"
-                onClick={handleClearAllSelections}
-                className="h-9 px-3 rounded-xl border text-xs font-semibold text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 cursor-pointer shrink-0"
+                onClick={handleResetToAll}
+                className="h-9 px-3 rounded-xl border text-xs font-semibold text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 hover:bg-rose-100 dark:hover:bg-rose-900/40 cursor-pointer shrink-0 flex items-center gap-1"
+                title="Reset filter and show all available heads"
               >
-                Clear Selection ({selectedCodes.length})
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset All ({availableAccounts.length})</span>
               </button>
             )}
           </div>
 
-          {/* Autocomplete Dropdown Panel - Fetches ALL available accounts with keyboard navigation & Select All */}
-          {showSuggestions && searchSuggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 z-30 mt-1.5 max-h-80 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl p-1.5 table-scrollbar-always-visible">
-              <div className="px-2.5 py-1.5 text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-slate-400 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 mb-1 sticky top-0 bg-white dark:bg-slate-900 z-10">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
-                  <span>Available Accounts ({searchSuggestions.length})</span>
-                  <button
-                    type="button"
-                    onClick={handleSelectAll}
-                    className="ml-1 px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900 cursor-pointer transition-colors"
-                  >
-                    {isAllSuggestionsSelected ? 'Deselect All' : `Select All (${searchSuggestions.length})`}
-                  </button>
+          {/* Google Sheets / Excel Filter Dropdown Checklist Panel */}
+          {showSuggestions && (
+            <div className="absolute top-full left-0 right-0 z-30 mt-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+              {/* Sticky Top Filter Control Bar (Google Sheets / Excel Style) */}
+              <div className="p-2.5 bg-slate-50/90 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700 backdrop-blur-xs">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
+                    <Filter className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                    <span>Filter Heads by Value</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                      {activeSelectedCount} of {availableAccounts.length} selected
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowSuggestions(false)}
+                      className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-0.5 rounded hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                      title="Close (Esc)"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                  <span className="hidden sm:inline bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">
-                    ↑↓ Navigate • Enter Select
+
+                {/* Google Sheets / Excel Style Action Links: Select All | Clear */}
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleSelectAll}
+                      className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      <CheckSquare className="w-3.5 h-3.5" />
+                      <span>Select all {searchQuery ? `matches (${searchSuggestions.length})` : ''}</span>
+                    </button>
+                    <span className="text-slate-300 dark:text-slate-600">|</span>
+                    <button
+                      type="button"
+                      onClick={handleClearAll}
+                      className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      <Square className="w-3.5 h-3.5" />
+                      <span>Clear {searchQuery ? 'matches' : ''}</span>
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-slate-400 hidden sm:inline">
+                    ↑↓ navigate • Enter toggle
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowSuggestions(false)}
-                    className="px-2 py-0.5 rounded font-bold hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
-                    title="Close dropdown (Esc)"
-                  >
-                    Close ✕
-                  </button>
                 </div>
               </div>
-              <div className="space-y-0.5">
-                {searchSuggestions.map((acc, index) => {
-                  const keyId = acc.code || acc.particulars;
-                  const isSelected = selectedCodes.includes(keyId);
-                  const isHighlighted = index === highlightedIndex;
-                  return (
-                    <button
-                      key={`${acc.rowIndex}-${keyId}`}
-                      ref={(el) => {
-                        suggestionItemRefs.current[index] = el;
-                      }}
-                      type="button"
-                      onMouseEnter={() => setHighlightedIndex(index)}
-                      onClick={() => handleToggleSelectAccount(keyId)}
-                      className={`w-full flex items-center justify-between p-2 rounded-lg text-left text-xs transition-colors cursor-pointer ${
-                        isSelected
-                          ? darkMode
-                            ? 'bg-indigo-950/60 text-white border border-indigo-500/40'
-                            : 'bg-indigo-50 text-indigo-950 border border-indigo-200 font-semibold'
-                          : isHighlighted
-                          ? darkMode
-                            ? 'bg-slate-800 text-white ring-1 ring-indigo-500'
-                            : 'bg-slate-100 text-slate-950 ring-1 ring-indigo-500'
-                          : darkMode
-                          ? 'hover:bg-slate-800 text-slate-200 hover:text-white'
-                          : 'hover:bg-slate-100 text-slate-800 hover:text-slate-950'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div
-                          className={`w-4 h-4 rounded flex items-center justify-center border shrink-0 ${
-                            isSelected
-                              ? 'bg-indigo-600 border-indigo-600 text-white'
-                              : isHighlighted
-                              ? 'border-indigo-500'
-                              : 'border-slate-300 dark:border-slate-600'
-                          }`}
-                        >
-                          {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                        </div>
-                        <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 shrink-0">
-                          {acc.code || 'HEAD'}
-                        </span>
-                        <span className="truncate text-slate-700 dark:text-slate-300 font-medium">
-                          {acc.particulars}
-                        </span>
-                        {isHighlighted && (
-                          <span className="text-[9px] font-mono text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-100 dark:bg-indigo-900/60 px-1 py-0.2 rounded shrink-0">
-                            Enter ↵
+
+              {/* Scrollable Checklist Area (Smooth Scrolling like Google Sheets / Excel) */}
+              <div className="max-h-72 overflow-y-auto p-1.5 space-y-0.5 table-scrollbar-always-visible">
+                {searchSuggestions.length === 0 ? (
+                  <div className="py-6 text-center text-xs text-slate-400 dark:text-slate-500">
+                    No account head matching "{searchQuery}"
+                  </div>
+                ) : (
+                  searchSuggestions.map((acc, index) => {
+                    const keyId = acc.code || acc.particulars;
+                    const isSelected = isHeadSelected(keyId);
+                    const isHighlighted = index === highlightedIndex;
+                    return (
+                      <div
+                        key={`${acc.rowIndex}-${keyId}`}
+                        ref={(el) => {
+                          suggestionItemRefs.current[index] = el;
+                        }}
+                        onMouseEnter={() => setHighlightedIndex(index)}
+                        onClick={() => handleToggleSelectAccount(keyId)}
+                        className={`group w-full flex items-center justify-between p-2 rounded-lg text-left text-xs transition-colors cursor-pointer select-none ${
+                          isSelected
+                            ? darkMode
+                              ? 'bg-slate-800/80 text-white hover:bg-slate-800 border border-indigo-900/40'
+                              : 'bg-indigo-50/70 text-slate-900 hover:bg-indigo-100/70 border border-indigo-100'
+                            : darkMode
+                            ? 'hover:bg-slate-800/50 text-slate-400 hover:text-slate-200'
+                            : 'hover:bg-slate-100/80 text-slate-500 hover:text-slate-800'
+                        } ${isHighlighted ? (darkMode ? 'ring-1 ring-indigo-500 bg-slate-800' : 'ring-1 ring-indigo-500 bg-indigo-50') : ''}`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          {/* Custom Checkbox styled like Excel / Sheets */}
+                          <div
+                            className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 ${
+                              isSelected
+                                ? 'bg-indigo-600 border-indigo-600 text-white'
+                                : 'border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
+                            }`}
+                          >
+                            {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+                          </div>
+
+                          {/* Code Pill */}
+                          <span
+                            className={`font-mono text-xs font-bold shrink-0 ${
+                              isSelected
+                                ? 'text-indigo-700 dark:text-indigo-400'
+                                : 'text-slate-500 dark:text-slate-500'
+                            }`}
+                          >
+                            {acc.code || 'HEAD'}
                           </span>
-                        )}
+
+                          {/* Particulars Text */}
+                          <span
+                            className={`truncate text-xs ${
+                              isSelected
+                                ? 'font-semibold text-slate-800 dark:text-slate-100'
+                                : 'text-slate-500 dark:text-slate-400 line-through opacity-75'
+                            }`}
+                          >
+                            {acc.particulars}
+                          </span>
+                        </div>
+
+                        {/* Right side: Quick "Only" button & Financial figures */}
+                        <div className="flex items-center gap-2 shrink-0 pl-2">
+                          <button
+                            type="button"
+                            onClick={(e) => handleSelectOnly(keyId, e)}
+                            title={`Select ONLY ${acc.code || acc.particulars}`}
+                            className="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 transition-opacity cursor-pointer"
+                          >
+                            Only
+                          </button>
+                          <div className="text-right font-mono text-[10px] text-slate-400 dark:text-slate-500">
+                            <span>Bud: {acc.totalBudget || acc.originalBudget || '-'}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-right font-mono text-[11px] shrink-0 pl-2">
-                        <span className="text-slate-400 dark:text-slate-500 mr-2">
-                          Budget: {acc.totalBudget || acc.originalBudget || '-'}
-                        </span>
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">
-                          Exp: {acc.totExp || '-'}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Sticky Footer with Status and Done Button */}
+              <div className="p-2 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                  {isFilterActive
+                    ? `${activeSelectedCount} of ${availableAccounts.length} heads included in calculations`
+                    : 'All 73 heads included'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowSuggestions(false)}
+                  className="px-3 py-1 rounded-lg bg-[#0b2545] hover:bg-[#133966] text-white font-bold text-xs shadow-xs cursor-pointer"
+                >
+                  Apply & Close
+                </button>
               </div>
             </div>
           )}
 
-          {/* Selected Account Badges / Chips */}
-          {selectedCodes.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap pt-1.5">
-              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                Selected Accounts ({selectedCodes.length}):
-              </span>
-              {selectedCodes.map((code) => {
-                const acc = availableAccounts.find((a) => a.code === code || a.particulars === code);
-                return (
-                  <span
-                    key={code}
-                    className="inline-flex items-center gap-1 pl-2 pr-1.5 py-0.5 rounded-md text-xs font-mono font-medium bg-[#0b2545] text-white shadow-2xs"
-                  >
-                    <span>{code}</span>
-                    {acc && <span className="text-[10px] font-sans opacity-90 truncate max-w-[120px]">({acc.particulars})</span>}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSelectedCode(code)}
-                      className="hover:bg-white/20 rounded p-0.5 cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
+          {/* Compact Active Filter Summary Strip (Replaces the massive wrapping pills!) */}
+          {isFilterActive && (
+            <div className="flex items-center justify-between gap-2 p-2 mt-2 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-xs">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <Filter className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="font-bold text-indigo-950 dark:text-indigo-200 shrink-0 text-xs">
+                  Filter Active ({activeSelectedCount}/{availableAccounts.length} Heads):
+                </span>
+
+                {/* Excluded heads quick view (if 1 to 5 heads are excluded) */}
+                {excludedAccounts.length > 0 && excludedAccounts.length <= 5 && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap flex-nowrap scrollbar-none py-0.5">
+                    <span className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold shrink-0">
+                      Excluded ({excludedAccounts.length}):
+                    </span>
+                    {excludedAccounts.map((acc) => {
+                      const keyId = acc.code || acc.particulars;
+                      return (
+                        <span
+                          key={keyId}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono bg-rose-100 dark:bg-rose-950/70 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-900 shrink-0"
+                        >
+                          <span className="font-bold">{acc.code || 'HEAD'}</span>
+                          <span className="max-w-[110px] truncate text-[10px] opacity-80">({acc.particulars})</span>
+                          <button
+                            type="button"
+                            onClick={() => handleReIncludeAccount(keyId)}
+                            className="hover:bg-rose-200 dark:hover:bg-rose-900 rounded p-0.5 cursor-pointer"
+                            title="Re-include this head"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Selected heads quick view (if only 1 to 3 heads selected) */}
+                {activeSelectedCount <= 3 && activeSelectedCount > 0 && (
+                  <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap flex-nowrap scrollbar-none py-0.5">
+                    <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold shrink-0">
+                      Included ({activeSelectedCount}):
+                    </span>
+                    {selectedAccountObjects.map((acc) => {
+                      const keyId = acc.code || acc.particulars;
+                      return (
+                        <span
+                          key={keyId}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono bg-indigo-100 dark:bg-indigo-950/70 text-indigo-900 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 shrink-0"
+                        >
+                          <span className="font-bold">{acc.code || 'HEAD'}</span>
+                          <span className="max-w-[110px] truncate text-[10px] opacity-80">({acc.particulars})</span>
+                          <button
+                            type="button"
+                            onClick={() => handleExcludeAccount(keyId)}
+                            className="hover:bg-indigo-200 dark:hover:bg-indigo-900 rounded p-0.5 cursor-pointer"
+                            title="Exclude this head"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* If more than 5 excluded and more than 3 selected */}
+                {excludedAccounts.length > 5 && activeSelectedCount > 3 && (
+                  <span className="text-[11px] text-slate-600 dark:text-slate-400 truncate">
+                    {excludedAccounts.length} heads excluded from report calculations
                   </span>
-                );
-              })}
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowSuggestions(true)}
+                  className="px-2 py-1 rounded text-xs font-bold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 cursor-pointer"
+                >
+                  Edit Filter
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetToAll}
+                  className="px-2 py-1 rounded text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 cursor-pointer"
+                >
+                  Reset (Show All)
+                </button>
+              </div>
             </div>
           )}
         </div>
