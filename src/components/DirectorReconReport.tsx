@@ -18,6 +18,7 @@ import {
   CreditCard,
   Scale,
   FileText,
+  Sparkles,
 } from 'lucide-react';
 import {
   BankAccountKey,
@@ -58,6 +59,7 @@ import {
 } from '../data/directorReconData';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { PinLockScreen } from './PinLockScreen';
+import { AiReconciliationDifferenceModal } from './AiReconciliationDifferenceModal';
 
 export interface DirectorReconReportProps {
   initialAccountKey?: BankAccountKey;
@@ -1544,6 +1546,28 @@ export function DirectorReconciliationReport({
   const totalManualChequesAmount = useMemo(() => {
     return manualCheques.reduce((sum, c) => sum + parseNumericAmount(c.amount), 0);
   }, [manualCheques]);
+
+  // AI Difference Analyzer Modal State
+  const [isAiDiffModalOpen, setIsAiDiffModalOpen] = useState(false);
+
+  // Apply matched cheques into the unpresented cheques list
+  const handleApplyAiCheques = (newCheques: ManualUnpresentedCheque[], mode: 'APPEND' | 'REPLACE') => {
+    setManualCheques((prev) => {
+      if (mode === 'REPLACE') {
+        return newCheques;
+      }
+      // In APPEND mode, prevent duplicate cheque numbers
+      const existingNos = new Set(
+        prev
+          .map((p) => (p.chequeNo || '').trim().toLowerCase())
+          .filter((n) => n && n !== '—' && n !== '0')
+      );
+      const toAppend = newCheques.filter(
+        (c) => !c.chequeNo || !existingNos.has(c.chequeNo.trim().toLowerCase())
+      );
+      return [...prev, ...toAppend];
+    });
+  };
 
   const handleAddManualChequeRow = () => {
     if (!isEffectiveUnlocked) {
@@ -3125,24 +3149,35 @@ export function DirectorReconciliationReport({
                     </span>
                   )}
                 </div>
-                {isEffectiveUnlocked ? (
+                <div className="flex items-center gap-1.5">
                   <button
-                    onClick={handleAddManualChequeRow}
-                    className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                    type="button"
+                    onClick={() => setIsAiDiffModalOpen(true)}
+                    className="px-2.5 py-1 rounded-lg bg-linear-to-r from-purple-700 to-indigo-700 hover:from-purple-600 hover:to-indigo-600 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                    title="Find cheques totaling or near the reconciliation difference"
                   >
-                    <Plus className="w-3 h-3" />
-                    <span>Add Row</span>
+                    <Sparkles className="w-3 h-3 text-cyan-200" />
+                    <span>AI Match Difference</span>
                   </button>
-                ) : (
-                  <button
-                    onClick={handleRequestUnlock}
-                    className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
-                    title="Unlock with Admin PIN to add or edit cheques"
-                  >
-                    <Lock className="w-3 h-3" />
-                    <span>Unlock to Edit</span>
-                  </button>
-                )}
+                  {isEffectiveUnlocked ? (
+                    <button
+                      onClick={handleAddManualChequeRow}
+                      className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Row</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleRequestUnlock}
+                      className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                      title="Unlock with Admin PIN to add or edit cheques"
+                    >
+                      <Lock className="w-3 h-3" />
+                      <span>Unlock to Edit</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="overflow-x-auto max-h-56 overflow-y-auto rounded-lg border border-slate-300 dark:border-slate-700">
@@ -3533,6 +3568,26 @@ export function DirectorReconciliationReport({
           </div>
         </div>
       )}
+
+      {/* AI Reconciliation Difference Analyzer Modal */}
+      <AiReconciliationDifferenceModal
+        isOpen={isAiDiffModalOpen}
+        onClose={() => setIsAiDiffModalOpen(false)}
+        bankName={activeAccountConfig.bankName}
+        accountNo={activeAccountConfig.defaultAccountNo}
+        bankStatementBalance={bankStatementBalance}
+        cashBookBalance={calculatedCashBookBalance}
+        differenceAmount={differenceAmount}
+        unexplainedVariance={Math.abs(Math.abs(differenceAmount) - totalManualChequesAmount)}
+        periodFromIso={fromDate}
+        periodToIso={toDate}
+        selectedAccountKey={selectedAccountKey}
+        liveVouchers={liveVouchers}
+        cashBookState={liveCashBookStates[selectedAccountKey]}
+        existingManualCheques={manualCheques}
+        onApplyCheques={handleApplyAiCheques}
+        formatAmount={formatAmount}
+      />
     </div>
   );
 }
