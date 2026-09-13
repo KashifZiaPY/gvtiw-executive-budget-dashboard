@@ -1442,11 +1442,4 @@ function runDailyBackupTrigger_() {
 function dailyVoucherBackup() {
   executeFullSystemBackup_(null, true);
 }
-
-function restoreSystemFromBackup(point) {
-  return {
-    success: true,
-    message: 'System Backup Snapshot verified in Drive folder (' + BACKUP_FOLDER_ID + '). All 7 files are intact.'
-  };
-}
 `;
