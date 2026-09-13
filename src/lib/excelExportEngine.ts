@@ -83,6 +83,7 @@ export interface ReconRowExportItem {
 export interface UnpresentedChequeExportItem {
   chequeNo: string;
   date: string;
+  paidTo?: string;
   accountHead?: string;
   amount: number;
   description: string;
@@ -353,14 +354,14 @@ export async function exportReconciliationExcel(p: ReconExportParams): Promise<v
   unpresTitle.alignment = { horizontal: 'center', vertical: 'middle' };
   ws.getRow(unpresHeaderRow).height = 22;
 
-  const unpresCols = ['Cheque No.', 'Cheque Date', 'Account Head', 'Description / Payee', 'Amount (Rs.)'];
+  const unpresCols = ['Cheque No.', 'Cheque Date', 'Paid To / By', 'Account Head', 'Description / Remarks', 'Amount (Rs.)'];
   const unpresColRow = ws.getRow(unpresHeaderRow + 1);
   unpresColRow.getCell(2).value = unpresCols[0];
   unpresColRow.getCell(3).value = unpresCols[1];
   unpresColRow.getCell(4).value = unpresCols[2];
   unpresColRow.getCell(5).value = unpresCols[3];
-  ws.mergeCells(`E${unpresHeaderRow + 1}:F${unpresHeaderRow + 1}`);
-  unpresColRow.getCell(7).value = unpresCols[4];
+  unpresColRow.getCell(6).value = unpresCols[4];
+  unpresColRow.getCell(7).value = unpresCols[5];
 
   [2, 3, 4, 5, 6, 7].forEach((col) => {
     const c = unpresColRow.getCell(col);
@@ -386,9 +387,9 @@ export async function exportReconciliationExcel(p: ReconExportParams): Promise<v
       const row = ws.getRow(cRowIdx);
       row.getCell(2).value = chq.chequeNo;
       row.getCell(3).value = chq.date;
-      row.getCell(4).value = chq.accountHead || '—';
-      ws.mergeCells(`E${cRowIdx}:F${cRowIdx}`);
-      row.getCell(5).value = chq.description || '—';
+      row.getCell(4).value = chq.paidTo || '—';
+      row.getCell(5).value = chq.accountHead || '—';
+      row.getCell(6).value = chq.description || '—';
       row.getCell(7).value = chq.amount;
       row.getCell(7).numFmt = NUM_FORMAT_CURRENCY;
 
@@ -1249,4 +1250,391 @@ export async function exportHeadExpenditureExcel(p: HeadExpenditureExportParams)
 
   autoFitColumns(ws);
   await downloadWorkbook(wb, p.filename);
+}
+
+// ============================================================================
+// 8. NON-SALARY & OWN FUNDS MONTHLY EXPENDITURE STATEMENT (.xlsx)
+// ============================================================================
+export interface NsOwnWorkingExcelRow {
+  sr: string;
+  code: string;
+  particulars: string;
+  originalBudget: string | number;
+  recJul: string | number;
+  recAug: string | number;
+  recSep: string | number;
+  totReceipts: string | number;
+  totalBudget: string | number;
+  expJul: string | number;
+  expAug: string | number;
+  expSep: string | number;
+  totExp: string | number;
+  balance: string | number;
+  isMainHeader?: boolean;
+  isCategoryHeader?: boolean;
+  isSubtotal?: boolean;
+  isGrandTotal?: boolean;
+}
+
+export interface NsOwnWorkingExcelParams {
+  instituteName?: string;
+  financialYear?: string;
+  periodDescription?: string;
+  reportGenTime?: string;
+  lastRefreshed?: string;
+  rows: NsOwnWorkingExcelRow[];
+  filename?: string;
+}
+
+function parseRowAmount(val: string | number | undefined): number {
+  if (val === undefined || val === null) return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  const str = String(val).trim();
+  if (!str || str === '-' || str === '') return 0;
+  const clean = str.replace(/,/g, '').trim();
+  if (clean.startsWith('(') && clean.endsWith(')')) {
+    const num = parseFloat(clean.slice(1, -1));
+    return isNaN(num) ? 0 : -num;
+  }
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
+}
+
+export async function exportNsOwnWorkingExcel(p: NsOwnWorkingExcelParams): Promise<void> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'GVTIW eCashBook & Financial System (MKZ)';
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet('NS & Own Working', {
+    views: [{ showGridLines: true }],
+  });
+
+  const institute = p.instituteName || 'GOVERNMENT VOCATIONAL TRAINING INSTITUTE FOR WOMEN (GVTIW), SAMANABAD, FAISALABAD';
+  const fy = p.financialYear || '2026-27';
+  const period = p.periodDescription || 'All Months (FY 2026-27: 01-Jul-2026 to 30-Jun-2027)';
+  const genTime = p.reportGenTime || new Date().toLocaleString();
+  const synced = p.lastRefreshed || genTime;
+
+  // 1. Header Banner
+  ws.mergeCells('A1:N1');
+  const t1 = ws.getCell('A1');
+  t1.value = 'TECHNICAL EDUCATION & VOCATIONAL TRAINING AUTHORITY (TEVTA)';
+  t1.font = { name: 'Arial', size: 12, bold: true, color: { argb: COLORS.WHITE } };
+  t1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0B2545' } };
+  t1.alignment = { horizontal: 'center', vertical: 'middle' };
+  ws.getRow(1).height = 24;
+
+  ws.mergeCells('A2:N2');
+  const t2 = ws.getCell('A2');
+  t2.value = institute.toUpperCase();
+  t2.font = { name: 'Arial', size: 11, bold: true, color: { argb: COLORS.WHITE } };
+  t2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0B2545' } };
+  t2.alignment = { horizontal: 'center', vertical: 'middle' };
+  ws.getRow(2).height = 22;
+
+  ws.mergeCells('A3:N3');
+  const t3 = ws.getCell('A3');
+  t3.value = `NON-SALARY & OWN FUNDS MONTHLY EXPENDITURE STATEMENT — FINANCIAL YEAR ${fy}`;
+  t3.font = { name: 'Arial', size: 11, bold: true, color: { argb: '1E3A8A' } };
+  t3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EEF2FF' } };
+  t3.alignment = { horizontal: 'center', vertical: 'middle' };
+  ws.getRow(3).height = 22;
+
+  ws.mergeCells('A4:N4');
+  const t4 = ws.getCell('A4');
+  t4.value = `Period: ${period}  |  Synced: ${synced}  |  Report Generated: ${genTime}`;
+  t4.font = { name: 'Arial', size: 8.5, italic: true, color: { argb: '475569' } };
+  t4.alignment = { horizontal: 'center', vertical: 'middle' };
+  ws.getRow(4).height = 18;
+
+  // Blank line
+  ws.getRow(5).height = 8;
+
+  // Table Column Headers
+  const colHeaders = [
+    'Sr. No',
+    'Account Code',
+    'Particulars / Description',
+    'Opening Budget',
+    'Receipts (Jul)',
+    'Receipts (Aug)',
+    'Receipts (Sep)',
+    'Total Receipts',
+    'Total Net Budget',
+    'Exp (Jul)',
+    'Exp (Aug)',
+    'Exp (Sep)',
+    'Total Expenditure',
+    'Net Balance (Surplus/Deficit)',
+  ];
+
+  const headerRow = ws.getRow(6);
+  headerRow.height = 28;
+  colHeaders.forEach((h, idx) => {
+    const cell = headerRow.getCell(idx + 1);
+    cell.value = h;
+    cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: COLORS.WHITE } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '0F172A' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    cell.border = {
+      top: { style: 'medium', color: { argb: '0F172A' } },
+      bottom: { style: 'medium', color: { argb: '0F172A' } },
+      left: { style: 'thin', color: { argb: '475569' } },
+      right: { style: 'thin', color: { argb: '475569' } },
+    };
+  });
+
+  const NUM_FMT_FINANCIAL = '#,##0;[Red](#,##0);"-"';
+
+  let currRow = 7;
+
+  for (const r of p.rows) {
+    const isCat = r.isCategoryHeader || r.isMainHeader || (!r.code && !r.originalBudget && r.particulars && !r.isSubtotal && !r.isGrandTotal);
+    const isSub = r.isSubtotal && !r.isGrandTotal;
+    const isGrand = r.isGrandTotal;
+
+    const row = ws.getRow(currRow);
+
+    if (isCat) {
+      ws.mergeCells(`A${currRow}:N${currRow}`);
+      const c = row.getCell(1);
+      c.value = r.sr ? `${r.sr}  ${r.particulars}` : r.particulars;
+      c.font = { name: 'Arial', size: 10, bold: true, color: { argb: '0F172A' } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+      c.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+      row.height = 22;
+
+      for (let i = 1; i <= 14; i++) {
+        row.getCell(i).border = {
+          top: { style: 'thin', color: { argb: COLORS.BORDER_GRAY } },
+          bottom: { style: 'thin', color: { argb: COLORS.BORDER_GRAY } },
+          left: { style: 'thin', color: { argb: COLORS.BORDER_GRAY } },
+          right: { style: 'thin', color: { argb: COLORS.BORDER_GRAY } },
+        };
+      }
+      currRow++;
+      continue;
+    }
+
+    if (isSub) {
+      ws.mergeCells(`A${currRow}:C${currRow}`);
+      const c1 = row.getCell(1);
+      c1.value = r.particulars.toUpperCase();
+      c1.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: '0F172A' } };
+      c1.alignment = { horizontal: 'right', vertical: 'middle' };
+
+      const origVal = parseRowAmount(r.originalBudget);
+      const rJul = parseRowAmount(r.recJul);
+      const rAug = parseRowAmount(r.recAug);
+      const rSep = parseRowAmount(r.recSep);
+      const eJul = parseRowAmount(r.expJul);
+      const eAug = parseRowAmount(r.expAug);
+      const eSep = parseRowAmount(r.expSep);
+
+      row.getCell(4).value = origVal;
+      row.getCell(5).value = rJul;
+      row.getCell(6).value = rAug;
+      row.getCell(7).value = rSep;
+      row.getCell(8).value = { formula: `SUM(E${currRow}:G${currRow})` };
+      row.getCell(9).value = { formula: `D${currRow}+H${currRow}` };
+      row.getCell(10).value = eJul;
+      row.getCell(11).value = eAug;
+      row.getCell(12).value = eSep;
+      row.getCell(13).value = { formula: `SUM(J${currRow}:L${currRow})` };
+      row.getCell(14).value = { formula: `I${currRow}-M${currRow}` };
+
+      row.height = 22;
+
+      for (let i = 1; i <= 14; i++) {
+        const cell = row.getCell(i);
+        cell.font = { name: 'Arial', size: 9.5, bold: true };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '94A3B8' } },
+          bottom: { style: 'thin', color: { argb: '94A3B8' } },
+          left: { style: 'thin', color: { argb: COLORS.BORDER_GRAY } },
+          right: { style: 'thin', color: { argb: COLORS.BORDER_GRAY } },
+        };
+        if (i >= 4) {
+          cell.numFmt = NUM_FMT_FINANCIAL;
+          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        }
+      }
+      currRow++;
+      continue;
+    }
+
+    if (isGrand) {
+      ws.mergeCells(`A${currRow}:C${currRow}`);
+      const c1 = row.getCell(1);
+      c1.value = r.particulars.toUpperCase();
+      c1.font = { name: 'Arial', size: 10, bold: true, color: { argb: '1E1B4B' } };
+      c1.alignment = { horizontal: 'right', vertical: 'middle' };
+
+      const origVal = parseRowAmount(r.originalBudget);
+      const rJul = parseRowAmount(r.recJul);
+      const rAug = parseRowAmount(r.recAug);
+      const rSep = parseRowAmount(r.recSep);
+      const eJul = parseRowAmount(r.expJul);
+      const eAug = parseRowAmount(r.expAug);
+      const eSep = parseRowAmount(r.expSep);
+
+      row.getCell(4).value = origVal;
+      row.getCell(5).value = rJul;
+      row.getCell(6).value = rAug;
+      row.getCell(7).value = rSep;
+      row.getCell(8).value = { formula: `SUM(E${currRow}:G${currRow})` };
+      row.getCell(9).value = { formula: `D${currRow}+H${currRow}` };
+      row.getCell(10).value = eJul;
+      row.getCell(11).value = eAug;
+      row.getCell(12).value = eSep;
+      row.getCell(13).value = { formula: `SUM(J${currRow}:L${currRow})` };
+      row.getCell(14).value = { formula: `I${currRow}-M${currRow}` };
+
+      row.height = 24;
+
+      for (let i = 1; i <= 14; i++) {
+        const cell = row.getCell(i);
+        cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: '1E1B4B' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E0E7FF' } };
+        cell.border = {
+          top: { style: 'thin', color: { argb: '4338CA' } },
+          bottom: { style: 'double', color: { argb: '1E1B4B' } },
+          left: { style: 'thin', color: { argb: '818CF8' } },
+          right: { style: 'thin', color: { argb: '818CF8' } },
+        };
+        if (i >= 4) {
+          cell.numFmt = NUM_FMT_FINANCIAL;
+          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+        }
+      }
+      currRow++;
+      continue;
+    }
+
+    // Normal item row
+    row.height = 20;
+    row.getCell(1).value = r.sr;
+    row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+
+    row.getCell(2).value = r.code;
+    row.getCell(2).numFmt = '@';
+    row.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
+    row.getCell(2).font = { name: 'Arial', size: 8.5, bold: true };
+
+    row.getCell(3).value = r.particulars;
+    row.getCell(3).alignment = { horizontal: 'left', vertical: 'middle' };
+
+    row.getCell(4).value = parseRowAmount(r.originalBudget);
+    row.getCell(5).value = parseRowAmount(r.recJul);
+    row.getCell(6).value = parseRowAmount(r.recAug);
+    row.getCell(7).value = parseRowAmount(r.recSep);
+    row.getCell(8).value = { formula: `SUM(E${currRow}:G${currRow})` };
+    row.getCell(9).value = { formula: `D${currRow}+H${currRow}` };
+    row.getCell(10).value = parseRowAmount(r.expJul);
+    row.getCell(11).value = parseRowAmount(r.expAug);
+    row.getCell(12).value = parseRowAmount(r.expSep);
+    row.getCell(13).value = { formula: `SUM(J${currRow}:L${currRow})` };
+    row.getCell(14).value = { formula: `I${currRow}-M${currRow}` };
+
+    for (let i = 1; i <= 14; i++) {
+      const cell = row.getCell(i);
+      cell.border = {
+        top: { style: 'thin', color: { argb: COLORS.BORDER_GRAY } },
+        bottom: { style: 'thin', color: { argb: COLORS.BORDER_GRAY } },
+        left: { style: 'thin', color: { argb: COLORS.BORDER_GRAY } },
+        right: { style: 'thin', color: { argb: COLORS.BORDER_GRAY } },
+      };
+      if (i >= 4) {
+        cell.numFmt = NUM_FMT_FINANCIAL;
+        cell.alignment = { horizontal: 'right', vertical: 'middle' };
+      }
+    }
+
+    // Light color cues on key computed columns
+    row.getCell(8).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0F9FF' } }; // Total Rec
+    row.getCell(9).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'EEF2FF' } }; // Net Budget
+    row.getCell(13).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEFCE8' } }; // Total Exp
+    row.getCell(14).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F0FDF4' } }; // Balance
+
+    row.getCell(8).font = { name: 'Arial', size: 8.5, bold: true, color: { argb: '0369A1' } };
+    row.getCell(9).font = { name: 'Arial', size: 8.5, bold: true, color: { argb: '4338CA' } };
+    row.getCell(13).font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'A16207' } };
+    row.getCell(14).font = { name: 'Arial', size: 8.5, bold: true, color: { argb: '15803D' } };
+
+    currRow++;
+  }
+
+  // 4. Signatories Block
+  currRow += 2;
+
+  // Signature lines
+  ws.mergeCells(`B${currRow}:D${currRow}`);
+  ws.getCell(`B${currRow}`).value = '______________________________________';
+  ws.getCell(`B${currRow}`).alignment = { horizontal: 'center' };
+
+  ws.mergeCells(`F${currRow}:H${currRow}`);
+  ws.getCell(`F${currRow}`).value = '______________________________________';
+  ws.getCell(`F${currRow}`).alignment = { horizontal: 'center' };
+
+  ws.mergeCells(`K${currRow}:M${currRow}`);
+  ws.getCell(`K${currRow}`).value = '______________________________________';
+  ws.getCell(`K${currRow}`).alignment = { horizontal: 'center' };
+
+  currRow++;
+  ws.mergeCells(`B${currRow}:D${currRow}`);
+  const s1 = ws.getCell(`B${currRow}`);
+  s1.value = 'KASHIF ZIA';
+  s1.font = { name: 'Arial', size: 10, bold: true, color: { argb: '0F172A' } };
+  s1.alignment = { horizontal: 'center' };
+
+  ws.mergeCells(`F${currRow}:H${currRow}`);
+  const s2 = ws.getCell(`F${currRow}`);
+  s2.value = 'ANEEBA JAMIL';
+  s2.font = { name: 'Arial', size: 10, bold: true, color: { argb: '0F172A' } };
+  s2.alignment = { horizontal: 'center' };
+
+  ws.mergeCells(`K${currRow}:M${currRow}`);
+  const s3 = ws.getCell(`K${currRow}`);
+  s3.value = 'SHAZIA KHADIM';
+  s3.font = { name: 'Arial', size: 10, bold: true, color: { argb: '0F172A' } };
+  s3.alignment = { horizontal: 'center' };
+
+  currRow++;
+  ws.mergeCells(`B${currRow}:D${currRow}`);
+  const st1 = ws.getCell(`B${currRow}`);
+  st1.value = 'Prepared by: ACCOUNTANT';
+  st1.font = { name: 'Arial', size: 8.5, color: { argb: '475569' } };
+  st1.alignment = { horizontal: 'center' };
+
+  ws.mergeCells(`F${currRow}:H${currRow}`);
+  const st2 = ws.getCell(`F${currRow}`);
+  st2.value = 'Checked by: CO. SIGNATUREE';
+  st2.font = { name: 'Arial', size: 8.5, color: { argb: '475569' } };
+  st2.alignment = { horizontal: 'center' };
+
+  ws.mergeCells(`K${currRow}:M${currRow}`);
+  const st3 = ws.getCell(`K${currRow}`);
+  st3.value = 'Approved by: ACTING PRINCIPAL / DDO';
+  st3.font = { name: 'Arial', size: 8.5, color: { argb: '475569' } };
+  st3.alignment = { horizontal: 'center' };
+
+  currRow += 2;
+  ws.mergeCells(`A${currRow}:N${currRow}`);
+  const footerCell = ws.getCell(`A${currRow}`);
+  footerCell.value = `eCashBook & Voucher System Generated by MKZ for Institute 33028 • Report Generated on: ${genTime}`;
+  footerCell.font = { name: 'Arial', size: 8, italic: true, color: { argb: '64748B' } };
+  footerCell.alignment = { horizontal: 'center' };
+
+  autoFitColumns(ws, 11, 42);
+  // Column specifics
+  ws.getColumn(1).width = 7;   // Sr
+  ws.getColumn(2).width = 14;  // Code
+  ws.getColumn(3).width = 38;  // Particulars
+  for (let c = 4; c <= 14; c++) {
+    ws.getColumn(c).width = 14;
+  }
+
+  const outFilename = p.filename || `NS_OWN_FY${fy}_Statement_${new Date().toISOString().slice(0, 10)}.xlsx`;
+  await downloadWorkbook(wb, outFilename);
 }

@@ -288,6 +288,7 @@ export interface ManualUnpresentedCheque {
   id: string;
   chequeNo: string;
   date: string;
+  paidTo?: string;
   accountHead?: string;
   amount: number;
   description: string;
@@ -1520,6 +1521,7 @@ export function DirectorReconciliationReport({
       id: `UC-${Date.now()}`,
       chequeNo: '',
       date: asOnDate || '31-08-2026',
+      paidTo: '',
       accountHead: defaultHead,
       amount: 0,
       description: '',
@@ -1534,7 +1536,42 @@ export function DirectorReconciliationReport({
   ) => {
     if (!isEffectiveUnlocked) return;
     setManualCheques((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+      prev.map((item) => {
+        if (item.id !== id) return item;
+
+        const updated: ManualUnpresentedCheque = { ...item, [field]: value };
+
+        // Intelligent Auto-Fill from Cash Book Payments when Cheque No is entered
+        if (field === 'chequeNo' && typeof value === 'string') {
+          const cleanInput = value.trim().toLowerCase();
+          if (cleanInput.length >= 2) {
+            const matchedPayment = allAccountPayments.find(
+              (p) =>
+                p.chequeNo &&
+                p.chequeNo.trim().toLowerCase() === cleanInput
+            );
+            if (matchedPayment) {
+              if (matchedPayment.paidTo && (!item.paidTo || item.paidTo.trim() === '')) {
+                updated.paidTo = matchedPayment.paidTo;
+              }
+              if (matchedPayment.chequeDate && (!item.date || item.date === '31-08-2026' || item.date === asOnDate)) {
+                updated.date = matchedPayment.chequeDate;
+              }
+              if (matchedPayment.headOfAccount && (!item.accountHead || item.accountHead === '—' || item.accountHead === '')) {
+                updated.accountHead = matchedPayment.headOfAccount;
+              }
+              if (matchedPayment.netAmountPaid > 0 && (!item.amount || item.amount === 0)) {
+                updated.amount = matchedPayment.netAmountPaid;
+              }
+              if (matchedPayment.remarks && (!item.description || item.description.trim() === '')) {
+                updated.description = matchedPayment.remarks;
+              }
+            }
+          }
+        }
+
+        return updated;
+      })
     );
   };
 
@@ -1621,6 +1658,7 @@ export function DirectorReconciliationReport({
           manualCheques: manualCheques.map((c) => ({
             chequeNo: c.chequeNo,
             date: c.date,
+            paidTo: c.paidTo,
             accountHead: c.accountHead,
             amount: parseNumericAmount(c.amount),
             description: c.description,
@@ -1720,13 +1758,13 @@ export function DirectorReconciliationReport({
     lines.push(`"Difference if Any (Unpresented Cheques / Uncredited Cheques):","${differenceAmount.toFixed(2)}"`);
     lines.push('');
     lines.push('"DETAILS OF UNPRESENTED CHEQUE / UNCREDITED CHEQUES"');
-    lines.push('"Cheque No","Date","Account Head","Amount (Rs.)","Description"');
+    lines.push('"Cheque No","Date","Paid To / By","Account Head","Amount (Rs.)","Description"');
     manualCheques.forEach((c) => {
       lines.push(
-        `"${c.chequeNo}","${c.date}","${(c.accountHead || '').replace(/"/g, '""')}","${parseNumericAmount(c.amount).toFixed(2)}","${c.description.replace(/"/g, '""')}"`
+        `"${c.chequeNo}","${c.date}","${(c.paidTo || '').replace(/"/g, '""')}","${(c.accountHead || '').replace(/"/g, '""')}","${parseNumericAmount(c.amount).toFixed(2)}","${c.description.replace(/"/g, '""')}"`
       );
     });
-    lines.push(`"Total","","","${totalManualChequesAmount.toFixed(2)}",""`);
+    lines.push(`"Total","","","","${totalManualChequesAmount.toFixed(2)}",""`);
     lines.push('');
     lines.push('"e-CashBook & Voucher System developed by MKZ for institute 33028"');
 
@@ -2105,6 +2143,7 @@ export function DirectorReconciliationReport({
         <tr>
           <td class="center">${c.chequeNo}</td>
           <td class="center">${c.date}</td>
+          <td>${c.paidTo || '—'}</td>
           <td>${c.accountHead || '—'}</td>
           <td class="num">${formatAmount(parseNumericAmount(c.amount), 2)}</td>
           <td>${c.description}</td>
@@ -2221,19 +2260,20 @@ export function DirectorReconciliationReport({
             <table class="register-table" style="font-size: 8pt; margin-top: 0;">
               <thead>
                 <tr>
-                  <th style="width: 65px;">Cheque No</th>
-                  <th style="width: 60px;">Date</th>
-                  <th style="width: 110px;">Account Head</th>
-                  <th style="width: 75px;">Amount</th>
+                  <th style="width: 60px;">Cheque No</th>
+                  <th style="width: 55px;">Date</th>
+                  <th style="width: 85px;">Paid To / By</th>
+                  <th style="width: 100px;">Account Head</th>
+                  <th style="width: 70px;">Amount</th>
                   <th>Description</th>
                 </tr>
               </thead>
               <tbody>
-                ${chequesRowsHtml || '<tr><td colspan="5" class="center">No unpresented cheques recorded</td></tr>'}
+                ${chequesRowsHtml || '<tr><td colspan="6" class="center">No unpresented cheques recorded</td></tr>'}
               </tbody>
               <tfoot>
                 <tr>
-                  <td colspan="3" style="text-align: right;">Total:</td>
+                  <td colspan="4" style="text-align: right;">Total:</td>
                   <td class="num">Rs. ${formatAmount(totalManualChequesAmount, 2)}</td>
                   <td></td>
                 </tr>
@@ -2926,17 +2966,18 @@ export function DirectorReconciliationReport({
                   <thead>
                     <tr className="bg-[#0b2545] text-white border-b border-slate-600 font-bold text-[10px] uppercase">
                       <th className="p-1.5 text-center w-20">Cheque No</th>
-                      <th className="p-1.5 text-center w-36 min-w-[130px]">Date</th>
-                      <th className="p-1.5 text-left min-w-[170px]">Account Head</th>
+                      <th className="p-1.5 text-center w-32 min-w-[120px]">Date</th>
+                      <th className="p-1.5 text-left min-w-[140px]">Paid To / By</th>
+                      <th className="p-1.5 text-left min-w-[150px]">Account Head</th>
                       <th className="p-1.5 text-right w-24">Amount</th>
-                      <th className="p-1.5 text-left min-w-[140px]">Description</th>
+                      <th className="p-1.5 text-left min-w-[130px]">Description</th>
                       <th className="p-1.5 text-center w-8"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {manualCheques.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-4 text-center text-slate-500 text-[11px] bg-white dark:bg-slate-900/40">
+                        <td colSpan={7} className="p-4 text-center text-slate-500 text-[11px] bg-white dark:bg-slate-900/40">
                           No manual unpresented cheques entered. {isEffectiveUnlocked ? 'Click "Add Row" to enter items.' : 'Unlock to enter items.'}
                         </td>
                       </tr>
@@ -2967,12 +3008,27 @@ export function DirectorReconciliationReport({
                                 const ddmmyyyy = val ? isoToDdmmyyyy(val) : '';
                                 handleUpdateManualCheque(c.id, 'date', ddmmyyyy);
                               }}
-                              className={`w-full min-w-[125px] px-2 py-0.5 rounded border text-xs font-mono text-center text-slate-900 dark:text-white font-medium ${
+                              className={`w-full min-w-[115px] px-2 py-0.5 rounded border text-xs font-mono text-center text-slate-900 dark:text-white font-medium ${
                                 !isEffectiveUnlocked
                                   ? 'bg-slate-100 dark:bg-slate-850 border-slate-200 dark:border-slate-800 opacity-80 cursor-not-allowed'
                                   : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 focus:border-cyan-500'
                               }`}
                               title="Select Cheque Date"
+                            />
+                          </td>
+                          <td className="p-1">
+                            <input
+                              type="text"
+                              disabled={!isEffectiveUnlocked}
+                              value={c.paidTo || ''}
+                              onChange={(e) => handleUpdateManualCheque(c.id, 'paidTo', e.target.value)}
+                              placeholder="Paid To / Payee"
+                              className={`w-full px-1.5 py-0.5 rounded border text-xs font-medium text-slate-900 dark:text-white ${
+                                !isEffectiveUnlocked
+                                  ? 'bg-slate-100 dark:bg-slate-850 border-slate-200 dark:border-slate-800 opacity-80 cursor-not-allowed'
+                                  : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-700 focus:border-cyan-500'
+                              }`}
+                              title="Payee / Paid To (Auto-filled from Cash Book if cheque matched)"
                             />
                           </td>
                           <td className="p-1">
@@ -3009,7 +3065,7 @@ export function DirectorReconciliationReport({
                               disabled={!isEffectiveUnlocked}
                               value={c.description}
                               onChange={(e) => handleUpdateManualCheque(c.id, 'description', e.target.value)}
-                              placeholder="Payee / Narration"
+                              placeholder="Narration / Purpose"
                               className={`w-full px-1.5 py-0.5 rounded border text-xs text-slate-900 dark:text-white ${
                                 !isEffectiveUnlocked
                                   ? 'bg-slate-100 dark:bg-slate-850 border-slate-200 dark:border-slate-800 opacity-80 cursor-not-allowed'
@@ -3034,7 +3090,7 @@ export function DirectorReconciliationReport({
                   </tbody>
                   <tfoot>
                     <tr className="bg-[#0b2545] text-white font-bold text-[11px]">
-                      <td colSpan={3} className="p-1.5 text-right uppercase">
+                      <td colSpan={4} className="p-1.5 text-right uppercase">
                         Total Unpresented:
                       </td>
                       <td className="p-1.5 text-right font-mono text-emerald-300">

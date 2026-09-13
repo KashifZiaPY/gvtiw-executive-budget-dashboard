@@ -19,6 +19,7 @@ import {
   Layers,
   CheckCircle2,
 } from 'lucide-react';
+import { exportNsOwnWorkingExcel } from '../lib/excelExportEngine';
 import rawData from '../data/nsOwnReportData.json';
 
 export interface NsOwnReportProps {
@@ -1306,7 +1307,45 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
     }
   };
 
-  // Export CSV with metadata, generation timestamp, signatories, and owner statement
+  // Export Excel (.xlsx) with formulas, styled headers, and signatories
+  const handleExportExcel = async () => {
+    try {
+      const reportGenTime = formatTimestamp(new Date());
+      await exportNsOwnWorkingExcel({
+        instituteName: 'Government Vocational Training Institute for Women (GVTIW) Samanabad, Faisalabad',
+        financialYear: '2026-27',
+        periodDescription: activePeriodDescription,
+        reportGenTime,
+        lastRefreshed,
+        rows: displayRows.map((r) => ({
+          sr: r.sr,
+          code: r.code,
+          particulars: r.particulars,
+          originalBudget: r.originalBudget,
+          recJul: r.recJul,
+          recAug: r.recAug,
+          recSep: r.recSep,
+          totReceipts: r.totReceipts,
+          totalBudget: r.totalBudget,
+          expJul: r.expJul,
+          expAug: r.expAug,
+          expSep: r.expSep,
+          totExp: r.totExp,
+          balance: r.balance,
+          isMainHeader: r.isMainHeader,
+          isCategoryHeader: r.isCategoryHeader,
+          isSubtotal: r.isSubtotal,
+          isGrandTotal: r.isGrandTotal,
+        })),
+        filename: `NS_OWN_FY26-27_Statement_${new Date().toISOString().slice(0, 10)}.xlsx`,
+      });
+    } catch (err) {
+      console.error('Error generating Excel report, falling back to CSV:', err);
+      handleExportCSV();
+    }
+  };
+
+  // Export CSV fallback with metadata, generation timestamp, signatories, and owner statement
   const handleExportCSV = () => {
     const reportGenTime = formatTimestamp(new Date());
     const csvLines = [
@@ -1422,19 +1461,19 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
             <span>{isRefreshing ? 'Syncing...' : 'Live Sync'}</span>
           </button>
 
-          {/* Export CSV */}
+          {/* Export Excel */}
           <button
             type="button"
-            onClick={handleExportCSV}
+            onClick={handleExportExcel}
             className={`h-9 px-3.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
               darkMode
-                ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border-slate-700'
-                : 'bg-slate-50 hover:bg-slate-100 text-slate-800 hover:text-slate-950 border-slate-200'
+                ? 'bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-white border-slate-700'
+                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 hover:text-emerald-950 border-emerald-200'
             }`}
-            title="Export filtered records to CSV"
+            title="Download structured Excel workbook (.xlsx) with live formulas"
           >
-            <Download className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
-            <span>Export CSV</span>
+            <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Export Excel</span>
           </button>
 
           {/* Print Report */}
