@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { MasterVoucher, INITIAL_MASTER_VOUCHERS } from '../data/cashBookData';
+import { MasterVoucher, INITIAL_MASTER_VOUCHERS, INSTITUTIONAL_BANK_ACCOUNTS } from '../data/cashBookData';
 import { Printer, X, FileText, Layers } from 'lucide-react';
 import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO, DEFAULT_GOP_LOGO, INITIAL_ACCOUNTS } from '../data/initialData';
 import { formatPakistaniDate } from '../lib/formatters';
@@ -259,6 +259,35 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
   }, [voucher]);
 
   const balanceBudgetAfterPayment = Math.max(0, budgetAvailableAmount - voucher.billAmountGross);
+
+  // Dynamic Bank & Account Resolution
+  const resolvedBankInfo = useMemo(() => {
+    const rawBank = (voucher.bankAccount || '').toLowerCase();
+    let matchedMeta = Object.values(INSTITUTIONAL_BANK_ACCOUNTS).find(
+      (b) =>
+        b.fullName.toLowerCase() === rawBank ||
+        rawBank.includes(b.code.toLowerCase()) ||
+        rawBank.includes(b.shortName.toLowerCase())
+    );
+
+    if (rawBank.includes('aaa') || rawBank.includes('assan') || rawBank.includes('assignment')) {
+      matchedMeta = INSTITUTIONAL_BANK_ACCOUNTS.AA;
+    } else if (rawBank.includes('pupil')) {
+      matchedMeta = INSTITUTIONAL_BANK_ACCOUNTS.PF;
+    } else if (rawBank.includes('short') || rawBank.includes('course')) {
+      matchedMeta = INSTITUTIONAL_BANK_ACCOUNTS.SC;
+    } else if (rawBank.includes('securit')) {
+      matchedMeta = INSTITUTIONAL_BANK_ACCOUNTS.SEC;
+    } else if (rawBank.includes('fee')) {
+      matchedMeta = INSTITUTIONAL_BANK_ACCOUNTS.FC;
+    } else if (rawBank.includes('non') || rawBank.includes('salary')) {
+      matchedMeta = INSTITUTIONAL_BANK_ACCOUNTS.NS;
+    }
+
+    const bankName = matchedMeta ? matchedMeta.bankName : 'The Bank of Punjab';
+    const accountNo = matchedMeta ? matchedMeta.accountNo : '6580006795600014';
+    return { bankName, accountNo };
+  }, [voucher.bankAccount]);
 
   // Official Institutional Header: TEVTA Logo (Left), Title (Center), Govt of Punjab Logo (Right)
   const renderOfficialHeader = (title: string, subheader: string) => (
@@ -536,7 +565,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
             BANK NAME &amp; ACCOUNT TITLE :
           </span>
           <span className="col-span-7 font-bold text-slate-900 py-0.5 px-2.5">
-            The Bank of Punjab • {voucher.bankAccount}
+            {resolvedBankInfo.bankName} • {voucher.bankAccount}
           </span>
         </div>
         <div className="grid grid-cols-12">
@@ -544,7 +573,7 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
             BANK ACCOUNT NO. :
           </span>
           <span className="col-span-7 font-mono font-bold text-slate-900 py-0.5 px-2.5">
-            6580006795600014
+            {resolvedBankInfo.accountNo}
           </span>
         </div>
         <div className="grid grid-cols-12">
