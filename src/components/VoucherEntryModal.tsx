@@ -22,6 +22,7 @@ import {
   isNsBankAccount,
   isAaaBankAccount,
   HEAD_ALLOCATIONS,
+  computeDynamicBankReceipts,
 } from '../lib/headBalanceService';
 import {
   X,
@@ -429,33 +430,9 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
     const opening = selectedBankObj.openingBal || 0;
 
     // Dynamically calculate total receipts for this bank from authentic receipts + user custom receipts
-    let dynamicReceipts = 0;
-
-    // A. Check authentic base receipts
-    const authenticList = AUTHENTIC_CASHBOOK_RECEIPTS[bankKey] || [];
-    const authenticTotal = authenticList.reduce((sum, r) => sum + (r.amount || 0), 0);
-
-    // B. Check user-recorded custom receipts
-    const userReceipts = getStoredUserReceipts().filter((r) => r.bankKey === bankKey);
-    const userTotal = userReceipts.reduce((sum, r) => sum + (r.receipts || 0), 0);
-
-    // C. Check active cash book state if cached
-    let cachedStateTotal = 0;
-    try {
-      const cached = localStorage.getItem('gvtiw_live_cashbook_states_v3');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed?.[bankKey]?.totalReceipts) {
-          cachedStateTotal = parsed[bankKey].totalReceipts;
-        }
-      }
-    } catch {}
-
-    dynamicReceipts = Math.max(
+    const dynamicReceipts = Math.max(
       selectedBankObj.receiptsBal || 0,
-      authenticTotal + userTotal,
-      cachedStateTotal,
-      INITIAL_CASHBOOK_STATES[bankKey]?.totalReceipts || 0
+      computeDynamicBankReceipts(bankKey)
     );
 
     const totalPaymentsInThisBank = existingVouchers

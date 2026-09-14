@@ -13,7 +13,13 @@
  *   Preserves standard baseline allocations without alteration.
  */
 
-import { MasterVoucher } from '../data/cashBookData';
+import {
+  MasterVoucher,
+  BankAccountKey,
+  AUTHENTIC_CASHBOOK_RECEIPTS,
+  INITIAL_CASHBOOK_STATES,
+  INSTITUTIONAL_BANK_ACCOUNTS,
+} from '../data/cashBookData';
 import { INITIAL_ACCOUNTS } from '../data/initialData';
 
 export interface HeadBudgetRow {
@@ -366,7 +372,7 @@ export async function syncLiveNsAndAaaHeadBudgets(): Promise<{
 
 // Map of Allocated Budget Ceilings for every Account Head (derived directly from INITIAL_ACCOUNTS)
 export const HEAD_ALLOCATIONS: Record<string, number> = {
-  'A00000PF-PUPIL FUND': 408588.0 + 77717.0, // 486,305.00
+  'A00000PF-PUPIL FUND': 408588.0 + 81937.0, // 490,525.00
   'A00000SC-SHORT COURSE': 251567.0,
   'A00000SS-STUDENT SEC.': 357709.0,
   'A00000TFC-TEVTA FEE COL.': 77717.0,
@@ -433,6 +439,57 @@ function matchOtherBankAccount(vAcct: string, targetAcct: string): boolean {
       .replace(/\s+/g, ' ')
       .trim();
   return clean(vAcct) === clean(targetAcct);
+}
+
+export function resolveDedicatedBankKey(accountHead?: string, bankAccount?: string): BankAccountKey | null {
+  const h = (accountHead || '').toUpperCase();
+  const b = (bankAccount || '').toLowerCase();
+  if (h.includes('A00000PF') || h.includes('PUPIL') || b.includes('pupil') || b.includes('(pf')) return 'PF';
+  if (h.includes('A00000SC') || h.includes('SHORT COURSE') || b.includes('short course') || b.includes('(sc')) return 'SC';
+  if (h.includes('A00000SS') || h.includes('STUDENT SEC') || b.includes('securities') || b.includes('(sec')) return 'SEC';
+  if (h.includes('A00000TFC') || h.includes('TEVTA FEE') || b.includes('fee collection') || b.includes('(fc')) return 'FC';
+  return null;
+}
+
+export function computeDynamicBankReceipts(bankKey: BankAccountKey): number {
+  // A. Check authentic base receipts
+  const authenticList = AUTHENTIC_CASHBOOK_RECEIPTS[bankKey] || [];
+  const authenticTotal = authenticList.reduce((sum, r) => sum + (r.amount || 0), 0);
+
+  // B. Check user-recorded custom receipts
+  let userTotal = 0;
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('gvtiw_custom_receipts_v29') : null;
+    if (raw) {
+      const userReceipts = JSON.parse(raw);
+      if (Array.isArray(userReceipts)) {
+        userTotal = userReceipts
+          .filter((r: any) => r.bankKey === bankKey)
+          .reduce((sum: number, r: any) => sum + (Number(r.receipts) || 0), 0);
+      }
+    }
+  } catch {}
+
+  // C. Check active cash book state if cached
+  let cachedStateTotal = 0;
+  try {
+    const cached = typeof localStorage !== 'undefined' ? localStorage.getItem('gvtiw_live_cashbook_states_v3') : null;
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed?.[bankKey]?.totalReceipts) {
+        cachedStateTotal = parsed[bankKey].totalReceipts;
+      }
+    }
+  } catch {}
+
+  const baselineReceipts = bankKey === 'PF' ? 81937 : (INITIAL_CASHBOOK_STATES[bankKey]?.totalReceipts || 0);
+
+  return Math.max(
+    baselineReceipts,
+    authenticTotal + userTotal,
+    cachedStateTotal,
+    INITIAL_CASHBOOK_STATES[bankKey]?.totalReceipts || 0
+  );
 }
 
 /**
@@ -554,7 +611,42 @@ export function computeHeadAvailableBalance(params: {
     };
   }
 
-  // Other Bank Accounts (Pupil Fund, Short Course, Securities, Fee Collection):
+  // Dedicated Bank Accounts (Pupil Funds, Short Course, Securities, Fee Collection):
+  // Dynamically calculate: Opening + Live Dynamic Receipts - Cheques/Payments
+  const dedicatedBankKey = resolveDedicatedBankKey(accountHead, bankAccount);
+
+  if (dedicatedBankKey) {
+    const opening = INSTITUTIONAL_BANK_ACCOUNTS[dedicatedBankKey]?.openingBalance || 0;
+    const dynamicReceipts = computeDynamicBankReceipts(dedicatedBankKey);
+    const allocatedCeiling = opening + dynamicReceipts;
+
+    const headExpenditure = allVouchers
+      .filter((v) => {
+        if (excludeVoucherSrNo !== undefined && v.srNo === excludeVoucherSrNo) return false;
+        if (v.accountHead === accountHead) return true;
+        return matchOtherBankAccount(v.bankAccount, bankAccount);
+      })
+      .reduce((sum, v) => {
+        const paymentAmt = (v.chequeAmountNet || 0) + (v.incomeTaxAmount || 0) + (v.praAmount || 0);
+        return sum + (paymentAmt > 0 ? paymentAmt : (v.billAmountGross || 0));
+      }, 0);
+
+    const availableBalance = allocatedCeiling - headExpenditure;
+
+    return {
+      accountHead,
+      bankAccount,
+      isNs: false,
+      isAaa: false,
+      opening,
+      receipts: dynamicReceipts,
+      allocatedCeiling,
+      headExpenditure,
+      availableBalance,
+    };
+  }
+
+  // Other General Bank Accounts / Heads (Generic fallback):
   // Standard allocation ceiling and matching account expenses
   const allocatedCeiling = defaultCeilings[accountHead] ?? 0;
   const headExpenditure = allVouchers
