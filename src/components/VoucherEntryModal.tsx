@@ -109,8 +109,8 @@ export const BANK_OPTIONS = [
     code: 'AA',
     fullName: 'Payment of AAA For 2026-2027',
     acctNo: 'AAA0000000000000',
-    openingBal: 1460000.0, // District Allocation Ceiling
-    receiptsBal: 0.0,
+    openingBal: 0.0,
+    receiptsBal: 508831.0, // 1st Qtr Budget Allocation Receipts released 11-Aug-2026
   },
 ];
 
