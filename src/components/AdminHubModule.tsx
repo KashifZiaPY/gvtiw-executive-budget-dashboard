@@ -92,6 +92,23 @@ interface AuditLogEntry {
   details: string;
 }
 
+export function formatAdminBackupTime(ts?: string | null): string | null {
+  if (!ts || ts === 'None recorded') return null;
+  try {
+    const d = new Date(ts);
+    if (!isNaN(d.getTime())) {
+      const day = d.getDate();
+      const month = d.toLocaleString('en-US', { month: 'short' });
+      const hours = d.getHours();
+      const minutes = d.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const formattedHour = hours % 12 === 0 ? 12 : hours % 12;
+      return `${day}-${month} ${formattedHour}:${minutes} ${ampm}`;
+    }
+  } catch {}
+  return ts;
+}
+
 export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   darkMode,
   customGvtiwLogo,
@@ -316,23 +333,6 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
   });
   const [isSyncingBackupStatus, setIsSyncingBackupStatus] = useState<boolean>(false);
 
-  const formatBackupTime = (ts?: string | null) => {
-    if (!ts || ts === 'None recorded') return null;
-    try {
-      const d = new Date(ts);
-      if (!isNaN(d.getTime())) {
-        const day = d.getDate();
-        const month = d.toLocaleString('en-US', { month: 'short' });
-        const hours = d.getHours();
-        const minutes = d.getMinutes().toString().padStart(2, '0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        const formattedHour = hours % 12 === 0 ? 12 : hours % 12;
-        return `${day}-${month} ${formattedHour}:${minutes} ${ampm}`;
-      }
-    } catch {}
-    return ts;
-  };
-
   const [backupModalData, setBackupModalData] = useState<{
     status: 'ACTIVE' | 'INACTIVE';
     schedule: string;
@@ -358,7 +358,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       driveFolderUrl:
         'https://drive.google.com/drive/folders/1-Kdti-UAkCDivGgqWTJgki1zGnRKiDOB',
       lastBackupTime: initialLastTs
-        ? formatBackupTime(initialLastTs) || 'Daily Automated 4:00 PM PST Schedule'
+        ? formatAdminBackupTime(initialLastTs) || 'Daily Automated 4:00 PM PST Schedule'
         : 'Daily Automated 4:00 PM PST Schedule',
       liveMessage: initialEnabled
         ? 'Connected to GVTIW Google Drive Archive'
@@ -478,7 +478,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           } catch {}
           setBackupModalData((prev) => ({
             ...prev,
-            lastBackupTime: formatBackupTime(timestamp) || prev.lastBackupTime,
+            lastBackupTime: formatAdminBackupTime(timestamp) || prev.lastBackupTime,
           }));
         }
 
@@ -999,7 +999,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       setLastBackupTimestamp(nowIso);
       setBackupModalData((prev) => ({
         ...prev,
-        lastBackupTime: formatBackupTime(nowIso) || prev.lastBackupTime,
+        lastBackupTime: formatAdminBackupTime(nowIso) || prev.lastBackupTime,
       }));
       fetchServerBackupStatus();
       setPopupModal({
@@ -1153,7 +1153,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         cloudStat?.lastBackupTime && cloudStat.lastBackupTime !== 'None recorded'
           ? cloudStat.lastBackupTime
           : lastBackupTimestamp
-          ? formatBackupTime(lastBackupTimestamp) || 'Recorded'
+          ? formatAdminBackupTime(lastBackupTimestamp) || 'Recorded'
           : 'Ready for 4:00 PM PST Automated Execution',
       liveMessage:
         cloudMessage && !cloudMessage.toLowerCase().includes('unknown')
@@ -2591,14 +2591,14 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
                 : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border-amber-500/30'
             }`}
-            title={lastBackupTimestamp ? `Last Backup: ${formatBackupTime(lastBackupTimestamp)} • Click for details` : 'Click to view detailed backup status report'}
+            title={lastBackupTimestamp ? `Last Backup: ${formatAdminBackupTime(lastBackupTimestamp)} • Click for details` : 'Click to view detailed backup status report'}
           >
             <span className={`w-2 h-2 rounded-full inline-block shrink-0 ${isDailyBackupEnabled ? 'bg-emerald-500 animate-ping' : 'bg-amber-500'}`} />
             <ShieldCheck className={`w-3.5 h-3.5 shrink-0 ${isDailyBackupEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`} />
             <div className="flex flex-col items-start justify-center leading-none text-left">
               <span className="text-[11px] font-bold">Backup: {isDailyBackupEnabled ? 'ACTIVE (4 PM)' : 'DISABLED'}</span>
               <span className="text-[9.5px] font-normal opacity-85 mt-0.5">
-                {lastBackupTimestamp ? `Last: ${formatBackupTime(lastBackupTimestamp)}` : (isDailyBackupEnabled ? 'Last: 4:00 PM Daily' : 'Daily Backup Paused')}
+                {lastBackupTimestamp ? `Last: ${formatAdminBackupTime(lastBackupTimestamp)}` : (isDailyBackupEnabled ? 'Last: 4:00 PM Daily' : 'Daily Backup Paused')}
               </span>
             </div>
           </button>

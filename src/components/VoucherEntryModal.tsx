@@ -219,6 +219,9 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   // Voucher Print Modal State (Direct PAF Popup from Success Dialog)
   const [printVoucherPAF, setPrintVoucherPAF] = useState<MasterVoucher | null>(null);
 
+  // Budget version state for tracking live Google Sheets budget sync updates
+  const [budgetVersion, setBudgetVersion] = useState(0);
+
   // Refs for keyboard scroll into view and outside click detection
   const payeeContainerRef = useRef<HTMLDivElement>(null);
   const headContainerRef = useRef<HTMLDivElement>(null);
@@ -470,8 +473,6 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   //       minus AAA ONLY head expenses => Closing/Available Balance
   // - Other Accounts: Preserves existing baseline allocations without alteration
   // =========================================================================
-  const [budgetVersion, setBudgetVersion] = useState(0);
-
   useEffect(() => {
     syncLiveNsAndAaaHeadBudgets().then(() => {
       setBudgetVersion((v) => v + 1);
