@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { MasterVoucher, INSTITUTIONAL_BANK_ACCOUNTS, BankAccountKey } from '../data/cashBookData';
+import {
+  MasterVoucher,
+  INSTITUTIONAL_BANK_ACCOUNTS,
+  BankAccountKey,
+  AUTHENTIC_CASHBOOK_RECEIPTS,
+  INITIAL_CASHBOOK_STATES,
+} from '../data/cashBookData';
+import { getStoredUserReceipts } from '../lib/apiEngine';
 import { MASTER_PAYEE_LIST, MASTER_ACCOUNT_HEADS, PayeeRecord, filterAccountHeads } from '../data/voucherMasterLists';
 import { INITIAL_ACCOUNTS } from '../data/initialData';
 import { MiniCalculatorPopover } from './MiniCalculatorPopover';
@@ -74,7 +81,7 @@ export const BANK_OPTIONS = [
     fullName: 'Payment of Pupil Funds For 2026-2027',
     acctNo: '6580027832200022',
     openingBal: 408588.0,
-    receiptsBal: 77717.0, // Online transfer collection from student fees
+    receiptsBal: 81937.0, // Online transfer collection + back-dated trainee receipts
   },
   {
     key: 'SC' as BankAccountKey,
@@ -412,16 +419,48 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
 
   // =========================================================================
   // 1. TOP: Dynamic Available Bank Balance Calculation
-  // Opening Balance + Receipts in this Bank - Total Payments in this Bank
+  // Opening Balance + Live Dynamic Receipts in this Bank - Total Payments in this Bank
   // =========================================================================
   const currentBankBalance = useMemo(() => {
+    const bankKey = selectedBankObj.key;
     const opening = selectedBankObj.openingBal || 0;
-    const receipts = selectedBankObj.receiptsBal || 0;
+
+    // Dynamically calculate total receipts for this bank from authentic receipts + user custom receipts
+    let dynamicReceipts = 0;
+
+    // A. Check authentic base receipts
+    const authenticList = AUTHENTIC_CASHBOOK_RECEIPTS[bankKey] || [];
+    const authenticTotal = authenticList.reduce((sum, r) => sum + (r.amount || 0), 0);
+
+    // B. Check user-recorded custom receipts
+    const userReceipts = getStoredUserReceipts().filter((r) => r.bankKey === bankKey);
+    const userTotal = userReceipts.reduce((sum, r) => sum + (r.receipts || 0), 0);
+
+    // C. Check active cash book state if cached
+    let cachedStateTotal = 0;
+    try {
+      const cached = localStorage.getItem('gvtiw_live_cashbook_states_v3');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.[bankKey]?.totalReceipts) {
+          cachedStateTotal = parsed[bankKey].totalReceipts;
+        }
+      }
+    } catch {}
+
+    dynamicReceipts = Math.max(
+      selectedBankObj.receiptsBal || 0,
+      authenticTotal + userTotal,
+      cachedStateTotal,
+      INITIAL_CASHBOOK_STATES[bankKey]?.totalReceipts || 0
+    );
+
     const totalPaymentsInThisBank = existingVouchers
       .filter((v) => v.bankAccount === bankAccount && (!voucherToAmend || v.srNo !== voucherToAmend.srNo))
       .reduce((sum, v) => sum + (v.chequeAmountNet || 0) + (v.incomeTaxAmount || 0) + (v.praAmount || 0), 0);
-    return opening + receipts - totalPaymentsInThisBank;
-  }, [selectedBankObj, bankAccount, existingVouchers, voucherToAmend]);
+
+    return opening + dynamicReceipts - totalPaymentsInThisBank;
+  }, [selectedBankObj, bankAccount, existingVouchers, voucherToAmend, budgetVersion]);
 
   // =========================================================================
   // 2. BOTTOM: Dynamic Available Account Head Balance & FY Expenditure
