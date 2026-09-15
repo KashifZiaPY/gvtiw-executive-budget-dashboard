@@ -2835,12 +2835,11 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
               darkMode ? 'bg-[#0B132B] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
             }`}
           >
-            {/* Dedicated Left-Side Vertical Scroll Container with Sticky Headers */}
+            {/* Vertical Scroll Container with Sticky Headers */}
             <div
-              className="max-h-[660px] overflow-auto voucher-left-scroll-container table-scrollbar-always-visible"
-              style={{ direction: 'rtl' }}
+              className="max-h-[660px] overflow-auto voucher-scroll-container table-scrollbar-always-visible"
             >
-              <table className="w-full min-w-[900px] text-left text-xs border-separate border-spacing-0 voucher-left-scroll-inner" style={{ direction: 'ltr' }}>
+              <table className="w-full min-w-[900px] text-left text-xs border-separate border-spacing-0">
                 <thead className="sticky top-0 z-10 shadow-xs">
                   <tr
                     className={`border-b font-mono font-bold uppercase text-[10px] tracking-wider sticky top-0 z-10 ${

@@ -56,53 +56,62 @@
   background: #3B82F6;
 }
 
-/* Dedicated left-side vertical scrollbar for Voucher Registry & LIFO Ledger */
+/* Dedicated vertical scrollbar for Voucher Registry & LIFO Ledger (Right-side) */
+.voucher-scroll-container,
 .voucher-left-scroll-container {
-  direction: rtl;
+  direction: ltr;
   scrollbar-width: thin;
   scrollbar-color: #3B82F6 rgba(15, 23, 42, 0.15);
 }
 
+.voucher-scroll-container::-webkit-scrollbar,
 .voucher-left-scroll-container::-webkit-scrollbar {
   width: 10px;
   height: 10px;
   display: block !important;
 }
 
+.voucher-scroll-container::-webkit-scrollbar-track,
 .voucher-left-scroll-container::-webkit-scrollbar-track {
   background: rgba(15, 23, 42, 0.08);
   border-radius: 6px;
   margin: 2px 0;
 }
 
+.voucher-scroll-container::-webkit-scrollbar-thumb,
 .voucher-left-scroll-container::-webkit-scrollbar-thumb {
   background: #3B82F6;
   border-radius: 6px;
   border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
+.voucher-scroll-container::-webkit-scrollbar-thumb:hover,
 .voucher-left-scroll-container::-webkit-scrollbar-thumb:hover {
   background: #1D4ED8;
 }
 
+.voucher-scroll-container table,
 .voucher-left-scroll-container table {
   direction: ltr;
   border-collapse: separate !important;
   border-spacing: 0 !important;
 }
 
+.voucher-scroll-container thead,
 .voucher-left-scroll-container thead {
   position: sticky !important;
   top: 0 !important;
   z-index: 10 !important;
 }
 
+.voucher-scroll-container thead tr,
 .voucher-left-scroll-container thead tr {
   position: sticky !important;
   top: 0 !important;
   z-index: 10 !important;
 }
 
+.voucher-scroll-container thead th,
 .voucher-left-scroll-container thead th {
   position: sticky !important;
   top: 0 !important;
