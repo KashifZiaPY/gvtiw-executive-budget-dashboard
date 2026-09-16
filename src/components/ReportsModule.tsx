@@ -15,6 +15,7 @@ import { formatPKR, formatPakistaniDate } from '../lib/formatters';
 import {
   CashBookStatementView,
 } from './CashBookStatementView';
+import { TfcChallanHub } from './TfcChallanHub';
 import {
   HeadExpenditureStatementView,
 } from './HeadExpenditureStatementView';
@@ -94,7 +95,8 @@ type ReportTab =
   | 'AMOUNT'
   | 'PRINT_CENTER'
   | 'FBR'
-  | 'PRA';
+  | 'PRA'
+  | 'TFC_CHALLAN_HUB';
 
 export const ReportsModule: React.FC<ReportsModuleProps> = ({
   darkMode,
@@ -2248,6 +2250,21 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             </div>
             <p className="text-[10px] text-slate-400 mt-0.5">PAF by Sr.#</p>
           </button>
+
+          <button
+            onClick={() => setActiveReportTab('TFC_CHALLAN_HUB')}
+            className={`flex-1 min-w-[175px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+              activeReportTab === 'TFC_CHALLAN_HUB'
+                ? darkMode ? 'bg-teal-900/50 border-teal-400 text-white shadow-md ring-1 ring-teal-400/40' : 'bg-teal-50 border-teal-600 text-teal-950 shadow-md ring-1 ring-teal-500'
+                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 font-bold text-xs">
+              <Building2 className="w-4 h-4 text-teal-400" />
+              <span>BOP Fee Challan Hub</span>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-0.5">TFC Portal &amp; Transfers</p>
+          </button>
         </div>
       </div>
 
@@ -3316,6 +3333,16 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             </button>
           </div>
         </div>
+      )}
+
+      {/* TAB: BOP TFC CHALLAN PORTAL HUB */}
+      {activeReportTab === 'TFC_CHALLAN_HUB' && (
+        <TfcChallanHub
+          darkMode={darkMode}
+          customGvtiwLogo={customGvtiwLogo}
+          customTevtaLogo={customTevtaLogo}
+          customGopLogo={customGopLogo}
+        />
       )}
 
       {/* Payment Approval Form Modal */}

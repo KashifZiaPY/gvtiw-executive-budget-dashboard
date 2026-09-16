@@ -40,8 +40,10 @@ import {
   PlusCircle,
   Trash2,
   X,
+  Building2,
 } from 'lucide-react';
 import { AccountHeadDisplay } from './AccountHeadTag';
+import { TfcChallanHub } from './TfcChallanHub';
 
 interface CashBookModuleProps {
   darkMode: boolean;
@@ -78,6 +80,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
 
   // Custom User Recorded Receipt Modal
   const [showRecordReceiptModal, setShowRecordReceiptModal] = useState(false);
+  const [showTfcHubModal, setShowTfcHubModal] = useState(false);
   const [receiptForm, setReceiptForm] = useState({
     bankKey: activeAccountKey,
     date: '15-Aug-2026',
@@ -614,6 +617,15 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
+            {activeAccountKey === 'FC' && (
+              <button
+                onClick={() => setShowTfcHubModal(true)}
+                className="px-3 py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              >
+                <Building2 className="w-3.5 h-3.5 text-teal-200" />
+                <span>BOP Fee Challan Hub</span>
+              </button>
+            )}
             <button
               onClick={handleExportCSV}
               className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 border border-white/20 shadow-xs transition-all cursor-pointer"
@@ -1239,6 +1251,29 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* BOP Fee Challan Portal Hub Modal */}
+      {showTfcHubModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-xs overflow-y-auto">
+          <div className="w-full max-w-7xl max-h-[92vh] overflow-y-auto rounded-2xl shadow-2xl relative">
+            <div className="sticky top-3 right-3 z-50 flex justify-end pr-3">
+              <button
+                onClick={() => setShowTfcHubModal(false)}
+                className="px-3.5 py-1.5 bg-slate-900/90 text-white hover:bg-rose-600 rounded-full font-bold text-xs border border-white/20 shadow-lg cursor-pointer transition-all"
+              >
+                ✕ Close Hub
+              </button>
+            </div>
+            <TfcChallanHub
+              darkMode={darkMode}
+              customGvtiwLogo={customGvtiwLogo}
+              customTevtaLogo={customTevtaLogo}
+              customGopLogo={customGopLogo}
+              onClose={() => setShowTfcHubModal(false)}
+            />
           </div>
         </div>
       )}
