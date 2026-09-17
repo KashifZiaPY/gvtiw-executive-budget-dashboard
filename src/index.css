@@ -56,6 +56,39 @@
   background: #3B82F6;
 }
 
+/* Dedicated, always-visible horizontal scrollbar for Navigation Tab Bars */
+.nav-tab-scrollbar {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 rgba(148, 163, 184, 0.25);
+}
+
+.nav-tab-scrollbar::-webkit-scrollbar {
+  height: 9px !important;
+  display: block !important;
+}
+
+.nav-tab-scrollbar::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+  margin: 0 4px;
+}
+
+.dark .nav-tab-scrollbar::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.8);
+}
+
+.nav-tab-scrollbar::-webkit-scrollbar-thumb {
+  background: #3b82f6;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+}
+
+.nav-tab-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #2563eb;
+}
+
 /* Dedicated vertical scrollbar for Voucher Registry & LIFO Ledger (Right-side) */
 .voucher-scroll-container,
 .voucher-left-scroll-container {

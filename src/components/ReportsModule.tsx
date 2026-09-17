@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   INITIAL_MASTER_VOUCHERS,
   INITIAL_CASHBOOK_STATES,
@@ -71,6 +71,8 @@ import {
   Landmark,
   Receipt,
   Building2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { AccountHeadDisplay, parseAccountHead } from './AccountHeadTag';
 import { DirectorReconciliationReport } from './DirectorReconReport';
@@ -110,6 +112,14 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   const isAuthUnlocked = Boolean(isUnlocked || internalUnlocked);
   const [showPinModal, setShowPinModal] = useState(false);
   const [activeReportTab, setActiveReportTab] = useState<ReportTab>('DIRECTOR_RECON');
+  const tabBarRef = useRef<HTMLDivElement>(null);
+
+  const scrollTabBar = (direction: 'left' | 'right') => {
+    if (tabBarRef.current) {
+      const scrollDistance = direction === 'left' ? -280 : 280;
+      tabBarRef.current.scrollBy({ left: scrollDistance, behavior: 'smooth' });
+    }
+  };
   const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
     try {
       const cached = localStorage.getItem('gvtiw_live_vouchers_v3');
@@ -2100,170 +2110,204 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       <div className={`p-2 rounded-2xl border ${
         darkMode ? 'bg-[#0B132B] border-slate-700/80' : 'bg-white border-slate-200 shadow-sm'
       }`}>
-        <div className="flex items-center gap-2 overflow-x-auto p-1 scrollbar-none">
+        <div className="relative flex items-center gap-1.5">
+          {/* Scroll Left Button for user convenience */}
           <button
-            onClick={() => setActiveReportTab('DIRECTOR_RECON')}
-            className={`flex-1 min-w-[170px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-              activeReportTab === 'DIRECTOR_RECON'
-                ? darkMode ? 'bg-cyan-900/50 border-cyan-400 text-white shadow-md ring-1 ring-cyan-400/40' : 'bg-cyan-50 border-cyan-600 text-cyan-950 shadow-md ring-1 ring-cyan-500'
-                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            type="button"
+            onClick={() => scrollTabBar('left')}
+            title="Scroll reports left"
+            className={`hidden sm:flex items-center justify-center w-8 h-8 rounded-xl border shadow-xs transition-all cursor-pointer shrink-0 ${
+              darkMode
+                ? 'bg-slate-800/90 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'
+                : 'bg-slate-100 border-slate-300 text-slate-700 hover:text-slate-950 hover:bg-slate-200'
             }`}
           >
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <Building2 className="w-4 h-4 text-cyan-400" />
-              <span>Accounting Data Entry</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">Director's Office Reconciliation &amp; Registers</p>
+            <ChevronLeft className="w-4 h-4" />
           </button>
 
-          <button
-            onClick={() => setActiveReportTab('CASHBOOK')}
-            className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-              activeReportTab === 'CASHBOOK'
-                ? darkMode ? 'bg-blue-900/40 border-blue-400 text-white shadow-md' : 'bg-blue-50 border-blue-600 text-blue-950 shadow-md'
-                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
+          {/* Horizontally scrollable container with always-visible styled scrollbar */}
+          <div
+            ref={tabBarRef}
+            className="flex items-center gap-2 overflow-x-auto p-1 pb-2.5 nav-tab-scrollbar scroll-smooth flex-1"
           >
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <FileSpreadsheet className="w-4 h-4 text-blue-400" />
-              <span>Cashbook Statement</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">Consolidated &amp; Bank-Wise</p>
-          </button>
+            <button
+              onClick={() => setActiveReportTab('DIRECTOR_RECON')}
+              className={`min-w-[185px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                activeReportTab === 'DIRECTOR_RECON'
+                  ? darkMode ? 'bg-cyan-900/50 border-cyan-400 text-white shadow-md ring-1 ring-cyan-400/40' : 'bg-cyan-50 border-cyan-600 text-cyan-950 shadow-md ring-1 ring-cyan-500'
+                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
+                <Building2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                <span>Accounting Data Entry</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">Director's Office Reconciliation &amp; Registers</p>
+            </button>
 
-          <button
-            onClick={() => setActiveReportTab('HEAD')}
-            className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-              activeReportTab === 'HEAD'
-                ? darkMode ? 'bg-indigo-900/40 border-indigo-400 text-white shadow-md' : 'bg-indigo-50 border-indigo-600 text-indigo-950 shadow-md'
-                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <Layers className="w-4 h-4 text-indigo-400" />
-              <span>Head Expenditure</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">By Budget Head</p>
-          </button>
+            <button
+              onClick={() => setActiveReportTab('CASHBOOK')}
+              className={`min-w-[160px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                activeReportTab === 'CASHBOOK'
+                  ? darkMode ? 'bg-blue-900/40 border-blue-400 text-white shadow-md' : 'bg-blue-50 border-blue-600 text-blue-950 shadow-md'
+                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
+                <FileSpreadsheet className="w-4 h-4 text-blue-400 shrink-0" />
+                <span>Cashbook Statement</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">Consolidated &amp; Bank-Wise</p>
+            </button>
 
-          <button
-            onClick={() => setActiveReportTab('NS_OWN_FY26_27')}
-            className={`flex-1 min-w-[175px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-              activeReportTab === 'NS_OWN_FY26_27'
-                ? darkMode ? 'bg-teal-900/40 border-teal-400 text-white shadow-md' : 'bg-teal-50 border-teal-600 text-teal-950 shadow-md'
-                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <FileSpreadsheet className="w-4 h-4 text-teal-400" />
-              <span>NS &amp; OWN Working</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">FY 26-27 (GID: 1689777979)</p>
-          </button>
+            <button
+              onClick={() => setActiveReportTab('HEAD')}
+              className={`min-w-[155px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                activeReportTab === 'HEAD'
+                  ? darkMode ? 'bg-indigo-900/40 border-indigo-400 text-white shadow-md' : 'bg-indigo-50 border-indigo-600 text-indigo-950 shadow-md'
+                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
+                <Layers className="w-4 h-4 text-indigo-400 shrink-0" />
+                <span>Head Expenditure</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">By Budget Head</p>
+            </button>
 
-          <button
-            onClick={() => setActiveReportTab('PAYEE')}
-            className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-              activeReportTab === 'PAYEE'
-                ? darkMode ? 'bg-emerald-900/40 border-emerald-400 text-white shadow-md' : 'bg-emerald-50 border-emerald-600 text-emerald-950 shadow-md'
-                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <Users className="w-4 h-4 text-emerald-400" />
-              <span>Payee Statement</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">Supplier Ledger</p>
-          </button>
+            <button
+              onClick={() => setActiveReportTab('NS_OWN_FY26_27')}
+              className={`min-w-[175px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                activeReportTab === 'NS_OWN_FY26_27'
+                  ? darkMode ? 'bg-teal-900/40 border-teal-400 text-white shadow-md' : 'bg-teal-50 border-teal-600 text-teal-950 shadow-md'
+                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
+                <FileSpreadsheet className="w-4 h-4 text-teal-400 shrink-0" />
+                <span>NS &amp; OWN Working</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">FY 26-27 (GID: 1689777979)</p>
+            </button>
 
-          <button
-            onClick={() => setActiveReportTab('FBR')}
-            className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-              activeReportTab === 'FBR'
-                ? darkMode ? 'bg-purple-900/40 border-purple-400 text-white shadow-md' : 'bg-purple-50 border-purple-600 text-purple-950 shadow-md'
-                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <Landmark className="w-4 h-4 text-purple-400" />
-              <span>FBR Withholding</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">Monthly Statement</p>
-          </button>
+            <button
+              onClick={() => setActiveReportTab('PAYEE')}
+              className={`min-w-[150px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                activeReportTab === 'PAYEE'
+                  ? darkMode ? 'bg-emerald-900/40 border-emerald-400 text-white shadow-md' : 'bg-emerald-50 border-emerald-600 text-emerald-950 shadow-md'
+                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
+                <Users className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>Payee Statement</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">Supplier Ledger</p>
+            </button>
 
-          <button
-            onClick={() => setActiveReportTab('PRA')}
-            className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-              activeReportTab === 'PRA'
-                ? darkMode ? 'bg-amber-900/40 border-amber-400 text-white shadow-md' : 'bg-amber-50 border-amber-600 text-amber-950 shadow-md'
-                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <Receipt className="w-4 h-4 text-amber-400" />
-              <span>PRA Sales Tax</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">Monthly Statement</p>
-          </button>
+            <button
+              onClick={() => setActiveReportTab('FBR')}
+              className={`min-w-[155px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                activeReportTab === 'FBR'
+                  ? darkMode ? 'bg-purple-900/40 border-purple-400 text-white shadow-md' : 'bg-purple-50 border-purple-600 text-purple-950 shadow-md'
+                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
+                <Landmark className="w-4 h-4 text-purple-400 shrink-0" />
+                <span>FBR Withholding</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">Monthly Statement</p>
+            </button>
 
-          <button
-            onClick={() => setActiveReportTab('CHEQUE')}
-            className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-              activeReportTab === 'CHEQUE'
-                ? darkMode ? 'bg-amber-900/40 border-amber-400 text-white shadow-md' : 'bg-amber-50 border-amber-600 text-amber-950 shadow-md'
-                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <CreditCard className="w-4 h-4 text-amber-400" />
-              <span>Cheque Inquiry</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">Disbursement Search</p>
-          </button>
+            <button
+              onClick={() => setActiveReportTab('PRA')}
+              className={`min-w-[155px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                activeReportTab === 'PRA'
+                  ? darkMode ? 'bg-amber-900/40 border-amber-400 text-white shadow-md' : 'bg-amber-50 border-amber-600 text-amber-950 shadow-md'
+                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
+                <Receipt className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>PRA Sales Tax</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">Monthly Statement</p>
+            </button>
 
-          <button
-            onClick={() => setActiveReportTab('AMOUNT')}
-            className={`flex-1 min-w-[150px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-              activeReportTab === 'AMOUNT'
-                ? darkMode ? 'bg-rose-900/40 border-rose-400 text-white shadow-md' : 'bg-rose-50 border-rose-600 text-rose-950 shadow-md'
-                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <TrendingUp className="w-4 h-4 text-rose-400" />
-              <span>Amount Range</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">High-Value Audit</p>
-          </button>
+            <button
+              onClick={() => setActiveReportTab('CHEQUE')}
+              className={`min-w-[155px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                activeReportTab === 'CHEQUE'
+                  ? darkMode ? 'bg-amber-900/40 border-amber-400 text-white shadow-md' : 'bg-amber-50 border-amber-600 text-amber-950 shadow-md'
+                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
+                <CreditCard className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Cheque Inquiry</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">Disbursement Search</p>
+            </button>
 
-          <button
-            onClick={() => setActiveReportTab('PRINT_CENTER')}
-            className={`flex-1 min-w-[140px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-              activeReportTab === 'PRINT_CENTER'
-                ? darkMode ? 'bg-blue-900/40 border-blue-400 text-white shadow-md' : 'bg-blue-50 border-blue-600 text-blue-950 shadow-md'
-                : 'bg-transparent border-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <Printer className="w-4 h-4 text-blue-400" />
-              <span>Print Center</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">PAF by Sr.#</p>
-          </button>
+            <button
+              onClick={() => setActiveReportTab('AMOUNT')}
+              className={`min-w-[150px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                activeReportTab === 'AMOUNT'
+                  ? darkMode ? 'bg-rose-900/40 border-rose-400 text-white shadow-md' : 'bg-rose-50 border-rose-600 text-rose-950 shadow-md'
+                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
+                <TrendingUp className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>Amount Range</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">High-Value Audit</p>
+            </button>
 
+            <button
+              onClick={() => setActiveReportTab('PRINT_CENTER')}
+              className={`min-w-[140px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                activeReportTab === 'PRINT_CENTER'
+                  ? darkMode ? 'bg-blue-900/40 border-blue-400 text-white shadow-md' : 'bg-blue-50 border-blue-600 text-blue-950 shadow-md'
+                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
+                <Printer className="w-4 h-4 text-blue-400 shrink-0" />
+                <span>Print Center</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">PAF by Sr.#</p>
+            </button>
+
+            <button
+              onClick={() => setActiveReportTab('TFC_CHALLAN_HUB')}
+              className={`min-w-[180px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                activeReportTab === 'TFC_CHALLAN_HUB'
+                  ? darkMode ? 'bg-teal-900/50 border-teal-400 text-white shadow-md ring-1 ring-teal-400/40' : 'bg-teal-50 border-teal-600 text-teal-950 shadow-md ring-1 ring-teal-500'
+                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
+                <Building2 className="w-4 h-4 text-teal-400 shrink-0" />
+                <span>BOP Fee Challan Hub</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">TFC Portal &amp; Transfers</p>
+            </button>
+          </div>
+
+          {/* Scroll Right Button for user convenience */}
           <button
-            onClick={() => setActiveReportTab('TFC_CHALLAN_HUB')}
-            className={`flex-1 min-w-[175px] p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-              activeReportTab === 'TFC_CHALLAN_HUB'
-                ? darkMode ? 'bg-teal-900/50 border-teal-400 text-white shadow-md ring-1 ring-teal-400/40' : 'bg-teal-50 border-teal-600 text-teal-950 shadow-md ring-1 ring-teal-500'
-                : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            type="button"
+            onClick={() => scrollTabBar('right')}
+            title="Scroll reports right"
+            className={`hidden sm:flex items-center justify-center w-8 h-8 rounded-xl border shadow-xs transition-all cursor-pointer shrink-0 ${
+              darkMode
+                ? 'bg-slate-800/90 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'
+                : 'bg-slate-100 border-slate-300 text-slate-700 hover:text-slate-950 hover:bg-slate-200'
             }`}
           >
-            <div className="flex items-center gap-1.5 font-bold text-xs">
-              <Building2 className="w-4 h-4 text-teal-400" />
-              <span>BOP Fee Challan Hub</span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">TFC Portal &amp; Transfers</p>
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
