@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import ExcelJS from 'exceljs';
 import {
   TfcChallanRecord,
@@ -9,9 +10,12 @@ import {
   classifyOtherFee,
   getNetCashBookReceiptAmount,
   getCleanTradeAbbreviation,
+  computeChallanFeeBreakdown,
+  ChallanFeeBreakdown,
 } from '../data/tfcChallanData';
 import { TfcReceiptsReportView } from './TfcReceiptsReportView';
 import { formatPKR, formatCNIC } from '../lib/formatters';
+import { generateReceiptsRegisterPdf, generateHardCashBookPdf } from '../lib/tfcPdfGenerator';
 import {
   Building2,
   FileSpreadsheet,
@@ -34,6 +38,8 @@ import {
   ExternalLink,
   ShieldCheck,
   BookOpen,
+  FileText,
+  X,
 } from 'lucide-react';
 
 export const BOP_TFC_WEB_APP_URL =
@@ -169,6 +175,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   const [startRow, setStartRow] = useState<number>(6);
   const [monthDisplayMode, setMonthDisplayMode] = useState<'FORMULA' | 'TEXT'>('FORMULA');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showHardCashBookPrintPortal, setShowHardCashBookPrintPortal] = useState<boolean>(false);
 
   // Live fetch from Google Sheet backend (tab: BOP_TFC_RAW)
   const fetchGoogleSheetData = useCallback(async (isManualRefresh = false) => {
@@ -817,7 +824,21 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
     }
 
     const sortedDateKeys = Object.keys(groupMap).sort();
-    const dateGroups = sortedDateKeys.map((k) => groupMap[k]);
+    const dateGroups = sortedDateKeys.map((k) => {
+      const group = groupMap[k];
+      // Intelligently group by date & sort rows by trade within each date group
+      group.rows.sort((a, b) => {
+        // 1. Primary: Sort by trade alphabetically (e.g. ADDM, CK, MVi, MVii, etc.)
+        const tradeDiff = a.trade.localeCompare(b.trade);
+        if (tradeDiff !== 0) return tradeDiff;
+        // 2. Secondary: Sort by trainee name
+        const nameDiff = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+        if (nameDiff !== 0) return nameDiff;
+        // 3. Tertiary: Sort by Challan ID
+        return a.challanId.localeCompare(b.challanId, undefined, { numeric: true });
+      });
+      return group;
+    });
 
     const grandTotal = dateGroups.reduce(
       (acc, g) => {
@@ -849,6 +870,145 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
 
     return { dateGroups, grandTotal };
   }, [filteredChallans]);
+
+  // Export Hard CashBook Register to PDF (.pdf)
+  const handleExportHardCashBookPdf = () => {
+    generateHardCashBookPdf({
+      periodLabel: selectedMonth === 'ALL' ? 'All Months' : selectedMonth,
+      dateGroups: hardCashBookData.dateGroups,
+      grandTotal: hardCashBookData.grandTotal,
+      totalChallans: filteredChallans.length,
+    });
+  };
+
+  // Print Isolated Hard CashBook in Landscape A4
+  const handlePrintHardCashBook = () => {
+    setShowHardCashBookPrintPortal(true);
+    let styleEl = document.getElementById('tfc-landscape-rule');
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'tfc-landscape-rule';
+      styleEl.innerHTML = `@page { size: A4 landscape !important; margin: 6mm !important; }`;
+      document.head.appendChild(styleEl);
+    }
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        setShowHardCashBookPrintPortal(false);
+        if (styleEl && styleEl.parentNode) {
+          styleEl.parentNode.removeChild(styleEl);
+        }
+      }, 1000);
+    }, 200);
+  };
+
+  // Human-readable title for active report
+  const getActiveReportLabel = () => {
+    switch (activeSubTab) {
+      case 'HARD_CASHBOOK':
+        return 'Hard CashBook';
+      case 'DATE_WISE_RECEIPTS':
+        return 'Date Wise Receipts';
+      case 'MONTH_WISE_RECEIPTS':
+        return 'Month Wise Receipts';
+      case 'CASHBOOK_GEN':
+        return 'CashBook Posting';
+      case 'COURSE_MATRIX':
+        return 'Course Matrix';
+      case 'DIRECTORY':
+        return 'Challan Directory';
+      default:
+        return 'Active Report';
+    }
+  };
+
+  // Universal PDF export for whichever report is active in Fee Hub
+  const handleExportActivePdf = () => {
+    if (activeSubTab === 'HARD_CASHBOOK') {
+      handleExportHardCashBookPdf();
+      return;
+    }
+
+    const isMonthWise = activeSubTab === 'MONTH_WISE_RECEIPTS';
+    const mode = isMonthWise ? ('MONTH_WISE' as const) : ('DATE_WISE' as const);
+
+    const map = new Map<string, {
+      key: string;
+      label: string;
+      breakdown: ChallanFeeBreakdown;
+      challanCount: number;
+    }>();
+
+    const grandTotal: ChallanFeeBreakdown = {
+      admissionTuitionRegFee: 0,
+      pupilFee25Percent: 0,
+      totalTevtaDues: 0,
+      pupilFee75Percent: 0,
+      collegeSecurity: 0,
+      boardCharges: 0,
+      shortCourseSelfFinance: 0,
+      bankProfit: 0,
+      subTotalInstituteShare: 0,
+      totalAmountReceived: 0,
+      instituteShare: 0,
+      isBeauticianSelfFinance: false,
+      isTuv: false,
+    };
+
+    filteredChallans.forEach((c) => {
+      const d = parseChallanDate(c.challanPaymentDate);
+      const groupKey = isMonthWise ? `${d.monthName} ${d.year}` : (d.iso || c.challanPaymentDate);
+      const groupLabel = isMonthWise ? `${d.monthName} ${d.year}` : (d.formattedDate || c.challanPaymentDate);
+
+      const bd = computeChallanFeeBreakdown(c);
+
+      grandTotal.admissionTuitionRegFee += bd.admissionTuitionRegFee;
+      grandTotal.pupilFee25Percent += bd.pupilFee25Percent;
+      grandTotal.totalTevtaDues += bd.totalTevtaDues;
+      grandTotal.pupilFee75Percent += bd.pupilFee75Percent;
+      grandTotal.collegeSecurity += bd.collegeSecurity;
+      grandTotal.boardCharges += bd.boardCharges;
+      grandTotal.shortCourseSelfFinance += bd.shortCourseSelfFinance;
+      grandTotal.bankProfit += bd.bankProfit;
+      grandTotal.subTotalInstituteShare += bd.subTotalInstituteShare;
+      grandTotal.totalAmountReceived += bd.totalAmountReceived;
+      grandTotal.instituteShare += bd.instituteShare;
+
+      const existing = map.get(groupKey);
+      if (existing) {
+        existing.breakdown.admissionTuitionRegFee += bd.admissionTuitionRegFee;
+        existing.breakdown.pupilFee25Percent += bd.pupilFee25Percent;
+        existing.breakdown.totalTevtaDues += bd.totalTevtaDues;
+        existing.breakdown.pupilFee75Percent += bd.pupilFee75Percent;
+        existing.breakdown.collegeSecurity += bd.collegeSecurity;
+        existing.breakdown.boardCharges += bd.boardCharges;
+        existing.breakdown.shortCourseSelfFinance += bd.shortCourseSelfFinance;
+        existing.breakdown.bankProfit += bd.bankProfit;
+        existing.breakdown.subTotalInstituteShare += bd.subTotalInstituteShare;
+        existing.breakdown.totalAmountReceived += bd.totalAmountReceived;
+        existing.breakdown.instituteShare += bd.instituteShare;
+        existing.challanCount += 1;
+      } else {
+        map.set(groupKey, {
+          key: groupKey,
+          label: groupLabel,
+          breakdown: { ...bd },
+          challanCount: 1,
+        });
+      }
+    });
+
+    const rows = Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key));
+
+    generateReceiptsRegisterPdf({
+      mode,
+      periodLabel: selectedMonth === 'ALL' ? 'All Months' : selectedMonth,
+      courseFilter: selectedCourse === 'ALL' ? 'All Courses' : (COURSE_TITLE_MAP[selectedCourse] || selectedCourse),
+      rows,
+      grandTotal,
+      totalChallans: filteredChallans.length,
+    });
+  };
 
   // Export Hard CashBook Register to Excel (.xlsx) exactly matching Image 1
   const handleExportHardCashBookExcel = async () => {
@@ -1279,6 +1439,17 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
               <RefreshCw className={`w-3.5 h-3.5 text-emerald-200 ${isLoadingBackend ? 'animate-spin' : ''}`} />
               <span>{isLoadingBackend ? 'Syncing Backend...' : 'Sync Google Sheet'}</span>
             </button>
+
+            {/* Download PDF for Active Report in Fee Hub */}
+            <button
+              onClick={handleExportActivePdf}
+              className="px-3.5 py-2 bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              title={`Download official vector PDF report for active tab: ${getActiveReportLabel()}`}
+            >
+              <FileText className="w-3.5 h-3.5 text-rose-200" />
+              <span>Download PDF ({getActiveReportLabel()})</span>
+            </button>
+
             <button
               onClick={handleExportCSV}
               className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 border border-white/20 shadow-xs transition-all cursor-pointer"
@@ -2159,6 +2330,16 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                     </select>
                   </div>
 
+                  {/* Download PDF Button */}
+                  <button
+                    onClick={handleExportHardCashBookPdf}
+                    title="Download vector PDF for Hard CashBook Register (Landscape A4)"
+                    className="px-3.5 py-2 bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <FileText className="w-4 h-4 text-rose-200" />
+                    <span>Download PDF (.pdf)</span>
+                  </button>
+
                   {/* Excel Export Button (.xlsx) */}
                   <button
                     onClick={handleExportHardCashBookExcel}
@@ -2166,7 +2347,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                     className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-sm flex items-center gap-1.5 cursor-pointer transition-all"
                   >
                     <Download className="w-4 h-4 text-amber-200" />
-                    <span>Export Hard CashBook Excel (.xlsx)</span>
+                    <span>Export Excel (.xlsx)</span>
                   </button>
 
                   {/* Copy TSV Button */}
@@ -2190,12 +2371,12 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
 
                   {/* Print Button */}
                   <button
-                    onClick={() => window.print()}
-                    title="Print Hard CashBook Register"
+                    onClick={handlePrintHardCashBook}
+                    title="Print Isolated Hard CashBook Register (Landscape A4)"
                     className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 flex items-center gap-1.5 cursor-pointer transition-all"
                   >
-                    <Printer className="w-4 h-4 text-slate-500" />
-                    <span>Print</span>
+                    <Printer className="w-4 h-4 text-amber-500" />
+                    <span>Print Official</span>
                   </button>
                 </div>
               </div>
@@ -2650,6 +2831,124 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
           </div>
         )}
       </div>
+
+      {/* Official Hard CashBook Print Portal (Targeted by window.print in Landscape A4) */}
+      {showHardCashBookPrintPortal && typeof document !== 'undefined' && createPortal(
+        <div id="print-tfc-portal" className="p-4 bg-white text-slate-900 font-sans">
+          {/* Header Banner */}
+          <div className="border-b-2 border-amber-800 pb-3 mb-3 text-center">
+            <h1 className="text-base font-black uppercase text-amber-950 tracking-wide">
+              Govt. Vocational Training Institute for Women, Samanabad Faisalabad
+            </h1>
+            <p className="text-xs font-bold text-slate-700">
+              Hard Form CashBook Entry Register (Challan Ledger Sketch — Columns E to S)
+            </p>
+            <p className="text-xs font-black text-amber-900 uppercase mt-0.5">
+              TEVTA Fee Collection (TFC) Bank Account # 6580027832200011 (Bank of Punjab)
+            </p>
+            <div className="flex items-center justify-between text-[10px] text-slate-600 mt-2 px-2 border-t pt-1">
+              <span><strong>Period:</strong> {selectedMonth === 'ALL' ? 'All Available Months' : selectedMonth}</span>
+              <span><strong>Total Paid Challans:</strong> {filteredChallans.length} ({hardCashBookData.dateGroups.length} Dates)</span>
+              <span><strong>TFC Credited:</strong> Rs. {formatPKR(hardCashBookData.grandTotal.tfcCredited, false)}</span>
+              <span><strong>Generated:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString()}</span>
+            </div>
+          </div>
+
+          {/* Table */}
+          <table className="w-full text-[8.5px] border-collapse border border-slate-400">
+            <thead>
+              <tr className="bg-[#ED7D31] text-white font-bold text-center">
+                <th className="border border-slate-400 p-1">Payment Date</th>
+                <th className="border border-slate-400 p-1">Challan ID</th>
+                <th className="border border-slate-400 p-1">CNIC</th>
+                <th className="border border-slate-400 p-1">Student Name</th>
+                <th className="border border-slate-400 p-1">Trade</th>
+                <th className="border border-slate-400 p-1">Adm / Reg</th>
+                <th className="border border-slate-400 p-1">25% PF</th>
+                <th className="border border-slate-400 p-1">75% PF</th>
+                <th className="border border-slate-400 p-1">Security</th>
+                <th className="border border-slate-400 p-1">Other Fee</th>
+                <th className="border border-slate-400 p-1 bg-[#C65911]">TFC Credited</th>
+                <th className="border border-slate-400 p-1">Total (Col P)</th>
+                <th className="border border-slate-400 p-1">HO (Col Q)</th>
+                <th className="border border-slate-400 p-1">Inst (Col R)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {hardCashBookData.dateGroups.map((g) => (
+                <React.Fragment key={g.dateKey}>
+                  {g.rows.map((r, rIdx) => (
+                    <tr key={r.challanId} className={rIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                      <td className="border border-slate-300 p-0.5 text-center font-mono">{r.paymentDate}</td>
+                      <td className="border border-slate-300 p-0.5 text-center font-mono font-bold">{r.challanId}</td>
+                      <td className="border border-slate-300 p-0.5 text-center font-mono">{r.cnic}</td>
+                      <td className="border border-slate-300 p-0.5 text-left font-semibold">{r.name}</td>
+                      <td className="border border-slate-300 p-0.5 text-center font-bold">{r.trade}</td>
+                      <td className="border border-slate-300 p-0.5 text-right">{r.admissionTuition > 0 ? formatPKR(r.admissionTuition, false) : '-'}</td>
+                      <td className="border border-slate-300 p-0.5 text-right">{r.pupil25 > 0 ? formatPKR(r.pupil25, false) : '-'}</td>
+                      <td className="border border-slate-300 p-0.5 text-right">{r.pupil75 > 0 ? formatPKR(r.pupil75, false) : '-'}</td>
+                      <td className="border border-slate-300 p-0.5 text-right">{r.security > 0 ? formatPKR(r.security, false) : '-'}</td>
+                      <td className="border border-slate-300 p-0.5 text-right">{r.otherFee > 0 ? formatPKR(r.otherFee, false) : '-'}</td>
+                      <td className="border border-slate-300 p-0.5 text-right font-bold bg-amber-50">{formatPKR(r.tfcCredited, false)}</td>
+                      <td className="border border-slate-300 p-0.5 text-right font-bold">{formatPKR(r.totalAmount, false)}</td>
+                      <td className="border border-slate-300 p-0.5 text-right font-semibold text-blue-900">{formatPKR(r.headOfficeTotal, false)}</td>
+                      <td className="border border-slate-300 p-0.5 text-right font-semibold text-purple-900">{formatPKR(r.instituteTotal, false)}</td>
+                    </tr>
+                  ))}
+                  {/* Subtotal Row */}
+                  <tr className="bg-[#FFF2CC] font-bold text-slate-900">
+                    <td colSpan={5} className="border border-slate-400 p-1 text-center font-black">
+                      {g.dateKey} Total ({g.subtotal.count} Challans)
+                    </td>
+                    <td className="border border-slate-400 p-1 text-right">{formatPKR(g.subtotal.admissionTuition, false)}</td>
+                    <td className="border border-slate-400 p-1 text-right">{formatPKR(g.subtotal.pupil25, false)}</td>
+                    <td className="border border-slate-400 p-1 text-right">{formatPKR(g.subtotal.pupil75, false)}</td>
+                    <td className="border border-slate-400 p-1 text-right">{formatPKR(g.subtotal.security, false)}</td>
+                    <td className="border border-slate-400 p-1 text-right">{g.subtotal.otherFee > 0 ? formatPKR(g.subtotal.otherFee, false) : '-'}</td>
+                    <td className="border border-slate-400 p-1 text-right font-black bg-[#FFE599] text-amber-950">{formatPKR(g.subtotal.tfcCredited, false)}</td>
+                    <td className="border border-slate-400 p-1 text-right font-black">{formatPKR(g.subtotal.totalAmount, false)}</td>
+                    <td className="border border-slate-400 p-1 text-right font-bold text-blue-950">{formatPKR(g.subtotal.headOfficeTotal, false)}</td>
+                    <td className="border border-slate-400 p-1 text-right font-bold text-purple-950">{formatPKR(g.subtotal.instituteTotal, false)}</td>
+                  </tr>
+                </React.Fragment>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-[#ED7D31] text-white font-black">
+                <td colSpan={5} className="border border-slate-400 p-1.5 text-center uppercase tracking-wider text-[10px]">
+                  Grand Total ({filteredChallans.length} Challans)
+                </td>
+                <td className="border border-slate-400 p-1.5 text-right">{formatPKR(hardCashBookData.grandTotal.admissionTuition, false)}</td>
+                <td className="border border-slate-400 p-1.5 text-right">{formatPKR(hardCashBookData.grandTotal.pupil25, false)}</td>
+                <td className="border border-slate-400 p-1.5 text-right">{formatPKR(hardCashBookData.grandTotal.pupil75, false)}</td>
+                <td className="border border-slate-400 p-1.5 text-right">{formatPKR(hardCashBookData.grandTotal.security, false)}</td>
+                <td className="border border-slate-400 p-1.5 text-right">{hardCashBookData.grandTotal.otherFee > 0 ? formatPKR(hardCashBookData.grandTotal.otherFee, false) : '-'}</td>
+                <td className="border border-slate-400 p-1.5 text-right bg-[#C65911]">{formatPKR(hardCashBookData.grandTotal.tfcCredited, false)}</td>
+                <td className="border border-slate-400 p-1.5 text-right">{formatPKR(hardCashBookData.grandTotal.totalAmount, false)}</td>
+                <td className="border border-slate-400 p-1.5 text-right">{formatPKR(hardCashBookData.grandTotal.headOfficeTotal, false)}</td>
+                <td className="border border-slate-400 p-1.5 text-right">{formatPKR(hardCashBookData.grandTotal.instituteTotal, false)}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          {/* Signatures */}
+          <div className="mt-8 pt-4 grid grid-cols-3 gap-4 text-center text-xs text-slate-800">
+            <div>
+              <div className="font-bold border-t border-slate-400 pt-1">Cashier / Dealing Assistant</div>
+              <div className="text-[10px] text-slate-500">GVTIW Samanabad Faisalabad</div>
+            </div>
+            <div>
+              <div className="font-bold border-t border-slate-400 pt-1">Accountant / Senior Clerk</div>
+              <div className="text-[10px] text-slate-500">GVTIW Samanabad Faisalabad</div>
+            </div>
+            <div>
+              <div className="font-bold border-t border-slate-400 pt-1">Principal / Incharge</div>
+              <div className="text-[10px] text-slate-500">GVTIW Samanabad Faisalabad</div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

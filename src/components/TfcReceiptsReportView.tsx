@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import ExcelJS from 'exceljs';
 import {
   TfcChallanRecord,
@@ -7,6 +8,7 @@ import {
   COURSE_TITLE_MAP,
 } from '../data/tfcChallanData';
 import { formatPKR } from '../lib/formatters';
+import { generateReceiptsRegisterPdf } from '../lib/tfcPdfGenerator';
 import {
   Calendar,
   FileSpreadsheet,
@@ -24,6 +26,8 @@ import {
   RotateCcw,
   Sparkles,
   Info,
+  FileText,
+  X,
 } from 'lucide-react';
 
 interface TfcReceiptsReportViewProps {
@@ -126,11 +130,15 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
   customGopLogo,
 }) => {
   const [reportMode, setReportMode] = useState<'DATE_WISE' | 'MONTH_WISE'>(initialMode);
+  const [dateFilterMode, setDateFilterMode] = useState<'MONTH' | 'CUSTOM_RANGE'>('MONTH');
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [selectedCourse, setSelectedCourse] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [showPrintPortal, setShowPrintPortal] = useState(false);
 
   // Toggle drilldown
   const toggleExpand = (key: string) => {
@@ -141,6 +149,20 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
       return next;
     });
   };
+
+  // Dataset min & max date range
+  const datasetDateRange = useMemo(() => {
+    let minIso = '';
+    let maxIso = '';
+    challans.forEach((c) => {
+      const d = parseDateDetail(c.challanPaymentDate);
+      if (d.iso) {
+        if (!minIso || d.iso < minIso) minIso = d.iso;
+        if (!maxIso || d.iso > maxIso) maxIso = d.iso;
+      }
+    });
+    return { minIso, maxIso };
+  }, [challans]);
 
   // Available Months
   const availableMonths = useMemo(() => {
@@ -166,10 +188,19 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
   // Filtered raw records
   const filteredChallans = useMemo(() => {
     return challans.filter((c) => {
-      if (selectedMonth !== 'ALL') {
-        const d = parseDateDetail(c.challanPaymentDate);
-        if (d.monthYear !== selectedMonth) return false;
+      const d = parseDateDetail(c.challanPaymentDate);
+
+      // Date filtering: By Month or Custom Date Range
+      if (dateFilterMode === 'MONTH') {
+        if (selectedMonth !== 'ALL') {
+          if (d.monthYear !== selectedMonth) return false;
+        }
+      } else {
+        // CUSTOM_RANGE
+        if (startDate && d.iso < startDate) return false;
+        if (endDate && d.iso > endDate) return false;
       }
+
       if (selectedCourse !== 'ALL' && c.courseAbbreviation !== selectedCourse) {
         return false;
       }
@@ -187,7 +218,20 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
       }
       return true;
     });
-  }, [challans, selectedMonth, selectedCourse, searchQuery]);
+  }, [challans, dateFilterMode, selectedMonth, startDate, endDate, selectedCourse, searchQuery]);
+
+  // Active Period Human Label for exports & titles
+  const activePeriodLabel = useMemo(() => {
+    if (dateFilterMode === 'MONTH') {
+      return selectedMonth === 'ALL' ? 'All Available Months' : selectedMonth;
+    }
+    if (startDate && endDate) {
+      return `${startDate} to ${endDate} (Custom Range)`;
+    }
+    if (startDate) return `From ${startDate}`;
+    if (endDate) return `Up to ${endDate}`;
+    return 'All Available Dates (Custom Range)';
+  }, [dateFilterMode, selectedMonth, startDate, endDate]);
 
   // Aggregation by Date or Month
   const { rows, grandTotal } = useMemo(() => {
@@ -574,6 +618,39 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
     }
   };
 
+  // PDF Generation via vector jsPDF
+  const handleDownloadPdf = () => {
+    generateReceiptsRegisterPdf({
+      mode: reportMode,
+      periodLabel: activePeriodLabel,
+      courseFilter: selectedCourse === 'ALL' ? 'All Courses' : (COURSE_TITLE_MAP[selectedCourse] || selectedCourse),
+      rows,
+      grandTotal,
+      totalChallans: filteredChallans.length,
+    });
+  };
+
+  // Print Official Report (Isolated Landscape A4)
+  const handlePrintOfficial = () => {
+    setShowPrintPortal(true);
+    let styleEl = document.getElementById('tfc-landscape-rule');
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'tfc-landscape-rule';
+      styleEl.innerHTML = `@page { size: A4 landscape !important; margin: 6mm !important; }`;
+      document.head.appendChild(styleEl);
+    }
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        setShowPrintPortal(false);
+        if (styleEl && styleEl.parentNode) {
+          styleEl.parentNode.removeChild(styleEl);
+        }
+      }, 1000);
+    }, 200);
+  };
+
   return (
     <div className="space-y-5">
       {/* Top Title & Mode Navigation Ribbon */}
@@ -597,12 +674,12 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Official Head-Wise Allocation & Board (TTB / PBTE) Dues Register
+                Official Head-Wise Allocation & Board (TTB / PBTE) Dues Register — {activePeriodLabel}
               </p>
             </div>
           </div>
 
-          {/* Mode Switcher Buttons */}
+          {/* Mode Switcher & Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
             <div
               className={`p-1 rounded-xl border flex items-center gap-1 ${
@@ -633,6 +710,16 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
               </button>
             </div>
 
+            {/* Download PDF Button */}
+            <button
+              onClick={handleDownloadPdf}
+              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-rose-700 hover:bg-rose-800 text-white shadow-xs flex items-center gap-1.5 cursor-pointer transition-all"
+              title="Download vector PDF report"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Download PDF (.pdf)</span>
+            </button>
+
             {/* Excel Export Button */}
             <button
               onClick={handleExportExcel}
@@ -657,57 +744,177 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
               <span>{copiedKey === 'ALL_TABLE' ? 'Copied Table!' : 'Copy for Excel'}</span>
             </button>
 
-            {/* Print Button */}
+            {/* Print Official Report */}
             <button
-              onClick={() => window.print()}
-              className={`p-2 rounded-xl border transition-all cursor-pointer ${
+              onClick={handlePrintOfficial}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
                 darkMode
                   ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700'
                   : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
               }`}
-              title="Print Official Report"
+              title="Print Official Report (Landscape A4)"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-4 h-4 text-amber-500" />
+              <span>Print Official</span>
             </button>
           </div>
         </div>
 
         {/* Filter Controls Bar */}
-        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-          {/* Month Filter */}
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Filter by Month
-            </label>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className={`w-full px-2.5 py-1.5 rounded-lg border text-xs font-semibold focus:outline-none ${
-                darkMode ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
-              }`}
-            >
-              <option value="ALL">All Available Months</option>
-              {availableMonths.map((m) => (
-                <option key={m.key} value={m.key}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
+        <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-12 gap-3 text-xs">
+          {/* Date Filtering Mode & Pickers */}
+          <div className="md:col-span-6 bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                Receipt Date Filter
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setDateFilterMode('MONTH')}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                    dateFilterMode === 'MONTH'
+                      ? 'bg-emerald-600 text-white'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  By Month
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDateFilterMode('CUSTOM_RANGE');
+                    if (!startDate && datasetDateRange.minIso) setStartDate(datasetDateRange.minIso);
+                    if (!endDate && datasetDateRange.maxIso) setEndDate(datasetDateRange.maxIso);
+                  }}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                    dateFilterMode === 'CUSTOM_RANGE'
+                      ? 'bg-emerald-600 text-white'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                >
+                  Custom Date Range
+                </button>
+              </div>
+            </div>
+
+            {dateFilterMode === 'MONTH' ? (
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className={`w-full px-2.5 py-1.5 rounded-lg border text-xs font-semibold focus:outline-none ${
+                    darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+                  }`}
+                >
+                  <option value="ALL">All Available Months (Full Academic Session)</option>
+                  {availableMonths.map((m) => (
+                    <option key={m.key} value={m.key}>
+                      {m.label}
+                    </option>
+                  ))}
+                </select>
+                {selectedMonth !== 'ALL' && (
+                  <button
+                    onClick={() => setSelectedMonth('ALL')}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    title="Clear Month Filter"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">From Date:</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      min={datasetDateRange.minIso || '2026-08-01'}
+                      max={datasetDateRange.maxIso || '2026-09-30'}
+                      className={`w-full px-2 py-1 rounded-lg border text-xs font-medium focus:outline-none ${
+                        darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-500 block mb-0.5">To Date:</label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      min={datasetDateRange.minIso || '2026-08-01'}
+                      max={datasetDateRange.maxIso || '2026-09-30'}
+                      className={`w-full px-2 py-1 rounded-lg border text-xs font-medium focus:outline-none ${
+                        darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartDate(datasetDateRange.minIso || '2026-08-01');
+                      setEndDate(datasetDateRange.maxIso || '2026-09-30');
+                    }}
+                    className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
+                  >
+                    Full Range
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartDate('2026-08-01');
+                      setEndDate('2026-08-31');
+                    }}
+                    className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
+                  >
+                    August 2026
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartDate('2026-09-01');
+                      setEndDate('2026-09-30');
+                    }}
+                    className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
+                  >
+                    September 2026
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartDate('');
+                      setEndDate('');
+                    }}
+                    className="px-2 py-0.5 rounded text-[10px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer ml-auto"
+                  >
+                    Clear Range
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Course Filter */}
-          <div>
+          <div className="md:col-span-3">
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
               Filter by Course
             </label>
             <select
               value={selectedCourse}
               onChange={(e) => setSelectedCourse(e.target.value)}
-              className={`w-full px-2.5 py-1.5 rounded-lg border text-xs font-semibold focus:outline-none ${
+              className={`w-full px-2.5 py-2 rounded-lg border text-xs font-semibold focus:outline-none ${
                 darkMode ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
               }`}
             >
-              <option value="ALL">All Courses</option>
+              <option value="ALL">All Courses ({availableCourses.length} Trades)</option>
               {availableCourses.map((c) => (
                 <option key={c} value={c}>
                   {c} — {COURSE_TITLE_MAP[c] || c}
@@ -717,18 +924,18 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
           </div>
 
           {/* Search box */}
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Search Challan ID / Trainee / CNIC
+              Search Challan / Trainee / CNIC
             </label>
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-3 text-slate-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by student name, roll number, challan ID, or CNIC..."
-                className={`w-full pl-8 pr-3 py-1.5 rounded-lg border text-xs font-medium focus:outline-none ${
+                placeholder="Search name, roll, challan, or CNIC..."
+                className={`w-full pl-8 pr-3 py-2 rounded-lg border text-xs font-medium focus:outline-none ${
                   darkMode ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
                 }`}
               />
@@ -1291,6 +1498,105 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Official TFC Fee Hub Print Isolation Portal (Targeted by window.print in Landscape A4) */}
+      {showPrintPortal && typeof document !== 'undefined' && createPortal(
+        <div id="print-tfc-portal" className="p-4 bg-white text-slate-900 font-sans">
+          {/* Header Banner */}
+          <div className="border-b-2 border-emerald-800 pb-3 mb-3 text-center">
+            <h1 className="text-base font-black uppercase text-emerald-900 tracking-wide">
+              Govt. Vocational Training Institute for Women, Samanabad Faisalabad
+            </h1>
+            <p className="text-xs font-bold text-slate-700">
+              TEVTA Fee Collection (TFC) Bank Account # 6580027832200011 (Bank of Punjab)
+            </p>
+            <p className="text-xs font-black text-emerald-800 uppercase mt-0.5">
+              {reportMode === 'DATE_WISE' ? 'Date Wise Receipts' : 'Month Wise Receipts'} &amp; Head-Wise Allocation Register
+            </p>
+            <div className="flex items-center justify-between text-[10px] text-slate-600 mt-2 px-2 border-t pt-1">
+              <span><strong>Period:</strong> {activePeriodLabel}</span>
+              <span><strong>Course:</strong> {selectedCourse === 'ALL' ? 'All Courses' : (COURSE_TITLE_MAP[selectedCourse] || selectedCourse)}</span>
+              <span><strong>Total Paid Challans:</strong> {filteredChallans.length} ({rows.length} {reportMode === 'DATE_WISE' ? 'Days' : 'Months'})</span>
+              <span><strong>Generated:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString()}</span>
+            </div>
+          </div>
+
+          {/* Table */}
+          <table className="w-full text-[9px] border-collapse border border-slate-400">
+            <thead>
+              <tr className="bg-emerald-800 text-white font-bold text-center">
+                <th className="border border-slate-400 p-1">Sr #</th>
+                <th className="border border-slate-400 p-1">{reportMode === 'DATE_WISE' ? 'Receipt Date' : 'Month'}</th>
+                <th className="border border-slate-400 p-1">Adm / Reg</th>
+                <th className="border border-slate-400 p-1">25% PF</th>
+                <th className="border border-slate-400 p-1">Total TEVTA (HO)</th>
+                <th className="border border-slate-400 p-1">75% PF</th>
+                <th className="border border-slate-400 p-1">College Security</th>
+                <th className="border border-slate-400 p-1">Board Charges</th>
+                <th className="border border-slate-400 p-1">Short Course</th>
+                <th className="border border-slate-400 p-1">Bank Profit / Other</th>
+                <th className="border border-slate-400 p-1">Sub Total</th>
+                <th className="border border-slate-400 p-1">Total Per Day</th>
+                <th className="border border-slate-400 p-1">Institute Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, idx) => (
+                <tr key={r.key} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                  <td className="border border-slate-300 p-1 text-center font-bold">{idx + 1}</td>
+                  <td className="border border-slate-300 p-1 text-center font-bold">{r.label}</td>
+                  <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.admissionTuitionRegFee, false)}</td>
+                  <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.pupilFee25Percent, false)}</td>
+                  <td className="border border-slate-300 p-1 text-right font-bold bg-slate-100">{formatPKR(r.breakdown.totalTevtaDues, false)}</td>
+                  <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.pupilFee75Percent, false)}</td>
+                  <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.collegeSecurity, false)}</td>
+                  <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.boardCharges, false)}</td>
+                  <td className="border border-slate-300 p-1 text-right">{r.breakdown.shortCourseSelfFinance > 0 ? formatPKR(r.breakdown.shortCourseSelfFinance, false) : '-'}</td>
+                  <td className="border border-slate-300 p-1 text-right">{r.breakdown.bankProfit > 0 ? formatPKR(r.breakdown.bankProfit, false) : '-'}</td>
+                  <td className="border border-slate-300 p-1 text-right font-bold bg-slate-100">{formatPKR(r.breakdown.subTotalInstituteShare, false)}</td>
+                  <td className="border border-slate-300 p-1 text-right font-black bg-cyan-50">{formatPKR(r.breakdown.totalAmountReceived, false)}</td>
+                  <td className="border border-slate-300 p-1 text-right font-bold bg-indigo-50">{formatPKR(r.breakdown.instituteShare, false)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="bg-slate-200 font-bold text-slate-950">
+                <td className="border border-slate-400 p-1 text-center font-black" colSpan={2}>
+                  Grand Total ({rows.length} {reportMode === 'DATE_WISE' ? 'Days' : 'Months'})
+                </td>
+                <td className="border border-slate-400 p-1 text-right">{formatPKR(grandTotal.admissionTuitionRegFee, false)}</td>
+                <td className="border border-slate-400 p-1 text-right">{formatPKR(grandTotal.pupilFee25Percent, false)}</td>
+                <td className="border border-slate-400 p-1 text-right font-black bg-slate-300">{formatPKR(grandTotal.totalTevtaDues, false)}</td>
+                <td className="border border-slate-400 p-1 text-right">{formatPKR(grandTotal.pupilFee75Percent, false)}</td>
+                <td className="border border-slate-400 p-1 text-right">{formatPKR(grandTotal.collegeSecurity, false)}</td>
+                <td className="border border-slate-400 p-1 text-right">{formatPKR(grandTotal.boardCharges, false)}</td>
+                <td className="border border-slate-400 p-1 text-right">{grandTotal.shortCourseSelfFinance > 0 ? formatPKR(grandTotal.shortCourseSelfFinance, false) : '-'}</td>
+                <td className="border border-slate-400 p-1 text-right">{grandTotal.bankProfit > 0 ? formatPKR(grandTotal.bankProfit, false) : '-'}</td>
+                <td className="border border-slate-400 p-1 text-right font-black bg-slate-300">{formatPKR(grandTotal.subTotalInstituteShare, false)}</td>
+                <td className="border border-slate-400 p-1 text-right font-black bg-cyan-100">Rs. {formatPKR(grandTotal.totalAmountReceived, false)}</td>
+                <td className="border border-slate-400 p-1 text-right font-black bg-indigo-100">Rs. {formatPKR(grandTotal.instituteShare, false)}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          {/* Signatures */}
+          <div className="mt-8 pt-4 grid grid-cols-3 gap-4 text-center text-xs text-slate-800">
+            <div>
+              <div className="font-bold border-t border-slate-400 pt-1">Dealing Assistant</div>
+              <div className="text-[10px] text-slate-500">Junior Clerk / TFC Incharge</div>
+            </div>
+            <div>
+              <div className="font-bold border-t border-slate-400 pt-1">Verified By</div>
+              <div className="text-[10px] text-slate-500">Accountant / Senior Clerk</div>
+            </div>
+            <div>
+              <div className="font-bold border-t border-slate-400 pt-1">Approved By</div>
+              <div className="text-[10px] text-slate-500">Acting Principal (SHAZIA KHADIM)</div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

@@ -182,9 +182,11 @@
     display: none !important;
   }
 
-  /* When printing the voucher form modal, hide the entire root app so background content does not bleed */
+  /* When printing the voucher form modal or TFC reports, hide the entire root app so background content does not bleed */
   body.paf-modal-open #root,
-  body:has(#print-paf-portal) #root {
+  body:has(#print-paf-portal) #root,
+  body:has(#print-tfc-portal) #root,
+  body.tfc-print-active #root {
     display: none !important;
   }
 
@@ -198,6 +200,23 @@
     min-height: auto !important;
     background: white !important;
     color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Official TFC Fee Hub Landscape Report Portal */
+  #print-tfc-portal {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    background: white !important;
+    color: #0f172a !important;
     padding: 0 !important;
     margin: 0 !important;
     overflow: visible !important;
