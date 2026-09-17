@@ -251,3 +251,38 @@ export function exportToCSV(filename: string, rows: Record<string, any>[], sourc
   link.click();
   document.body.removeChild(link);
 }
+
+/**
+ * Formats a Pakistani CNIC into standard 13-digit pattern: XXXXX-XXXXXXX-X
+ * Automatically cleans scientific notation (e.g. 3.31E+12, 3.84E+12), raw digit strings, or dashes.
+ */
+export function formatCNIC(raw: string | number | null | undefined): string {
+  if (!raw) return '—';
+  let s = String(raw).trim();
+  if (!s || s === '—' || s === '-' || s.toLowerCase() === 'nan') return '—';
+
+  // Expand scientific notation if present (e.g. 3.31E+12 from Excel/Google Sheets export)
+  if (/[eE]\+?\d+/.test(s)) {
+    try {
+      const num = Number(s);
+      if (!isNaN(num)) {
+        s = BigInt(Math.round(num)).toString();
+      }
+    } catch {}
+  }
+
+  // Strip all non-digit characters
+  const digits = s.replace(/\D/g, '');
+
+  if (digits.length === 13) {
+    return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(12, 13)}`;
+  } else if (digits.length >= 5 && digits.length < 13) {
+    const padded = digits.padEnd(13, '0');
+    return `${padded.slice(0, 5)}-${padded.slice(5, 12)}-${padded.slice(12, 13)}`;
+  } else if (digits.length > 13) {
+    const d13 = digits.slice(0, 13);
+    return `${d13.slice(0, 5)}-${d13.slice(5, 12)}-${d13.slice(12, 13)}`;
+  }
+
+  return s;
+}

@@ -1,24 +1,22 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import ExcelJS from 'exceljs';
 import {
   TfcChallanRecord,
   COURSE_TITLE_MAP,
   getStoredTfcChallans,
   saveStoredTfcChallans,
-  parseRawCsvToTfcChallans,
-  INITIAL_TFC_PORTAL_CHALLANS,
+  parseGoogleSheetRawToTfcChallans,
   classifyOtherFee,
   getNetCashBookReceiptAmount,
-  mergeTfcChallanRecords,
+  getCleanTradeAbbreviation,
 } from '../data/tfcChallanData';
 import { TfcReceiptsReportView } from './TfcReceiptsReportView';
-import { formatPKR } from '../lib/formatters';
+import { formatPKR, formatCNIC } from '../lib/formatters';
 import {
   Building2,
   FileSpreadsheet,
   Printer,
   Download,
-  Upload,
   Search,
   CheckCircle2,
   Copy,
@@ -31,13 +29,15 @@ import {
   CreditCard,
   Receipt,
   UserCheck,
-  RotateCcw,
   Check,
   Send,
   ExternalLink,
   ShieldCheck,
   BookOpen,
 } from 'lucide-react';
+
+export const BOP_TFC_WEB_APP_URL =
+  'https://script.google.com/macros/s/AKfycbw-Nfgfs9FnoQtbpS8o_NmlJoJRCNjAYB6kDehbJY1mqi5HNMek3cc_OHFNj_bdcS5tQg/exec';
 
 interface TfcChallanHubProps {
   darkMode: boolean;
@@ -148,6 +148,16 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   onClose,
 }) => {
   const [challans, setChallans] = useState<TfcChallanRecord[]>(() => getStoredTfcChallans());
+  const [isLoadingBackend, setIsLoadingBackend] = useState<boolean>(false);
+  const [backendSyncStatus, setBackendSyncStatus] = useState<{
+    lastSyncTime: string | null;
+    success: boolean | null;
+    message: string | null;
+  }>({
+    lastSyncTime: null,
+    success: null,
+    message: null,
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [selectedCourse, setSelectedCourse] = useState<string>('ALL');
@@ -158,9 +168,56 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   const [postingGrouping, setPostingGrouping] = useState<'DATE_WISE' | 'DATE_COURSE_WISE'>('DATE_COURSE_WISE');
   const [startRow, setStartRow] = useState<number>(6);
   const [monthDisplayMode, setMonthDisplayMode] = useState<'FORMULA' | 'TEXT'>('FORMULA');
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [pasteCsvText, setPasteCsvText] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Live fetch from Google Sheet backend (tab: BOP_TFC_RAW)
+  const fetchGoogleSheetData = useCallback(async (isManualRefresh = false) => {
+    setIsLoadingBackend(true);
+    try {
+      const response = await fetch(BOP_TFC_WEB_APP_URL, {
+        method: 'GET',
+        redirect: 'follow',
+      });
+      if (!response.ok) {
+        throw new Error(`Server returned HTTP ${response.status}`);
+      }
+      const result = await response.json();
+      if (!result.success || !Array.isArray(result.data)) {
+        throw new Error(result.error || 'Invalid data format received from Web App');
+      }
+
+      const parsedRecords = parseGoogleSheetRawToTfcChallans(result.data);
+      if (parsedRecords.length > 0) {
+        setChallans(parsedRecords);
+        saveStoredTfcChallans(parsedRecords);
+        setBackendSyncStatus({
+          lastSyncTime: new Date().toLocaleTimeString(),
+          success: true,
+          message: `Synced ${parsedRecords.length} challans from BOP_TFC_RAW Google Sheet`,
+        });
+      } else {
+        setBackendSyncStatus({
+          lastSyncTime: new Date().toLocaleTimeString(),
+          success: false,
+          message: 'Google Sheet returned 0 trainee rows',
+        });
+      }
+    } catch (err: any) {
+      console.error('Error syncing from BOP_TFC_RAW Web App:', err);
+      setBackendSyncStatus({
+        lastSyncTime: new Date().toLocaleTimeString(),
+        success: false,
+        message: err.message || 'Failed to connect to Google Sheet Web App',
+      });
+    } finally {
+      setIsLoadingBackend(false);
+    }
+  }, []);
+
+  // Fetch immediately on mount
+  useEffect(() => {
+    fetchGoogleSheetData(false);
+  }, [fetchGoogleSheetData]);
 
   // Copy helper
   const handleCopy = (text: string, id: string) => {
@@ -217,10 +274,13 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       if (selectedDate !== 'ALL' && c.challanPaymentDate !== selectedDate) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
+        const cleanQDigits = searchQuery.replace(/\D/g, '');
+        const cleanCnicDigits = c.cnic.replace(/\D/g, '');
         const match =
           c.challanId.toLowerCase().includes(q) ||
           c.traineeName.toLowerCase().includes(q) ||
           c.cnic.toLowerCase().includes(q) ||
+          (cleanQDigits.length >= 3 && cleanCnicDigits.includes(cleanQDigits)) ||
           c.rollOrCode.toLowerCase().includes(q) ||
           c.courseName.toLowerCase().includes(q) ||
           c.courseAbbreviation.toLowerCase().includes(q);
@@ -730,7 +790,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         challanId: c.challanId,
         cnic: c.cnic,
         name: c.name,
-        trade: c.rollOrCode || c.courseAbbreviation,
+        trade: getCleanTradeAbbreviation(c),
         paymentType: c.paymentType || 'Challa',
         admissionTuition,
         pupil25,
@@ -800,8 +860,9 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         views: [{ showGridLines: true }],
       });
 
-      // Orange Header Row matching Image 1
+      // Orange Header Row matching Image 1: ChallanPaymentDate shifted to the start (left side)
       const headerRow = sheet.addRow([
+        'ChallanPaymentDate',
         'ChallanID',
         'CNIC',
         'Name',
@@ -816,7 +877,6 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         'TotalAmount',
         'HeadOfficeTotal',
         'InstituteTotal',
-        'ChallanPaymentDate',
       ]);
 
       headerRow.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
@@ -828,10 +888,11 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
 
       sheet.columns = [
+        { width: 20 }, // ChallanPaymentDate
         { width: 14 }, // ChallanID
         { width: 18 }, // CNIC
         { width: 34 }, // Name
-        { width: 14 }, // Trade
+        { width: 12 }, // Trade
         { width: 14 }, // PaymentType
         { width: 16 }, // Admission_Tuition_Reg_Fee
         { width: 14 }, // 25PercentPupilFee
@@ -842,12 +903,12 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         { width: 16 }, // TotalAmount
         { width: 16 }, // HeadOfficeTotal
         { width: 14 }, // InstituteTotal
-        { width: 22 }, // ChallanPaymentDate
       ];
 
       hardCashBookData.dateGroups.forEach((group) => {
         group.rows.forEach((r) => {
           const row = sheet.addRow([
+            r.paymentDate,
             r.challanId,
             r.cnic,
             r.name,
@@ -862,34 +923,34 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
             r.totalAmount,
             r.headOfficeTotal,
             r.instituteTotal,
-            r.paymentDate,
           ]);
 
           row.alignment = { vertical: 'middle' };
           row.getCell(1).alignment = { horizontal: 'center' };
           row.getCell(2).alignment = { horizontal: 'center' };
-          row.getCell(4).alignment = { horizontal: 'center' };
+          row.getCell(3).alignment = { horizontal: 'center' };
           row.getCell(5).alignment = { horizontal: 'center' };
-          row.getCell(6).numFmt = '#,##0';
+          row.getCell(6).alignment = { horizontal: 'center' };
           row.getCell(7).numFmt = '#,##0';
           row.getCell(8).numFmt = '#,##0';
           row.getCell(9).numFmt = '#,##0';
           row.getCell(10).numFmt = '#,##0';
           row.getCell(11).numFmt = '#,##0';
-          row.getCell(11).font = { bold: true };
-          row.getCell(11).fill = {
+          row.getCell(12).numFmt = '#,##0';
+          row.getCell(12).font = { bold: true };
+          row.getCell(12).fill = {
             type: 'pattern',
             pattern: 'solid',
             fgColor: { argb: 'FFFFF2CC' }, // Gold highlight for TFC Credited
           };
-          row.getCell(12).numFmt = '#,##0';
           row.getCell(13).numFmt = '#,##0';
           row.getCell(14).numFmt = '#,##0';
-          row.getCell(15).alignment = { horizontal: 'center' };
+          row.getCell(15).numFmt = '#,##0';
         });
 
-        // Subtotal row matching Image 1 row 4
+        // Subtotal row matching Image 1
         const subRow = sheet.addRow([
+          `${group.paymentDate} Total`,
           '',
           '',
           '',
@@ -904,7 +965,6 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
           group.subtotal.totalAmount,
           group.subtotal.headOfficeTotal,
           group.subtotal.instituteTotal,
-          `${group.paymentDate} Total`,
         ]);
 
         subRow.font = { bold: true, size: 10 };
@@ -913,20 +973,21 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
           pattern: 'solid',
           fgColor: { argb: 'FFE7E6E6' }, // Light Grey matching Image 1
         };
-        for (let c = 6; c <= 14; c++) {
+        subRow.getCell(1).font = { bold: true };
+        subRow.getCell(1).alignment = { horizontal: 'left' };
+        for (let c = 7; c <= 15; c++) {
           subRow.getCell(c).numFmt = '#,##0';
         }
-        subRow.getCell(15).font = { bold: true };
-        subRow.getCell(15).alignment = { horizontal: 'center' };
       });
 
       // Grand total row at bottom
       const grandRow = sheet.addRow([
-        '',
-        '',
-        '',
-        '',
         'GRAND TOTAL',
+        `All (${filteredChallans.length} Challans)`,
+        '',
+        '',
+        '',
+        '',
         hardCashBookData.grandTotal.admissionTuition,
         hardCashBookData.grandTotal.pupil25,
         hardCashBookData.grandTotal.pupil75,
@@ -936,7 +997,6 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         hardCashBookData.grandTotal.totalAmount,
         hardCashBookData.grandTotal.headOfficeTotal,
         hardCashBookData.grandTotal.instituteTotal,
-        `All (${filteredChallans.length} Challans) Total`,
       ]);
       grandRow.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } };
       grandRow.fill = {
@@ -944,10 +1004,10 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         pattern: 'solid',
         fgColor: { argb: 'FFC65911' }, // Deep orange
       };
-      for (let c = 6; c <= 14; c++) {
+      grandRow.getCell(1).alignment = { horizontal: 'left' };
+      for (let c = 7; c <= 15; c++) {
         grandRow.getCell(c).numFmt = '#,##0';
       }
-      grandRow.getCell(15).alignment = { horizontal: 'center' };
 
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], {
@@ -969,6 +1029,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   // Copy Hard CashBook TSV for direct paste into Excel / Sheets
   const handleCopyHardCashBookTSV = () => {
     const headers = [
+      'ChallanPaymentDate',
       'ChallanID',
       'CNIC',
       'Name',
@@ -983,7 +1044,6 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       'TotalAmount',
       'HeadOfficeTotal',
       'InstituteTotal',
-      'ChallanPaymentDate',
     ];
 
     const lines: string[] = [headers.join('\t')];
@@ -992,6 +1052,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       group.rows.forEach((r) => {
         lines.push(
           [
+            r.paymentDate,
             r.challanId,
             r.cnic,
             r.name,
@@ -1006,12 +1067,12 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
             r.totalAmount,
             r.headOfficeTotal,
             r.instituteTotal,
-            r.paymentDate,
           ].join('\t')
         );
       });
       lines.push(
         [
+          `${group.paymentDate} Total`,
           '',
           '',
           '',
@@ -1026,18 +1087,18 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
           group.subtotal.totalAmount,
           group.subtotal.headOfficeTotal,
           group.subtotal.instituteTotal,
-          `${group.paymentDate} Total`,
         ].join('\t')
       );
     });
 
     lines.push(
       [
-        '',
-        '',
-        '',
-        '',
         'GRAND TOTAL',
+        `All (${filteredChallans.length} Challans)`,
+        '',
+        '',
+        '',
+        '',
         hardCashBookData.grandTotal.admissionTuition,
         hardCashBookData.grandTotal.pupil25,
         hardCashBookData.grandTotal.pupil75,
@@ -1047,7 +1108,6 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         hardCashBookData.grandTotal.totalAmount,
         hardCashBookData.grandTotal.headOfficeTotal,
         hardCashBookData.grandTotal.instituteTotal,
-        `All (${filteredChallans.length} Challans) Total`,
       ].join('\t')
     );
 
@@ -1108,39 +1168,6 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
 
     return Object.values(map).sort((a, b) => b.total - a.total);
   }, [filteredChallans]);
-
-  // Handle CSV Upload / Paste: supports Append (preserving August while adding September) or Replace
-  const handleProcessCsv = (mode: 'APPEND' | 'REPLACE' = 'APPEND') => {
-    if (!pasteCsvText.trim()) return;
-    const parsed = parseRawCsvToTfcChallans(pasteCsvText);
-    if (parsed.length === 0) {
-      alert('Unable to parse CSV. Please ensure standard BOP-TEVTA portal columns are included.');
-      return;
-    }
-
-    if (mode === 'APPEND') {
-      const { merged, addedCount, updatedCount } = mergeTfcChallanRecords(challans, parsed);
-      setChallans(merged);
-      saveStoredTfcChallans(merged);
-      setShowUploadModal(false);
-      setPasteCsvText('');
-      alert(`Successfully saved to browser storage!\n• ${addedCount} new challans added\n• ${updatedCount} existing challans updated\n• Total stored records: ${merged.length}\nPrevious month records were preserved.`);
-    } else {
-      setChallans(parsed);
-      saveStoredTfcChallans(parsed);
-      setShowUploadModal(false);
-      setPasteCsvText('');
-      alert(`Replaced all stored records with ${parsed.length} imported challans.`);
-    }
-  };
-
-  const handleResetToDefault = () => {
-    if (window.confirm('Reset to the authentic BOP Fee Collection batch (42 challans for August 2026)?')) {
-      setChallans(INITIAL_TFC_PORTAL_CHALLANS);
-      saveStoredTfcChallans(INITIAL_TFC_PORTAL_CHALLANS);
-      setSelectedMonth('ALL');
-    }
-  };
 
   // Export to CSV
   const handleExportCSV = () => {
@@ -1244,11 +1271,13 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
           {/* Action Toolbar */}
           <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={() => setShowUploadModal(true)}
-              className="px-3.5 py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              onClick={() => fetchGoogleSheetData(true)}
+              disabled={isLoadingBackend}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              title="Fetch live records from Google Sheet tab: BOP_TFC_RAW"
             >
-              <Upload className="w-3.5 h-3.5 text-teal-200" />
-              <span>Import / Paste CSV</span>
+              <RefreshCw className={`w-3.5 h-3.5 text-emerald-200 ${isLoadingBackend ? 'animate-spin' : ''}`} />
+              <span>{isLoadingBackend ? 'Syncing Backend...' : 'Sync Google Sheet'}</span>
             </button>
             <button
               onClick={handleExportCSV}
@@ -1264,15 +1293,23 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
               <Printer className="w-3.5 h-3.5 text-amber-300" />
               <span>Print Schedule</span>
             </button>
-            <button
-              onClick={handleResetToDefault}
-              title="Reset to authentic dataset"
-              className="p-2 bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white rounded-xl border border-white/20 transition-all cursor-pointer"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
           </div>
         </div>
+
+        {/* Backend Sync Live Banner / Indicator */}
+        {backendSyncStatus.lastSyncTime && (
+          <div className="mt-3 pt-2.5 border-t border-teal-800/40 flex items-center justify-between text-[11px] text-teal-200/90 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className={`inline-block w-2 h-2 rounded-full ${backendSyncStatus.success ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
+              <span>
+                Backend Status: <strong className="text-white">{backendSyncStatus.message}</strong>
+              </span>
+            </div>
+            <span className="text-teal-300/80 font-mono text-[10px]">
+              Last Synced: {backendSyncStatus.lastSyncTime}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ------------------------------------------------------------- */}
@@ -1870,13 +1907,15 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                     <span>Export Excel (.xlsx)</span>
                   </button>
 
-                  {/* CSV Ingest Button */}
+                  {/* Sync Google Sheet Backend Button */}
                   <button
-                    onClick={() => setShowUploadModal(true)}
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 flex items-center gap-1.5 cursor-pointer transition-all"
+                    onClick={() => fetchGoogleSheetData(true)}
+                    disabled={isLoadingBackend}
+                    title="Sync latest live records from Google Sheet tab: BOP_TFC_RAW"
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-xl border border-slate-300 dark:border-slate-700 flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50"
                   >
-                    <Upload className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Ingest / Append CSV</span>
+                    <RefreshCw className={`w-3.5 h-3.5 text-teal-600 dark:text-teal-400 ${isLoadingBackend ? 'animate-spin' : ''}`} />
+                    <span>{isLoadingBackend ? 'Syncing...' : 'Sync Sheet'}</span>
                   </button>
                 </div>
               </div>
@@ -2226,6 +2265,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                 <table className="w-full text-left text-xs border-collapse font-sans">
                   <thead>
                     <tr className="bg-[#ED7D31] text-white text-[11px] font-black uppercase tracking-wider border-b border-amber-800">
+                      <th className="py-2.5 px-3 whitespace-nowrap text-center min-w-[130px]">ChallanPaymentDate</th>
                       <th className="py-2.5 px-3 whitespace-nowrap text-center">ChallanID</th>
                       <th className="py-2.5 px-3 whitespace-nowrap text-center">CNIC</th>
                       <th className="py-2.5 px-3 whitespace-nowrap min-w-[180px]">Name</th>
@@ -2242,7 +2282,6 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                       <th className="py-2.5 px-3 whitespace-nowrap text-right">TotalAmount</th>
                       <th className="py-2.5 px-3 whitespace-nowrap text-right">HeadOfficeTotal</th>
                       <th className="py-2.5 px-3 whitespace-nowrap text-right">InstituteTotal</th>
-                      <th className="py-2.5 px-3 whitespace-nowrap text-center min-w-[150px]">ChallanPaymentDate</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 dark:divide-slate-800 text-[11px]">
@@ -2257,11 +2296,14 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                                 darkMode ? 'hover:bg-slate-900/60' : 'hover:bg-amber-50/40'
                               }`}
                             >
+                              <td className="py-2 px-3 text-center font-mono font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                {row.paymentDate}
+                              </td>
                               <td className="py-2 px-3 font-mono text-center font-bold text-slate-900 dark:text-slate-200 whitespace-nowrap">
                                 {row.challanId}
                               </td>
                               <td className="py-2 px-3 font-mono text-center text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                                {row.cnic}
+                                {formatCNIC(row.cnic)}
                               </td>
                               <td className="py-2 px-3 font-semibold text-slate-900 dark:text-white whitespace-nowrap">
                                 {row.name}
@@ -2302,9 +2344,6 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                               <td className="py-2 px-3 text-right font-mono text-purple-700 dark:text-purple-400 whitespace-nowrap">
                                 {formatPKR(row.instituteTotal, false)}
                               </td>
-                              <td className="py-2 px-3 text-center font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                                {row.paymentDate}
-                              </td>
                             </tr>
                           ))}
 
@@ -2314,8 +2353,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                               darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-200 border-slate-300 text-slate-950'
                             }`}
                           >
-                            <td colSpan={5} className="py-2 px-3 text-right uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                              Subtotal:
+                            <td colSpan={6} className="py-2 px-3 font-bold text-amber-900 dark:text-amber-300 whitespace-nowrap">
+                              {group.paymentDate} Total ({group.subtotal.count} Challan{group.subtotal.count > 1 ? 's' : ''}):
                             </td>
                             <td className="py-2 px-3 text-right font-mono whitespace-nowrap">
                               {formatPKR(group.subtotal.admissionTuition, false)}
@@ -2344,9 +2383,6 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                             <td className="py-2 px-3 text-right font-mono text-purple-800 dark:text-purple-300 whitespace-nowrap">
                               {formatPKR(group.subtotal.instituteTotal, false)}
                             </td>
-                            <td className="py-2 px-3 text-center font-bold text-amber-900 dark:text-amber-300 whitespace-nowrap">
-                              {group.paymentDate} Total
-                            </td>
                           </tr>
                         </React.Fragment>
                       );
@@ -2356,7 +2392,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                   {/* Grand Total Footer matching Image 1 */}
                   <tfoot>
                     <tr className="bg-[#C65911] text-white font-black text-xs border-t-2 border-amber-900">
-                      <td colSpan={5} className="py-3 px-3 uppercase tracking-wider text-center">
+                      <td colSpan={6} className="py-3 px-3 uppercase tracking-wider text-left font-black">
                         Grand Total ({filteredChallans.length} Challans)
                       </td>
                       <td className="py-3 px-3 text-right font-mono whitespace-nowrap">
@@ -2385,9 +2421,6 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                       </td>
                       <td className="py-3 px-3 text-right font-mono text-purple-200 whitespace-nowrap">
                         {formatPKR(hardCashBookData.grandTotal.instituteTotal, false)}
-                      </td>
-                      <td className="py-3 px-3 text-center whitespace-nowrap font-bold text-yellow-100">
-                        All ({filteredChallans.length} Challans) Total
                       </td>
                     </tr>
                   </tfoot>
@@ -2575,7 +2608,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                             {c.guardianName}
                           </td>
                           <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                            {c.cnic}
+                            {formatCNIC(c.cnic)}
                           </td>
                           <td className="py-2.5 px-3 text-right font-mono text-blue-800 dark:text-blue-300">
                             {formatPKR(c.admissionTuitionRegFee + c.pupilFee25Percent, false)}
@@ -2617,76 +2650,6 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
           </div>
         )}
       </div>
-
-      {/* ------------------------------------------------------------- */}
-      {/* 5. UPLOAD / PASTE CSV MODAL                                    */}
-      {/* ------------------------------------------------------------- */}
-      {showUploadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-          <div
-            className={`w-full max-w-2xl rounded-2xl border shadow-2xl p-6 ${
-              darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-900'
-            }`}
-          >
-            <div className="flex items-center justify-between pb-4 border-b border-slate-300 dark:border-slate-800">
-              <div className="flex items-center gap-2.5">
-                <Upload className="w-5 h-5 text-teal-600" />
-                <h3 className="font-black text-base">Import / Paste BOP-TEVTA Portal CSV</h3>
-              </div>
-              <button
-                onClick={() => setShowUploadModal(false)}
-                className="text-slate-400 hover:text-slate-900 dark:hover:text-white text-lg font-bold cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-3">
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                Paste raw CSV text exported from the BOP-TEVTA Fee Collection portal. The parser extracts Challan IDs,
-                Dates, Trainees, Course Abbreviations, and calculates the exact multi-head distribution without modifying
-                any existing backend vouchers.
-              </p>
-
-              <textarea
-                rows={10}
-                placeholder="SrNo,Region,District,City,CollegeID... paste raw CSV here"
-                value={pasteCsvText}
-                onChange={(e) => setPasteCsvText(e.target.value)}
-                className={`w-full p-3 font-mono text-xs rounded-xl border focus:outline-hidden focus:ring-2 focus:ring-teal-500 ${
-                  darkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                }`}
-              />
-
-              <div className="flex items-center justify-between gap-2 pt-2">
-                <button
-                  onClick={() => setShowUploadModal(false)}
-                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 font-bold text-xs rounded-xl cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleProcessCsv('APPEND')}
-                    disabled={!pasteCsvText.trim()}
-                    className="px-4 py-2 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Append to Existing ({challans.length})</span>
-                  </button>
-                  <button
-                    onClick={() => handleProcessCsv('REPLACE')}
-                    disabled={!pasteCsvText.trim()}
-                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm cursor-pointer"
-                  >
-                    <span>Replace All</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -175,10 +175,13 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
+        const cleanQDigits = searchQuery.replace(/\D/g, '');
+        const cleanCnicDigits = c.cnic.replace(/\D/g, '');
         const match =
           c.challanId.toLowerCase().includes(q) ||
           c.traineeName.toLowerCase().includes(q) ||
           c.cnic.toLowerCase().includes(q) ||
+          (cleanQDigits.length >= 3 && cleanCnicDigits.includes(cleanQDigits)) ||
           c.rollOrCode.toLowerCase().includes(q);
         if (!match) return false;
       }
@@ -738,15 +741,15 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
           <Info className="w-4 h-4 text-emerald-600 shrink-0" />
           <div className="leading-relaxed">
             <span className="font-bold text-emerald-800 dark:text-emerald-300">
-              Active Board Charges (TTB/PBTE) Rule:
+              Active Receipts & Fee Allocation Rule:
             </span>{' '}
-            Beautician Self Finance (Rs. 10,012) is separated into Base Course (Rs. 8,512) and Board Dues (excess above 8,512 = Rs. 1,500). Regular courses classify 100% of other head as Board Charges. TUV has Rs. 0 board charges (pending instructions).
+            Beautician Self Finance (Rs. 10,012) is separated into Base Course (Rs. 8,512) and Board Dues (excess above 8,512 = Rs. 1,500). Regular courses classify other head as Board Charges. TUV Certification fees are allocated 100% to Other Income (Bank Profit / Any Other Income) pending central TEVTA transfer decision.
           </div>
         </div>
       </div>
 
       {/* KPI Cards Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
         <div
           className={`p-3.5 rounded-xl border ${
             darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
@@ -840,6 +843,22 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
           </div>
           <div className="text-[10px] text-slate-400 mt-0.5">
             Refundable Deposit
+          </div>
+        </div>
+
+        <div
+          className={`p-3.5 rounded-xl border ${
+            darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+          }`}
+        >
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            Other Income (TUV)
+          </div>
+          <div className="text-base font-black text-indigo-600 dark:text-indigo-400 mt-1">
+            Rs. {formatPKR(grandTotal.bankProfit)}
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5">
+            100% Retained / Other
           </div>
         </div>
       </div>
@@ -1134,7 +1153,7 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                                   <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 font-semibold text-slate-500">
                                     <tr>
                                       <th className="py-1.5 px-2">Challan ID</th>
-                                      <th className="py-1.5 px-2">Roll / Trainee Name</th>
+                                      <th className="py-1.5 px-2 min-w-[140px]">Roll / Trainee Name</th>
                                       <th className="py-1.5 px-2">Course</th>
                                       <th className="py-1.5 px-2 text-right">Adm Fee</th>
                                       <th className="py-1.5 px-2 text-right">25% PF</th>
@@ -1143,6 +1162,7 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                                       <th className="py-1.5 px-2 text-right">Security</th>
                                       <th className="py-1.5 px-2 text-right font-bold text-amber-600">Board Fee</th>
                                       <th className="py-1.5 px-2 text-right font-bold text-purple-600">Self Fin.</th>
+                                      <th className="py-1.5 px-2 text-right font-bold text-indigo-600">Other (TUV)</th>
                                       <th className="py-1.5 px-2 text-right font-bold text-emerald-600">Institute Share</th>
                                       <th className="py-1.5 px-2 text-right font-black text-blue-700">Total (Rs.)</th>
                                     </tr>
@@ -1159,11 +1179,10 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                                             <span className="font-semibold text-slate-900 dark:text-white">
                                               {c.traineeName}
                                             </span>
-                                            {c.rollOrCode && (
-                                              <span className="text-[10px] text-slate-400 block font-mono">
-                                                {c.rollOrCode}
-                                              </span>
-                                            )}
+                                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400 font-mono">
+                                              {c.rollOrCode && <span>{c.rollOrCode}</span>}
+                                              {c.cnic && <span>• CNIC: {c.cnic}</span>}
+                                            </div>
                                           </td>
                                           <td className="py-1.5 px-2 font-sans font-semibold">
                                             <span
@@ -1198,6 +1217,9 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                                           </td>
                                           <td className="py-1.5 px-2 text-right font-bold text-purple-600">
                                             {cb.shortCourseSelfFinance > 0 ? formatPKR(cb.shortCourseSelfFinance) : '-'}
+                                          </td>
+                                          <td className="py-1.5 px-2 text-right font-bold text-indigo-600">
+                                            {cb.bankProfit > 0 ? formatPKR(cb.bankProfit) : '-'}
                                           </td>
                                           <td className="py-1.5 px-2 text-right font-bold text-emerald-600">
                                             {formatPKR(cb.instituteShare)}
