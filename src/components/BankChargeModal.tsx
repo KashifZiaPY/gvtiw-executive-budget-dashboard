@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Landmark, X, BookOpen, Check, PlusCircle, Calendar, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { MasterVoucher, INSTITUTIONAL_BANK_ACCOUNTS, BankAccountKey } from '../data/cashBookData';
 import { MASTER_ACCOUNT_HEADS } from '../data/voucherMasterLists';
-import { formatPKR } from '../lib/formatters';
+import { formatPKR, toIsoDate } from '../lib/formatters';
 import { formatSaveErrorMessage } from '../lib/voucherSync';
 
 // -----------------------------------------------------------------------------
@@ -143,8 +143,7 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
         0;
       setAmount(amt);
       setDate(
-        voucherToAmend.billDate ||
-          voucherToAmend.chequeDate ||
+        toIsoDate(voucherToAmend.billDate || voucherToAmend.chequeDate) ||
           new Date().toISOString().split('T')[0]
       );
       setMemo(voucherToAmend.description || 'Bank Charges / SMS / FED Charges');

@@ -15,6 +15,7 @@ import { CorporateVoucherSuccessModal } from './CorporateVoucherSuccessModal';
 import { isBankChargeVoucher } from './BankChargeModal';
 import { AccountHeadBadge, parseAccountHead, AccountTagType } from './AccountHeadTag';
 import { formatSaveErrorMessage } from '../lib/voucherSync';
+import { toIsoDate, formatPakistaniDate } from '../lib/formatters';
 import { AnimatedSplashLogos } from './AnimatedSplashLogos';
 import {
   computeHeadAvailableBalance,
@@ -318,12 +319,12 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       selectedPayeeRef.current = (voucherToAmend.payeeName || '').trim();
       setBankAccount(voucherToAmend.bankAccount || BANK_OPTIONS[0].fullName);
       setBillNo(voucherToAmend.billNo || '');
-      setBillDate(voucherToAmend.billDate || todayISO);
+      setBillDate(toIsoDate(voucherToAmend.billDate) || voucherToAmend.billDate || todayISO);
       setBillAmtExclTax(voucherToAmend.billAmtExclTax ?? voucherToAmend.billAmountGross ?? 0);
       setSaleTax(voucherToAmend.gstAmount ?? 0);
       setPraTaxOnBill(voucherToAmend.praTaxOnBill ?? 0);
       setChequeNoNet(voucherToAmend.chequeNoNet || '');
-      setChequeDate(voucherToAmend.chequeDate || todayISO);
+      setChequeDate(toIsoDate(voucherToAmend.chequeDate) || voucherToAmend.chequeDate || todayISO);
       setChequeAmtNet(voucherToAmend.chequeAmountNet ?? 0);
       setIsManualNetOverride(true);
       setChequeNoIncomeTax(voucherToAmend.chequeNoIncomeTax || '0');
@@ -920,9 +921,9 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       payeeName: payeeName.trim(),
       ntnCnic: ntnCnic.trim() || 'N/A',
       billNo: billNo.trim(),
-      billDate: billDate,
+      billDate: formatPakistaniDate(billDate),
       chequeNoNet: chequeNoNet.trim() || 'DEBIT',
-      chequeDate: chequeDate,
+      chequeDate: formatPakistaniDate(chequeDate),
       chequeAmountNet: numChequeNet,
       accountHead: accountHead,
       gstAmount: numSaleTax,

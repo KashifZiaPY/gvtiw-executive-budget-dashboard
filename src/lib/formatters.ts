@@ -173,6 +173,52 @@ export function getBurnRateBadge(burnRate: number): {
 }
 
 /**
+ * Safely normalizes any date representation (dd-MMM-yyyy, dd/mm/yyyy, ISO, Date object)
+ * to ISO YYYY-MM-DD for native HTML5 <input type="date"> and API payloads.
+ */
+export function toIsoDate(d: string | Date | number | null | undefined): string {
+  if (!d) return '';
+  if (d instanceof Date) {
+    if (isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  const s = String(d).trim();
+  if (!s || s === 'N/A' || s === '-') return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  const parts = s.split(/[-/ ]+/);
+  if (parts.length >= 3) {
+    let [day, month, year] = parts;
+    if (day.length === 4) {
+      year = parts[0];
+      month = parts[1];
+      day = parts[2];
+    }
+    const y = year.length === 2 ? `20${year}` : year;
+    const monthMap: Record<string, string> = {
+      jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+      jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
+    };
+    const m = monthMap[month.toLowerCase().slice(0, 3)] || month.padStart(2, '0');
+    return `${y}-${m}-${day.padStart(2, '0')}`;
+  }
+
+  const ts = Date.parse(s);
+  if (!isNaN(ts)) {
+    const dt = new Date(ts);
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const day = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  return '';
+}
+
+/**
  * Export dataset to CSV string
  */
 export function exportToCSV(filename: string, rows: Record<string, any>[], sourceLabel?: string): void {

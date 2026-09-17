@@ -65,7 +65,7 @@ import { CorporateVoucherSuccessModal } from './CorporateVoucherSuccessModal';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { BankChargeModal, isBankChargeVoucher, BankChargeSavePayload } from './BankChargeModal';
 import { AnimatedSplashLogos } from './AnimatedSplashLogos';
-import { formatPKR } from '../lib/formatters';
+import { formatPKR, toIsoDate } from '../lib/formatters';
 import { notifySyncStatus, formatSaveErrorMessage, formatDeleteErrorMessage } from '../lib/voucherSync';
 import { OFFICIAL_GOOGLE_APPS_SCRIPT_V315 } from '../data/googleAppsScriptCode';
 
@@ -1249,12 +1249,12 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         bankHead: savedVoucher.bankAccount,
         payeeName: savedVoucher.payeeName,
         billNo: savedVoucher.billNo,
-        billDate: savedVoucher.billDate,
+        billDate: toIsoDate(savedVoucher.billDate) || savedVoucher.billDate,
         billAmtExclTax: savedVoucher.billAmtExclTax || savedVoucher.billAmountGross,
         saleTax: savedVoucher.gstAmount || 0,
         praTaxOnBill: savedVoucher.praTaxOnBill || 0,
         chequeNoNet: savedVoucher.chequeNoNet,
-        chequeDateNet: savedVoucher.chequeDate,
+        chequeDateNet: toIsoDate(savedVoucher.chequeDate) || savedVoucher.chequeDate,
         chequeAmtNet: savedVoucher.chequeAmountNet,
         chequeNoIncomeTax: savedVoucher.chequeNoIncomeTax || '0',
         incomeTaxAmt: savedVoucher.incomeTaxAmount || 0,
@@ -1497,12 +1497,12 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           bankHead: bankFullName,
           payeeName: 'Bank Charges',
           billNo: 'BC',
-          billDate: date,
+          billDate: toIsoDate(date) || date,
           billAmtExclTax: amount,
           saleTax: 0,
           praTaxOnBill: 0,
           chequeNoNet: 'Direct Debit',
-          chequeDateNet: date,
+          chequeDateNet: toIsoDate(date) || date,
           chequeAmtNet: amount,
           chequeNoIncomeTax: '0',
           incomeTaxAmt: 0,

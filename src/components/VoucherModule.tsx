@@ -4,7 +4,7 @@ import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { VoucherEntryModal } from './VoucherEntryModal';
 import { CorporateDeleteVoucherModal } from './CorporateDeleteVoucherModal';
 import { BankChargeModal, isBankChargeVoucher, BankChargeSavePayload } from './BankChargeModal';
-import { formatPKR } from '../lib/formatters';
+import { formatPKR, toIsoDate } from '../lib/formatters';
 import { notifySyncStatus, formatDeleteErrorMessage } from '../lib/voucherSync';
 import {
   Search,
@@ -277,12 +277,12 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
         bankHead: savedVoucher.bankAccount,
         payeeName: savedVoucher.payeeName,
         billNo: savedVoucher.billNo,
-        billDate: savedVoucher.billDate,
+        billDate: toIsoDate(savedVoucher.billDate) || savedVoucher.billDate,
         billAmtExclTax: savedVoucher.billAmtExclTax || savedVoucher.billAmountGross,
         saleTax: savedVoucher.gstAmount || 0,
         praTaxOnBill: savedVoucher.praTaxOnBill || 0,
         chequeNoNet: savedVoucher.chequeNoNet,
-        chequeDateNet: savedVoucher.chequeDate,
+        chequeDateNet: toIsoDate(savedVoucher.chequeDate) || savedVoucher.chequeDate,
         chequeAmtNet: savedVoucher.chequeAmountNet,
         chequeNoIncomeTax: savedVoucher.chequeNoIncomeTax || '0',
         incomeTaxAmt: savedVoucher.incomeTaxAmount || 0,
@@ -390,12 +390,12 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
             bankHead: bankFullName,
             payeeName: 'Bank Charges',
             billNo: 'BC',
-            billDate: date,
+            billDate: toIsoDate(date) || date,
             billAmtExclTax: amount,
             saleTax: 0,
             praTaxOnBill: 0,
             chequeNoNet: 'Direct Debit',
-            chequeDateNet: date,
+            chequeDateNet: toIsoDate(date) || date,
             chequeAmtNet: amount,
             chequeNoIncomeTax: '0',
             incomeTaxAmt: 0,
@@ -411,7 +411,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
             srNo: targetSrNo,
             bank: bankFullName,
             bankAccount: bankFullName,
-            date: date,
+            date: toIsoDate(date) || date,
             amt: amount,
             amount: amount,
             narr: memo || 'Bank Charges / SMS / FED Charges',
