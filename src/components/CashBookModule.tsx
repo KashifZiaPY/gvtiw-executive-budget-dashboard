@@ -254,6 +254,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         vNo: r.voucherNo || '',
         voucherSerial: r.voucherNo || '',
         particulars: r.particulars || '',
+        billNo: r.billNo,
+        billDate: r.billDate,
         paidToBy: r.paidToBy || '',
         accountHead: r.accountHead || '',
         chequeNo: r.chequeNo || '',
@@ -386,13 +388,28 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       return;
     }
 
-    const rowsHtml = filteredEntries.map((e) => `
+    const rowsHtml = filteredEntries.map((e) => {
+      const isTax =
+        e.particulars.toLowerCase().includes('tax') ||
+        e.paidToBy.toLowerCase().includes('tax') ||
+        e.particulars.toLowerCase().includes('wht') ||
+        e.particulars.toLowerCase().includes('pra');
+
+      const linkedVoucher = (e.voucherSerial && voucherMap.get(e.voucherSerial)) || (e.vNo && voucherMap.get(e.vNo));
+      const bNo = e.billNo || (linkedVoucher ? linkedVoucher.billNo : undefined);
+      const bDate = e.billDate || (linkedVoucher ? linkedVoucher.billDate : undefined);
+      const billInfo = formatCashBookBillInfo(bNo, bDate);
+
+      return `
       <tr>
         <td style="text-align:center; padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold;">${e.srNo}</td>
         <td style="padding: 4px 6px; border: 1px solid #cbd5e1; white-space: nowrap;">${e.date}</td>
         <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">${e.month}</td>
         <td style="text-align:center; padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; white-space: nowrap;">${e.vNo && e.voucherSerial && e.vNo !== e.voucherSerial ? `${e.vNo} (${e.voucherSerial})` : (e.vNo || e.voucherSerial || '-')}</td>
-        <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">${e.particulars}</td>
+        <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">
+          <div style="${isTax ? 'color: #b91c1c; font-weight: 600;' : ''}">${e.particulars}</div>
+          ${billInfo ? `<div style="font-size: 8px; font-family: monospace; color: ${isTax ? '#b91c1c' : '#475569'}; margin-top: 2px; font-weight: 500;">${billInfo}</div>` : ''}
+        </td>
         <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: 600;">${e.paidToBy}</td>
         <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-family: monospace; font-size: 10px;">${e.accountHead}</td>
         <td style="padding: 4px 6px; border: 1px solid #cbd5e1; font-family: monospace; text-align: center;">${e.chequeNo || '-'}</td>
@@ -400,7 +417,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         <td style="text-align:right; padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: 600; color: #be123c;">${e.payments > 0 ? Number(e.payments).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
         <td style="text-align:right; padding: 4px 6px; border: 1px solid #cbd5e1; font-weight: bold; font-family: monospace;">${Number(e.runningBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
       </tr>
-    `).join('');
+    `;
+    }).join('');
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -907,7 +925,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                             >
                               {entry.particulars}
                             </span>
-                            {entry.voucherSerial && voucherMap.get(entry.voucherSerial) && (
+                            {((entry.voucherSerial && voucherMap.get(entry.voucherSerial)) || entry.billNo) && (
                               <span
                                 className={`text-[10px] font-mono block mt-0.5 ${
                                   isTaxEntry
@@ -918,8 +936,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                                 }`}
                               >
                                 {formatCashBookBillInfo(
-                                  voucherMap.get(entry.voucherSerial)!.billNo,
-                                  voucherMap.get(entry.voucherSerial)!.billDate
+                                  entry.billNo || (entry.voucherSerial ? voucherMap.get(entry.voucherSerial)?.billNo : undefined),
+                                  entry.billDate || (entry.voucherSerial ? voucherMap.get(entry.voucherSerial)?.billDate : undefined)
                                 )}
                               </span>
                             )}

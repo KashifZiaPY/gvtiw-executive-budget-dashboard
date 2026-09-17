@@ -34,6 +34,8 @@ export interface CashBookEntry {
   vNo: string;
   voucherSerial: string;
   particulars: string;
+  billNo?: string;
+  billDate?: string;
   paidToBy: string;
   accountHead: string;
   chequeNo: string;
