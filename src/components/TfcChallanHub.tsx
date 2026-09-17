@@ -11,6 +11,7 @@ import {
   getNetCashBookReceiptAmount,
   mergeTfcChallanRecords,
 } from '../data/tfcChallanData';
+import { TfcReceiptsReportView } from './TfcReceiptsReportView';
 import { formatPKR } from '../lib/formatters';
 import {
   Building2,
@@ -151,7 +152,9 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [selectedCourse, setSelectedCourse] = useState<string>('ALL');
   const [selectedDate, setSelectedDate] = useState<string>('ALL');
-  const [activeSubTab, setActiveSubTab] = useState<'OVERVIEW' | 'CASHBOOK_GEN' | 'HARD_CASHBOOK' | 'COURSE_MATRIX' | 'DIRECTORY'>('CASHBOOK_GEN');
+  const [activeSubTab, setActiveSubTab] = useState<
+    'DATE_WISE_RECEIPTS' | 'MONTH_WISE_RECEIPTS' | 'OVERVIEW' | 'CASHBOOK_GEN' | 'HARD_CASHBOOK' | 'COURSE_MATRIX' | 'DIRECTORY'
+  >('DATE_WISE_RECEIPTS');
   const [postingGrouping, setPostingGrouping] = useState<'DATE_WISE' | 'DATE_COURSE_WISE'>('DATE_COURSE_WISE');
   const [startRow, setStartRow] = useState<number>(6);
   const [monthDisplayMode, setMonthDisplayMode] = useState<'FORMULA' | 'TEXT'>('FORMULA');
@@ -1411,6 +1414,32 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         {/* Navigation Sub-Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
           <button
+            onClick={() => setActiveSubTab('DATE_WISE_RECEIPTS')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeSubTab === 'DATE_WISE_RECEIPTS'
+                ? 'bg-emerald-700 text-white shadow-md'
+                : darkMode
+                ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                : 'text-slate-700 hover:bg-white hover:text-slate-950 border border-transparent hover:border-slate-300'
+            }`}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Date Wise Receipts</span>
+          </button>
+          <button
+            onClick={() => setActiveSubTab('MONTH_WISE_RECEIPTS')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeSubTab === 'MONTH_WISE_RECEIPTS'
+                ? 'bg-rose-700 text-white shadow-md'
+                : darkMode
+                ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                : 'text-slate-700 hover:bg-white hover:text-slate-950 border border-transparent hover:border-slate-300'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Month Wise Receipts</span>
+          </button>
+          <button
             onClick={() => setActiveSubTab('OVERVIEW')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
               activeSubTab === 'OVERVIEW'
@@ -1420,7 +1449,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                 : 'text-slate-700 hover:bg-white hover:text-slate-950 border border-transparent hover:border-slate-300'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
+            <Building2 className="w-3.5 h-3.5" />
             <span>Distribution Overview</span>
           </button>
           <button
@@ -1531,6 +1560,34 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       {/* 4. TAB CONTENTS                                                */}
       {/* ------------------------------------------------------------- */}
       <div className="p-6">
+        {/* ============================================================= */}
+        {/* SUB-TAB: DATE WISE RECEIPTS (OFFICIAL TEVTA EXCEL LAYOUT)      */}
+        {/* ============================================================= */}
+        {activeSubTab === 'DATE_WISE_RECEIPTS' && (
+          <TfcReceiptsReportView
+            challans={challans}
+            darkMode={darkMode}
+            initialMode="DATE_WISE"
+            customGvtiwLogo={customGvtiwLogo}
+            customTevtaLogo={customTevtaLogo}
+            customGopLogo={customGopLogo}
+          />
+        )}
+
+        {/* ============================================================= */}
+        {/* SUB-TAB: MONTH WISE RECEIPTS (OFFICIAL TEVTA EXCEL LAYOUT)     */}
+        {/* ============================================================= */}
+        {activeSubTab === 'MONTH_WISE_RECEIPTS' && (
+          <TfcReceiptsReportView
+            challans={challans}
+            darkMode={darkMode}
+            initialMode="MONTH_WISE"
+            customGvtiwLogo={customGvtiwLogo}
+            customTevtaLogo={customTevtaLogo}
+            customGopLogo={customGopLogo}
+          />
+        )}
+
         {/* ============================================================= */}
         {/* SUB-TAB 1: DISTRIBUTION OVERVIEW                               */}
         {/* ============================================================= */}

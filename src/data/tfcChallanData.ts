@@ -1547,3 +1547,95 @@ export function parseRawCsvToTfcChallans(csvText: string): TfcChallanRecord[] {
 
   return records;
 }
+
+export interface ChallanFeeBreakdown {
+  admissionTuitionRegFee: number;
+  pupilFee25Percent: number;
+  totalTevtaDues: number;
+  pupilFee75Percent: number;
+  collegeSecurity: number;
+  boardCharges: number;
+  shortCourseSelfFinance: number;
+  bankProfit: number;
+  subTotalInstituteShare: number;
+  totalAmountReceived: number;
+  instituteShare: number;
+  isBeauticianSelfFinance: boolean;
+  isTuv: boolean;
+}
+
+/**
+ * Computes official Fee Breakdown for BOP Fee Collection Account (6580027832200011):
+ * 1. Beautician Self Finance (Total Fee Rs. 10,012 includes 1,500 Board Charges under Other head):
+ *    - Base Course Fee: Rs. 8,512 (Short Course / Self Finance)
+ *    - Board Dues: Any amount above 8,512 (Standard: 10,012 - 8,512 = 1,500).
+ *    - Double/Excess Board Fee: If total > 10,012, all amount above 8,512 is board charges.
+ * 2. TUV Course:
+ *    - No Board Charges yet (Rs. 0 for Board, pending instructions for TEVTA Share transfer).
+ * 3. All Other Regular Courses:
+ *    - All amount in other head is charged for Board Fee (TTB / PBTE Charges).
+ */
+export function computeChallanFeeBreakdown(c: TfcChallanRecord): ChallanFeeBreakdown {
+  const adm = Number(c.admissionTuitionRegFee) || 0;
+  const pf25 = Number(c.pupilFee25Percent) || 0;
+  const totalTevta = adm + pf25;
+
+  const pf75 = Number(c.pupilFee75Percent) || 0;
+  const security = Number(c.instituteSecurity) || 0;
+  const rawOther = Number(c.otherFee) || 0;
+
+  let board = 0;
+  let selfFinance = 0;
+
+  const courseAbbrUpper = (c.courseAbbreviation || '').toUpperCase();
+  const courseNameUpper = (c.courseName || '').toUpperCase();
+  const nameUpper = (c.name || '').toUpperCase();
+
+  const isBeauticianSelfFinance =
+    courseAbbrUpper === 'BTE' ||
+    courseNameUpper.includes('BEAUTICIAN') ||
+    courseNameUpper.includes('SELF FINANCE') ||
+    courseNameUpper.includes('SELF-FINANCE') ||
+    nameUpper.includes('BTE');
+
+  const isTuv =
+    courseAbbrUpper === 'TUV' ||
+    courseNameUpper.includes('TUV') ||
+    nameUpper.includes('TUV');
+
+  if (isBeauticianSelfFinance) {
+    if (rawOther > 8512) {
+      board = rawOther - 8512;
+      selfFinance = 8512;
+    } else {
+      board = 0;
+      selfFinance = rawOther;
+    }
+  } else if (isTuv) {
+    board = 0;
+    selfFinance = 0;
+  } else {
+    board = rawOther;
+    selfFinance = 0;
+  }
+
+  const bankProfit = 0;
+  const subTotalInst = pf75 + security + board + selfFinance + bankProfit;
+  const totalReceived = totalTevta + subTotalInst;
+
+  return {
+    admissionTuitionRegFee: adm,
+    pupilFee25Percent: pf25,
+    totalTevtaDues: totalTevta,
+    pupilFee75Percent: pf75,
+    collegeSecurity: security,
+    boardCharges: board,
+    shortCourseSelfFinance: selfFinance,
+    bankProfit,
+    subTotalInstituteShare: subTotalInst,
+    totalAmountReceived: totalReceived,
+    instituteShare: subTotalInst,
+    isBeauticianSelfFinance,
+    isTuv,
+  };
+}
