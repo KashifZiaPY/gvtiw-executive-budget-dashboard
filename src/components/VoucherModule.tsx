@@ -4,7 +4,7 @@ import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { VoucherEntryModal } from './VoucherEntryModal';
 import { CorporateDeleteVoucherModal } from './CorporateDeleteVoucherModal';
 import { BankChargeModal, isBankChargeVoucher, BankChargeSavePayload } from './BankChargeModal';
-import { formatPKR, toIsoDate } from '../lib/formatters';
+import { formatPKR, toIsoDate, formatPakistaniDate } from '../lib/formatters';
 import { notifySyncStatus, formatDeleteErrorMessage } from '../lib/voucherSync';
 import {
   Search,
@@ -269,27 +269,50 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
         'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
       const activePin = getResolvedPin();
 
+      const isoBillDate = toIsoDate(savedVoucher.billDate) || '2026-06-27';
+      const pakBillDate = formatPakistaniDate(savedVoucher.billDate) || '27-Jun-2026';
+      const isoChequeDate = toIsoDate(savedVoucher.chequeDate) || '2026-07-03';
+      const pakChequeDate = formatPakistaniDate(savedVoucher.chequeDate) || '03-Jul-2026';
+
       const postPayload = JSON.stringify({
         pin: activePin,
         action: 'submitNewVoucher',
         mode: isAmend ? 'amend' : 'new',
         srNo: isAmend ? savedVoucher.srNo : null,
         bankHead: savedVoucher.bankAccount,
+        bankAccount: savedVoucher.bankAccount,
         payeeName: savedVoucher.payeeName,
         billNo: savedVoucher.billNo,
-        billDate: toIsoDate(savedVoucher.billDate) || savedVoucher.billDate,
-        billAmtExclTax: savedVoucher.billAmtExclTax || savedVoucher.billAmountGross,
+        billDate: isoBillDate,
+        billDateIso: isoBillDate,
+        billDatePak: pakBillDate,
+        billDateFormatted: pakBillDate,
+        billAmtExclTax: savedVoucher.billAmtExclTax ?? savedVoucher.billAmountGross,
+        billAmount: savedVoucher.billAmtExclTax ?? savedVoucher.billAmountGross,
+        billAmountGross: savedVoucher.billAmountGross,
         saleTax: savedVoucher.gstAmount || 0,
+        gstAmount: savedVoucher.gstAmount || 0,
         praTaxOnBill: savedVoucher.praTaxOnBill || 0,
+        praTax: savedVoucher.praTaxOnBill || 0,
+        chequeNo: savedVoucher.chequeNoNet,
         chequeNoNet: savedVoucher.chequeNoNet,
-        chequeDateNet: toIsoDate(savedVoucher.chequeDate) || savedVoucher.chequeDate,
+        chequeDate: isoChequeDate,
+        chequeDateNet: isoChequeDate,
+        chequeDateIso: isoChequeDate,
+        chequeDatePak: pakChequeDate,
+        chequeDateFormatted: pakChequeDate,
+        chqDate: isoChequeDate,
+        date: isoChequeDate,
+        chequeAmt: savedVoucher.chequeAmountNet,
         chequeAmtNet: savedVoucher.chequeAmountNet,
         chequeNoIncomeTax: savedVoucher.chequeNoIncomeTax || '0',
         incomeTaxAmt: savedVoucher.incomeTaxAmount || 0,
+        incomeTax: savedVoucher.incomeTaxAmount || 0,
         chequeNoPRATax: savedVoucher.chequeNoPra || '0',
         praTaxAmt: savedVoucher.praAmount || 0,
         accountHead: savedVoucher.accountHead,
         narration: savedVoucher.description,
+        description: savedVoucher.description,
       });
 
       const response = await fetch(webAppUrl, {
@@ -381,6 +404,9 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
         'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
       const activePin = getResolvedPin();
 
+      const isoBcDate = toIsoDate(date) || date;
+      const pakBcDate = formatPakistaniDate(date);
+
       const requestPayload = isAmend
         ? {
             pin: activePin,
@@ -388,21 +414,39 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
             mode: 'amend',
             srNo: targetSrNo,
             bankHead: bankFullName,
+            bankAccount: bankFullName,
             payeeName: 'Bank Charges',
             billNo: 'BC',
-            billDate: toIsoDate(date) || date,
+            billDate: isoBcDate,
+            billDateIso: isoBcDate,
+            billDatePak: pakBcDate,
+            billDateFormatted: pakBcDate,
             billAmtExclTax: amount,
+            billAmount: amount,
+            billAmountGross: amount,
             saleTax: 0,
+            gstAmount: 0,
             praTaxOnBill: 0,
+            praTax: 0,
+            chequeNo: 'Direct Debit',
             chequeNoNet: 'Direct Debit',
-            chequeDateNet: toIsoDate(date) || date,
+            chequeDate: isoBcDate,
+            chequeDateNet: isoBcDate,
+            chequeDateIso: isoBcDate,
+            chequeDatePak: pakBcDate,
+            chequeDateFormatted: pakBcDate,
+            chqDate: isoBcDate,
+            date: isoBcDate,
+            chequeAmt: amount,
             chequeAmtNet: amount,
             chequeNoIncomeTax: '0',
             incomeTaxAmt: 0,
+            incomeTax: 0,
             chequeNoPRATax: '0',
             praTaxAmt: 0,
             accountHead: accountHead,
             narration: memo,
+            description: memo,
           }
         : {
             pin: activePin,
@@ -411,10 +455,11 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
             srNo: targetSrNo,
             bank: bankFullName,
             bankAccount: bankFullName,
-            date: toIsoDate(date) || date,
+            date: isoBcDate,
             amt: amount,
             amount: amount,
             narr: memo || 'Bank Charges / SMS / FED Charges',
+            memo: memo || 'Bank Charges / SMS / FED Charges',
             accountHead: accountHead,
           };
 

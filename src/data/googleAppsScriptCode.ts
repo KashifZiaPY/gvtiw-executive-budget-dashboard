@@ -124,6 +124,7 @@ function parseDateNoon_(dateInput, tz) {
   }
   var clean = String(dateInput).trim();
   if (!clean) return null;
+  clean = clean.replace(/\\s*[-/]\\s*/g, '-');
   if (/^\\d{4}-\\d{2}-\\d{2}/.test(clean)) {
     return Utilities.parseDate(clean.substring(0, 10) + ' 12:00:00', targetTz, 'yyyy-MM-dd HH:mm:ss');
   }
@@ -992,6 +993,11 @@ function handleApiRequest_(pin, action, data) {
   // 3. Action Router
   try {
     if (action === "submitNewVoucher") {
+      if (data) {
+        if (!data.chequeDate && data.chequeDateNet) data.chequeDate = data.chequeDateNet;
+        if (!data.chequeDateNet && data.chequeDate) data.chequeDateNet = data.chequeDate;
+        if (!data.billDate && data.billDateNet) data.billDate = data.billDateNet;
+      }
       var res = processVoucherDialog(data);
       return ContentService.createTextOutput(JSON.stringify(res)).setMimeType(ContentService.MimeType.JSON);
     } 

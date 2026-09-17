@@ -65,7 +65,7 @@ import { CorporateVoucherSuccessModal } from './CorporateVoucherSuccessModal';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { BankChargeModal, isBankChargeVoucher, BankChargeSavePayload } from './BankChargeModal';
 import { AnimatedSplashLogos } from './AnimatedSplashLogos';
-import { formatPKR, toIsoDate } from '../lib/formatters';
+import { formatPKR, toIsoDate, formatPakistaniDate } from '../lib/formatters';
 import { notifySyncStatus, formatSaveErrorMessage, formatDeleteErrorMessage } from '../lib/voucherSync';
 import { OFFICIAL_GOOGLE_APPS_SCRIPT_V315 } from '../data/googleAppsScriptCode';
 
@@ -1240,6 +1240,11 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     savedVoucher: MasterVoucher,
     isAmend: boolean
   ): Promise<{ success: boolean; code?: string; message?: string }> => {
+    const isoBillDate = toIsoDate(savedVoucher.billDate) || '2026-06-27';
+    const pakBillDate = formatPakistaniDate(savedVoucher.billDate) || '27-Jun-2026';
+    const isoChequeDate = toIsoDate(savedVoucher.chequeDate) || '2026-07-03';
+    const pakChequeDate = formatPakistaniDate(savedVoucher.chequeDate) || '03-Jul-2026';
+
     // 1. Dispatch to Google Sheets backend FIRST and await response
     const res = await triggerAppScriptCommand(
       'submitNewVoucher',
@@ -1247,21 +1252,39 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         mode: isAmend ? 'amend' : 'new',
         srNo: isAmend ? savedVoucher.srNo : null,
         bankHead: savedVoucher.bankAccount,
+        bankAccount: savedVoucher.bankAccount,
         payeeName: savedVoucher.payeeName,
         billNo: savedVoucher.billNo,
-        billDate: toIsoDate(savedVoucher.billDate) || savedVoucher.billDate,
-        billAmtExclTax: savedVoucher.billAmtExclTax || savedVoucher.billAmountGross,
+        billDate: isoBillDate,
+        billDateIso: isoBillDate,
+        billDatePak: pakBillDate,
+        billDateFormatted: pakBillDate,
+        billAmtExclTax: savedVoucher.billAmtExclTax ?? savedVoucher.billAmountGross,
+        billAmount: savedVoucher.billAmtExclTax ?? savedVoucher.billAmountGross,
+        billAmountGross: savedVoucher.billAmountGross,
         saleTax: savedVoucher.gstAmount || 0,
+        gstAmount: savedVoucher.gstAmount || 0,
         praTaxOnBill: savedVoucher.praTaxOnBill || 0,
+        praTax: savedVoucher.praTaxOnBill || 0,
+        chequeNo: savedVoucher.chequeNoNet,
         chequeNoNet: savedVoucher.chequeNoNet,
-        chequeDateNet: toIsoDate(savedVoucher.chequeDate) || savedVoucher.chequeDate,
+        chequeDate: isoChequeDate,
+        chequeDateNet: isoChequeDate,
+        chequeDateIso: isoChequeDate,
+        chequeDatePak: pakChequeDate,
+        chequeDateFormatted: pakChequeDate,
+        chqDate: isoChequeDate,
+        date: isoChequeDate,
+        chequeAmt: savedVoucher.chequeAmountNet,
         chequeAmtNet: savedVoucher.chequeAmountNet,
         chequeNoIncomeTax: savedVoucher.chequeNoIncomeTax || '0',
         incomeTaxAmt: savedVoucher.incomeTaxAmount || 0,
+        incomeTax: savedVoucher.incomeTaxAmount || 0,
         chequeNoPRATax: savedVoucher.chequeNoPra || '0',
         praTaxAmt: savedVoucher.praAmount || 0,
         accountHead: savedVoucher.accountHead,
         narration: savedVoucher.description,
+        description: savedVoucher.description,
       },
       {
         busyTitle: isAmend ? 'Updating Voucher in Google Sheets...' : 'Posting Voucher to Google Sheets...',
@@ -1489,27 +1512,48 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       const targetSrNo = srNo || bcVoucherToAmend.srNo;
       const effectiveVoucherNo = voucherNo || bcVoucherToAmend.voucherNo;
 
+      const isoBcDate = toIsoDate(date) || date;
+      const pakBcDate = formatPakistaniDate(date);
+
       const res = await triggerAppScriptCommand(
         'submitNewVoucher',
         {
           mode: 'amend',
           srNo: targetSrNo,
           bankHead: bankFullName,
+          bankAccount: bankFullName,
           payeeName: 'Bank Charges',
           billNo: 'BC',
-          billDate: toIsoDate(date) || date,
+          billDate: isoBcDate,
+          billDateIso: isoBcDate,
+          billDatePak: pakBcDate,
+          billDateFormatted: pakBcDate,
           billAmtExclTax: amount,
+          billAmount: amount,
+          billAmountGross: amount,
           saleTax: 0,
+          gstAmount: 0,
           praTaxOnBill: 0,
+          praTax: 0,
+          chequeNo: 'Direct Debit',
           chequeNoNet: 'Direct Debit',
-          chequeDateNet: toIsoDate(date) || date,
+          chequeDate: isoBcDate,
+          chequeDateNet: isoBcDate,
+          chequeDateIso: isoBcDate,
+          chequeDatePak: pakBcDate,
+          chequeDateFormatted: pakBcDate,
+          chqDate: isoBcDate,
+          date: isoBcDate,
+          chequeAmt: amount,
           chequeAmtNet: amount,
           chequeNoIncomeTax: '0',
           incomeTaxAmt: 0,
+          incomeTax: 0,
           chequeNoPRATax: '0',
           praTaxAmt: 0,
           accountHead: accountHead,
           narration: memo,
+          description: memo,
         },
         {
           busyTitle: 'Amending Bank Charge in Google Sheets...',
