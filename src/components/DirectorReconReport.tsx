@@ -60,6 +60,7 @@ import {
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { PinLockScreen } from './PinLockScreen';
 import { AiReconciliationDifferenceModal } from './AiReconciliationDifferenceModal';
+import { formatPakistaniDate } from '../lib/formatters';
 
 export interface DirectorReconReportProps {
   initialAccountKey?: BankAccountKey;
@@ -189,6 +190,13 @@ export function formatDateDDMM(dtStr: string): string {
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');
   return `${day}-${month}`;
+}
+
+// Helper: Format Date string to DD-MMM-YYYY (e.g. 05-Sep-2026)
+export function formatDateDDMMMYYYY(dtStr: string | number | Date | null | undefined): string {
+  if (!dtStr || dtStr === '-' || dtStr === 'N/A') return '-';
+  const formatted = formatPakistaniDate(dtStr);
+  return formatted && formatted !== 'N/A' ? formatted : String(dtStr);
 }
 
 // Helper: Extract YYYY-MM month key from any date format
@@ -1826,7 +1834,7 @@ export function DirectorReconciliationReport({
           `${fromDate} to ${toDate}`,
           filteredReceipts.map((r, idx) => ({
             sr: idx + 1,
-            date: formatDateDDMMYY(r.date),
+            date: formatDateDDMMMYYYY(r.date),
             challanChequeNo: r.challanChequeNo,
             headOfAccount: r.headOfAccount,
             amount: r.amount,
@@ -1842,7 +1850,7 @@ export function DirectorReconciliationReport({
           filteredPayments.map((p, idx) => ({
             sr: idx + 1,
             headOfAccount: p.headOfAccount,
-            chequeDate: formatDateDDMM(p.chequeDate),
+            chequeDate: formatDateDDMMMYYYY(p.chequeDate),
             chequeNo: p.chequeNo,
             totalBillAmount: p.totalBillAmount,
             incomeTax: p.incomeTax,
@@ -1909,11 +1917,11 @@ export function DirectorReconciliationReport({
     lines.push(`"ACCOUNTING DATA ENTRY — DATE WISE RECEIPTS IN ${activeAccountName.toUpperCase()} GRANTS"`);
     lines.push(`"Period: ${fromDate} to ${toDate} | Head: ${activeAccountConfig.short}"`);
     lines.push('');
-    lines.push('"Sr #","Date of Receipt (dd-mm-yy)","Challan/Cheque No","Head of Account","Amount (Rs.)","Remarks"');
+    lines.push('"Sr #","Date of Receipt (dd-mmm-yyyy)","Challan/Cheque No","Head of Account","Amount (Rs.)","Remarks"');
 
     filteredReceipts.forEach((r, idx) => {
       lines.push(
-        `"${idx + 1}","${formatDateDDMMYY(r.date)}","${r.challanChequeNo}","${r.headOfAccount}","${r.amount.toFixed(2)}","${r.remarks.replace(/"/g, '""')}"`
+        `"${idx + 1}","${formatDateDDMMMYYYY(r.date)}","${r.challanChequeNo}","${r.headOfAccount}","${r.amount.toFixed(2)}","${r.remarks.replace(/"/g, '""')}"`
       );
     });
 
@@ -1932,13 +1940,13 @@ export function DirectorReconciliationReport({
     lines.push(`"Period: ${fromDate} to ${toDate} | Head: ${activeAccountConfig.short}"`);
     lines.push('');
     lines.push(
-      '"Sr #","Non Salary Head of Account","Cheque Date (dd-mm)","Cheque No.","Total Bill Amount","Income Tax","Sales Tax PRA 16%","Security","Net Amount Paid","Remarks","Paid to"'
+      `"Sr #","${selectedAccountKey === 'NS' ? 'Non Salary Head of Account' : 'Head of Account'}","Cheque Date (dd-mmm-yyyy)","Cheque No.","Total Bill Amount","Income Tax","Sales Tax PRA 16%","Security","Net Amount Paid","Remarks","Paid to"`
     );
 
     filteredPayments.forEach((p, idx) => {
       const formattedRemarks = getFullPaymentRemarks(p);
       lines.push(
-        `"${idx + 1}","${p.headOfAccount.replace(/"/g, '""')}","${formatDateDDMM(p.chequeDate)}","${p.chequeNo}","${p.totalBillAmount.toFixed(2)}","${p.incomeTax.toFixed(2)}","${p.praAmount.toFixed(2)}","${p.security.toFixed(2)}","${p.netAmountPaid.toFixed(2)}","${formattedRemarks.replace(/"/g, '""')}","${p.paidTo.replace(/"/g, '""')}"`
+        `"${idx + 1}","${p.headOfAccount.replace(/"/g, '""')}","${formatDateDDMMMYYYY(p.chequeDate)}","${p.chequeNo}","${p.totalBillAmount.toFixed(2)}","${p.incomeTax.toFixed(2)}","${p.praAmount.toFixed(2)}","${p.security.toFixed(2)}","${p.netAmountPaid.toFixed(2)}","${formattedRemarks.replace(/"/g, '""')}","${p.paidTo.replace(/"/g, '""')}"`
       );
     });
 
@@ -2120,6 +2128,37 @@ export function DirectorReconciliationReport({
             font-weight: bold;
             background-color: #f8f8f8;
           }
+          @media print {
+            thead {
+              display: table-header-group;
+            }
+            tfoot {
+              display: table-row-group !important;
+            }
+          }
+          table.register-table tfoot,
+          tfoot {
+            display: table-row-group !important;
+          }
+          table.register-table tr {
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+          table.register-table tr.grand-total-row,
+          tr.grand-total-row {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            background-color: #f8f8f8 !important;
+            font-weight: bold !important;
+            border-top: 2px solid #000 !important;
+          }
+          table.register-table td.bold,
+          table.register-table td.bold-num,
+          table.register-table th.col-total-bill,
+          table.register-table td.col-total-bill,
+          td.bold {
+            font-weight: 900 !important;
+          }
           .balance-card-grid {
             margin-top: 14px;
             display: table;
@@ -2234,7 +2273,7 @@ export function DirectorReconciliationReport({
       rowsHtml += `
         <tr>
           <td class="center">${idx + 1}</td>
-          <td class="center">${formatDateDDMMYY(r.date)}</td>
+          <td class="center" style="white-space: nowrap; font-family: 'Courier New', Courier, monospace; font-size: 8.5pt;">${formatDateDDMMMYYYY(r.date)}</td>
           <td class="center">${r.challanChequeNo}</td>
           <td>${r.headOfAccount}</td>
           <td class="num">${formatAmount(r.amount, 2)}</td>
@@ -2253,7 +2292,7 @@ export function DirectorReconciliationReport({
           <thead>
             <tr>
               <th style="width: 40px;">Sr #</th>
-              <th style="width: 90px;">Date of Receipt<br><span style="font-size: 7.5pt; font-weight: normal;">(dd-mm-yy)</span></th>
+              <th style="width: 95px;">Date of Receipt<br><span style="font-size: 7.5pt; font-weight: normal;">(dd-mmm-yyyy)</span></th>
               <th style="width: 120px;">Challan/Cheque No</th>
               <th>Head of Account</th>
               <th style="width: 120px;">Amount (Rs.)</th>
@@ -2262,14 +2301,12 @@ export function DirectorReconciliationReport({
           </thead>
           <tbody>
             ${rowsHtml || '<tr><td colspan="6" class="center">No receipts recorded for the selected period.</td></tr>'}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="4" style="text-align: right; font-weight: bold;">Total Amount:</td>
-              <td class="num" style="font-weight: bold;">Rs. ${formatAmount(totalReceiptsAmount, 2)}</td>
+            <tr class="grand-total-row" style="background-color: #f8f8f8; font-weight: bold; border-top: 2px solid #000; page-break-inside: avoid; break-inside: avoid;">
+              <td colspan="4" style="text-align: right; font-weight: bold; font-size: 9pt;">Total Amount:</td>
+              <td class="num" style="font-weight: bold; font-size: 9pt;">Rs. ${formatAmount(totalReceiptsAmount, 2)}</td>
               <td></td>
             </tr>
-          </tfoot>
+          </tbody>
         </table>
         ${generateSignatoryBlockHTML()}
       `,
@@ -2284,9 +2321,9 @@ export function DirectorReconciliationReport({
         <tr>
           <td class="center">${idx + 1}</td>
           <td>${p.headOfAccount}</td>
-          <td class="center">${formatDateDDMM(p.chequeDate)}</td>
+          <td class="center" style="white-space: nowrap; font-family: 'Courier New', Courier, monospace; font-size: 8.5pt;">${formatDateDDMMMYYYY(p.chequeDate)}</td>
           <td class="center">${p.chequeNo}</td>
-          <td class="num">${formatAmount(p.totalBillAmount, 2)}</td>
+          <td class="num bold col-total-bill" style="font-weight: 900 !important; font-size: 9.5pt;">${formatAmount(p.totalBillAmount, 2)}</td>
           <td class="num">${formatAmount(p.incomeTax, 2)}</td>
           <td class="num">${formatAmount(p.praAmount, 2)}</td>
           <td class="num">${formatAmount(p.security, 2, true)}</td>
@@ -2296,6 +2333,8 @@ export function DirectorReconciliationReport({
         </tr>
       `;
     });
+
+    const headHeaderTitle = selectedAccountKey === 'NS' ? 'Non Salary Head of Account' : 'Head of Account';
 
     return {
       headerSnippet: `
@@ -2307,10 +2346,10 @@ export function DirectorReconciliationReport({
           <thead>
             <tr>
               <th style="width: 35px;">Sr #</th>
-              <th>Non Salary Head of Account</th>
-              <th style="width: 75px;">Cheque Date<br><span style="font-size: 7.5pt; font-weight: normal;">(dd-mm)</span></th>
+              <th>${headHeaderTitle}</th>
+              <th style="width: 95px;">Cheque Date<br><span style="font-size: 7.5pt; font-weight: normal;">(dd-mmm-yyyy)</span></th>
               <th style="width: 85px;">Cheque No.</th>
-              <th style="width: 90px;">Total Bill Amount</th>
+              <th class="col-total-bill" style="width: 105px; font-weight: 900 !important; background-color: #f1f5f9;">Total Bill Amount</th>
               <th style="width: 80px;">Income Tax</th>
               <th style="width: 85px;">Sales Tax PRA 16%</th>
               <th style="width: 65px;">Security</th>
@@ -2321,18 +2360,16 @@ export function DirectorReconciliationReport({
           </thead>
           <tbody>
             ${rowsHtml || '<tr><td colspan="11" class="center">No payments recorded for the selected period.</td></tr>'}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colspan="4" style="text-align: right; font-weight: bold;">Grand Total:</td>
-              <td class="num">Rs. ${formatAmount(paymentsTotals.totalBill, 2)}</td>
-              <td class="num">Rs. ${formatAmount(paymentsTotals.incomeTax, 2)}</td>
-              <td class="num">Rs. ${formatAmount(paymentsTotals.praAmount, 2)}</td>
-              <td class="num">${formatAmount(paymentsTotals.security, 2, true)}</td>
-              <td class="num">Rs. ${formatAmount(paymentsTotals.netPaid, 2)}</td>
+            <tr class="grand-total-row" style="background-color: #f8f8f8; font-weight: bold; border-top: 2px solid #000; page-break-inside: avoid; break-inside: avoid;">
+              <td colspan="4" style="text-align: right; font-weight: bold; font-size: 9pt;">Grand Total:</td>
+              <td class="num bold col-total-bill" style="font-weight: 900 !important; font-size: 9.5pt;">Rs. ${formatAmount(paymentsTotals.totalBill, 2)}</td>
+              <td class="num" style="font-weight: bold; font-size: 9pt;">Rs. ${formatAmount(paymentsTotals.incomeTax, 2)}</td>
+              <td class="num" style="font-weight: bold; font-size: 9pt;">Rs. ${formatAmount(paymentsTotals.praAmount, 2)}</td>
+              <td class="num" style="font-weight: bold; font-size: 9pt;">${formatAmount(paymentsTotals.security, 2, true)}</td>
+              <td class="num" style="font-weight: bold; font-size: 9pt;">Rs. ${formatAmount(paymentsTotals.netPaid, 2)}</td>
               <td colspan="2"></td>
             </tr>
-          </tfoot>
+          </tbody>
         </table>
         ${generateSignatoryBlockHTML()}
       `,
@@ -2366,7 +2403,7 @@ export function DirectorReconciliationReport({
       chequesRowsHtml += `
         <tr>
           <td class="center">${c.chequeNo}</td>
-          <td class="center">${c.date}</td>
+          <td class="center" style="white-space: nowrap; font-family: 'Courier New', Courier, monospace; font-size: 8pt;">${formatDateDDMMMYYYY(c.date)}</td>
           <td>${c.paidTo || '—'}</td>
           <td>${c.accountHead || '—'}</td>
           <td class="num">${formatAmount(parseNumericAmount(c.amount), 2)}</td>
@@ -2412,24 +2449,22 @@ export function DirectorReconciliationReport({
           </thead>
           <tbody>
             ${monthRowsHtml}
-          </tbody>
-          <tfoot>
-            <tr style="font-weight: 900; background: #eef2f7;">
-              <td class="center">Total</td>
+            <tr class="grand-total-row" style="font-weight: 900; background: #eef2f7; border-top: 2px solid #000; page-break-inside: avoid; break-inside: avoid;">
+              <td class="center" style="font-weight: bold;">Total</td>
               <td></td>
-              <td class="num">${formatAmount(reconTotals.directReceipts, 2)}</td>
-              <td class="num">${formatAmount(reconTotals.cmsdiNavttcShortCourse, 2)}</td>
-              <td class="num">${formatAmount(reconTotals.otherReceiptsProfit, 2)}</td>
-              <td class="num">${formatAmount(reconTotals.fromOtherBankAccount, 2)}</td>
-              <td class="num" style="background: #e2e8f0;">Rs. ${formatAmount(reconTotals.totalReceipt, 2)}</td>
+              <td class="num" style="font-weight: bold;">${formatAmount(reconTotals.directReceipts, 2)}</td>
+              <td class="num" style="font-weight: bold;">${formatAmount(reconTotals.cmsdiNavttcShortCourse, 2)}</td>
+              <td class="num" style="font-weight: bold;">${formatAmount(reconTotals.otherReceiptsProfit, 2)}</td>
+              <td class="num" style="font-weight: bold;">${formatAmount(reconTotals.fromOtherBankAccount, 2)}</td>
+              <td class="num" style="background: #e2e8f0; font-weight: bold;">Rs. ${formatAmount(reconTotals.totalReceipt, 2)}</td>
 
               <td></td>
-              <td class="num">${formatAmount(reconTotals.directPayments, 2)}</td>
-              <td class="num">${formatAmount(reconTotals.otherPaymentsBankCharges, 2)}</td>
-              <td class="num">${formatAmount(reconTotals.directPaymentsCMSDI, 2)}</td>
-              <td class="num" style="background: #e2e8f0;">Rs. ${formatAmount(reconTotals.totalPayment, 2)}</td>
+              <td class="num" style="font-weight: bold;">${formatAmount(reconTotals.directPayments, 2)}</td>
+              <td class="num" style="font-weight: bold;">${formatAmount(reconTotals.otherPaymentsBankCharges, 2)}</td>
+              <td class="num" style="font-weight: bold;">${formatAmount(reconTotals.directPaymentsCMSDI, 2)}</td>
+              <td class="num" style="background: #e2e8f0; font-weight: bold;">Rs. ${formatAmount(reconTotals.totalPayment, 2)}</td>
             </tr>
-          </tfoot>
+          </tbody>
         </table>
 
         <div style="margin-top: 15px; display: table; width: 100%;">
@@ -2485,7 +2520,7 @@ export function DirectorReconciliationReport({
               <thead>
                 <tr>
                   <th style="width: 60px;">Cheque No</th>
-                  <th style="width: 55px;">Date</th>
+                  <th style="width: 75px;">Date</th>
                   <th style="width: 85px;">Paid To / By</th>
                   <th style="width: 100px;">Account Head</th>
                   <th style="width: 70px;">Amount</th>
@@ -2494,14 +2529,12 @@ export function DirectorReconciliationReport({
               </thead>
               <tbody>
                 ${chequesRowsHtml || '<tr><td colspan="6" class="center">No unpresented cheques recorded</td></tr>'}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colspan="4" style="text-align: right;">Total:</td>
-                  <td class="num">Rs. ${formatAmount(totalManualChequesAmount, 2)}</td>
+                <tr class="grand-total-row" style="background-color: #f8f8f8; font-weight: bold; border-top: 2px solid #000; page-break-inside: avoid; break-inside: avoid;">
+                  <td colspan="4" style="text-align: right; font-weight: bold;">Total:</td>
+                  <td class="num" style="font-weight: bold;">Rs. ${formatAmount(totalManualChequesAmount, 2)}</td>
                   <td></td>
                 </tr>
-              </tfoot>
+              </tbody>
             </table>
           </div>
         </div>
@@ -2814,7 +2847,7 @@ export function DirectorReconciliationReport({
                   <th className="p-2.5 text-center w-12 border-r border-slate-600">Sr #</th>
                   <th className="p-2.5 text-center w-36 border-r border-slate-600">
                     Date of Receipt <br />
-                    <span className="text-[10px] font-normal lowercase opacity-90">(dd-mm-yy)</span>
+                    <span className="text-[10px] font-normal lowercase opacity-90">(dd-mmm-yyyy)</span>
                   </th>
                   <th className="p-2.5 text-center w-40 border-r border-slate-600">Challan/Cheque No</th>
                   <th className="p-2.5 text-left border-r border-slate-600 min-w-[200px]">Head of Account</th>
@@ -2839,7 +2872,7 @@ export function DirectorReconciliationReport({
                         {idx + 1}
                       </td>
                       <td className="p-2.5 text-center font-mono text-slate-900 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800 whitespace-nowrap">
-                        {formatDateDDMMYY(r.date)}
+                        {formatDateDDMMMYYYY(r.date)}
                       </td>
                       <td className="p-2.5 text-center font-mono font-bold text-slate-800 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
                         {r.challanChequeNo}
@@ -2855,7 +2888,7 @@ export function DirectorReconciliationReport({
                   ))
                 )}
               </tbody>
-              <tfoot>
+              <tfoot className="table-row-group print:table-row-group" style={{ display: 'table-row-group' }}>
                 <tr className="bg-[#0b2545] text-white font-black border-t-2 border-slate-700 text-xs">
                   <td colSpan={4} className="p-3 text-right uppercase tracking-wider border-r border-slate-600">
                     Total Amount:
@@ -3338,7 +3371,7 @@ export function DirectorReconciliationReport({
                       ))
                     )}
                   </tbody>
-                  <tfoot>
+                  <tfoot className="table-row-group print:table-row-group" style={{ display: 'table-row-group' }}>
                     <tr className="bg-[#0b2545] text-white font-bold text-[11px]">
                       <td colSpan={4} className="p-1.5 text-right uppercase">
                         Total Unpresented:
@@ -3436,14 +3469,14 @@ export function DirectorReconciliationReport({
                 <tr className="bg-[#0b2545] text-white border-b border-slate-600 font-bold uppercase text-[11px]">
                   <th className="p-2.5 text-center w-10 border-r border-slate-600">Sr #</th>
                   <th className="p-2.5 text-left border-r border-slate-600 min-w-[180px]">
-                    Non Salary Head of Account
+                    {selectedAccountKey === 'NS' ? 'Non Salary Head of Account' : 'Head of Account'}
                   </th>
-                  <th className="p-2.5 text-center w-24 border-r border-slate-600">
+                  <th className="p-2.5 text-center w-28 border-r border-slate-600">
                     Cheque Date<br />
-                    <span className="text-[10px] font-normal lowercase opacity-90">(dd-mm)</span>
+                    <span className="text-[10px] font-normal lowercase opacity-90">(dd-mmm-yyyy)</span>
                   </th>
                   <th className="p-2.5 text-center w-36 border-r border-slate-600">Cheque No.</th>
-                  <th className="p-2.5 text-right w-28 border-r border-slate-600">Total Bill Amount</th>
+                  <th className="p-2.5 text-right w-28 border-r border-slate-600 font-black text-amber-200">Total Bill Amount</th>
                   <th className="p-2.5 text-right w-24 border-r border-slate-600">Income Tax</th>
                   <th className="p-2.5 text-right w-28 border-r border-slate-600">Sales Tax PRA 16%</th>
                   <th className="p-2.5 text-right w-20 border-r border-slate-600">Security</th>
@@ -3474,7 +3507,7 @@ export function DirectorReconciliationReport({
                         {p.headOfAccount}
                       </td>
                       <td className="p-2.5 text-center font-mono text-slate-800 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 whitespace-nowrap">
-                        {formatDateDDMM(p.chequeDate)}
+                        {formatDateDDMMMYYYY(p.chequeDate)}
                       </td>
                       <td className="p-2.5 text-center font-mono border-r border-slate-200 dark:border-slate-800">
                         <div className="flex items-center justify-center gap-1.5">
@@ -3490,7 +3523,7 @@ export function DirectorReconciliationReport({
                           </button>
                         </div>
                       </td>
-                      <td className="p-2.5 text-right font-mono font-bold text-slate-900 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800 whitespace-nowrap">
+                      <td className="p-2.5 text-right font-mono font-black text-slate-950 dark:text-white border-r border-slate-200 dark:border-slate-800 whitespace-nowrap">
                         {formatAmount(p.totalBillAmount, 2)}
                       </td>
                       <td className="p-2.5 text-right font-mono text-slate-800 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 whitespace-nowrap">
@@ -3513,12 +3546,12 @@ export function DirectorReconciliationReport({
                   ))
                 )}
               </tbody>
-              <tfoot>
+              <tfoot className="table-row-group print:table-row-group" style={{ display: 'table-row-group' }}>
                 <tr className="bg-[#0b2545] text-white font-black border-t-2 border-slate-700 text-xs">
                   <td colSpan={4} className="p-3 text-right uppercase tracking-wider border-r border-slate-600">
                     Grand Total:
                   </td>
-                  <td className="p-3 text-right font-mono border-r border-slate-600 whitespace-nowrap">
+                  <td className="p-3 text-right font-mono font-black border-r border-slate-600 whitespace-nowrap text-amber-200">
                     Rs. {formatAmount(paymentsTotals.totalBill, 2)}
                   </td>
                   <td className="p-3 text-right font-mono border-r border-slate-600 whitespace-nowrap">

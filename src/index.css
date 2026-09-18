@@ -186,8 +186,17 @@
   body.paf-modal-open #root,
   body:has(#print-paf-portal) #root,
   body:has(#print-tfc-portal) #root,
-  body.tfc-print-active #root {
+  body.tfc-print-active #root,
+  body:has(#print-director-recon-portal) #root,
+  body.director-recon-print-active #root {
     display: none !important;
+  }
+
+  /* Never repeat tfoot on multi-page printouts - Grand total should only print at the end of the table */
+  tfoot,
+  table tfoot,
+  table.register-table tfoot {
+    display: table-row-group !important;
   }
 
   /* Ensure the portal container fills the print page seamlessly without extra margins */
@@ -217,6 +226,23 @@
     min-height: auto !important;
     background: white !important;
     color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Official Accounting Data Entry Register Print Portal */
+  #print-director-recon-portal {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    background: white !important;
+    color: black !important;
     padding: 0 !important;
     margin: 0 !important;
     overflow: visible !important;

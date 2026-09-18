@@ -15,7 +15,7 @@ import {
 } from '../data/tfcChallanData';
 import { TfcReceiptsReportView } from './TfcReceiptsReportView';
 import { TfcCourseMultiSelect } from './TfcCourseMultiSelect';
-import { formatPKR, formatCNIC } from '../lib/formatters';
+import { formatPKR, formatCNIC, formatPakistaniDate } from '../lib/formatters';
 import { generateReceiptsRegisterPdf, generateHardCashBookPdf } from '../lib/tfcPdfGenerator';
 import {
   Building2,
@@ -169,6 +169,9 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [selectedCourses, setSelectedCourses] = useState<string[]>(['ALL']);
   const [selectedDate, setSelectedDate] = useState<string>('ALL');
+  const [dateFilterMode, setDateFilterMode] = useState<'MONTH' | 'CUSTOM_RANGE'>('MONTH');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
 
   const isCourseSelected = useCallback((courseAbbr: string) => {
     if (!selectedCourses || selectedCourses.length === 0 || selectedCourses.includes('ALL')) return true;
@@ -267,6 +270,38 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
     return Array.from(map.keys()).sort((a, b) => (map.get(a) || 0) - (map.get(b) || 0));
   }, [challans]);
 
+  // Min and Max ISO dates available in dataset for date picker limits
+  const minMaxDates = useMemo(() => {
+    let minIso = '';
+    let maxIso = '';
+    challans.forEach((c) => {
+      if (c.challanPaymentDate) {
+        const p = parseChallanDate(c.challanPaymentDate);
+        if (!minIso || p.iso < minIso) minIso = p.iso;
+        if (!maxIso || p.iso > maxIso) maxIso = p.iso;
+      }
+    });
+    return { minIso, maxIso };
+  }, [challans]);
+
+  // Active period display label for headers and exports
+  const activePeriodLabel = useMemo(() => {
+    if (dateFilterMode === 'CUSTOM_RANGE') {
+      if (customStartDate && customEndDate) {
+        if (customStartDate === customEndDate) {
+          return formatPakistaniDate(customStartDate);
+        }
+        return `${formatPakistaniDate(customStartDate)} to ${formatPakistaniDate(customEndDate)}`;
+      } else if (customStartDate) {
+        return `From ${formatPakistaniDate(customStartDate)}`;
+      } else if (customEndDate) {
+        return `Up to ${formatPakistaniDate(customEndDate)}`;
+      }
+      return 'Custom Date Range (All Dates)';
+    }
+    return selectedMonth === 'ALL' ? 'FY 2026–27' : selectedMonth;
+  }, [dateFilterMode, customStartDate, customEndDate, selectedMonth]);
+
   // Distinct Courses for filtering
   const distinctCourses = useMemo(() => {
     const set = new Set<string>();
@@ -279,9 +314,15 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   // Filtered Challans
   const filteredChallans = useMemo(() => {
     return challans.filter((c) => {
-      if (selectedMonth !== 'ALL') {
+      if (dateFilterMode === 'CUSTOM_RANGE') {
         const d = parseChallanDate(c.challanPaymentDate);
-        if (`${d.monthName} ${d.year}` !== selectedMonth) return false;
+        if (customStartDate && d.iso < customStartDate) return false;
+        if (customEndDate && d.iso > customEndDate) return false;
+      } else {
+        if (selectedMonth !== 'ALL') {
+          const d = parseChallanDate(c.challanPaymentDate);
+          if (`${d.monthName} ${d.year}` !== selectedMonth) return false;
+        }
       }
       if (!isCourseSelected(c.courseAbbreviation)) return false;
       if (selectedDate !== 'ALL' && c.challanPaymentDate !== selectedDate) return false;
@@ -301,7 +342,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       }
       return true;
     });
-  }, [challans, selectedMonth, isCourseSelected, selectedDate, searchQuery]);
+  }, [challans, dateFilterMode, customStartDate, customEndDate, selectedMonth, isCourseSelected, selectedDate, searchQuery]);
 
   // Financial Totals with exact head breakdown
   const totals = useMemo(() => {
@@ -600,7 +641,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       sheet.mergeCells('A1:I1');
 
       const subtitleRow = sheet.addRow([
-        `CASH BOOK RECEIPTS PROFORMA — ${selectedMonth === 'ALL' ? 'FY 2026-27' : selectedMonth} (COLS B TO I)`,
+        `CASH BOOK RECEIPTS PROFORMA — ${activePeriodLabel} (COLS B TO I)`,
       ]);
       subtitleRow.font = { italic: true, size: 10, color: { argb: 'FFFFFFFF' } };
       subtitleRow.fill = {
@@ -702,7 +743,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `GVTIW_TFC_CashBook_Receipts_${selectedMonth.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      link.download = `GVTIW_TFC_CashBook_Receipts_${activePeriodLabel.replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -877,7 +918,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   // Export Hard CashBook Register to PDF (.pdf)
   const handleExportHardCashBookPdf = () => {
     generateHardCashBookPdf({
-      periodLabel: selectedMonth === 'ALL' ? 'All Months' : selectedMonth,
+      periodLabel: activePeriodLabel,
       dateGroups: hardCashBookData.dateGroups,
       grandTotal: hardCashBookData.grandTotal,
       totalChallans: filteredChallans.length,
@@ -1184,7 +1225,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `GVTIW_Hard_CashBook_Register_${selectedMonth.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      link.download = `GVTIW_Hard_CashBook_Register_${activePeriodLabel.replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -2052,23 +2093,98 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
 
                 {/* Filters & Actions */}
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  {/* Month Filter */}
-                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs">
-                    <span className="font-bold text-slate-600 dark:text-slate-400">Month:</span>
-                    <select
-                      value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="bg-transparent font-bold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
-                    >
-                      <option value="ALL" className="text-slate-900 dark:bg-slate-800 dark:text-white">
-                        All Months ({challans.length} Challans)
-                      </option>
-                      {availableMonths.map((m) => (
-                        <option key={m.key} value={m.key} className="text-slate-900 dark:bg-slate-800 dark:text-white">
-                          {m.label} ({m.count} Challans)
-                        </option>
-                      ))}
-                    </select>
+                  {/* Period Filter (Month or Custom Date Range) */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-0.5 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setDateFilterMode('MONTH')}
+                        className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                          dateFilterMode === 'MONTH'
+                            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        By Month
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDateFilterMode('CUSTOM_RANGE');
+                          if (!customStartDate && minMaxDates.minIso) setCustomStartDate(minMaxDates.minIso);
+                          if (!customEndDate && minMaxDates.maxIso) setCustomEndDate(minMaxDates.maxIso);
+                        }}
+                        className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          dateFilterMode === 'CUSTOM_RANGE'
+                            ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-300 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>Custom Date Range</span>
+                      </button>
+                    </div>
+
+                    {dateFilterMode === 'MONTH' ? (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs">
+                        <span className="font-bold text-slate-600 dark:text-slate-400">Month:</span>
+                        <select
+                          value={selectedMonth}
+                          onChange={(e) => setSelectedMonth(e.target.value)}
+                          className="bg-transparent font-bold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+                        >
+                          <option value="ALL" className="text-slate-900 dark:bg-slate-800 dark:text-white">
+                            All Months ({challans.length} Challans)
+                          </option>
+                          {availableMonths.map((m) => (
+                            <option key={m.key} value={m.key} className="text-slate-900 dark:bg-slate-800 dark:text-white">
+                              {m.label} ({m.count} Challans)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 flex-wrap bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-xl px-2.5 py-1 text-xs">
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-emerald-900 dark:text-emerald-300 text-[11px]">From:</span>
+                          <input
+                            type="date"
+                            value={customStartDate}
+                            min={minMaxDates.minIso}
+                            max={customEndDate || minMaxDates.maxIso}
+                            onChange={(e) => setCustomStartDate(e.target.value)}
+                            className="px-2 py-0.5 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-md text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-emerald-900 dark:text-emerald-300 text-[11px]">To:</span>
+                          <input
+                            type="date"
+                            value={customEndDate}
+                            min={customStartDate || minMaxDates.minIso}
+                            max={minMaxDates.maxIso}
+                            onChange={(e) => setCustomEndDate(e.target.value)}
+                            className="px-2 py-0.5 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-md text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
+                          />
+                        </div>
+
+                        {(customStartDate || customEndDate) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCustomStartDate('');
+                              setCustomEndDate('');
+                            }}
+                            title="Reset date range to all dates"
+                            className="px-1.5 py-0.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer flex items-center gap-0.5"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Clear</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Excel Export Button (.xlsx) */}
@@ -2102,12 +2218,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                   </span>
                   <span>•</span>
                   <span>{filteredChallans.length} Paid Challans</span>
-                  {selectedMonth !== 'ALL' && (
-                    <>
-                      <span>•</span>
-                      <span className="font-bold text-emerald-700 dark:text-emerald-400">{selectedMonth}</span>
-                    </>
-                  )}
+                  <span>•</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-400">{activePeriodLabel}</span>
                 </div>
                 <div className="text-[11px] text-slate-500 italic">
                   Sorted Date-wise with MVi and MVii separated
@@ -2155,7 +2267,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                   TFC CASH BOOK RECEIPTS PROFORMA — GVTIW SAMANABAD FAISALABAD
                 </div>
                 <div className="text-xs font-mono font-bold text-emerald-200">
-                  {selectedMonth === 'ALL' ? 'FY 2026–27' : selectedMonth}
+                  {activePeriodLabel}
                 </div>
               </div>
 
@@ -2314,23 +2426,98 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
 
                 {/* Filters & Actions */}
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  {/* Month Filter */}
-                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs">
-                    <span className="font-bold text-slate-600 dark:text-slate-400">Month:</span>
-                    <select
-                      value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="bg-transparent font-bold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
-                    >
-                      <option value="ALL" className="text-slate-900 dark:bg-slate-800 dark:text-white">
-                        All Months ({challans.length} Challans)
-                      </option>
-                      {availableMonths.map((m) => (
-                        <option key={m.key} value={m.key} className="text-slate-900 dark:bg-slate-800 dark:text-white">
-                          {m.label} ({m.count} Challans)
-                        </option>
-                      ))}
-                    </select>
+                  {/* Period Filter (Month or Custom Date Range) */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 p-0.5 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => setDateFilterMode('MONTH')}
+                        className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                          dateFilterMode === 'MONTH'
+                            ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        By Month
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDateFilterMode('CUSTOM_RANGE');
+                          if (!customStartDate && minMaxDates.minIso) setCustomStartDate(minMaxDates.minIso);
+                          if (!customEndDate && minMaxDates.maxIso) setCustomEndDate(minMaxDates.maxIso);
+                        }}
+                        className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                          dateFilterMode === 'CUSTOM_RANGE'
+                            ? 'bg-white dark:bg-slate-900 text-amber-700 dark:text-amber-300 shadow-xs'
+                            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>Custom Date Range</span>
+                      </button>
+                    </div>
+
+                    {dateFilterMode === 'MONTH' ? (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs">
+                        <span className="font-bold text-slate-600 dark:text-slate-400">Month:</span>
+                        <select
+                          value={selectedMonth}
+                          onChange={(e) => setSelectedMonth(e.target.value)}
+                          className="bg-transparent font-bold text-slate-900 dark:text-white focus:outline-none cursor-pointer"
+                        >
+                          <option value="ALL" className="text-slate-900 dark:bg-slate-800 dark:text-white">
+                            All Months ({challans.length} Challans)
+                          </option>
+                          {availableMonths.map((m) => (
+                            <option key={m.key} value={m.key} className="text-slate-900 dark:bg-slate-800 dark:text-white">
+                              {m.label} ({m.count} Challans)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 flex-wrap bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl px-2.5 py-1 text-xs">
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-amber-900 dark:text-amber-300 text-[11px]">From:</span>
+                          <input
+                            type="date"
+                            value={customStartDate}
+                            min={minMaxDates.minIso}
+                            max={customEndDate || minMaxDates.maxIso}
+                            onChange={(e) => setCustomStartDate(e.target.value)}
+                            className="px-2 py-0.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-md text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-amber-900 dark:text-amber-300 text-[11px]">To:</span>
+                          <input
+                            type="date"
+                            value={customEndDate}
+                            min={customStartDate || minMaxDates.minIso}
+                            max={minMaxDates.maxIso}
+                            onChange={(e) => setCustomEndDate(e.target.value)}
+                            className="px-2 py-0.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-md text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
+                          />
+                        </div>
+
+                        {(customStartDate || customEndDate) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCustomStartDate('');
+                              setCustomEndDate('');
+                            }}
+                            title="Reset date range to all dates"
+                            className="px-1.5 py-0.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer flex items-center gap-0.5"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Clear</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Download PDF Button */}
@@ -2440,7 +2627,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                   TFC HARD CASHBOOK ENTRY REGISTER — GVTIW SAMANABAD FAISALABAD
                 </div>
                 <div className="text-xs font-mono font-bold text-amber-100">
-                  {selectedMonth === 'ALL' ? 'FY 2026–27' : selectedMonth}
+                  {activePeriodLabel}
                 </div>
               </div>
 

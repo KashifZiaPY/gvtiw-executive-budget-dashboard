@@ -639,6 +639,9 @@ export async function exportPaymentsRegisterExcel(
       const cell = row.getCell(cIdx);
       cell.numFmt = NUM_FORMAT_CURRENCY;
       cell.alignment = { horizontal: 'right' };
+      if (cIdx === 5) {
+        cell.font = { name: 'Arial', size: 9, bold: true };
+      }
     });
 
     for (let c = 1; c <= 11; c++) {

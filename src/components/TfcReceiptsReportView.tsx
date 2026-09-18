@@ -184,8 +184,18 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [showPrintPortal, setShowPrintPortal] = useState(false);
 
-  // Grouping Mode: AUTO (trade-wise if multiple courses, flat if single), TRADE_WISE, or DATE_COMBINED
-  const [viewGroupingMode, setViewGroupingMode] = useState<'AUTO' | 'TRADE_WISE' | 'DATE_COMBINED'>('AUTO');
+  // Grouping Mode: TRADE_WISE (group by trade & sort by date/month), DATE_COMBINED (plain date/month-wise only), TRADE_ONLY (trade-wise only), or AUTO
+  const [dateViewGrouping, setDateViewGrouping] = useState<'TRADE_WISE' | 'DATE_COMBINED' | 'TRADE_ONLY' | 'AUTO'>('TRADE_WISE');
+  const [monthViewGrouping, setMonthViewGrouping] = useState<'TRADE_WISE' | 'DATE_COMBINED' | 'TRADE_ONLY' | 'AUTO'>('TRADE_WISE');
+
+  const viewGroupingMode = reportMode === 'DATE_WISE' ? dateViewGrouping : monthViewGrouping;
+  const setViewGroupingMode = (mode: 'TRADE_WISE' | 'DATE_COMBINED' | 'TRADE_ONLY' | 'AUTO') => {
+    if (reportMode === 'DATE_WISE') {
+      setDateViewGrouping(mode);
+    } else {
+      setMonthViewGrouping(mode);
+    }
+  };
   const [collapsedTrades, setCollapsedTrades] = useState<Set<string>>(new Set());
 
   const toggleCollapseTrade = (tradeCode: string) => {
@@ -491,8 +501,27 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
     return { tradeGroups: groups, flatRows: sortedFlatRows, grandTotal: totalAccumulator };
   }, [filteredChallans, reportMode]);
 
-  // Effective rows alias for backwards compatibility
-  const rows = flatRows;
+  // Consolidated Trade Summary Rows (for TRADE_ONLY mode)
+  const tradeSummaryRows = useMemo(() => {
+    return tradeGroups.map((g) => {
+      const allChallans: TfcChallanRecord[] = [];
+      g.dateRows.forEach((r) => allChallans.push(...r.challans));
+      return {
+        key: `trade_summary_${g.tradeCode}`,
+        label: `${g.tradeCode} — ${g.tradeTitle}`,
+        timestamp: 0,
+        challans: allChallans,
+        challanCount: g.challanCount,
+        breakdown: g.subtotal,
+      };
+    });
+  }, [tradeGroups]);
+
+  // Effective rows alias
+  const rows = useMemo(() => {
+    if (viewGroupingMode === 'TRADE_ONLY') return tradeSummaryRows;
+    return flatRows;
+  }, [viewGroupingMode, tradeSummaryRows, flatRows]);
 
   // Multi-Course determination: is trade-wise grouping active?
   const isMultiSelection = useMemo(() => {
@@ -505,6 +534,7 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
   const isTradeWiseGrouped = useMemo(() => {
     if (viewGroupingMode === 'TRADE_WISE') return true;
     if (viewGroupingMode === 'DATE_COMBINED') return false;
+    if (viewGroupingMode === 'TRADE_ONLY') return false;
     // In AUTO mode: group by trade-wise with subtotals when multi selections or all trades with multiple courses exist!
     return isMultiSelection || tradeGroups.length > 1;
   }, [viewGroupingMode, isMultiSelection, tradeGroups.length]);
@@ -522,6 +552,9 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
 
   // All row keys across current mode (for Expand All)
   const allCurrentRowKeys = useMemo(() => {
+    if (viewGroupingMode === 'TRADE_ONLY') {
+      return tradeSummaryRows.map((r) => r.key);
+    }
     if (isTradeWiseGrouped) {
       const keys: string[] = [];
       tradeGroups.forEach((g) => {
@@ -530,7 +563,7 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
       return keys;
     }
     return flatRows.map((r) => r.key);
-  }, [isTradeWiseGrouped, tradeGroups, flatRows]);
+  }, [viewGroupingMode, tradeSummaryRows, isTradeWiseGrouped, tradeGroups, flatRows]);
 
   // Toggle expand all or collapse all dates
   const toggleExpandAll = () => {
@@ -1350,6 +1383,96 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
           </div>
         </div>
 
+        {/* Dedicated Presentation & Grouping Mode Ribbon */}
+        <div className="mt-3.5 pt-3.5 border-t border-slate-200 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              Grouping &amp; View Option:
+            </span>
+            <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 gap-1 flex-wrap shadow-inner">
+              <button
+                type="button"
+                onClick={() => setViewGroupingMode('TRADE_WISE')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                  viewGroupingMode === 'TRADE_WISE'
+                    ? 'bg-emerald-700 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700'
+                }`}
+                title={
+                  reportMode === 'DATE_WISE'
+                    ? 'Group by Trade & Sort by Date (Trade sections with headers, subtotals, and chronological dates)'
+                    : 'Group by Trade & Sort by Month (Trade sections with headers, subtotals, and chronological months)'
+                }
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>{reportMode === 'DATE_WISE' ? 'Group by Trade (Sort by Date)' : 'Group by Trade (Sort by Month)'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewGroupingMode('DATE_COMBINED')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                  viewGroupingMode === 'DATE_COMBINED'
+                    ? 'bg-emerald-700 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700'
+                }`}
+                title={
+                  reportMode === 'DATE_WISE'
+                    ? 'Plain Date-Wise Only (Sorted chronologically by date across all trades in expandable format)'
+                    : 'Plain Month-Wise Only (Sorted chronologically by month across all trades in expandable format)'
+                }
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>
+                  {reportMode === 'DATE_WISE'
+                    ? 'Plain Date-Wise Only (Sort by Date, Expandable)'
+                    : 'Plain Month-Wise Only (Sort by Month, Expandable)'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewGroupingMode('TRADE_ONLY')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                  viewGroupingMode === 'TRADE_ONLY'
+                    ? 'bg-emerald-700 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700'
+                }`}
+                title="Consolidated Trade-Wise Only (One summary row per trade with expandable student drilldown)"
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                <span>Trade-Wise Only (Sort by Trade)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setViewGroupingMode('AUTO')}
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  viewGroupingMode === 'AUTO'
+                    ? 'bg-slate-700 text-white'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="Auto grouping mode (Trade-wise when multiple courses are present)"
+              >
+                Auto
+              </button>
+            </div>
+          </div>
+
+          <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 italic">
+            {viewGroupingMode === 'DATE_COMBINED'
+              ? reportMode === 'DATE_WISE'
+                ? 'Showing plain chronological dates across all trades with expandable student drilldown.'
+                : 'Showing plain chronological months across all trades with expandable student drilldown.'
+              : viewGroupingMode === 'TRADE_ONLY'
+              ? 'Showing consolidated trade totals with expandable trainee challan drilldowns.'
+              : reportMode === 'DATE_WISE'
+              ? 'Grouped into separate trade sections with subtotals, sorted by payment date.'
+              : 'Grouped into separate trade sections with subtotals, sorted by month.'}
+          </div>
+        </div>
+
         {/* Filter Controls Bar */}
         <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-12 gap-3 text-xs">
           {/* Date Filtering Mode & Pickers */}
@@ -1681,7 +1804,11 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
               Grand Total
             </span>
             <span>
-              {rows.length} {reportMode === 'DATE_WISE' ? 'Receipt Days' : 'Receipt Months'} ({filteredChallans.length} Challans)
+              {viewGroupingMode === 'TRADE_ONLY'
+                ? `${tradeSummaryRows.length} Trades Consolidated (${filteredChallans.length} Challans)`
+                : isTradeWiseGrouped
+                ? `${tradeGroups.length} Trades (${filteredChallans.length} Challans)`
+                : `${rows.length} ${reportMode === 'DATE_WISE' ? 'Receipt Days' : 'Receipt Months'} (${filteredChallans.length} Challans)`}
             </span>
           </div>
 
@@ -1739,19 +1866,7 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
 
             {/* Grouping Mode Switcher */}
             <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-700 pl-2 ml-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase mr-0.5 shrink-0">Grouping:</span>
-              <button
-                type="button"
-                onClick={() => setViewGroupingMode('AUTO')}
-                className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
-                  viewGroupingMode === 'AUTO'
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
-                }`}
-                title="Auto: Group by trade with subtotals when multi courses are selected"
-              >
-                Auto
-              </button>
+              <span className="text-[10px] font-bold text-slate-400 uppercase mr-0.5 shrink-0">View:</span>
               <button
                 type="button"
                 onClick={() => setViewGroupingMode('TRADE_WISE')}
@@ -1760,9 +1875,9 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                     ? 'bg-emerald-600 text-white shadow-2xs'
                     : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
                 }`}
-                title="Trade-Wise: Group by trade with subtotals and chronological dates"
+                title={reportMode === 'DATE_WISE' ? 'Group by Trade (Sorted by Date)' : 'Group by Trade (Sorted by Month)'}
               >
-                Trade-Wise
+                Group by Trade
               </button>
               <button
                 type="button"
@@ -1772,9 +1887,33 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                     ? 'bg-emerald-600 text-white shadow-2xs'
                     : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
                 }`}
-                title="Flat Dates: Show all dates chronologically without trade section dividers"
+                title={reportMode === 'DATE_WISE' ? 'Plain Date-Wise Only (Expandable)' : 'Plain Month-Wise Only (Expandable)'}
               >
-                Flat Dates
+                {reportMode === 'DATE_WISE' ? 'Plain Dates' : 'Plain Months'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewGroupingMode('TRADE_ONLY')}
+                className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                  viewGroupingMode === 'TRADE_ONLY'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+                }`}
+                title="Trade-Wise Only (Consolidated Trade Rows)"
+              >
+                Trade-Wise Only
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewGroupingMode('AUTO')}
+                className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                  viewGroupingMode === 'AUTO'
+                    ? 'bg-slate-700 text-white shadow-2xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+                }`}
+                title="Auto grouping mode"
+              >
+                Auto
               </button>
             </div>
           </div>
@@ -1883,9 +2022,17 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                   rowSpan={2}
                   className="py-2 px-3 bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-b-2 border-r border-slate-300 dark:border-slate-700 min-w-[130px] text-center sticky left-12 top-0 z-50 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.12)] font-black"
                 >
-                  {reportMode === 'DATE_WISE' ? 'Date of Receipt' : 'Month of Receipt'}
+                  {viewGroupingMode === 'TRADE_ONLY'
+                    ? 'Trade / Course'
+                    : reportMode === 'DATE_WISE'
+                    ? 'Date of Receipt'
+                    : 'Month of Receipt'}
                   <div className="text-[10px] font-normal text-slate-600 dark:text-slate-400">
-                    {reportMode === 'DATE_WISE' ? '(dd-mm-yy)' : '(Month-Year)'}
+                    {viewGroupingMode === 'TRADE_ONLY'
+                      ? '(Trade Code & Name)'
+                      : reportMode === 'DATE_WISE'
+                      ? '(dd-mm-yy)'
+                      : '(Month-Year)'}
                   </div>
                 </th>
                 <th
