@@ -264,7 +264,8 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
 
   // Convert 2D array into structured typed rows with category tracking
   const parsedItems = useMemo<SheetReportRow[]>(() => {
-    let currentCategory: 'NON_SALARY' | 'OTHER_NS' | 'OWN_SOURCE' | 'SUMMARY' = 'NON_SALARY';
+    let hasPassedNsSubtotal = false;
+    let hasPassedOtherNsSubtotal = false;
 
     return rows.map((r, idx) => {
       const padded = [...r];
@@ -296,24 +297,49 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
       }
 
       const isMainHeader = idx <= 3;
-      const isSubtotal =
-        particulars.toLowerCase().includes('sub total') ||
-        (particulars.toLowerCase().includes('total ') && !code) ||
-        code.toLowerCase().includes('total');
-      const isGrandTotal =
-        particulars.toLowerCase().includes('grand total') ||
-        code.toLowerCase().includes('grand total');
-      const isCategoryHeader =
-        (sr.startsWith('I') || sr.startsWith('V') || sr.startsWith('X') || sr === 'OTHER OWN') &&
-        !code &&
-        particulars !== '';
+      const partLower = particulars.toLowerCase();
+      const codeLower = code.toLowerCase();
 
-      if (sr.startsWith('V') || sr.startsWith('X') || particulars.toLowerCase().includes('otherthan non salary')) {
-        currentCategory = 'OTHER_NS';
-      } else if (sr === 'OTHER OWN' || idx > 74 || particulars.toLowerCase().includes('own funds') || code === 'TOTAL OWN/OTHER') {
-        currentCategory = 'OWN_SOURCE';
-      } else if (isGrandTotal) {
-        currentCategory = 'SUMMARY';
+      const isGrandTotal =
+        partLower.includes('grand total') ||
+        codeLower.includes('grand total');
+
+      const isSubtotal =
+        !isMainHeader &&
+        !isGrandTotal &&
+        (partLower.includes('total') ||
+         codeLower.includes('total') ||
+         partLower.includes('sub total'));
+
+      const isCategoryHeader =
+        !isMainHeader &&
+        !isSubtotal &&
+        !isGrandTotal &&
+        (/^(I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII)$/.test(sr) || sr === 'OTHER OWN');
+
+      // Robust category transition based on Google Sheet structure:
+      // Rows 4 to 56: Non-Salary (Operating Expenditures)
+      // Rows 57 to 73: Other Than Non-Salary (Projects & Courses)
+      // Rows 77 to 94: Own Source & Other Institute Funds
+      // Rows 74, 95+: Grand Total Summary Rows
+      let categoryGroup: 'NON_SALARY' | 'OTHER_NS' | 'OWN_SOURCE' | 'SUMMARY' = 'NON_SALARY';
+      if (isGrandTotal && (codeLower.includes('grand total (ns+own)') || idx >= 95)) {
+        categoryGroup = 'SUMMARY';
+      } else if (hasPassedOtherNsSubtotal || sr === 'OTHER OWN' || partLower.includes('own funds') || codeLower === 'total own/other') {
+        categoryGroup = 'OWN_SOURCE';
+        hasPassedOtherNsSubtotal = true;
+      } else if (hasPassedNsSubtotal || partLower.includes('otherthan non salary')) {
+        categoryGroup = 'OTHER_NS';
+        hasPassedNsSubtotal = true;
+      } else {
+        categoryGroup = 'NON_SALARY';
+      }
+
+      if (partLower.includes('non salary sub total')) {
+        hasPassedNsSubtotal = true;
+      }
+      if (partLower.includes('otherthan non salary sub total') || (partLower.includes('grand total:') && idx < 76)) {
+        hasPassedOtherNsSubtotal = true;
       }
 
       return {
@@ -337,7 +363,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
         isCategoryHeader,
         isSubtotal,
         isGrandTotal,
-        categoryGroup: currentCategory,
+        categoryGroup,
       };
     });
   }, [rows]);
@@ -595,7 +621,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
         setSelectedCodes(union);
       }
     } else {
-      setSelectedCodes([]); // All 73 accounts selected
+      setSelectedCodes([]); // All available accounts selected
     }
   };
 
@@ -683,9 +709,15 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
   const displayRows = useMemo<SheetReportRow[]>(() => {
     // A. Multi-selection mode active
     if (selectedCodes.length > 0) {
+      if (selectedCodes.includes('__NONE__')) return [];
       const selectedSet = new Set(selectedCodes);
       const matchingItems = parsedItems.filter(
-        (r) => selectedSet.has(r.code) || selectedSet.has(r.particulars)
+        (r) =>
+          (selectedSet.has(r.code) || selectedSet.has(r.particulars)) &&
+          !r.isMainHeader &&
+          !r.isCategoryHeader &&
+          !r.isSubtotal &&
+          !r.isGrandTotal
       );
 
       if (matchingItems.length === 0) return [];
