@@ -269,10 +269,11 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
         'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
       const activePin = getResolvedPin();
 
-      const isoBillDate = toIsoDate(savedVoucher.billDate) || '2026-06-27';
-      const pakBillDate = formatPakistaniDate(savedVoucher.billDate) || '27-Jun-2026';
-      const isoChequeDate = toIsoDate(savedVoucher.chequeDate) || '2026-07-03';
-      const pakChequeDate = formatPakistaniDate(savedVoucher.chequeDate) || '03-Jul-2026';
+      const todayISO = new Date().toISOString().split('T')[0];
+      const isoBillDate = toIsoDate(savedVoucher.billDate) || toIsoDate(savedVoucher.chequeDate) || todayISO;
+      const pakBillDate = formatPakistaniDate(savedVoucher.billDate) || formatPakistaniDate(isoBillDate);
+      const isoChequeDate = toIsoDate(savedVoucher.chequeDate) || isoBillDate;
+      const pakChequeDate = formatPakistaniDate(savedVoucher.chequeDate) || pakBillDate;
 
       const params: Record<string, any> = {
         mode: isAmend ? 'amend' : 'new',
@@ -403,7 +404,8 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
   ): Promise<{ success: boolean; code?: string; message?: string }> => {
     const { accountKey, bankFullName, amount, date, memo, accountHead, isAmend, srNo, voucherNo } = payload;
     const targetSrNo = isAmend && srNo ? srNo : maxExistingSrNo + 1;
-    const year = new Date(date).getFullYear();
+    const targetDateIso = toIsoDate(date) || new Date().toISOString().split('T')[0];
+    const year = new Date(targetDateIso).getFullYear();
     const targetVoucherNo =
       isAmend && (voucherNo || bcVoucherToAmend?.voucherNo)
         ? (voucherNo || bcVoucherToAmend?.voucherNo!)

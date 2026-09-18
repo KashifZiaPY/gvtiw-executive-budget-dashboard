@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import ExcelJS from 'exceljs';
 import {
@@ -28,6 +28,13 @@ import {
   Info,
   FileText,
   X,
+  ArrowLeft,
+  ArrowRight,
+  Maximize2,
+  Minimize2,
+  SlidersHorizontal,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 
 interface TfcReceiptsReportViewProps {
@@ -322,6 +329,118 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
 
     return { rows: sortedRows, grandTotal: totalAccumulator };
   }, [filteredChallans, reportMode]);
+
+  // Scroll and Table Dimension Handling
+  const [tableHeightMode, setTableHeightMode] = useState<'FIXED' | 'FULL'>('FIXED');
+  const mainTableContainerRef = useRef<HTMLDivElement>(null);
+  const topScrollContainerRef = useRef<HTMLDivElement>(null);
+  const bottomScrollTrackRef = useRef<HTMLDivElement>(null);
+  const [tableScrollWidth, setTableScrollWidth] = useState<number>(0);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [scrollThumbLeft, setScrollThumbLeft] = useState<number>(0);
+  const [scrollThumbWidth, setScrollThumbWidth] = useState<number>(25);
+
+  // Toggle expand all or collapse all dates
+  const toggleExpandAll = () => {
+    if (expandedKeys.size === rows.length) {
+      setExpandedKeys(new Set());
+    } else {
+      setExpandedKeys(new Set(rows.map((r) => r.key)));
+    }
+  };
+
+  const scrollToPosition = (left: number) => {
+    if (mainTableContainerRef.current) {
+      mainTableContainerRef.current.scrollTo({ left, behavior: 'smooth' });
+    }
+  };
+
+  const scrollDrilldown = (key: string, delta: number) => {
+    const el = document.getElementById(`drilldown-container-${key}`);
+    if (el) {
+      el.scrollBy({ left: delta, behavior: 'smooth' });
+    }
+  };
+
+  const handleBottomTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const track = bottomScrollTrackRef.current;
+    const tableEl = mainTableContainerRef.current;
+    if (!track || !tableEl) return;
+    const rect = track.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+    const maxScroll = tableEl.scrollWidth - tableEl.clientWidth;
+    tableEl.scrollTo({ left: ratio * maxScroll, behavior: 'smooth' });
+  };
+
+  // Synchronize top and bottom horizontal scroll positions and monitor dimensions
+  useEffect(() => {
+    const tableEl = mainTableContainerRef.current;
+    const topScrollEl = topScrollContainerRef.current;
+    if (!tableEl) return;
+
+    const updateScrollMetrics = () => {
+      const scrollLeft = tableEl.scrollLeft;
+      const scrollWidth = tableEl.scrollWidth;
+      const clientWidth = tableEl.clientWidth;
+      setTableScrollWidth(scrollWidth);
+      setCanScrollLeft(scrollLeft > 10);
+      setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 10);
+
+      const maxScroll = scrollWidth - clientWidth;
+      if (maxScroll > 0) {
+        const thumbW = Math.max(15, (clientWidth / scrollWidth) * 100);
+        setScrollThumbWidth(thumbW);
+        const thumbL = (scrollLeft / maxScroll) * (100 - thumbW);
+        setScrollThumbLeft(thumbL);
+      } else {
+        setScrollThumbWidth(100);
+        setScrollThumbLeft(0);
+      }
+    };
+
+    updateScrollMetrics();
+    const ro = new ResizeObserver(updateScrollMetrics);
+    ro.observe(tableEl);
+
+    let isSyncingFromTable = false;
+    let isSyncingFromTop = false;
+
+    const handleTableScroll = () => {
+      updateScrollMetrics();
+      if (!isSyncingFromTop && topScrollEl) {
+        isSyncingFromTable = true;
+        topScrollEl.scrollLeft = tableEl.scrollLeft;
+        requestAnimationFrame(() => {
+          isSyncingFromTable = false;
+        });
+      }
+    };
+
+    const handleTopScroll = () => {
+      if (!isSyncingFromTable) {
+        isSyncingFromTop = true;
+        tableEl.scrollLeft = topScrollEl.scrollLeft;
+        requestAnimationFrame(() => {
+          isSyncingFromTop = false;
+        });
+      }
+    };
+
+    tableEl.addEventListener('scroll', handleTableScroll, { passive: true });
+    if (topScrollEl) {
+      topScrollEl.addEventListener('scroll', handleTopScroll, { passive: true });
+    }
+
+    return () => {
+      ro.disconnect();
+      tableEl.removeEventListener('scroll', handleTableScroll);
+      if (topScrollEl) {
+        topScrollEl.removeEventListener('scroll', handleTopScroll);
+      }
+    };
+  }, [rows, expandedKeys, tableHeightMode]);
 
   // Copy row to clipboard as TSV
   const handleCopyRow = (r: AggregatedReceiptRow, idx: number) => {
@@ -950,7 +1069,7 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
             <span className="font-bold text-emerald-800 dark:text-emerald-300">
               Active Receipts & Fee Allocation Rule:
             </span>{' '}
-            Beautician Self Finance (Rs. 10,012) is separated into Base Course (Rs. 8,512) and Board Dues (excess above 8,512 = Rs. 1,500). Regular courses classify other head as Board Charges. TUV Certification fees are allocated 100% to Other Income (Bank Profit / Any Other Income) pending central TEVTA transfer decision.
+            Beautician Self Finance (Rs. 10,012) is separated into Base Course (Rs. 8,500), Board Dues (Rs. 1,500), and TEVTA Share (Rs. 12 = 25% from Rs. 10,000). Regular courses classify other head as Board Charges. TUV Certification fees are allocated 100% to Other Income (Bank Profit / Any Other Income) pending central TEVTA transfer decision.
           </div>
         </div>
       </div>
@@ -1111,99 +1230,212 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
           </div>
         </div>
 
-        {/* Scrollable Data Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead>
-              {/* Category Group Header (Row 7 in Screenshot) */}
-              <tr className="border-b border-slate-300 dark:border-slate-700 text-center font-bold text-[11px]">
+        {/* Horizontal Scroll Convenience & Control Toolbar */}
+        <div className="bg-slate-50 dark:bg-slate-900/90 border-b border-slate-300 dark:border-slate-700 px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+          {/* Left: Quick Column Jump Buttons */}
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase mr-1 flex items-center gap-1 shrink-0">
+              <Layers className="w-3 h-3" /> Jump:
+            </span>
+            <button
+              type="button"
+              onClick={() => scrollToPosition(0)}
+              className="px-2.5 py-1 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 dark:text-slate-300 cursor-pointer shadow-2xs shrink-0"
+            >
+              Start (Date)
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToPosition(180)}
+              className="px-2.5 py-1 rounded-md bg-[#FCE4D6] text-orange-950 hover:brightness-95 border border-orange-300 text-[11px] font-bold cursor-pointer shadow-2xs shrink-0"
+            >
+              TEVTA Dues
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToPosition(520)}
+              className="px-2.5 py-1 rounded-md bg-[#FCE4D6] text-orange-950 hover:brightness-95 border border-orange-300 text-[11px] font-bold cursor-pointer shadow-2xs shrink-0"
+            >
+              Board & Self Fin.
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToPosition(850)}
+              className="px-2.5 py-1 rounded-md bg-[#00B0F0] text-white hover:brightness-95 border border-cyan-500 text-[11px] font-black cursor-pointer shadow-2xs shrink-0"
+            >
+              Total & Inst. Share
+            </button>
+          </div>
+
+          {/* Right: Expand/Collapse All, Full/Fixed Height Toggle, and Step Scroll Buttons */}
+          <div className="flex items-center gap-2 ml-auto shrink-0">
+            <button
+              type="button"
+              onClick={toggleExpandAll}
+              className="px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+              title="Expand or collapse all date drilldowns"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>{expandedKeys.size === rows.length ? 'Collapse All' : 'Expand All'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTableHeightMode((prev) => (prev === 'FIXED' ? 'FULL' : 'FIXED'))}
+              className="px-2.5 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
+              title={tableHeightMode === 'FIXED' ? 'Switch to unconstrained full page height' : 'Switch to constrained sticky viewport with frozen headers'}
+            >
+              {tableHeightMode === 'FIXED' ? (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  <span>Full Page</span>
+                </>
+              ) : (
+                <>
+                  <Minimize2 className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                  <span>Freeze Viewport</span>
+                </>
+              )}
+            </button>
+
+            <div className="flex items-center border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-800">
+              <button
+                type="button"
+                onClick={() => {
+                  if (mainTableContainerRef.current) {
+                    mainTableContainerRef.current.scrollBy({ left: -300, behavior: 'smooth' });
+                  }
+                }}
+                className="px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer disabled:opacity-30"
+                title="Scroll table horizontally to the left"
+                disabled={!canScrollLeft}
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (mainTableContainerRef.current) {
+                    mainTableContainerRef.current.scrollBy({ left: 300, behavior: 'smooth' });
+                  }
+                }}
+                className="px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 cursor-pointer disabled:opacity-30 border-l border-slate-200 dark:border-slate-700"
+                title="Scroll table horizontally to the right"
+                disabled={!canScrollRight}
+              >
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Top Synchronized Horizontal Scroll Bar */}
+        <div
+          ref={topScrollContainerRef}
+          className="overflow-x-auto overflow-y-hidden h-2.5 bg-slate-200 dark:bg-slate-800 border-b border-slate-300 dark:border-slate-700 scrollbar-thin scrollbar-thumb-slate-400 dark:scrollbar-thumb-slate-500 cursor-ew-resize"
+          title="Top Horizontal Scrollbar: Drag sideways to scroll columns"
+        >
+          <div style={{ width: `${tableScrollWidth}px`, height: '1px' }} />
+        </div>
+
+        {/* Scrollable Data Table Container with Sticky Headers and Frozen Columns */}
+        <div
+          ref={mainTableContainerRef}
+          className={`overflow-auto border-t border-slate-200 dark:border-slate-800 relative scroll-smooth focus:outline-none scrollbar-thin scrollbar-thumb-slate-400 dark:scrollbar-thumb-slate-500 scrollbar-track-slate-100 dark:scrollbar-track-slate-900 ${
+            tableHeightMode === 'FIXED' ? 'max-h-[calc(100vh-230px)] min-h-[460px]' : 'max-h-none'
+          }`}
+        >
+          <table className="w-full text-xs border-separate border-spacing-0">
+            <thead className="sticky top-0 z-30 shadow-xs">
+              {/* Category Group Header (Row 1) */}
+              <tr className="text-center font-bold text-[11px] h-10">
                 <th
                   rowSpan={2}
-                  className="py-2 px-2 bg-slate-200 dark:bg-slate-800 border-r border-slate-300 dark:border-slate-700 w-12 text-center"
+                  className="py-2 px-2 bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-b-2 border-r border-slate-300 dark:border-slate-700 w-12 text-center sticky left-0 top-0 z-50 font-black"
                 >
                   Sr #
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2 px-3 bg-slate-200 dark:bg-slate-800 border-r border-slate-300 dark:border-slate-700 min-w-[110px] text-center"
+                  className="py-2 px-3 bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-b-2 border-r border-slate-300 dark:border-slate-700 min-w-[130px] text-center sticky left-12 top-0 z-50 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.12)] font-black"
                 >
                   {reportMode === 'DATE_WISE' ? 'Date of Receipt' : 'Month of Receipt'}
-                  <div className="text-[10px] font-normal text-slate-500">
+                  <div className="text-[10px] font-normal text-slate-600 dark:text-slate-400">
                     {reportMode === 'DATE_WISE' ? '(dd-mm-yy)' : '(Month-Year)'}
                   </div>
                 </th>
                 <th
                   colSpan={3}
-                  className="py-1.5 px-2 bg-[#FCE4D6] dark:bg-orange-950/40 text-orange-950 dark:text-orange-200 border-r border-slate-300 dark:border-slate-700"
+                  className="py-1.5 px-2 bg-[#FCE4D6] dark:bg-orange-950 text-orange-950 dark:text-orange-100 border-r border-b border-slate-300 dark:border-slate-700 sticky top-0 z-30 font-black"
                 >
-                  TEVTA Fee
+                  TEVTA Fee (Central Dues)
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2 px-2 bg-[#FFFFF2] dark:bg-yellow-950/40 text-yellow-950 dark:text-yellow-200 border-r border-slate-300 dark:border-slate-700 min-w-[90px]"
+                  className="py-2 px-2 bg-[#FFFFF2] dark:bg-yellow-950 text-yellow-950 dark:text-yellow-100 border-b-2 border-r border-slate-300 dark:border-slate-700 min-w-[95px] sticky top-0 z-30 font-bold"
                 >
                   Pupil Funds 75%
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2 px-2 bg-[#DDEBF7] dark:bg-sky-950/40 text-sky-950 dark:text-sky-200 border-r border-slate-300 dark:border-slate-700 min-w-[85px]"
+                  className="py-2 px-2 bg-[#DDEBF7] dark:bg-sky-950 text-sky-950 dark:text-sky-100 border-b-2 border-r border-slate-300 dark:border-slate-700 min-w-[90px] sticky top-0 z-30 font-bold"
                 >
                   College Security
                   <div className="text-[9px] font-normal opacity-80">(Refundable)</div>
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2 px-2 bg-[#FCE4D6] dark:bg-orange-950/40 text-orange-950 dark:text-orange-200 border-r border-slate-300 dark:border-slate-700 min-w-[110px]"
+                  className="py-2 px-2 bg-[#FCE4D6] dark:bg-orange-950 text-orange-950 dark:text-orange-100 border-b-2 border-r border-slate-300 dark:border-slate-700 min-w-[120px] sticky top-0 z-30 font-bold"
                 >
                   Board / University / Certification Charges
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2 px-2 bg-[#FCE4D6] dark:bg-orange-950/40 text-orange-950 dark:text-orange-200 border-r border-slate-300 dark:border-slate-700 min-w-[100px]"
+                  className="py-2 px-2 bg-[#FCE4D6] dark:bg-orange-950 text-orange-950 dark:text-orange-100 border-b-2 border-r border-slate-300 dark:border-slate-700 min-w-[110px] sticky top-0 z-30 font-bold"
                 >
                   Short Course Self Finance
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2 px-2 bg-slate-100 dark:bg-slate-800 border-r border-slate-300 dark:border-slate-700 min-w-[90px]"
+                  className="py-2 px-2 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-b-2 border-r border-slate-300 dark:border-slate-700 min-w-[95px] sticky top-0 z-30 font-bold"
                 >
                   Bank Profit / Any Other Income
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2 px-2 bg-[#E2EFDA] dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-r border-slate-300 dark:border-slate-700 min-w-[100px]"
+                  className="py-2 px-2 bg-[#E2EFDA] dark:bg-emerald-950 text-emerald-950 dark:text-emerald-100 border-b-2 border-r border-slate-300 dark:border-slate-700 min-w-[105px] sticky top-0 z-30 font-bold"
                 >
                   Sub Total (H+Y)
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2 px-3 bg-[#00B0F0] text-white border-r border-slate-300 dark:border-slate-700 min-w-[120px] font-black"
+                  className="py-2 px-3 bg-[#00B0F0] text-white border-b-2 border-r border-slate-300 dark:border-slate-700 min-w-[130px] font-black sticky top-0 z-30 shadow-xs"
                 >
                   Total Amount Received Per Day (Rs.)
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2 px-2 bg-[#E2EFDA] dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-r border-slate-300 dark:border-slate-700 min-w-[100px]"
+                  className="py-2 px-2 bg-[#E2EFDA] dark:bg-emerald-950 text-emerald-950 dark:text-emerald-100 border-b-2 border-r border-slate-300 dark:border-slate-700 min-w-[105px] sticky top-0 z-30 font-bold"
                 >
                   Institute Share
                 </th>
                 <th
                   rowSpan={2}
-                  className="py-2 px-2 bg-slate-200 dark:bg-slate-800 text-center w-20"
+                  className="py-2 px-2 bg-slate-200 dark:bg-slate-800 text-center w-20 sticky top-0 z-30 border-b-2 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-bold"
                 >
                   Actions
                 </th>
               </tr>
 
               {/* Sub-Header Row 2 (Columns Detail) */}
-              <tr className="border-b-2 border-slate-400 dark:border-slate-700 text-center font-bold text-[10px]">
-                <th className="py-1 px-2 bg-[#FCE4D6] dark:bg-orange-950/40 text-orange-950 dark:text-orange-200 border-r border-slate-300 dark:border-slate-700">
+              <tr className="text-center font-bold text-[10px] h-8">
+                <th className="py-1 px-2 bg-[#FCE4D6] dark:bg-orange-950 text-orange-950 dark:text-orange-100 border-b-2 border-r border-slate-300 dark:border-slate-700 sticky top-10 z-30">
                   Admission Fee/ Readmission Fee
                 </th>
-                <th className="py-1 px-2 bg-[#FCE4D6] dark:bg-orange-950/40 text-orange-950 dark:text-orange-200 border-r border-slate-300 dark:border-slate-700">
+                <th className="py-1 px-2 bg-[#FCE4D6] dark:bg-orange-950 text-orange-950 dark:text-orange-100 border-b-2 border-r border-slate-300 dark:border-slate-700 sticky top-10 z-30">
                   25% Pupil Fund
                 </th>
-                <th className="py-1 px-2 bg-[#F8CBAD] dark:bg-orange-900/60 text-orange-950 dark:text-orange-200 border-r border-slate-300 dark:border-slate-700 font-black">
+                <th className="py-1 px-2 bg-[#F8CBAD] dark:bg-orange-900 text-orange-950 dark:text-orange-100 border-b-2 border-r border-slate-300 dark:border-slate-700 font-black sticky top-10 z-30">
                   Total (TEVTA Dues)
                 </th>
               </tr>
@@ -1219,24 +1451,34 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
               ) : (
                 rows.map((row, idx) => {
                   const isExpanded = expandedKeys.has(row.key);
+                  const isOdd = idx % 2 === 1;
+                  const rowBaseBg = isExpanded
+                    ? darkMode ? 'bg-slate-800' : 'bg-emerald-50/60'
+                    : isOdd
+                    ? darkMode ? 'bg-slate-950/40' : 'bg-slate-50/70'
+                    : darkMode ? 'bg-slate-900' : 'bg-white';
+                  const stickyCellBg = isExpanded
+                    ? darkMode ? 'bg-slate-800' : 'bg-emerald-50'
+                    : isOdd
+                    ? darkMode ? 'bg-slate-950' : 'bg-slate-50'
+                    : darkMode ? 'bg-slate-900' : 'bg-white';
+
                   return (
                     <React.Fragment key={row.key}>
                       <tr
-                        className={`hover:bg-amber-50/60 dark:hover:bg-slate-800/60 transition-colors ${
-                          idx % 2 === 1
-                            ? darkMode
-                              ? 'bg-slate-950/40'
-                              : 'bg-slate-50/60'
-                            : ''
-                        }`}
+                        className={`hover:bg-amber-50/60 dark:hover:bg-slate-800/60 transition-colors ${rowBaseBg}`}
                       >
-                        {/* Sr # */}
-                        <td className="py-2 px-2 text-center text-slate-500 font-mono text-[11px] border-r border-slate-200 dark:border-slate-800">
+                        {/* Sr # - Frozen Column */}
+                        <td
+                          className={`py-2 px-2 text-center text-slate-500 font-mono text-[11px] border-r border-b border-slate-200 dark:border-slate-800 sticky left-0 z-20 ${stickyCellBg}`}
+                        >
                           {idx + 1}
                         </td>
 
-                        {/* Date / Month label with Drilldown Button */}
-                        <td className="py-2 px-3 font-bold text-slate-800 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800 whitespace-nowrap">
+                        {/* Date / Month label with Drilldown Button - Frozen Column */}
+                        <td
+                          className={`py-2 px-3 font-bold text-slate-800 dark:text-slate-100 border-r border-b border-slate-200 dark:border-slate-800 whitespace-nowrap sticky left-12 z-20 ${stickyCellBg} shadow-[2px_0_4px_-1px_rgba(0,0,0,0.08)]`}
+                        >
                           <button
                             onClick={() => toggleExpand(row.key)}
                             className="flex items-center gap-1.5 hover:text-emerald-600 transition-colors cursor-pointer text-left w-full"
@@ -1254,80 +1496,80 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                         </td>
 
                         {/* Admission Fee */}
-                        <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
+                        <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-800">
                           {row.breakdown.admissionTuitionRegFee > 0
                             ? formatPKR(row.breakdown.admissionTuitionRegFee)
                             : '-'}
                         </td>
 
                         {/* 25% Pupil Fund */}
-                        <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
+                        <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-800">
                           {row.breakdown.pupilFee25Percent > 0
                             ? formatPKR(row.breakdown.pupilFee25Percent)
                             : '-'}
                         </td>
 
                         {/* Total (TEVTA Dues) */}
-                        <td className="py-2 px-2 text-right font-mono font-bold text-rose-700 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/20 border-r border-slate-200 dark:border-slate-800">
+                        <td className="py-2 px-2 text-right font-mono font-bold text-rose-700 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/20 border-r border-b border-slate-200 dark:border-slate-800">
                           {row.breakdown.totalTevtaDues > 0
                             ? formatPKR(row.breakdown.totalTevtaDues)
                             : '-'}
                         </td>
 
                         {/* Pupil Funds 75% */}
-                        <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
+                        <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-800">
                           {row.breakdown.pupilFee75Percent > 0
                             ? formatPKR(row.breakdown.pupilFee75Percent)
                             : '-'}
                         </td>
 
                         {/* College Security */}
-                        <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800">
+                        <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-800">
                           {row.breakdown.collegeSecurity > 0
                             ? formatPKR(row.breakdown.collegeSecurity)
                             : '-'}
                         </td>
 
                         {/* Board Charges */}
-                        <td className="py-2 px-2 text-right font-mono font-bold text-amber-700 dark:text-amber-400 border-r border-slate-200 dark:border-slate-800">
+                        <td className="py-2 px-2 text-right font-mono font-bold text-amber-700 dark:text-amber-400 border-r border-b border-slate-200 dark:border-slate-800">
                           {row.breakdown.boardCharges > 0
                             ? formatPKR(row.breakdown.boardCharges)
                             : '-'}
                         </td>
 
                         {/* Short Course Self Finance */}
-                        <td className="py-2 px-2 text-right font-mono font-bold text-purple-700 dark:text-purple-400 border-r border-slate-200 dark:border-slate-800">
+                        <td className="py-2 px-2 text-right font-mono font-bold text-purple-700 dark:text-purple-400 border-r border-b border-slate-200 dark:border-slate-800">
                           {row.breakdown.shortCourseSelfFinance > 0
                             ? formatPKR(row.breakdown.shortCourseSelfFinance)
                             : '-'}
                         </td>
 
                         {/* Bank Profit / Any Other */}
-                        <td className="py-2 px-2 text-right font-mono text-slate-500 border-r border-slate-200 dark:border-slate-800">
+                        <td className="py-2 px-2 text-right font-mono text-slate-500 border-r border-b border-slate-200 dark:border-slate-800">
                           {row.breakdown.bankProfit > 0
                             ? formatPKR(row.breakdown.bankProfit)
                             : 0}
                         </td>
 
                         {/* Sub Total (Institute Share) */}
-                        <td className="py-2 px-2 text-right font-mono font-bold text-slate-800 dark:text-slate-100 bg-[#E2EFDA]/40 dark:bg-emerald-950/20 border-r border-slate-200 dark:border-slate-800">
+                        <td className="py-2 px-2 text-right font-mono font-bold text-slate-800 dark:text-slate-100 bg-[#E2EFDA]/40 dark:bg-emerald-950/20 border-r border-b border-slate-200 dark:border-slate-800">
                           {row.breakdown.subTotalInstituteShare > 0
                             ? formatPKR(row.breakdown.subTotalInstituteShare)
                             : '-'}
                         </td>
 
                         {/* Total Amount Received Per Day (Rs.) - Cyan highlight */}
-                        <td className="py-2 px-3 text-right font-mono font-black text-[#002060] dark:text-cyan-300 bg-[#D9E1F2] dark:bg-cyan-950/40 border-r border-slate-200 dark:border-slate-800 text-xs">
+                        <td className="py-2 px-3 text-right font-mono font-black text-[#002060] dark:text-cyan-300 bg-[#D9E1F2] dark:bg-cyan-950/40 border-r border-b border-slate-200 dark:border-slate-800 text-xs">
                           {formatPKR(row.breakdown.totalAmountReceived)}
                         </td>
 
                         {/* Institute Share */}
-                        <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400 border-r border-slate-200 dark:border-slate-800">
+                        <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400 border-r border-b border-slate-200 dark:border-slate-800">
                           {formatPKR(row.breakdown.instituteShare)}
                         </td>
 
                         {/* Actions (Copy row) */}
-                        <td className="py-2 px-2 text-center whitespace-nowrap">
+                        <td className="py-2 px-2 text-center whitespace-nowrap border-b border-slate-200 dark:border-slate-800">
                           <button
                             onClick={() => handleCopyRow(row, idx)}
                             className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
@@ -1342,47 +1584,114 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                         </td>
                       </tr>
 
-                      {/* Expandable Drilldown Row showing individual challans */}
+                      {/* Expandable Drilldown Row showing individual challans with Frozen Sub-Headers and Sub-Columns */}
                       {isExpanded && (
                         <tr className="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-300 dark:border-slate-700">
-                          <td colSpan={14} className="p-3 pl-8">
-                            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
-                              <div className="bg-slate-100 dark:bg-slate-800 px-3 py-2 text-xs font-bold flex items-center justify-between text-slate-700 dark:text-slate-300">
-                                <span>
-                                  Challan Drilldown for {row.label} ({row.challans.length} Students)
-                                </span>
-                                <span className="text-[11px] font-normal text-slate-500">
-                                  Breakdown according to Board / Beautician / Regular Course rules
-                                </span>
+                          <td colSpan={14} className="p-3 pl-4 sm:pl-8 border-b border-slate-300 dark:border-slate-700">
+                            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
+                              <div className="bg-slate-100 dark:bg-slate-800 px-3.5 py-2 text-xs font-bold flex flex-wrap items-center justify-between gap-2 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-extrabold text-slate-900 dark:text-white">
+                                    Challan Drilldown for {row.label}
+                                  </span>
+                                  <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 rounded-full font-bold text-[10px]">
+                                    {row.challans.length} Students
+                                  </span>
+                                </div>
+                                <div className="text-[11px] font-medium text-slate-500 flex items-center gap-3">
+                                  <span>
+                                    Total: <strong className="text-blue-600 dark:text-cyan-400">Rs. {formatPKR(row.breakdown.totalAmountReceived)}</strong>
+                                  </span>
+                                  <span>
+                                    TEVTA: <strong className="text-rose-600">Rs. {formatPKR(row.breakdown.totalTevtaDues)}</strong>
+                                  </span>
+                                  <span>
+                                    Inst. Share: <strong className="text-emerald-600">Rs. {formatPKR(row.breakdown.instituteShare)}</strong>
+                                  </span>
+                                </div>
+                                {/* Drilldown Quick Scroll Controls */}
+                                <div className="flex items-center gap-1.5 ml-auto">
+                                  <span className="text-[10px] text-slate-500 font-semibold hidden md:inline">Scroll Detail:</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => scrollDrilldown(row.key, -220)}
+                                    className="p-1 rounded bg-white dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 cursor-pointer shadow-2xs"
+                                    title="Scroll detail table left"
+                                  >
+                                    <ArrowLeft className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => scrollDrilldown(row.key, 220)}
+                                    className="p-1 rounded bg-white dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 cursor-pointer shadow-2xs"
+                                    title="Scroll detail table right"
+                                  >
+                                    <ArrowRight className="w-3 h-3" />
+                                  </button>
+                                </div>
                               </div>
-                              <div className="overflow-x-auto max-h-72">
-                                <table className="w-full text-[11px] text-left">
-                                  <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 font-semibold text-slate-500">
-                                    <tr>
-                                      <th className="py-1.5 px-2">Challan ID</th>
-                                      <th className="py-1.5 px-2 min-w-[140px]">Roll / Trainee Name</th>
-                                      <th className="py-1.5 px-2">Course</th>
-                                      <th className="py-1.5 px-2 text-right">Adm Fee</th>
-                                      <th className="py-1.5 px-2 text-right">25% PF</th>
-                                      <th className="py-1.5 px-2 text-right font-bold text-rose-600">TEVTA Dues</th>
-                                      <th className="py-1.5 px-2 text-right">75% PF</th>
-                                      <th className="py-1.5 px-2 text-right">Security</th>
-                                      <th className="py-1.5 px-2 text-right font-bold text-amber-600">Board Fee</th>
-                                      <th className="py-1.5 px-2 text-right font-bold text-purple-600">Self Fin.</th>
-                                      <th className="py-1.5 px-2 text-right font-bold text-indigo-600">Other (TUV)</th>
-                                      <th className="py-1.5 px-2 text-right font-bold text-emerald-600">Institute Share</th>
-                                      <th className="py-1.5 px-2 text-right font-black text-blue-700">Total (Rs.)</th>
+
+                              {/* Drilldown Table with Frozen Headers, Frozen ID & Name columns, and Frozen Totals */}
+                              <div
+                                id={`drilldown-container-${row.key}`}
+                                className="overflow-x-auto overflow-y-auto max-h-96 relative border-t border-slate-200 dark:border-slate-800 scrollbar-thin scrollbar-thumb-slate-400 dark:scrollbar-thumb-slate-600 scrollbar-track-slate-100 dark:scrollbar-track-slate-900"
+                              >
+                                <table className="w-full text-[11px] text-left border-separate border-spacing-0">
+                                  <thead className="sticky top-0 z-20 shadow-xs">
+                                    <tr className="bg-slate-100 dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200 text-[11px]">
+                                      <th className="py-2.5 px-2.5 sticky left-0 top-0 z-40 bg-slate-100 dark:bg-slate-800 min-w-[95px] border-b-2 border-r border-slate-300 dark:border-slate-700 font-black">
+                                        Challan ID
+                                      </th>
+                                      <th className="py-2.5 px-2.5 sticky left-[95px] top-0 z-40 bg-slate-100 dark:bg-slate-800 min-w-[160px] shadow-[2px_0_4px_-1px_rgba(0,0,0,0.12)] border-b-2 border-r border-slate-300 dark:border-slate-700 font-black">
+                                        Roll / Trainee Name
+                                      </th>
+                                      <th className="py-2.5 px-2 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[85px] border-b-2 border-r border-slate-300 dark:border-slate-700">
+                                        Course
+                                      </th>
+                                      <th className="py-2.5 px-2 text-right sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[75px] border-b-2 border-r border-slate-300 dark:border-slate-700">
+                                        Adm Fee
+                                      </th>
+                                      <th className="py-2.5 px-2 text-right sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[75px] border-b-2 border-r border-slate-300 dark:border-slate-700">
+                                        25% PF
+                                      </th>
+                                      <th className="py-2.5 px-2 text-right font-bold text-rose-600 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[90px] border-b-2 border-r border-slate-300 dark:border-slate-700">
+                                        TEVTA Dues
+                                      </th>
+                                      <th className="py-2.5 px-2 text-right sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[75px] border-b-2 border-r border-slate-300 dark:border-slate-700">
+                                        75% PF
+                                      </th>
+                                      <th className="py-2.5 px-2 text-right sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[75px] border-b-2 border-r border-slate-300 dark:border-slate-700">
+                                        Security
+                                      </th>
+                                      <th className="py-2.5 px-2 text-right font-bold text-amber-600 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[90px] border-b-2 border-r border-slate-300 dark:border-slate-700">
+                                        Board Fee
+                                      </th>
+                                      <th className="py-2.5 px-2 text-right font-bold text-purple-600 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[85px] border-b-2 border-r border-slate-300 dark:border-slate-700">
+                                        Self Fin.
+                                      </th>
+                                      <th className="py-2.5 px-2 text-right font-bold text-indigo-600 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[80px] border-b-2 border-r border-slate-300 dark:border-slate-700">
+                                        Other (TUV)
+                                      </th>
+                                      <th className="py-2.5 px-2 text-right font-bold text-emerald-600 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[95px] border-b-2 border-r border-slate-300 dark:border-slate-700">
+                                        Institute Share
+                                      </th>
+                                      <th className="py-2.5 px-2.5 text-right font-black text-blue-700 dark:text-cyan-400 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[100px] border-b-2 border-slate-300 dark:border-slate-700">
+                                        Total (Rs.)
+                                      </th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
-                                    {row.challans.map((c) => {
+                                  <tbody className="font-mono">
+                                    {row.challans.map((c, sIdx) => {
                                       const cb = computeChallanFeeBreakdown(c);
+                                      const subRowBg = sIdx % 2 === 1
+                                        ? darkMode ? 'bg-slate-900/90' : 'bg-slate-50/80'
+                                        : darkMode ? 'bg-slate-900' : 'bg-white';
                                       return (
-                                        <tr key={c.challanId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                                          <td className="py-1.5 px-2 font-bold text-slate-700 dark:text-slate-300">
+                                        <tr key={c.challanId} className="hover:bg-amber-50/50 dark:hover:bg-slate-800/60 transition-colors">
+                                          <td className={`py-1.5 px-2.5 font-bold text-slate-700 dark:text-slate-300 sticky left-0 z-10 ${subRowBg} border-r border-b border-slate-200 dark:border-slate-800`}>
                                             {c.challanId}
                                           </td>
-                                          <td className="py-1.5 px-2 font-sans">
+                                          <td className={`py-1.5 px-2.5 font-sans sticky left-[95px] z-10 ${subRowBg} shadow-[2px_0_4px_-1px_rgba(0,0,0,0.1)] border-r border-b border-slate-200 dark:border-slate-800`}>
                                             <span className="font-semibold text-slate-900 dark:text-white">
                                               {c.traineeName}
                                             </span>
@@ -1391,53 +1700,94 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                                               {c.cnic && <span>• CNIC: {c.cnic}</span>}
                                             </div>
                                           </td>
-                                          <td className="py-1.5 px-2 font-sans font-semibold">
+                                          <td className="py-1.5 px-2 font-sans font-semibold border-r border-b border-slate-200 dark:border-slate-800">
                                             <span
                                               className={`px-1.5 py-0.5 rounded text-[10px] ${
                                                 cb.isBeauticianSelfFinance
-                                                  ? 'bg-purple-100 text-purple-800'
+                                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
                                                   : cb.isTuv
-                                                  ? 'bg-blue-100 text-blue-800'
-                                                  : 'bg-slate-100 text-slate-800'
+                                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                                                  : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
                                               }`}
                                             >
                                               {c.courseAbbreviation || 'REG'}
                                             </span>
                                           </td>
-                                          <td className="py-1.5 px-2 text-right text-slate-600">
+                                          <td className="py-1.5 px-2 text-right text-slate-600 dark:text-slate-400 border-r border-b border-slate-200 dark:border-slate-800">
                                             {cb.admissionTuitionRegFee > 0 ? formatPKR(cb.admissionTuitionRegFee) : '-'}
                                           </td>
-                                          <td className="py-1.5 px-2 text-right text-slate-600">
+                                          <td className="py-1.5 px-2 text-right text-slate-600 dark:text-slate-400 border-r border-b border-slate-200 dark:border-slate-800">
                                             {cb.pupilFee25Percent > 0 ? formatPKR(cb.pupilFee25Percent) : '-'}
                                           </td>
-                                          <td className="py-1.5 px-2 text-right font-bold text-rose-600">
+                                          <td className="py-1.5 px-2 text-right font-bold text-rose-600 border-r border-b border-slate-200 dark:border-slate-800">
                                             {formatPKR(cb.totalTevtaDues)}
                                           </td>
-                                          <td className="py-1.5 px-2 text-right text-slate-600">
+                                          <td className="py-1.5 px-2 text-right text-slate-600 dark:text-slate-400 border-r border-b border-slate-200 dark:border-slate-800">
                                             {cb.pupilFee75Percent > 0 ? formatPKR(cb.pupilFee75Percent) : '-'}
                                           </td>
-                                          <td className="py-1.5 px-2 text-right text-slate-600">
+                                          <td className="py-1.5 px-2 text-right text-slate-600 dark:text-slate-400 border-r border-b border-slate-200 dark:border-slate-800">
                                             {cb.collegeSecurity > 0 ? formatPKR(cb.collegeSecurity) : '-'}
                                           </td>
-                                          <td className="py-1.5 px-2 text-right font-bold text-amber-600">
+                                          <td className="py-1.5 px-2 text-right font-bold text-amber-600 border-r border-b border-slate-200 dark:border-slate-800">
                                             {cb.boardCharges > 0 ? formatPKR(cb.boardCharges) : '-'}
                                           </td>
-                                          <td className="py-1.5 px-2 text-right font-bold text-purple-600">
+                                          <td className="py-1.5 px-2 text-right font-bold text-purple-600 border-r border-b border-slate-200 dark:border-slate-800">
                                             {cb.shortCourseSelfFinance > 0 ? formatPKR(cb.shortCourseSelfFinance) : '-'}
                                           </td>
-                                          <td className="py-1.5 px-2 text-right font-bold text-indigo-600">
+                                          <td className="py-1.5 px-2 text-right font-bold text-indigo-600 border-r border-b border-slate-200 dark:border-slate-800">
                                             {cb.bankProfit > 0 ? formatPKR(cb.bankProfit) : '-'}
                                           </td>
-                                          <td className="py-1.5 px-2 text-right font-bold text-emerald-600">
+                                          <td className="py-1.5 px-2 text-right font-bold text-emerald-600 border-r border-b border-slate-200 dark:border-slate-800">
                                             {formatPKR(cb.instituteShare)}
                                           </td>
-                                          <td className="py-1.5 px-2 text-right font-black text-blue-700 dark:text-cyan-400">
+                                          <td className="py-1.5 px-2.5 text-right font-black text-blue-700 dark:text-cyan-400 border-b border-slate-200 dark:border-slate-800">
                                             {formatPKR(cb.totalAmountReceived)}
                                           </td>
                                         </tr>
                                       );
                                     })}
                                   </tbody>
+                                  <tfoot className="sticky bottom-0 z-20 bg-slate-100 dark:bg-slate-800 border-t-2 border-slate-300 dark:border-slate-700 font-bold text-[11px] shadow-sm">
+                                    <tr>
+                                      <td className="py-2.5 px-2.5 sticky left-0 bottom-0 z-40 bg-slate-100 dark:bg-slate-800 font-black text-slate-600 dark:text-slate-400 border-t-2 border-r border-slate-300 dark:border-slate-700">
+                                        Total
+                                      </td>
+                                      <td className="py-2.5 px-2.5 sticky left-[95px] bottom-0 z-40 bg-slate-100 dark:bg-slate-800 font-black text-slate-900 dark:text-white shadow-[2px_0_4px_-1px_rgba(0,0,0,0.12)] border-t-2 border-r border-slate-300 dark:border-slate-700">
+                                        {row.challans.length} Students
+                                      </td>
+                                      <td className="py-2.5 px-2 text-slate-400 border-t-2 border-r border-slate-300 dark:border-slate-700">-</td>
+                                      <td className="py-2.5 px-2 text-right text-slate-700 dark:text-slate-300 font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
+                                        {row.breakdown.admissionTuitionRegFee > 0 ? formatPKR(row.breakdown.admissionTuitionRegFee) : '-'}
+                                      </td>
+                                      <td className="py-2.5 px-2 text-right text-slate-700 dark:text-slate-300 font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
+                                        {row.breakdown.pupilFee25Percent > 0 ? formatPKR(row.breakdown.pupilFee25Percent) : '-'}
+                                      </td>
+                                      <td className="py-2.5 px-2 text-right text-rose-600 font-black font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
+                                        {formatPKR(row.breakdown.totalTevtaDues)}
+                                      </td>
+                                      <td className="py-2.5 px-2 text-right text-slate-700 dark:text-slate-300 font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
+                                        {row.breakdown.pupilFee75Percent > 0 ? formatPKR(row.breakdown.pupilFee75Percent) : '-'}
+                                      </td>
+                                      <td className="py-2.5 px-2 text-right text-slate-700 dark:text-slate-300 font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
+                                        {row.breakdown.collegeSecurity > 0 ? formatPKR(row.breakdown.collegeSecurity) : '-'}
+                                      </td>
+                                      <td className="py-2.5 px-2 text-right text-amber-600 font-black font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
+                                        {formatPKR(row.breakdown.boardCharges)}
+                                      </td>
+                                      <td className="py-2.5 px-2 text-right text-purple-600 font-black font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
+                                        {formatPKR(row.breakdown.shortCourseSelfFinance)}
+                                      </td>
+                                      <td className="py-2.5 px-2 text-right text-indigo-600 font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
+                                        {row.breakdown.bankProfit > 0 ? formatPKR(row.breakdown.bankProfit) : '-'}
+                                      </td>
+                                      <td className="py-2.5 px-2 text-right text-emerald-600 font-black font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
+                                        {formatPKR(row.breakdown.instituteShare)}
+                                      </td>
+                                      <td className="py-2.5 px-2.5 text-right text-blue-700 dark:text-cyan-400 font-black font-mono border-t-2 border-slate-300 dark:border-slate-700">
+                                        Rs. {formatPKR(row.breakdown.totalAmountReceived)}
+                                      </td>
+                                    </tr>
+                                  </tfoot>
                                 </table>
                               </div>
                             </div>
@@ -1452,43 +1802,43 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
 
             {/* Bottom Grand Total Footer */}
             {rows.length > 0 && (
-              <tfoot className="border-t-2 border-slate-400 dark:border-slate-700 bg-slate-100 dark:bg-slate-950 font-black text-xs">
+              <tfoot className="sticky bottom-0 z-30 border-t-2 border-slate-400 dark:border-slate-700 bg-slate-100 dark:bg-slate-950 font-black text-xs shadow-md">
                 <tr>
-                  <td className="py-3 px-2 text-center text-slate-500"></td>
-                  <td className="py-3 px-3 text-slate-900 dark:text-white font-bold">
+                  <td className="py-3 px-2 text-center text-slate-500 sticky left-0 bottom-0 z-40 bg-slate-100 dark:bg-slate-950 border-r border-slate-300 dark:border-slate-800"></td>
+                  <td className="py-3 px-3 text-slate-900 dark:text-white font-bold sticky left-12 bottom-0 z-40 bg-slate-100 dark:bg-slate-950 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.12)] border-r border-slate-300 dark:border-slate-800 whitespace-nowrap">
                     GRAND TOTAL
                   </td>
-                  <td className="py-3 px-2 text-right font-mono text-slate-800 dark:text-slate-200">
+                  <td className="py-3 px-2 text-right font-mono text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800">
                     {formatPKR(grandTotal.admissionTuitionRegFee)}
                   </td>
-                  <td className="py-3 px-2 text-right font-mono text-slate-800 dark:text-slate-200">
+                  <td className="py-3 px-2 text-right font-mono text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800">
                     {formatPKR(grandTotal.pupilFee25Percent)}
                   </td>
-                  <td className="py-3 px-2 text-right font-mono text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30">
+                  <td className="py-3 px-2 text-right font-mono text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 border-r border-slate-200 dark:border-slate-800 font-black">
                     {formatPKR(grandTotal.totalTevtaDues)}
                   </td>
-                  <td className="py-3 px-2 text-right font-mono text-slate-800 dark:text-slate-200">
+                  <td className="py-3 px-2 text-right font-mono text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800">
                     {formatPKR(grandTotal.pupilFee75Percent)}
                   </td>
-                  <td className="py-3 px-2 text-right font-mono text-slate-800 dark:text-slate-200">
+                  <td className="py-3 px-2 text-right font-mono text-slate-800 dark:text-slate-200 border-r border-slate-200 dark:border-slate-800">
                     {formatPKR(grandTotal.collegeSecurity)}
                   </td>
-                  <td className="py-3 px-2 text-right font-mono text-amber-700 dark:text-amber-400">
+                  <td className="py-3 px-2 text-right font-mono text-amber-700 dark:text-amber-400 border-r border-slate-200 dark:border-slate-800 font-black">
                     {formatPKR(grandTotal.boardCharges)}
                   </td>
-                  <td className="py-3 px-2 text-right font-mono text-purple-700 dark:text-purple-400">
+                  <td className="py-3 px-2 text-right font-mono text-purple-700 dark:text-purple-400 border-r border-slate-200 dark:border-slate-800 font-black">
                     {formatPKR(grandTotal.shortCourseSelfFinance)}
                   </td>
-                  <td className="py-3 px-2 text-right font-mono text-slate-500">
+                  <td className="py-3 px-2 text-right font-mono text-slate-500 border-r border-slate-200 dark:border-slate-800">
                     {grandTotal.bankProfit > 0 ? formatPKR(grandTotal.bankProfit) : '-'}
                   </td>
-                  <td className="py-3 px-2 text-right font-mono text-slate-900 dark:text-white bg-[#E2EFDA]/50 dark:bg-emerald-950/30">
+                  <td className="py-3 px-2 text-right font-mono text-slate-900 dark:text-white bg-[#E2EFDA]/50 dark:bg-emerald-950/30 border-r border-slate-200 dark:border-slate-800 font-bold">
                     {formatPKR(grandTotal.subTotalInstituteShare)}
                   </td>
-                  <td className="py-3 px-3 text-right font-mono font-black text-[#002060] dark:text-cyan-300 bg-[#D9E1F2] dark:bg-cyan-950/50">
+                  <td className="py-3 px-3 text-right font-mono font-black text-[#002060] dark:text-cyan-300 bg-[#D9E1F2] dark:bg-cyan-950/50 border-r border-slate-200 dark:border-slate-800 text-xs">
                     Rs. {formatPKR(grandTotal.totalAmountReceived)}
                   </td>
-                  <td className="py-3 px-2 text-right font-mono text-emerald-700 dark:text-emerald-400">
+                  <td className="py-3 px-2 text-right font-mono text-emerald-700 dark:text-emerald-400 border-r border-slate-200 dark:border-slate-800 font-black">
                     Rs. {formatPKR(grandTotal.instituteShare)}
                   </td>
                   <td></td>
@@ -1496,6 +1846,145 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
               </tfoot>
             )}
           </table>
+        </div>
+
+        {/* Convenient Synced Bottom Horizontal Scrollbar & Quick Column Navigator */}
+        <div className="border-t-2 border-slate-300 dark:border-slate-700 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-3 select-none">
+          {/* Left: Quick Jump Chips to Columns */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-extrabold text-slate-600 dark:text-slate-300 mr-1 flex items-center gap-1">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+              Jump to Column:
+            </span>
+            <button
+              type="button"
+              onClick={() => scrollToPosition(0)}
+              className="px-2 py-0.5 rounded text-[11px] font-bold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-600 shadow-2xs cursor-pointer transition-colors"
+            >
+              Sr / Date
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToPosition(180)}
+              className="px-2 py-0.5 rounded text-[11px] font-bold bg-orange-100 dark:bg-orange-950/80 text-orange-900 dark:text-orange-200 hover:bg-orange-200 dark:hover:bg-orange-900 border border-orange-300 dark:border-orange-800 shadow-2xs cursor-pointer transition-colors"
+              title="Jump to TEVTA Fee Columns (Rs. 12 Share)"
+            >
+              TEVTA Fee (Rs. 12)
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToPosition(380)}
+              className="px-2 py-0.5 rounded text-[11px] font-bold bg-sky-100 dark:bg-sky-950/80 text-sky-900 dark:text-sky-200 hover:bg-sky-200 dark:hover:bg-sky-900 border border-sky-300 dark:border-sky-800 shadow-2xs cursor-pointer transition-colors"
+              title="Jump to 75% Pupil Fund and College Security"
+            >
+              Pupil &amp; Security
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToPosition(580)}
+              className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-900 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900 border border-amber-300 dark:border-amber-800 shadow-2xs cursor-pointer transition-colors"
+              title="Jump to TTB / PBTE Board Charges (Rs. 1,500)"
+            >
+              Board Fee (Rs. 1,500)
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToPosition(720)}
+              className="px-2 py-0.5 rounded text-[11px] font-bold bg-purple-100 dark:bg-purple-950/80 text-purple-900 dark:text-purple-200 hover:bg-purple-200 dark:hover:bg-purple-900 border border-purple-300 dark:border-purple-800 shadow-2xs cursor-pointer transition-colors"
+              title="Jump to Short Course Self Finance (Rs. 8,500 net)"
+            >
+              Self-Finance (Rs. 8,500)
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToPosition(920)}
+              className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-200 dark:hover:bg-emerald-900 border border-emerald-300 dark:border-emerald-800 shadow-2xs cursor-pointer transition-colors"
+              title="Jump to Institute Share (Rs. 10,000)"
+            >
+              Institute Share (Rs. 10,000)
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToPosition(1200)}
+              className="px-2.5 py-0.5 rounded text-[11px] font-black bg-cyan-600 text-white hover:bg-cyan-700 border border-cyan-700 shadow-2xs cursor-pointer transition-colors"
+              title="Jump to Total Amount Received Per Day (Rs. 10,012)"
+            >
+              Total Received (Rs. 10,012)
+            </button>
+          </div>
+
+          {/* Right: Interactive Synced Scroll Track + Step Scroll Controls */}
+          <div className="flex items-center gap-2 grow sm:grow-0 min-w-[280px] max-w-md ml-auto">
+            <button
+              type="button"
+              onClick={() => {
+                if (mainTableContainerRef.current) {
+                  mainTableContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+                }
+              }}
+              disabled={!canScrollLeft}
+              className="p-1 rounded bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 disabled:opacity-30 cursor-pointer transition-colors shadow-2xs"
+              title="First Column"
+            >
+              <ChevronsLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (mainTableContainerRef.current) {
+                  mainTableContainerRef.current.scrollBy({ left: -250, behavior: 'smooth' });
+                }
+              }}
+              disabled={!canScrollLeft}
+              className="p-1 rounded bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 disabled:opacity-30 cursor-pointer transition-colors shadow-2xs"
+              title="Pan Left (250px)"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Clickable and Draggable Interactive Track */}
+            <div
+              ref={bottomScrollTrackRef}
+              onClick={handleBottomTrackClick}
+              className="relative grow h-4 bg-slate-200 dark:bg-slate-700 rounded-full cursor-pointer overflow-hidden border border-slate-300 dark:border-slate-600 shadow-inner"
+              title="Click anywhere on track to pan horizontally across columns"
+            >
+              <div
+                className="absolute top-0 bottom-0 bg-teal-600 hover:bg-teal-500 rounded-full transition-all duration-75 shadow-xs"
+                style={{
+                  left: `${scrollThumbLeft}%`,
+                  width: `${scrollThumbWidth}%`,
+                }}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (mainTableContainerRef.current) {
+                  mainTableContainerRef.current.scrollBy({ left: 250, behavior: 'smooth' });
+                }
+              }}
+              disabled={!canScrollRight}
+              className="p-1 rounded bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 disabled:opacity-30 cursor-pointer transition-colors shadow-2xs"
+              title="Pan Right (250px)"
+            >
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (mainTableContainerRef.current) {
+                  mainTableContainerRef.current.scrollTo({ left: mainTableContainerRef.current.scrollWidth, behavior: 'smooth' });
+                }
+              }}
+              disabled={!canScrollRight}
+              className="p-1 rounded bg-white dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 disabled:opacity-30 cursor-pointer transition-colors shadow-2xs"
+              title="Last Column (Institute Share)"
+            >
+              <ChevronsRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 

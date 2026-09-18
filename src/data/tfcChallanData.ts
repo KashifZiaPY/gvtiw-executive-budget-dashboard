@@ -464,9 +464,10 @@ export interface ChallanFeeBreakdown {
 /**
  * Computes official Fee Breakdown for BOP Fee Collection Account (6580027832200011):
  * 1. Beautician Self Finance (Total Fee Rs. 10,012 includes 1,500 Board Charges under Other head):
- *    - Base Course Fee: Rs. 8,512 (Short Course / Self Finance)
- *    - Board Dues: Any amount above 8,512 (Standard: 10,012 - 8,512 = 1,500).
- *    - Double/Excess Board Fee: If total > 10,012, all amount above 8,512 is board charges.
+ *    - Base Course Fee: Rs. 8,500 (Short Course / Self Finance net)
+ *    - Board Dues: Any amount above 8,500 (Standard: Rs. 1,500 single TTB board fee).
+ *    - TEVTA Share: Rs. 12 (25% TEVTA Share from Rs. 10,000).
+ *    - Double/Excess Board Fee: If total > 10,012, all amount above 8,500 is board charges.
  * 2. TUV Course:
  *    - No Board Charges yet (Rs. 0 for Board, pending instructions for TEVTA Share transfer).
  * 3. All Other Regular Courses:
@@ -474,16 +475,6 @@ export interface ChallanFeeBreakdown {
  */
 export function computeChallanFeeBreakdown(c: TfcChallanRecord): ChallanFeeBreakdown {
   const adm = Number(c.admissionTuitionRegFee) || 0;
-  const pf25 = Number(c.pupilFee25Percent) || 0;
-  const totalTevta = adm + pf25;
-
-  const pf75 = Number(c.pupilFee75Percent) || 0;
-  const security = Number(c.instituteSecurity) || 0;
-  const rawOther = Number(c.otherFee) || 0;
-
-  let board = 0;
-  let selfFinance = 0;
-
   const courseAbbrUpper = (c.courseAbbreviation || '').toUpperCase();
   const courseNameUpper = (c.courseName || '').toUpperCase();
   const nameUpper = (c.name || '').toUpperCase();
@@ -500,15 +491,47 @@ export function computeChallanFeeBreakdown(c: TfcChallanRecord): ChallanFeeBreak
     courseNameUpper.includes('TUV') ||
     nameUpper.includes('TUV');
 
+  let pf25 = Number(c.pupilFee25Percent) || 0;
+  if (isBeauticianSelfFinance && pf25 === 0) {
+    if (Number(c.headOfficeTotal) === 12 || Number(c.totalAmount) === 10012) {
+      pf25 = 12;
+    }
+  }
+  const totalTevta = adm + pf25;
+
+  const pf75 = Number(c.pupilFee75Percent) || 0;
+  const security = Number(c.instituteSecurity) || 0;
+  const rawOther = Number(c.otherFee) || 0;
+
+  let board = 0;
+  let selfFinance = 0;
   let bankProfit = 0;
 
   if (isBeauticianSelfFinance) {
-    if (rawOther > 8512) {
-      board = rawOther - 8512;
-      selfFinance = 8512;
-    } else {
+    // Beautician Self Finance Logic:
+    // Approved Fee: Rs. 10,012/- (including single board fee Rs. 1,500)
+    // - Rs. 12 is totally for 25% to TEVTA Share from Rs. 10,000 (TEVTA Share)
+    // - Rs. 1,500 to TTB Board charges
+    // - Rs. 8,500 for Self Finance Short Course net
+    // Total Amount Received = Rs. 10,012
+    // Institute Share = Rs. 10,000 (Rs. 1,500 board + Rs. 8,500 self finance)
+    // If trainee paid double board fee (e.g. other fee 11,500), excess above 8,500 goes to board charges.
+    const effectiveOther = rawOther > 0 ? rawOther : Math.max(0, (Number(c.totalAmount) || 0) - totalTevta);
+    if (effectiveOther >= 10000) {
+      selfFinance = 8500;
+      board = effectiveOther - 8500; // Rs. 1,500 for standard single board fee; Rs. 3,000 for double fee
+    } else if (effectiveOther > 8500) {
+      selfFinance = 8500;
+      board = effectiveOther - 8500;
+    } else if (effectiveOther > 0) {
+      selfFinance = effectiveOther;
       board = 0;
-      selfFinance = rawOther;
+    } else if (Number(c.totalAmount) >= 10012) {
+      selfFinance = 8500;
+      board = 1500;
+    } else {
+      selfFinance = 0;
+      board = 0;
     }
   } else if (isTuv) {
     board = 0;

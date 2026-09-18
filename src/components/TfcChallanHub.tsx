@@ -322,13 +322,10 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       portalHoTotal += c.headOfficeTotal;
       portalInstTotal += c.instituteTotal;
 
-      if (c.courseAbbreviation === 'BTE') {
-        bteSelfFinanceShare += c.otherFee;
-      } else if (c.courseAbbreviation === 'TUV') {
-        tuvCertificationShare += c.otherFee;
-      } else {
-        boardChargesShare += c.otherFee;
-      }
+      const bd = computeChallanFeeBreakdown(c);
+      bteSelfFinanceShare += bd.shortCourseSelfFinance;
+      boardChargesShare += bd.boardCharges;
+      tuvCertificationShare += bd.bankProfit;
     }
 
     return {
@@ -1317,13 +1314,10 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       map[code].security += c.instituteSecurity;
       map[code].total += c.totalAmount;
 
-      if (code === 'BTE') {
-        map[code].bteSelfFinance += c.otherFee;
-      } else if (code === 'TUV') {
-        map[code].tuvFee += c.otherFee;
-      } else {
-        map[code].boardCharges += c.otherFee;
-      }
+      const bd = computeChallanFeeBreakdown(c);
+      map[code].bteSelfFinance += bd.shortCourseSelfFinance;
+      map[code].boardCharges += bd.boardCharges;
+      map[code].tuvFee += bd.bankProfit;
     }
 
     return Object.values(map).sort((a, b) => b.total - a.total);
@@ -1827,11 +1821,11 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                     <span className="font-mono font-bold underline">BOP Student Securities A/C (6580027832200044)</span>
                   </li>
                   <li>
-                    <strong>Self-Finance Beautician Course Fees (BTE)</strong> → Transfer in full (Rs. 10,012/trainee) via Cheque to{' '}
-                    <span className="font-mono font-bold underline">BOP Short Course A/C (6580027832200033)</span>
+                    <strong>Self-Finance Beautician Course Fees (BTE)</strong> → Transfer Net Short Course Fee (Rs. 8,500/trainee) via Cheque to{' '}
+                    <span className="font-mono font-bold underline">BOP Short Course A/C (6580027832200033)</span>. Single Board fee of Rs. 1,500/trainee is retained in TFC for TTB Board charges, while Rs. 12 (25% TEVTA Share) is routed to HQ.
                   </li>
                   <li>
-                    <strong>Board Charges (MVi, MVii, ADDM, FD, CO, CK, BT, DM)</strong> → Retained in TFC to pay the Punjab Board of Technical Education (PBTE) / Trade Testing Board
+                    <strong>Board Charges (PBTE / TTB)</strong> → Retained in TFC to pay the Punjab Board of Technical Education (PBTE) / Trade Testing Board (TTB) including Rs. 1,500/trainee from Beautician Self-Finance
                   </li>
                   <li>
                     <strong>TUV Rheinland Certification Fees</strong> → Retained in TFC pending transfer directive from TEVTA HQ
@@ -1944,7 +1938,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                         4. Self-Finance Fees (BTE)
                       </td>
                       <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300">
-                        Full Fee in Other (Rs. 10,012/trainee for BTE)
+                        Net Course Fee (Rs. 8,500/trainee for BTE)
                       </td>
                       <td className="py-3.5 px-4">
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-950 border border-indigo-300 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-400/40">
@@ -1965,15 +1959,15 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                         5. Board Registration & Exam Fee
                       </td>
                       <td className="py-3.5 px-4 text-slate-700 dark:text-slate-300">
-                        Other Fee part of MV, FD, CO, CK, BT & DM
+                        PBTE / TTB Board charges (including Rs. 1,500/trainee single board fee for BTE)
                       </td>
                       <td className="py-3.5 px-4">
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-cyan-100 text-cyan-950 border border-cyan-300 dark:bg-cyan-500/20 dark:text-cyan-300 dark:border-cyan-400/40">
-                          Retained in TFC for PBTE
+                          Retained in TFC for PBTE/TTB
                         </span>
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-slate-200">
-                        Punjab Board of Technical Education (PBTE) / Board
+                        Punjab Board of Technical Education (PBTE) / TTB Board
                       </td>
                       <td className="py-3.5 px-4 text-right font-mono font-black text-cyan-800 dark:text-cyan-400 text-sm">
                         {formatPKR(totals.boardChargesShare, false)}
