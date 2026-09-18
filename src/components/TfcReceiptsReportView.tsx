@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import ExcelJS from 'exceljs';
 import {
@@ -9,6 +9,8 @@ import {
 } from '../data/tfcChallanData';
 import { formatPKR } from '../lib/formatters';
 import { generateReceiptsRegisterPdf } from '../lib/tfcPdfGenerator';
+import { TfcCourseMultiSelect } from './TfcCourseMultiSelect';
+import { TfcReceiptDrilldownTable } from './TfcReceiptDrilldownTable';
 import {
   Calendar,
   FileSpreadsheet,
@@ -44,6 +46,8 @@ interface TfcReceiptsReportViewProps {
   customGvtiwLogo?: string | null;
   customTevtaLogo?: string | null;
   customGopLogo?: string | null;
+  selectedCourses?: string[];
+  onSelectedCoursesChange?: (courses: string[]) => void;
 }
 
 // Date parsing helper
@@ -119,13 +123,21 @@ function parseDateDetail(rawDate: string) {
   };
 }
 
-interface AggregatedReceiptRow {
+export interface AggregatedReceiptRow {
   key: string;
   label: string; // Date or Month name
   timestamp: number;
   challans: TfcChallanRecord[];
   breakdown: ChallanFeeBreakdown;
   challanCount: number;
+}
+
+export interface TradeReceiptGroup {
+  tradeCode: string;
+  tradeTitle: string;
+  challanCount: number;
+  dateRows: AggregatedReceiptRow[];
+  subtotal: ChallanFeeBreakdown;
 }
 
 export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
@@ -135,17 +147,55 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
   customGvtiwLogo,
   customTevtaLogo,
   customGopLogo,
+  selectedCourses: selectedCoursesProp,
+  onSelectedCoursesChange,
 }) => {
   const [reportMode, setReportMode] = useState<'DATE_WISE' | 'MONTH_WISE'>(initialMode);
   const [dateFilterMode, setDateFilterMode] = useState<'MONTH' | 'CUSTOM_RANGE'>('MONTH');
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [selectedCourse, setSelectedCourse] = useState<string>('ALL');
+  
+  // Multi-Course Filter State
+  const [internalCourses, setInternalCourses] = useState<string[]>(selectedCoursesProp || ['ALL']);
+  useEffect(() => {
+    if (selectedCoursesProp !== undefined) {
+      setInternalCourses(selectedCoursesProp);
+    }
+  }, [selectedCoursesProp]);
+
+  const activeCourses = selectedCoursesProp !== undefined ? selectedCoursesProp : internalCourses;
+
+  const handleCoursesChange = (newSelected: string[]) => {
+    setInternalCourses(newSelected);
+    onSelectedCoursesChange?.(newSelected);
+  };
+
+  const isCourseSelected = useCallback(
+    (abbr: string) => {
+      if (!activeCourses || activeCourses.length === 0 || activeCourses.includes('ALL')) return true;
+      return activeCourses.includes(abbr);
+    },
+    [activeCourses]
+  );
+
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [showPrintPortal, setShowPrintPortal] = useState(false);
+
+  // Grouping Mode: AUTO (trade-wise if multiple courses, flat if single), TRADE_WISE, or DATE_COMBINED
+  const [viewGroupingMode, setViewGroupingMode] = useState<'AUTO' | 'TRADE_WISE' | 'DATE_COMBINED'>('AUTO');
+  const [collapsedTrades, setCollapsedTrades] = useState<Set<string>>(new Set());
+
+  const toggleCollapseTrade = (tradeCode: string) => {
+    setCollapsedTrades((prev) => {
+      const next = new Set(prev);
+      if (next.has(tradeCode)) next.delete(tradeCode);
+      else next.add(tradeCode);
+      return next;
+    });
+  };
 
   // Toggle drilldown
   const toggleExpand = (key: string) => {
@@ -208,9 +258,11 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
         if (endDate && d.iso > endDate) return false;
       }
 
-      if (selectedCourse !== 'ALL' && c.courseAbbreviation !== selectedCourse) {
+      // Course filtering: Multi-Course check
+      if (!isCourseSelected(c.courseAbbreviation)) {
         return false;
       }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const cleanQDigits = searchQuery.replace(/\D/g, '');
@@ -220,12 +272,14 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
           c.traineeName.toLowerCase().includes(q) ||
           c.cnic.toLowerCase().includes(q) ||
           (cleanQDigits.length >= 3 && cleanCnicDigits.includes(cleanQDigits)) ||
-          c.rollOrCode.toLowerCase().includes(q);
+          c.rollOrCode.toLowerCase().includes(q) ||
+          c.courseName.toLowerCase().includes(q) ||
+          c.courseAbbreviation.toLowerCase().includes(q);
         if (!match) return false;
       }
       return true;
     });
-  }, [challans, dateFilterMode, selectedMonth, startDate, endDate, selectedCourse, searchQuery]);
+  }, [challans, dateFilterMode, selectedMonth, startDate, endDate, isCourseSelected, searchQuery]);
 
   // Active Period Human Label for exports & titles
   const activePeriodLabel = useMemo(() => {
@@ -240,10 +294,8 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
     return 'All Available Dates (Custom Range)';
   }, [dateFilterMode, selectedMonth, startDate, endDate]);
 
-  // Aggregation by Date or Month
-  const { rows, grandTotal } = useMemo(() => {
-    const map = new Map<string, AggregatedReceiptRow>();
-
+  // Intelligent Trade-Wise Grouping with Subtotals and Chronological Date Sorting
+  const { tradeGroups, flatRows, grandTotal } = useMemo(() => {
     const totalAccumulator: ChallanFeeBreakdown = {
       admissionTuitionRegFee: 0,
       pupilFee25Percent: 0,
@@ -260,17 +312,117 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
       isTuv: false,
     };
 
+    // Trade Group map
+    const tradeMap = new Map<
+      string,
+      {
+        tradeCode: string;
+        tradeTitle: string;
+        challanCount: number;
+        subtotal: ChallanFeeBreakdown;
+        dateMap: Map<string, AggregatedReceiptRow>;
+      }
+    >();
+
+    // Flat date map (for combined mode)
+    const flatDateMap = new Map<string, AggregatedReceiptRow>();
+
     filteredChallans.forEach((c) => {
       const b = computeChallanFeeBreakdown(c);
       const d = parseDateDetail(c.challanPaymentDate);
+      const tradeCode = c.courseAbbreviation || 'OTHER';
+      const tradeTitle = COURSE_TITLE_MAP[tradeCode] || c.courseName || tradeCode;
 
       const groupKey = reportMode === 'DATE_WISE' ? d.displayDmy : d.monthYear;
       const groupLabel = reportMode === 'DATE_WISE' ? d.displayDmy : d.monthYear;
       const groupTimestamp = d.timestamp;
 
-      let entry = map.get(groupKey);
-      if (!entry) {
-        entry = {
+      // 1. Accumulate into Trade Group
+      let tEntry = tradeMap.get(tradeCode);
+      if (!tEntry) {
+        tEntry = {
+          tradeCode,
+          tradeTitle,
+          challanCount: 0,
+          subtotal: {
+            admissionTuitionRegFee: 0,
+            pupilFee25Percent: 0,
+            totalTevtaDues: 0,
+            pupilFee75Percent: 0,
+            collegeSecurity: 0,
+            boardCharges: 0,
+            shortCourseSelfFinance: 0,
+            bankProfit: 0,
+            subTotalInstituteShare: 0,
+            totalAmountReceived: 0,
+            instituteShare: 0,
+            isBeauticianSelfFinance: b.isBeauticianSelfFinance,
+            isTuv: b.isTuv,
+          },
+          dateMap: new Map<string, AggregatedReceiptRow>(),
+        };
+        tradeMap.set(tradeCode, tEntry);
+      }
+
+      tEntry.challanCount += 1;
+      tEntry.subtotal.admissionTuitionRegFee += b.admissionTuitionRegFee;
+      tEntry.subtotal.pupilFee25Percent += b.pupilFee25Percent;
+      tEntry.subtotal.totalTevtaDues += b.totalTevtaDues;
+      tEntry.subtotal.pupilFee75Percent += b.pupilFee75Percent;
+      tEntry.subtotal.collegeSecurity += b.collegeSecurity;
+      tEntry.subtotal.boardCharges += b.boardCharges;
+      tEntry.subtotal.shortCourseSelfFinance += b.shortCourseSelfFinance;
+      tEntry.subtotal.bankProfit += b.bankProfit;
+      tEntry.subtotal.subTotalInstituteShare += b.subTotalInstituteShare;
+      tEntry.subtotal.totalAmountReceived += b.totalAmountReceived;
+      tEntry.subtotal.instituteShare += b.instituteShare;
+
+      // Unique row key within this trade
+      const tradeRowKey = `${tradeCode}_${groupKey}`;
+      let tRow = tEntry.dateMap.get(tradeRowKey);
+      if (!tRow) {
+        tRow = {
+          key: tradeRowKey,
+          label: groupLabel,
+          timestamp: groupTimestamp,
+          challans: [],
+          challanCount: 0,
+          breakdown: {
+            admissionTuitionRegFee: 0,
+            pupilFee25Percent: 0,
+            totalTevtaDues: 0,
+            pupilFee75Percent: 0,
+            collegeSecurity: 0,
+            boardCharges: 0,
+            shortCourseSelfFinance: 0,
+            bankProfit: 0,
+            subTotalInstituteShare: 0,
+            totalAmountReceived: 0,
+            instituteShare: 0,
+            isBeauticianSelfFinance: b.isBeauticianSelfFinance,
+            isTuv: b.isTuv,
+          },
+        };
+        tEntry.dateMap.set(tradeRowKey, tRow);
+      }
+      tRow.challans.push(c);
+      tRow.challanCount += 1;
+      tRow.breakdown.admissionTuitionRegFee += b.admissionTuitionRegFee;
+      tRow.breakdown.pupilFee25Percent += b.pupilFee25Percent;
+      tRow.breakdown.totalTevtaDues += b.totalTevtaDues;
+      tRow.breakdown.pupilFee75Percent += b.pupilFee75Percent;
+      tRow.breakdown.collegeSecurity += b.collegeSecurity;
+      tRow.breakdown.boardCharges += b.boardCharges;
+      tRow.breakdown.shortCourseSelfFinance += b.shortCourseSelfFinance;
+      tRow.breakdown.bankProfit += b.bankProfit;
+      tRow.breakdown.subTotalInstituteShare += b.subTotalInstituteShare;
+      tRow.breakdown.totalAmountReceived += b.totalAmountReceived;
+      tRow.breakdown.instituteShare += b.instituteShare;
+
+      // 2. Accumulate into Flat Date Map (for combined view)
+      let flatRow = flatDateMap.get(groupKey);
+      if (!flatRow) {
+        flatRow = {
           key: groupKey,
           label: groupLabel,
           timestamp: groupTimestamp,
@@ -292,26 +444,23 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
             isTuv: false,
           },
         };
-        map.set(groupKey, entry);
+        flatDateMap.set(groupKey, flatRow);
       }
+      flatRow.challans.push(c);
+      flatRow.challanCount += 1;
+      flatRow.breakdown.admissionTuitionRegFee += b.admissionTuitionRegFee;
+      flatRow.breakdown.pupilFee25Percent += b.pupilFee25Percent;
+      flatRow.breakdown.totalTevtaDues += b.totalTevtaDues;
+      flatRow.breakdown.pupilFee75Percent += b.pupilFee75Percent;
+      flatRow.breakdown.collegeSecurity += b.collegeSecurity;
+      flatRow.breakdown.boardCharges += b.boardCharges;
+      flatRow.breakdown.shortCourseSelfFinance += b.shortCourseSelfFinance;
+      flatRow.breakdown.bankProfit += b.bankProfit;
+      flatRow.breakdown.subTotalInstituteShare += b.subTotalInstituteShare;
+      flatRow.breakdown.totalAmountReceived += b.totalAmountReceived;
+      flatRow.breakdown.instituteShare += b.instituteShare;
 
-      entry.challans.push(c);
-      entry.challanCount += 1;
-
-      // Add to group
-      entry.breakdown.admissionTuitionRegFee += b.admissionTuitionRegFee;
-      entry.breakdown.pupilFee25Percent += b.pupilFee25Percent;
-      entry.breakdown.totalTevtaDues += b.totalTevtaDues;
-      entry.breakdown.pupilFee75Percent += b.pupilFee75Percent;
-      entry.breakdown.collegeSecurity += b.collegeSecurity;
-      entry.breakdown.boardCharges += b.boardCharges;
-      entry.breakdown.shortCourseSelfFinance += b.shortCourseSelfFinance;
-      entry.breakdown.bankProfit += b.bankProfit;
-      entry.breakdown.subTotalInstituteShare += b.subTotalInstituteShare;
-      entry.breakdown.totalAmountReceived += b.totalAmountReceived;
-      entry.breakdown.instituteShare += b.instituteShare;
-
-      // Add to grand total
+      // 3. Accumulate Grand Total
       totalAccumulator.admissionTuitionRegFee += b.admissionTuitionRegFee;
       totalAccumulator.pupilFee25Percent += b.pupilFee25Percent;
       totalAccumulator.totalTevtaDues += b.totalTevtaDues;
@@ -325,10 +474,40 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
       totalAccumulator.instituteShare += b.instituteShare;
     });
 
-    const sortedRows = Array.from(map.values()).sort((a, b) => a.timestamp - b.timestamp);
+    // Sort Trade Groups alphabetically by code, and dates within each trade chronologically
+    const groups: TradeReceiptGroup[] = Array.from(tradeMap.values())
+      .map((t) => ({
+        tradeCode: t.tradeCode,
+        tradeTitle: t.tradeTitle,
+        challanCount: t.challanCount,
+        // Sort chronologically by date!
+        dateRows: Array.from(t.dateMap.values()).sort((a, b) => a.timestamp - b.timestamp),
+        subtotal: t.subtotal,
+      }))
+      .sort((a, b) => a.tradeCode.localeCompare(b.tradeCode));
 
-    return { rows: sortedRows, grandTotal: totalAccumulator };
+    const sortedFlatRows = Array.from(flatDateMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+
+    return { tradeGroups: groups, flatRows: sortedFlatRows, grandTotal: totalAccumulator };
   }, [filteredChallans, reportMode]);
+
+  // Effective rows alias for backwards compatibility
+  const rows = flatRows;
+
+  // Multi-Course determination: is trade-wise grouping active?
+  const isMultiSelection = useMemo(() => {
+    if (activeCourses.includes('ALL') || activeCourses.length === 0) {
+      return availableCourses.length > 1;
+    }
+    return activeCourses.length > 1;
+  }, [activeCourses, availableCourses.length]);
+
+  const isTradeWiseGrouped = useMemo(() => {
+    if (viewGroupingMode === 'TRADE_WISE') return true;
+    if (viewGroupingMode === 'DATE_COMBINED') return false;
+    // In AUTO mode: group by trade-wise with subtotals when multi selections or all trades with multiple courses exist!
+    return isMultiSelection || tradeGroups.length > 1;
+  }, [viewGroupingMode, isMultiSelection, tradeGroups.length]);
 
   // Scroll and Table Dimension Handling
   const [tableHeightMode, setTableHeightMode] = useState<'FIXED' | 'FULL'>('FIXED');
@@ -341,12 +520,33 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
   const [scrollThumbLeft, setScrollThumbLeft] = useState<number>(0);
   const [scrollThumbWidth, setScrollThumbWidth] = useState<number>(25);
 
+  // All row keys across current mode (for Expand All)
+  const allCurrentRowKeys = useMemo(() => {
+    if (isTradeWiseGrouped) {
+      const keys: string[] = [];
+      tradeGroups.forEach((g) => {
+        g.dateRows.forEach((r) => keys.push(r.key));
+      });
+      return keys;
+    }
+    return flatRows.map((r) => r.key);
+  }, [isTradeWiseGrouped, tradeGroups, flatRows]);
+
   // Toggle expand all or collapse all dates
   const toggleExpandAll = () => {
-    if (expandedKeys.size === rows.length) {
+    if (expandedKeys.size === allCurrentRowKeys.length) {
       setExpandedKeys(new Set());
     } else {
-      setExpandedKeys(new Set(rows.map((r) => r.key)));
+      setExpandedKeys(new Set(allCurrentRowKeys));
+    }
+  };
+
+  // Toggle collapse all trades
+  const toggleCollapseAllTrades = () => {
+    if (collapsedTrades.size === tradeGroups.length) {
+      setCollapsedTrades(new Set());
+    } else {
+      setCollapsedTrades(new Set(tradeGroups.map((g) => g.tradeCode)));
     }
   };
 
@@ -483,23 +683,68 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
       'Institute Share',
     ].join('\t');
 
-    const lines = rows.map((r, i) =>
-      [
-        i + 1,
-        r.label,
-        r.breakdown.admissionTuitionRegFee,
-        r.breakdown.pupilFee25Percent,
-        r.breakdown.totalTevtaDues,
-        r.breakdown.pupilFee75Percent,
-        r.breakdown.collegeSecurity,
-        r.breakdown.boardCharges,
-        r.breakdown.shortCourseSelfFinance,
-        r.breakdown.bankProfit,
-        r.breakdown.subTotalInstituteShare,
-        r.breakdown.totalAmountReceived,
-        r.breakdown.instituteShare,
-      ].join('\t')
-    );
+    let lines: string[] = [];
+
+    if (isTradeWiseGrouped) {
+      tradeGroups.forEach((group) => {
+        lines.push(`\n=== TRADE: ${group.tradeCode} — ${group.tradeTitle} (${group.challanCount} Challans) ===`);
+        group.dateRows.forEach((r, i) => {
+          lines.push(
+            [
+              i + 1,
+              r.label,
+              r.breakdown.admissionTuitionRegFee,
+              r.breakdown.pupilFee25Percent,
+              r.breakdown.totalTevtaDues,
+              r.breakdown.pupilFee75Percent,
+              r.breakdown.collegeSecurity,
+              r.breakdown.boardCharges,
+              r.breakdown.shortCourseSelfFinance,
+              r.breakdown.bankProfit,
+              r.breakdown.subTotalInstituteShare,
+              r.breakdown.totalAmountReceived,
+              r.breakdown.instituteShare,
+            ].join('\t')
+          );
+        });
+        // Subtotal row for trade
+        lines.push(
+          [
+            'SUBTOTAL',
+            `${group.tradeCode} (${group.challanCount} Challans)`,
+            group.subtotal.admissionTuitionRegFee,
+            group.subtotal.pupilFee25Percent,
+            group.subtotal.totalTevtaDues,
+            group.subtotal.pupilFee75Percent,
+            group.subtotal.collegeSecurity,
+            group.subtotal.boardCharges,
+            group.subtotal.shortCourseSelfFinance,
+            group.subtotal.bankProfit,
+            group.subtotal.subTotalInstituteShare,
+            group.subtotal.totalAmountReceived,
+            group.subtotal.instituteShare,
+          ].join('\t')
+        );
+      });
+    } else {
+      lines = rows.map((r, i) =>
+        [
+          i + 1,
+          r.label,
+          r.breakdown.admissionTuitionRegFee,
+          r.breakdown.pupilFee25Percent,
+          r.breakdown.totalTevtaDues,
+          r.breakdown.pupilFee75Percent,
+          r.breakdown.collegeSecurity,
+          r.breakdown.boardCharges,
+          r.breakdown.shortCourseSelfFinance,
+          r.breakdown.bankProfit,
+          r.breakdown.subTotalInstituteShare,
+          r.breakdown.totalAmountReceived,
+          r.breakdown.instituteShare,
+        ].join('\t')
+      );
+    }
 
     const totalLine = [
       'Grand Total',
@@ -647,58 +892,122 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
       });
 
       // Data Rows
-      rows.forEach((r, idx) => {
-        const row = sheet.addRow([
-          idx + 1,
-          r.label,
-          r.breakdown.admissionTuitionRegFee,
-          r.breakdown.pupilFee25Percent,
-          { formula: `=C${sheet.rowCount + 1}+D${sheet.rowCount + 1}` }, // Total TEVTA Dues
-          r.breakdown.pupilFee75Percent,
-          r.breakdown.collegeSecurity,
-          r.breakdown.boardCharges,
-          r.breakdown.shortCourseSelfFinance,
-          r.breakdown.bankProfit || 0,
-          { formula: `=F${sheet.rowCount + 1}+G${sheet.rowCount + 1}+H${sheet.rowCount + 1}+I${sheet.rowCount + 1}+J${sheet.rowCount + 1}` },
-          { formula: `=E${sheet.rowCount + 1}+K${sheet.rowCount + 1}` }, // Total Per Day
-          { formula: `=K${sheet.rowCount + 1}` }, // Institute Share
-        ]);
+      if (isTradeWiseGrouped) {
+        tradeGroups.forEach((group) => {
+          // Trade Section Header Row
+          const tHeader = sheet.addRow([
+            `TRADE: ${group.tradeCode} — ${group.tradeTitle} (${group.challanCount} Challans)`,
+          ]);
+          tHeader.font = { bold: true, size: 10, color: { argb: 'FF002060' } };
+          tHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE7E6E6' } };
+          sheet.mergeCells(`A${sheet.rowCount}:M${sheet.rowCount}`);
 
-        row.alignment = { vertical: 'middle' };
-        row.getCell(1).alignment = { horizontal: 'center' };
-        row.getCell(2).alignment = { horizontal: 'center' };
+          group.dateRows.forEach((r, idx) => {
+            const row = sheet.addRow([
+              idx + 1,
+              r.label,
+              r.breakdown.admissionTuitionRegFee,
+              r.breakdown.pupilFee25Percent,
+              r.breakdown.totalTevtaDues,
+              r.breakdown.pupilFee75Percent,
+              r.breakdown.collegeSecurity,
+              r.breakdown.boardCharges,
+              r.breakdown.shortCourseSelfFinance,
+              r.breakdown.bankProfit || 0,
+              r.breakdown.subTotalInstituteShare,
+              r.breakdown.totalAmountReceived,
+              r.breakdown.instituteShare,
+            ]);
+            row.alignment = { vertical: 'middle' };
+            row.getCell(1).alignment = { horizontal: 'center' };
+            row.getCell(2).alignment = { horizontal: 'center' };
+            for (let col = 3; col <= 13; col++) {
+              row.getCell(col).numFmt = '#,##0';
+              row.getCell(col).alignment = { horizontal: 'right' };
+            }
+            row.getCell(12).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
+            row.getCell(12).font = { bold: true };
+          });
 
-        // Number formats
-        for (let col = 3; col <= 13; col++) {
-          row.getCell(col).numFmt = '#,##0';
-          row.getCell(col).alignment = { horizontal: 'right' };
-        }
+          // Trade Subtotal Row
+          const subRow = sheet.addRow([
+            'SUBTOTAL',
+            `${group.tradeCode} (${group.challanCount} Challans)`,
+            group.subtotal.admissionTuitionRegFee,
+            group.subtotal.pupilFee25Percent,
+            group.subtotal.totalTevtaDues,
+            group.subtotal.pupilFee75Percent,
+            group.subtotal.collegeSecurity,
+            group.subtotal.boardCharges,
+            group.subtotal.shortCourseSelfFinance,
+            group.subtotal.bankProfit || 0,
+            group.subtotal.subTotalInstituteShare,
+            group.subtotal.totalAmountReceived,
+            group.subtotal.instituteShare,
+          ]);
+          subRow.font = { bold: true, size: 10 };
+          subRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF2CC' } }; // Light Amber Subtotal
+          for (let col = 3; col <= 13; col++) {
+            subRow.getCell(col).numFmt = '#,##0';
+            subRow.getCell(col).alignment = { horizontal: 'right' };
+          }
+          subRow.getCell(12).font = { bold: true, color: { argb: 'FF002060' } };
+        });
+      } else {
+        rows.forEach((r, idx) => {
+          const row = sheet.addRow([
+            idx + 1,
+            r.label,
+            r.breakdown.admissionTuitionRegFee,
+            r.breakdown.pupilFee25Percent,
+            r.breakdown.totalTevtaDues,
+            r.breakdown.pupilFee75Percent,
+            r.breakdown.collegeSecurity,
+            r.breakdown.boardCharges,
+            r.breakdown.shortCourseSelfFinance,
+            r.breakdown.bankProfit || 0,
+            r.breakdown.subTotalInstituteShare,
+            r.breakdown.totalAmountReceived,
+            r.breakdown.instituteShare,
+          ]);
 
-        // Highlight Cyan for Total Day column
-        row.getCell(12).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
-        row.getCell(12).font = { bold: true };
-      });
+          row.alignment = { vertical: 'middle' };
+          row.getCell(1).alignment = { horizontal: 'center' };
+          row.getCell(2).alignment = { horizontal: 'center' };
 
-      // Bottom Grand Total row with Excel Formulas
+          // Number formats
+          for (let col = 3; col <= 13; col++) {
+            row.getCell(col).numFmt = '#,##0';
+            row.getCell(col).alignment = { horizontal: 'right' };
+          }
+
+          // Highlight Cyan for Total Day column
+          row.getCell(12).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } };
+          row.getCell(12).font = { bold: true };
+        });
+      }
+
+      // Bottom Grand Total row
       const bottomTotalRow = sheet.addRow([
         'Grand Total',
-        `${rows.length} ${reportMode === 'DATE_WISE' ? 'Days' : 'Months'}`,
-        { formula: `=SUM(C${startDataRow}:C${endDataRow})` },
-        { formula: `=SUM(D${startDataRow}:D${endDataRow})` },
-        { formula: `=SUM(E${startDataRow}:E${endDataRow})` },
-        { formula: `=SUM(F${startDataRow}:F${endDataRow})` },
-        { formula: `=SUM(G${startDataRow}:G${endDataRow})` },
-        { formula: `=SUM(H${startDataRow}:H${endDataRow})` },
-        { formula: `=SUM(I${startDataRow}:I${endDataRow})` },
-        { formula: `=SUM(J${startDataRow}:J${endDataRow})` },
-        { formula: `=SUM(K${startDataRow}:K${endDataRow})` },
-        { formula: `=SUM(L${startDataRow}:L${endDataRow})` },
-        { formula: `=SUM(M${startDataRow}:M${endDataRow})` },
+        `${rows.length} ${reportMode === 'DATE_WISE' ? 'Days' : 'Months'} (${filteredChallans.length} Challans)`,
+        grandTotal.admissionTuitionRegFee,
+        grandTotal.pupilFee25Percent,
+        grandTotal.totalTevtaDues,
+        grandTotal.pupilFee75Percent,
+        grandTotal.collegeSecurity,
+        grandTotal.boardCharges,
+        grandTotal.shortCourseSelfFinance,
+        grandTotal.bankProfit || 0,
+        grandTotal.subTotalInstituteShare,
+        grandTotal.totalAmountReceived,
+        grandTotal.instituteShare,
       ]);
       bottomTotalRow.font = { bold: true, size: 10 };
-      bottomTotalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF2F2F2' } };
+      bottomTotalRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2EFDA' } };
       for (let c = 3; c <= 13; c++) {
         bottomTotalRow.getCell(c).numFmt = '#,##0';
+        bottomTotalRow.getCell(c).alignment = { horizontal: 'right' };
       }
 
       // Column widths
@@ -739,11 +1048,18 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
 
   // PDF Generation via vector jsPDF
   const handleDownloadPdf = () => {
+    const filterLabel =
+      activeCourses.length === 0 || activeCourses.includes('ALL')
+        ? 'All Courses'
+        : activeCourses.length === 1
+        ? (COURSE_TITLE_MAP[activeCourses[0]] || activeCourses[0])
+        : `${activeCourses.length} Courses Selected`;
+
     generateReceiptsRegisterPdf({
       mode: reportMode,
       periodLabel: activePeriodLabel,
-      courseFilter: selectedCourse === 'ALL' ? 'All Courses' : (COURSE_TITLE_MAP[selectedCourse] || selectedCourse),
-      rows,
+      courseFilter: filterLabel,
+      rows: flatRows,
       grandTotal,
       totalChallans: filteredChallans.length,
     });
@@ -768,6 +1084,161 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
         }
       }, 1000);
     }, 200);
+  };
+
+  // Unified Row Renderer for both Grouped and Flat Modes
+  const renderReceiptRow = (row: AggregatedReceiptRow, idx: number, prefix?: string) => {
+    const isExpanded = expandedKeys.has(row.key);
+    const isOdd = idx % 2 === 1;
+    const rowBaseBg = isExpanded
+      ? darkMode ? 'bg-slate-800' : 'bg-emerald-50/60'
+      : isOdd
+      ? darkMode ? 'bg-slate-950/40' : 'bg-slate-50/70'
+      : darkMode ? 'bg-slate-900' : 'bg-white';
+    const stickyCellBg = isExpanded
+      ? darkMode ? 'bg-slate-800' : 'bg-emerald-50'
+      : isOdd
+      ? darkMode ? 'bg-slate-950' : 'bg-slate-50'
+      : darkMode ? 'bg-slate-900' : 'bg-white';
+
+    return (
+      <React.Fragment key={row.key}>
+        <tr
+          className={`hover:bg-amber-50/60 dark:hover:bg-slate-800/60 transition-colors ${rowBaseBg}`}
+        >
+          {/* Sr # - Frozen Column */}
+          <td
+            className={`py-2 px-2 text-center text-slate-500 font-mono text-[11px] border-r border-b border-slate-200 dark:border-slate-800 sticky left-0 z-20 ${stickyCellBg}`}
+          >
+            {prefix ? `${prefix}.${idx + 1}` : idx + 1}
+          </td>
+
+          {/* Date / Month label with Drilldown Button - Frozen Column */}
+          <td
+            className={`py-2 px-3 font-bold text-slate-800 dark:text-slate-100 border-r border-b border-slate-200 dark:border-slate-800 whitespace-nowrap sticky left-12 z-20 ${stickyCellBg} shadow-[2px_0_4px_-1px_rgba(0,0,0,0.08)]`}
+          >
+            <button
+              onClick={() => toggleExpand(row.key)}
+              className="flex items-center gap-1.5 hover:text-emerald-600 transition-colors cursor-pointer text-left w-full"
+            >
+              {isExpanded ? (
+                <ChevronDown className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              ) : (
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              )}
+              <span className="font-mono text-xs">{row.label}</span>
+              <span className="text-[10px] font-normal px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 ml-1">
+                {row.challans.length}
+              </span>
+            </button>
+          </td>
+
+          {/* Admission Fee/ Readmission Fee */}
+          <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-800">
+            {row.breakdown.admissionTuitionRegFee > 0
+              ? formatPKR(row.breakdown.admissionTuitionRegFee)
+              : '-'}
+          </td>
+
+          {/* 25% Pupil Fund */}
+          <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-800">
+            {row.breakdown.pupilFee25Percent > 0
+              ? formatPKR(row.breakdown.pupilFee25Percent)
+              : '-'}
+          </td>
+
+          {/* Total (TEVTA Dues) */}
+          <td className="py-2 px-2 text-right font-mono font-bold text-rose-700 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/20 border-r border-b border-slate-200 dark:border-slate-800">
+            {row.breakdown.totalTevtaDues > 0
+              ? formatPKR(row.breakdown.totalTevtaDues)
+              : '-'}
+          </td>
+
+          {/* Pupil Funds 75% */}
+          <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-800">
+            {row.breakdown.pupilFee75Percent > 0
+              ? formatPKR(row.breakdown.pupilFee75Percent)
+              : '-'}
+          </td>
+
+          {/* College Security */}
+          <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-800">
+            {row.breakdown.collegeSecurity > 0
+              ? formatPKR(row.breakdown.collegeSecurity)
+              : '-'}
+          </td>
+
+          {/* Board Charges */}
+          <td className="py-2 px-2 text-right font-mono font-bold text-amber-700 dark:text-amber-400 border-r border-b border-slate-200 dark:border-slate-800">
+            {row.breakdown.boardCharges > 0
+              ? formatPKR(row.breakdown.boardCharges)
+              : '-'}
+          </td>
+
+          {/* Short Course Self Finance */}
+          <td className="py-2 px-2 text-right font-mono font-bold text-purple-700 dark:text-purple-400 border-r border-b border-slate-200 dark:border-slate-800">
+            {row.breakdown.shortCourseSelfFinance > 0
+              ? formatPKR(row.breakdown.shortCourseSelfFinance)
+              : '-'}
+          </td>
+
+          {/* Bank Profit / Any Other */}
+          <td className="py-2 px-2 text-right font-mono text-slate-500 border-r border-b border-slate-200 dark:border-slate-800">
+            {row.breakdown.bankProfit > 0
+              ? formatPKR(row.breakdown.bankProfit)
+              : 0}
+          </td>
+
+          {/* Sub Total (Institute Share) */}
+          <td className="py-2 px-2 text-right font-mono font-bold text-slate-800 dark:text-slate-100 bg-[#E2EFDA]/40 dark:bg-emerald-950/20 border-r border-b border-slate-200 dark:border-slate-800">
+            {row.breakdown.subTotalInstituteShare > 0
+              ? formatPKR(row.breakdown.subTotalInstituteShare)
+              : '-'}
+          </td>
+
+          {/* Total Amount Received Per Day (Rs.) */}
+          <td className="py-2 px-3 text-right font-mono font-black text-[#002060] dark:text-cyan-300 bg-[#D9E1F2] dark:bg-cyan-950/40 border-r border-b border-slate-200 dark:border-slate-800 text-xs">
+            {formatPKR(row.breakdown.totalAmountReceived)}
+          </td>
+
+          {/* Institute Share */}
+          <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400 border-r border-b border-slate-200 dark:border-slate-800">
+            {formatPKR(row.breakdown.instituteShare)}
+          </td>
+
+          {/* Actions (Copy row) */}
+          <td className="py-2 px-2 text-center whitespace-nowrap border-b border-slate-200 dark:border-slate-800">
+            <button
+              onClick={() => handleCopyRow(row, idx)}
+              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+              title="Copy Row TSV for Excel"
+            >
+              {copiedKey === row.key ? (
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+              ) : (
+                <Copy className="w-3.5 h-3.5" />
+              )}
+            </button>
+          </td>
+        </tr>
+
+        {/* Drilldown Sub-table */}
+        {isExpanded && (
+          <tr className="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-300 dark:border-slate-700">
+            <td colSpan={14} className="p-3 pl-4 sm:pl-8 border-b border-slate-300 dark:border-slate-700">
+              <TfcReceiptDrilldownTable
+                rowKey={row.key}
+                rowLabel={row.label}
+                challans={row.challans}
+                breakdown={row.breakdown}
+                darkMode={darkMode}
+                onScrollDrilldown={scrollDrilldown}
+              />
+            </td>
+          </tr>
+        )}
+      </React.Fragment>
+    );
   };
 
   return (
@@ -1021,25 +1492,25 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
             )}
           </div>
 
-          {/* Course Filter */}
+          {/* Course Filter (Multi-Select) */}
           <div className="md:col-span-3">
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Filter by Course
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+              <span>Course / Trade Filter</span>
+              {activeCourses.length > 0 && !activeCourses.includes('ALL') && (
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 normal-case">
+                  {activeCourses.length} selected
+                </span>
+              )}
             </label>
-            <select
-              value={selectedCourse}
-              onChange={(e) => setSelectedCourse(e.target.value)}
-              className={`w-full px-2.5 py-2 rounded-lg border text-xs font-semibold focus:outline-none ${
-                darkMode ? 'bg-slate-950 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
-              }`}
-            >
-              <option value="ALL">All Courses ({availableCourses.length} Trades)</option>
-              {availableCourses.map((c) => (
-                <option key={c} value={c}>
-                  {c} — {COURSE_TITLE_MAP[c] || c}
-                </option>
-              ))}
-            </select>
+            <TfcCourseMultiSelect
+              availableCourses={availableCourses}
+              selectedCourses={activeCourses}
+              onChange={handleCoursesChange}
+              challans={challans}
+              darkMode={darkMode}
+              size="md"
+              className="w-full"
+            />
           </div>
 
           {/* Search box */}
@@ -1230,45 +1701,98 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
           </div>
         </div>
 
-        {/* Horizontal Scroll Convenience & Control Toolbar */}
+        {/* Horizontal Scroll Convenience, Grouping & Control Toolbar */}
         <div className="bg-slate-50 dark:bg-slate-900/90 border-b border-slate-300 dark:border-slate-700 px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-          {/* Left: Quick Column Jump Buttons */}
-          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5">
+          {/* Left: Quick Column Jump Buttons & Grouping Selector */}
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 flex-wrap">
             <span className="text-[10px] font-bold text-slate-400 uppercase mr-1 flex items-center gap-1 shrink-0">
               <Layers className="w-3 h-3" /> Jump:
             </span>
             <button
               type="button"
               onClick={() => scrollToPosition(0)}
-              className="px-2.5 py-1 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 dark:text-slate-300 cursor-pointer shadow-2xs shrink-0"
+              className="px-2 py-1 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 text-[11px] font-semibold text-slate-700 dark:text-slate-300 cursor-pointer shadow-2xs shrink-0"
             >
               Start (Date)
             </button>
             <button
               type="button"
               onClick={() => scrollToPosition(180)}
-              className="px-2.5 py-1 rounded-md bg-[#FCE4D6] text-orange-950 hover:brightness-95 border border-orange-300 text-[11px] font-bold cursor-pointer shadow-2xs shrink-0"
+              className="px-2 py-1 rounded-md bg-[#FCE4D6] text-orange-950 hover:brightness-95 border border-orange-300 text-[11px] font-bold cursor-pointer shadow-2xs shrink-0"
             >
               TEVTA Dues
             </button>
             <button
               type="button"
               onClick={() => scrollToPosition(520)}
-              className="px-2.5 py-1 rounded-md bg-[#FCE4D6] text-orange-950 hover:brightness-95 border border-orange-300 text-[11px] font-bold cursor-pointer shadow-2xs shrink-0"
+              className="px-2 py-1 rounded-md bg-[#FCE4D6] text-orange-950 hover:brightness-95 border border-orange-300 text-[11px] font-bold cursor-pointer shadow-2xs shrink-0"
             >
-              Board & Self Fin.
+              Board &amp; Self Fin.
             </button>
             <button
               type="button"
               onClick={() => scrollToPosition(850)}
-              className="px-2.5 py-1 rounded-md bg-[#00B0F0] text-white hover:brightness-95 border border-cyan-500 text-[11px] font-black cursor-pointer shadow-2xs shrink-0"
+              className="px-2 py-1 rounded-md bg-[#00B0F0] text-white hover:brightness-95 border border-cyan-500 text-[11px] font-black cursor-pointer shadow-2xs shrink-0"
             >
-              Total & Inst. Share
+              Total &amp; Inst. Share
             </button>
+
+            {/* Grouping Mode Switcher */}
+            <div className="flex items-center gap-1 border-l border-slate-300 dark:border-slate-700 pl-2 ml-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase mr-0.5 shrink-0">Grouping:</span>
+              <button
+                type="button"
+                onClick={() => setViewGroupingMode('AUTO')}
+                className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                  viewGroupingMode === 'AUTO'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+                }`}
+                title="Auto: Group by trade with subtotals when multi courses are selected"
+              >
+                Auto
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewGroupingMode('TRADE_WISE')}
+                className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                  viewGroupingMode === 'TRADE_WISE'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+                }`}
+                title="Trade-Wise: Group by trade with subtotals and chronological dates"
+              >
+                Trade-Wise
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewGroupingMode('DATE_COMBINED')}
+                className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+                  viewGroupingMode === 'DATE_COMBINED'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 border border-slate-200 dark:border-slate-700'
+                }`}
+                title="Flat Dates: Show all dates chronologically without trade section dividers"
+              >
+                Flat Dates
+              </button>
+            </div>
           </div>
 
           {/* Right: Expand/Collapse All, Full/Fixed Height Toggle, and Step Scroll Buttons */}
           <div className="flex items-center gap-2 ml-auto shrink-0">
+            {isTradeWiseGrouped && (
+              <button
+                type="button"
+                onClick={toggleCollapseAllTrades}
+                className="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                title="Collapse or expand all trade sections"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                <span>{collapsedTrades.size === tradeGroups.length ? 'Expand Trades' : 'Collapse Trades'}</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={toggleExpandAll}
@@ -1276,7 +1800,7 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
               title="Expand or collapse all date drilldowns"
             >
               <Layers className="w-3.5 h-3.5" />
-              <span>{expandedKeys.size === rows.length ? 'Collapse All' : 'Expand All'}</span>
+              <span>{expandedKeys.size === allCurrentRowKeys.length ? 'Collapse All' : 'Expand All'}</span>
             </button>
 
             <button
@@ -1329,11 +1853,11 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
           </div>
         </div>
 
-        {/* Top Synchronized Horizontal Scroll Bar */}
+        {/* Top Synchronized Horizontal Scroll Bar with High Visibility */}
         <div
           ref={topScrollContainerRef}
-          className="overflow-x-auto overflow-y-hidden h-2.5 bg-slate-200 dark:bg-slate-800 border-b border-slate-300 dark:border-slate-700 scrollbar-thin scrollbar-thumb-slate-400 dark:scrollbar-thumb-slate-500 cursor-ew-resize"
-          title="Top Horizontal Scrollbar: Drag sideways to scroll columns"
+          className="overflow-x-auto overflow-y-hidden h-3 bg-slate-200 dark:bg-slate-800/90 border-b border-slate-300 dark:border-slate-700 scrollbar-thin scrollbar-thumb-slate-400 dark:scrollbar-thumb-slate-500 hover:h-4 transition-all cursor-ew-resize"
+          title="Top Horizontal Scrollbar: Drag sideways to scroll columns across all 13 fee breakdowns"
         >
           <div style={{ width: `${tableScrollWidth}px`, height: '1px' }} />
         </div>
@@ -1342,11 +1866,11 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
         <div
           ref={mainTableContainerRef}
           className={`overflow-auto border-t border-slate-200 dark:border-slate-800 relative scroll-smooth focus:outline-none scrollbar-thin scrollbar-thumb-slate-400 dark:scrollbar-thumb-slate-500 scrollbar-track-slate-100 dark:scrollbar-track-slate-900 ${
-            tableHeightMode === 'FIXED' ? 'max-h-[calc(100vh-230px)] min-h-[460px]' : 'max-h-none'
+            tableHeightMode === 'FIXED' ? 'h-[66vh] min-h-[460px] max-h-[720px]' : 'max-h-none'
           }`}
         >
           <table className="w-full text-xs border-separate border-spacing-0">
-            <thead className="sticky top-0 z-30 shadow-xs">
+            <thead className="sticky top-0 z-30 shadow-sm bg-slate-200 dark:bg-slate-800">
               {/* Category Group Header (Row 1) */}
               <tr className="text-center font-bold text-[11px] h-10">
                 <th
@@ -1448,355 +1972,104 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                     No receipt records found matching the active filters.
                   </td>
                 </tr>
-              ) : (
-                rows.map((row, idx) => {
-                  const isExpanded = expandedKeys.has(row.key);
-                  const isOdd = idx % 2 === 1;
-                  const rowBaseBg = isExpanded
-                    ? darkMode ? 'bg-slate-800' : 'bg-emerald-50/60'
-                    : isOdd
-                    ? darkMode ? 'bg-slate-950/40' : 'bg-slate-50/70'
-                    : darkMode ? 'bg-slate-900' : 'bg-white';
-                  const stickyCellBg = isExpanded
-                    ? darkMode ? 'bg-slate-800' : 'bg-emerald-50'
-                    : isOdd
-                    ? darkMode ? 'bg-slate-950' : 'bg-slate-50'
-                    : darkMode ? 'bg-slate-900' : 'bg-white';
-
+              ) : isTradeWiseGrouped ? (
+                tradeGroups.map((group) => {
+                  const isCollapsed = collapsedTrades.has(group.tradeCode);
                   return (
-                    <React.Fragment key={row.key}>
-                      <tr
-                        className={`hover:bg-amber-50/60 dark:hover:bg-slate-800/60 transition-colors ${rowBaseBg}`}
-                      >
-                        {/* Sr # - Frozen Column */}
-                        <td
-                          className={`py-2 px-2 text-center text-slate-500 font-mono text-[11px] border-r border-b border-slate-200 dark:border-slate-800 sticky left-0 z-20 ${stickyCellBg}`}
-                        >
-                          {idx + 1}
-                        </td>
-
-                        {/* Date / Month label with Drilldown Button - Frozen Column */}
-                        <td
-                          className={`py-2 px-3 font-bold text-slate-800 dark:text-slate-100 border-r border-b border-slate-200 dark:border-slate-800 whitespace-nowrap sticky left-12 z-20 ${stickyCellBg} shadow-[2px_0_4px_-1px_rgba(0,0,0,0.08)]`}
-                        >
-                          <button
-                            onClick={() => toggleExpand(row.key)}
-                            className="flex items-center gap-1.5 hover:text-emerald-600 transition-colors cursor-pointer text-left w-full"
-                          >
-                            {isExpanded ? (
-                              <ChevronDown className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            ) : (
-                              <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            )}
-                            <span className="font-mono text-xs">{row.label}</span>
-                            <span className="text-[10px] text-slate-400 font-normal ml-auto">
-                              ({row.challanCount})
-                            </span>
-                          </button>
-                        </td>
-
-                        {/* Admission Fee */}
-                        <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-800">
-                          {row.breakdown.admissionTuitionRegFee > 0
-                            ? formatPKR(row.breakdown.admissionTuitionRegFee)
-                            : '-'}
-                        </td>
-
-                        {/* 25% Pupil Fund */}
-                        <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-800">
-                          {row.breakdown.pupilFee25Percent > 0
-                            ? formatPKR(row.breakdown.pupilFee25Percent)
-                            : '-'}
-                        </td>
-
-                        {/* Total (TEVTA Dues) */}
-                        <td className="py-2 px-2 text-right font-mono font-bold text-rose-700 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/20 border-r border-b border-slate-200 dark:border-slate-800">
-                          {row.breakdown.totalTevtaDues > 0
-                            ? formatPKR(row.breakdown.totalTevtaDues)
-                            : '-'}
-                        </td>
-
-                        {/* Pupil Funds 75% */}
-                        <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-800">
-                          {row.breakdown.pupilFee75Percent > 0
-                            ? formatPKR(row.breakdown.pupilFee75Percent)
-                            : '-'}
-                        </td>
-
-                        {/* College Security */}
-                        <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-200 dark:border-slate-800">
-                          {row.breakdown.collegeSecurity > 0
-                            ? formatPKR(row.breakdown.collegeSecurity)
-                            : '-'}
-                        </td>
-
-                        {/* Board Charges */}
-                        <td className="py-2 px-2 text-right font-mono font-bold text-amber-700 dark:text-amber-400 border-r border-b border-slate-200 dark:border-slate-800">
-                          {row.breakdown.boardCharges > 0
-                            ? formatPKR(row.breakdown.boardCharges)
-                            : '-'}
-                        </td>
-
-                        {/* Short Course Self Finance */}
-                        <td className="py-2 px-2 text-right font-mono font-bold text-purple-700 dark:text-purple-400 border-r border-b border-slate-200 dark:border-slate-800">
-                          {row.breakdown.shortCourseSelfFinance > 0
-                            ? formatPKR(row.breakdown.shortCourseSelfFinance)
-                            : '-'}
-                        </td>
-
-                        {/* Bank Profit / Any Other */}
-                        <td className="py-2 px-2 text-right font-mono text-slate-500 border-r border-b border-slate-200 dark:border-slate-800">
-                          {row.breakdown.bankProfit > 0
-                            ? formatPKR(row.breakdown.bankProfit)
-                            : 0}
-                        </td>
-
-                        {/* Sub Total (Institute Share) */}
-                        <td className="py-2 px-2 text-right font-mono font-bold text-slate-800 dark:text-slate-100 bg-[#E2EFDA]/40 dark:bg-emerald-950/20 border-r border-b border-slate-200 dark:border-slate-800">
-                          {row.breakdown.subTotalInstituteShare > 0
-                            ? formatPKR(row.breakdown.subTotalInstituteShare)
-                            : '-'}
-                        </td>
-
-                        {/* Total Amount Received Per Day (Rs.) - Cyan highlight */}
-                        <td className="py-2 px-3 text-right font-mono font-black text-[#002060] dark:text-cyan-300 bg-[#D9E1F2] dark:bg-cyan-950/40 border-r border-b border-slate-200 dark:border-slate-800 text-xs">
-                          {formatPKR(row.breakdown.totalAmountReceived)}
-                        </td>
-
-                        {/* Institute Share */}
-                        <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400 border-r border-b border-slate-200 dark:border-slate-800">
-                          {formatPKR(row.breakdown.instituteShare)}
-                        </td>
-
-                        {/* Actions (Copy row) */}
-                        <td className="py-2 px-2 text-center whitespace-nowrap border-b border-slate-200 dark:border-slate-800">
-                          <button
-                            onClick={() => handleCopyRow(row, idx)}
-                            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
-                            title="Copy Row TSV for Excel"
-                          >
-                            {copiedKey === row.key ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </button>
+                    <React.Fragment key={`trade-section-${group.tradeCode}`}>
+                      {/* Trade Section Header Banner */}
+                      <tr className="bg-slate-100 dark:bg-slate-800/90 border-t-2 border-b border-slate-300 dark:border-slate-700 select-none">
+                        <td colSpan={14} className="py-2.5 px-3">
+                          <div className="flex items-center justify-between">
+                            <button
+                              type="button"
+                              onClick={() => toggleCollapseTrade(group.tradeCode)}
+                              className="flex items-center gap-2 text-left font-bold text-slate-800 dark:text-slate-100 hover:text-emerald-600 transition-colors cursor-pointer"
+                            >
+                              {isCollapsed ? (
+                                <ChevronRight className="w-4 h-4 text-slate-400" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-emerald-600" />
+                              )}
+                              <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-xs font-mono font-bold">
+                                {group.tradeCode}
+                              </span>
+                              <span className="text-sm font-black text-slate-900 dark:text-white">
+                                {group.tradeTitle}
+                              </span>
+                              <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">
+                                ({group.challanCount} trainees, {group.dateRows.length} collection dates)
+                              </span>
+                            </button>
+                            <div className="flex items-center gap-3 text-xs font-semibold">
+                              <span className="text-slate-500">
+                                Subtotal: <strong className="text-blue-700 dark:text-cyan-400 font-mono">Rs. {formatPKR(group.subtotal.totalAmountReceived)}</strong>
+                              </span>
+                              <span className="text-slate-500 hidden sm:inline">
+                                TEVTA: <strong className="text-rose-600 font-mono">Rs. {formatPKR(group.subtotal.totalTevtaDues)}</strong>
+                              </span>
+                              <span className="text-slate-500 hidden sm:inline">
+                                Inst: <strong className="text-emerald-600 font-mono">Rs. {formatPKR(group.subtotal.instituteShare)}</strong>
+                              </span>
+                            </div>
+                          </div>
                         </td>
                       </tr>
 
-                      {/* Expandable Drilldown Row showing individual challans with Frozen Sub-Headers and Sub-Columns */}
-                      {isExpanded && (
-                        <tr className="bg-slate-50 dark:bg-slate-950/70 border-b border-slate-300 dark:border-slate-700">
-                          <td colSpan={14} className="p-3 pl-4 sm:pl-8 border-b border-slate-300 dark:border-slate-700">
-                            <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden shadow-sm">
-                              <div className="bg-slate-100 dark:bg-slate-800 px-3.5 py-2 text-xs font-bold flex flex-wrap items-center justify-between gap-2 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-extrabold text-slate-900 dark:text-white">
-                                    Challan Drilldown for {row.label}
-                                  </span>
-                                  <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 rounded-full font-bold text-[10px]">
-                                    {row.challans.length} Students
-                                  </span>
-                                </div>
-                                <div className="text-[11px] font-medium text-slate-500 flex items-center gap-3">
-                                  <span>
-                                    Total: <strong className="text-blue-600 dark:text-cyan-400">Rs. {formatPKR(row.breakdown.totalAmountReceived)}</strong>
-                                  </span>
-                                  <span>
-                                    TEVTA: <strong className="text-rose-600">Rs. {formatPKR(row.breakdown.totalTevtaDues)}</strong>
-                                  </span>
-                                  <span>
-                                    Inst. Share: <strong className="text-emerald-600">Rs. {formatPKR(row.breakdown.instituteShare)}</strong>
-                                  </span>
-                                </div>
-                                {/* Drilldown Quick Scroll Controls */}
-                                <div className="flex items-center gap-1.5 ml-auto">
-                                  <span className="text-[10px] text-slate-500 font-semibold hidden md:inline">Scroll Detail:</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => scrollDrilldown(row.key, -220)}
-                                    className="p-1 rounded bg-white dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 cursor-pointer shadow-2xs"
-                                    title="Scroll detail table left"
-                                  >
-                                    <ArrowLeft className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => scrollDrilldown(row.key, 220)}
-                                    className="p-1 rounded bg-white dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-600 cursor-pointer shadow-2xs"
-                                    title="Scroll detail table right"
-                                  >
-                                    <ArrowRight className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </div>
+                      {/* Trade Date Rows */}
+                      {!isCollapsed &&
+                        group.dateRows.map((row, rIdx) =>
+                          renderReceiptRow(row, rIdx, group.tradeCode)
+                        )}
 
-                              {/* Drilldown Table with Frozen Headers, Frozen ID & Name columns, and Frozen Totals */}
-                              <div
-                                id={`drilldown-container-${row.key}`}
-                                className="overflow-x-auto overflow-y-auto max-h-96 relative border-t border-slate-200 dark:border-slate-800 scrollbar-thin scrollbar-thumb-slate-400 dark:scrollbar-thumb-slate-600 scrollbar-track-slate-100 dark:scrollbar-track-slate-900"
-                              >
-                                <table className="w-full text-[11px] text-left border-separate border-spacing-0">
-                                  <thead className="sticky top-0 z-20 shadow-xs">
-                                    <tr className="bg-slate-100 dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200 text-[11px]">
-                                      <th className="py-2.5 px-2.5 sticky left-0 top-0 z-40 bg-slate-100 dark:bg-slate-800 min-w-[95px] border-b-2 border-r border-slate-300 dark:border-slate-700 font-black">
-                                        Challan ID
-                                      </th>
-                                      <th className="py-2.5 px-2.5 sticky left-[95px] top-0 z-40 bg-slate-100 dark:bg-slate-800 min-w-[160px] shadow-[2px_0_4px_-1px_rgba(0,0,0,0.12)] border-b-2 border-r border-slate-300 dark:border-slate-700 font-black">
-                                        Roll / Trainee Name
-                                      </th>
-                                      <th className="py-2.5 px-2 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[85px] border-b-2 border-r border-slate-300 dark:border-slate-700">
-                                        Course
-                                      </th>
-                                      <th className="py-2.5 px-2 text-right sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[75px] border-b-2 border-r border-slate-300 dark:border-slate-700">
-                                        Adm Fee
-                                      </th>
-                                      <th className="py-2.5 px-2 text-right sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[75px] border-b-2 border-r border-slate-300 dark:border-slate-700">
-                                        25% PF
-                                      </th>
-                                      <th className="py-2.5 px-2 text-right font-bold text-rose-600 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[90px] border-b-2 border-r border-slate-300 dark:border-slate-700">
-                                        TEVTA Dues
-                                      </th>
-                                      <th className="py-2.5 px-2 text-right sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[75px] border-b-2 border-r border-slate-300 dark:border-slate-700">
-                                        75% PF
-                                      </th>
-                                      <th className="py-2.5 px-2 text-right sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[75px] border-b-2 border-r border-slate-300 dark:border-slate-700">
-                                        Security
-                                      </th>
-                                      <th className="py-2.5 px-2 text-right font-bold text-amber-600 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[90px] border-b-2 border-r border-slate-300 dark:border-slate-700">
-                                        Board Fee
-                                      </th>
-                                      <th className="py-2.5 px-2 text-right font-bold text-purple-600 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[85px] border-b-2 border-r border-slate-300 dark:border-slate-700">
-                                        Self Fin.
-                                      </th>
-                                      <th className="py-2.5 px-2 text-right font-bold text-indigo-600 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[80px] border-b-2 border-r border-slate-300 dark:border-slate-700">
-                                        Other (TUV)
-                                      </th>
-                                      <th className="py-2.5 px-2 text-right font-bold text-emerald-600 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[95px] border-b-2 border-r border-slate-300 dark:border-slate-700">
-                                        Institute Share
-                                      </th>
-                                      <th className="py-2.5 px-2.5 text-right font-black text-blue-700 dark:text-cyan-400 sticky top-0 z-20 bg-slate-100 dark:bg-slate-800 min-w-[100px] border-b-2 border-slate-300 dark:border-slate-700">
-                                        Total (Rs.)
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="font-mono">
-                                    {row.challans.map((c, sIdx) => {
-                                      const cb = computeChallanFeeBreakdown(c);
-                                      const subRowBg = sIdx % 2 === 1
-                                        ? darkMode ? 'bg-slate-900/90' : 'bg-slate-50/80'
-                                        : darkMode ? 'bg-slate-900' : 'bg-white';
-                                      return (
-                                        <tr key={c.challanId} className="hover:bg-amber-50/50 dark:hover:bg-slate-800/60 transition-colors">
-                                          <td className={`py-1.5 px-2.5 font-bold text-slate-700 dark:text-slate-300 sticky left-0 z-10 ${subRowBg} border-r border-b border-slate-200 dark:border-slate-800`}>
-                                            {c.challanId}
-                                          </td>
-                                          <td className={`py-1.5 px-2.5 font-sans sticky left-[95px] z-10 ${subRowBg} shadow-[2px_0_4px_-1px_rgba(0,0,0,0.1)] border-r border-b border-slate-200 dark:border-slate-800`}>
-                                            <span className="font-semibold text-slate-900 dark:text-white">
-                                              {c.traineeName}
-                                            </span>
-                                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400 font-mono">
-                                              {c.rollOrCode && <span>{c.rollOrCode}</span>}
-                                              {c.cnic && <span>• CNIC: {c.cnic}</span>}
-                                            </div>
-                                          </td>
-                                          <td className="py-1.5 px-2 font-sans font-semibold border-r border-b border-slate-200 dark:border-slate-800">
-                                            <span
-                                              className={`px-1.5 py-0.5 rounded text-[10px] ${
-                                                cb.isBeauticianSelfFinance
-                                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300'
-                                                  : cb.isTuv
-                                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
-                                                  : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200'
-                                              }`}
-                                            >
-                                              {c.courseAbbreviation || 'REG'}
-                                            </span>
-                                          </td>
-                                          <td className="py-1.5 px-2 text-right text-slate-600 dark:text-slate-400 border-r border-b border-slate-200 dark:border-slate-800">
-                                            {cb.admissionTuitionRegFee > 0 ? formatPKR(cb.admissionTuitionRegFee) : '-'}
-                                          </td>
-                                          <td className="py-1.5 px-2 text-right text-slate-600 dark:text-slate-400 border-r border-b border-slate-200 dark:border-slate-800">
-                                            {cb.pupilFee25Percent > 0 ? formatPKR(cb.pupilFee25Percent) : '-'}
-                                          </td>
-                                          <td className="py-1.5 px-2 text-right font-bold text-rose-600 border-r border-b border-slate-200 dark:border-slate-800">
-                                            {formatPKR(cb.totalTevtaDues)}
-                                          </td>
-                                          <td className="py-1.5 px-2 text-right text-slate-600 dark:text-slate-400 border-r border-b border-slate-200 dark:border-slate-800">
-                                            {cb.pupilFee75Percent > 0 ? formatPKR(cb.pupilFee75Percent) : '-'}
-                                          </td>
-                                          <td className="py-1.5 px-2 text-right text-slate-600 dark:text-slate-400 border-r border-b border-slate-200 dark:border-slate-800">
-                                            {cb.collegeSecurity > 0 ? formatPKR(cb.collegeSecurity) : '-'}
-                                          </td>
-                                          <td className="py-1.5 px-2 text-right font-bold text-amber-600 border-r border-b border-slate-200 dark:border-slate-800">
-                                            {cb.boardCharges > 0 ? formatPKR(cb.boardCharges) : '-'}
-                                          </td>
-                                          <td className="py-1.5 px-2 text-right font-bold text-purple-600 border-r border-b border-slate-200 dark:border-slate-800">
-                                            {cb.shortCourseSelfFinance > 0 ? formatPKR(cb.shortCourseSelfFinance) : '-'}
-                                          </td>
-                                          <td className="py-1.5 px-2 text-right font-bold text-indigo-600 border-r border-b border-slate-200 dark:border-slate-800">
-                                            {cb.bankProfit > 0 ? formatPKR(cb.bankProfit) : '-'}
-                                          </td>
-                                          <td className="py-1.5 px-2 text-right font-bold text-emerald-600 border-r border-b border-slate-200 dark:border-slate-800">
-                                            {formatPKR(cb.instituteShare)}
-                                          </td>
-                                          <td className="py-1.5 px-2.5 text-right font-black text-blue-700 dark:text-cyan-400 border-b border-slate-200 dark:border-slate-800">
-                                            {formatPKR(cb.totalAmountReceived)}
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                  <tfoot className="sticky bottom-0 z-20 bg-slate-100 dark:bg-slate-800 border-t-2 border-slate-300 dark:border-slate-700 font-bold text-[11px] shadow-sm">
-                                    <tr>
-                                      <td className="py-2.5 px-2.5 sticky left-0 bottom-0 z-40 bg-slate-100 dark:bg-slate-800 font-black text-slate-600 dark:text-slate-400 border-t-2 border-r border-slate-300 dark:border-slate-700">
-                                        Total
-                                      </td>
-                                      <td className="py-2.5 px-2.5 sticky left-[95px] bottom-0 z-40 bg-slate-100 dark:bg-slate-800 font-black text-slate-900 dark:text-white shadow-[2px_0_4px_-1px_rgba(0,0,0,0.12)] border-t-2 border-r border-slate-300 dark:border-slate-700">
-                                        {row.challans.length} Students
-                                      </td>
-                                      <td className="py-2.5 px-2 text-slate-400 border-t-2 border-r border-slate-300 dark:border-slate-700">-</td>
-                                      <td className="py-2.5 px-2 text-right text-slate-700 dark:text-slate-300 font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
-                                        {row.breakdown.admissionTuitionRegFee > 0 ? formatPKR(row.breakdown.admissionTuitionRegFee) : '-'}
-                                      </td>
-                                      <td className="py-2.5 px-2 text-right text-slate-700 dark:text-slate-300 font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
-                                        {row.breakdown.pupilFee25Percent > 0 ? formatPKR(row.breakdown.pupilFee25Percent) : '-'}
-                                      </td>
-                                      <td className="py-2.5 px-2 text-right text-rose-600 font-black font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
-                                        {formatPKR(row.breakdown.totalTevtaDues)}
-                                      </td>
-                                      <td className="py-2.5 px-2 text-right text-slate-700 dark:text-slate-300 font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
-                                        {row.breakdown.pupilFee75Percent > 0 ? formatPKR(row.breakdown.pupilFee75Percent) : '-'}
-                                      </td>
-                                      <td className="py-2.5 px-2 text-right text-slate-700 dark:text-slate-300 font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
-                                        {row.breakdown.collegeSecurity > 0 ? formatPKR(row.breakdown.collegeSecurity) : '-'}
-                                      </td>
-                                      <td className="py-2.5 px-2 text-right text-amber-600 font-black font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
-                                        {formatPKR(row.breakdown.boardCharges)}
-                                      </td>
-                                      <td className="py-2.5 px-2 text-right text-purple-600 font-black font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
-                                        {formatPKR(row.breakdown.shortCourseSelfFinance)}
-                                      </td>
-                                      <td className="py-2.5 px-2 text-right text-indigo-600 font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
-                                        {row.breakdown.bankProfit > 0 ? formatPKR(row.breakdown.bankProfit) : '-'}
-                                      </td>
-                                      <td className="py-2.5 px-2 text-right text-emerald-600 font-black font-mono border-t-2 border-r border-slate-300 dark:border-slate-700">
-                                        {formatPKR(row.breakdown.instituteShare)}
-                                      </td>
-                                      <td className="py-2.5 px-2.5 text-right text-blue-700 dark:text-cyan-400 font-black font-mono border-t-2 border-slate-300 dark:border-slate-700">
-                                        Rs. {formatPKR(row.breakdown.totalAmountReceived)}
-                                      </td>
-                                    </tr>
-                                  </tfoot>
-                                </table>
-                              </div>
-                            </div>
+                      {/* Trade Subtotal Row */}
+                      {!isCollapsed && (
+                        <tr className="bg-slate-200/70 dark:bg-slate-800 font-bold border-t border-b-2 border-slate-300 dark:border-slate-700 text-[11px]">
+                          <td className="py-2 px-2 text-center text-slate-400 font-mono border-r border-b border-slate-300 dark:border-slate-700 sticky left-0 z-20 bg-slate-200 dark:bg-slate-800"></td>
+                          <td className="py-2 px-3 font-black text-slate-900 dark:text-white border-r border-b border-slate-300 dark:border-slate-700 whitespace-nowrap sticky left-12 z-20 bg-slate-200 dark:bg-slate-800 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.08)]">
+                            SUBTOTAL ({group.tradeCode})
                           </td>
+                          <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-300 dark:border-slate-700">
+                            {group.subtotal.admissionTuitionRegFee > 0 ? formatPKR(group.subtotal.admissionTuitionRegFee) : '-'}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-300 dark:border-slate-700">
+                            {group.subtotal.pupilFee25Percent > 0 ? formatPKR(group.subtotal.pupilFee25Percent) : '-'}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono font-bold text-rose-700 dark:text-rose-400 bg-rose-50/50 dark:bg-rose-950/20 border-r border-b border-slate-300 dark:border-slate-700">
+                            {group.subtotal.totalTevtaDues > 0 ? formatPKR(group.subtotal.totalTevtaDues) : '-'}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-300 dark:border-slate-700">
+                            {group.subtotal.pupilFee75Percent > 0 ? formatPKR(group.subtotal.pupilFee75Percent) : '-'}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono text-slate-700 dark:text-slate-300 border-r border-b border-slate-300 dark:border-slate-700">
+                            {group.subtotal.collegeSecurity > 0 ? formatPKR(group.subtotal.collegeSecurity) : '-'}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono font-bold text-amber-700 dark:text-amber-400 border-r border-b border-slate-300 dark:border-slate-700">
+                            {group.subtotal.boardCharges > 0 ? formatPKR(group.subtotal.boardCharges) : '-'}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono font-bold text-purple-700 dark:text-purple-400 border-r border-b border-slate-300 dark:border-slate-700">
+                            {group.subtotal.shortCourseSelfFinance > 0 ? formatPKR(group.subtotal.shortCourseSelfFinance) : '-'}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono text-slate-500 border-r border-slate-300 dark:border-slate-700">
+                            {group.subtotal.bankProfit > 0 ? formatPKR(group.subtotal.bankProfit) : 0}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono font-bold text-slate-800 dark:text-slate-100 bg-[#E2EFDA]/40 dark:bg-emerald-950/20 border-r border-b border-slate-300 dark:border-slate-700">
+                            {group.subtotal.subTotalInstituteShare > 0 ? formatPKR(group.subtotal.subTotalInstituteShare) : '-'}
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono font-black text-[#002060] dark:text-cyan-300 bg-[#D9E1F2] dark:bg-cyan-950/40 border-r border-b border-slate-300 dark:border-slate-700 text-xs">
+                            {formatPKR(group.subtotal.totalAmountReceived)}
+                          </td>
+                          <td className="py-2 px-2 text-right font-mono font-bold text-emerald-700 dark:text-emerald-400 border-r border-b border-slate-300 dark:border-slate-700">
+                            {formatPKR(group.subtotal.instituteShare)}
+                          </td>
+                          <td className="border-b border-slate-300 dark:border-slate-700"></td>
                         </tr>
                       )}
                     </React.Fragment>
                   );
                 })
+              ) : (
+                rows.map((row, idx) => renderReceiptRow(row, idx))
               )}
             </tbody>
 
@@ -2004,7 +2277,12 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
             </p>
             <div className="flex items-center justify-between text-[10px] text-slate-600 mt-2 px-2 border-t pt-1">
               <span><strong>Period:</strong> {activePeriodLabel}</span>
-              <span><strong>Course:</strong> {selectedCourse === 'ALL' ? 'All Courses' : (COURSE_TITLE_MAP[selectedCourse] || selectedCourse)}</span>
+              <span>
+                <strong>Course:</strong>{' '}
+                {activeCourses.includes('ALL') || activeCourses.length === 0
+                  ? 'All Courses'
+                  : activeCourses.map((c) => COURSE_TITLE_MAP[c] || c).join(', ')}
+              </span>
               <span><strong>Total Paid Challans:</strong> {filteredChallans.length} ({rows.length} {reportMode === 'DATE_WISE' ? 'Days' : 'Months'})</span>
               <span><strong>Generated:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString()}</span>
             </div>
@@ -2030,23 +2308,68 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, idx) => (
-                <tr key={r.key} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                  <td className="border border-slate-300 p-1 text-center font-bold">{idx + 1}</td>
-                  <td className="border border-slate-300 p-1 text-center font-bold">{r.label}</td>
-                  <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.admissionTuitionRegFee, false)}</td>
-                  <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.pupilFee25Percent, false)}</td>
-                  <td className="border border-slate-300 p-1 text-right font-bold bg-slate-100">{formatPKR(r.breakdown.totalTevtaDues, false)}</td>
-                  <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.pupilFee75Percent, false)}</td>
-                  <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.collegeSecurity, false)}</td>
-                  <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.boardCharges, false)}</td>
-                  <td className="border border-slate-300 p-1 text-right">{r.breakdown.shortCourseSelfFinance > 0 ? formatPKR(r.breakdown.shortCourseSelfFinance, false) : '-'}</td>
-                  <td className="border border-slate-300 p-1 text-right">{r.breakdown.bankProfit > 0 ? formatPKR(r.breakdown.bankProfit, false) : '-'}</td>
-                  <td className="border border-slate-300 p-1 text-right font-bold bg-slate-100">{formatPKR(r.breakdown.subTotalInstituteShare, false)}</td>
-                  <td className="border border-slate-300 p-1 text-right font-black bg-cyan-50">{formatPKR(r.breakdown.totalAmountReceived, false)}</td>
-                  <td className="border border-slate-300 p-1 text-right font-bold bg-indigo-50">{formatPKR(r.breakdown.instituteShare, false)}</td>
-                </tr>
-              ))}
+              {isTradeWiseGrouped ? (
+                tradeGroups.map((group) => (
+                  <React.Fragment key={`print-trade-${group.tradeCode}`}>
+                    <tr className="bg-emerald-100/70 font-bold">
+                      <td colSpan={13} className="border border-slate-400 p-1 text-left">
+                        <strong>{group.tradeCode} - {group.tradeTitle}</strong> ({group.challanCount} trainees, {group.dateRows.length} collection dates)
+                      </td>
+                    </tr>
+                    {group.dateRows.map((r, idx) => (
+                      <tr key={r.key} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                        <td className="border border-slate-300 p-1 text-center font-mono">{idx + 1}</td>
+                        <td className="border border-slate-300 p-1 text-center font-bold">{r.label}</td>
+                        <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.admissionTuitionRegFee, false)}</td>
+                        <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.pupilFee25Percent, false)}</td>
+                        <td className="border border-slate-300 p-1 text-right font-bold bg-slate-100">{formatPKR(r.breakdown.totalTevtaDues, false)}</td>
+                        <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.pupilFee75Percent, false)}</td>
+                        <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.collegeSecurity, false)}</td>
+                        <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.boardCharges, false)}</td>
+                        <td className="border border-slate-300 p-1 text-right">{r.breakdown.shortCourseSelfFinance > 0 ? formatPKR(r.breakdown.shortCourseSelfFinance, false) : '-'}</td>
+                        <td className="border border-slate-300 p-1 text-right">{r.breakdown.bankProfit > 0 ? formatPKR(r.breakdown.bankProfit, false) : '-'}</td>
+                        <td className="border border-slate-300 p-1 text-right font-bold bg-slate-100">{formatPKR(r.breakdown.subTotalInstituteShare, false)}</td>
+                        <td className="border border-slate-300 p-1 text-right font-black bg-cyan-50">{formatPKR(r.breakdown.totalAmountReceived, false)}</td>
+                        <td className="border border-slate-300 p-1 text-right font-bold bg-indigo-50">{formatPKR(r.breakdown.instituteShare, false)}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-slate-100 font-bold text-[8.5px]">
+                      <td colSpan={2} className="border border-slate-400 p-1 text-center font-black">
+                        Subtotal ({group.tradeCode})
+                      </td>
+                      <td className="border border-slate-400 p-1 text-right">{formatPKR(group.subtotal.admissionTuitionRegFee, false)}</td>
+                      <td className="border border-slate-400 p-1 text-right">{formatPKR(group.subtotal.pupilFee25Percent, false)}</td>
+                      <td className="border border-slate-400 p-1 text-right font-bold">{formatPKR(group.subtotal.totalTevtaDues, false)}</td>
+                      <td className="border border-slate-400 p-1 text-right">{formatPKR(group.subtotal.pupilFee75Percent, false)}</td>
+                      <td className="border border-slate-400 p-1 text-right">{formatPKR(group.subtotal.collegeSecurity, false)}</td>
+                      <td className="border border-slate-400 p-1 text-right">{formatPKR(group.subtotal.boardCharges, false)}</td>
+                      <td className="border border-slate-400 p-1 text-right">{group.subtotal.shortCourseSelfFinance > 0 ? formatPKR(group.subtotal.shortCourseSelfFinance, false) : '-'}</td>
+                      <td className="border border-slate-400 p-1 text-right">{group.subtotal.bankProfit > 0 ? formatPKR(group.subtotal.bankProfit, false) : '-'}</td>
+                      <td className="border border-slate-400 p-1 text-right font-bold">{formatPKR(group.subtotal.subTotalInstituteShare, false)}</td>
+                      <td className="border border-slate-400 p-1 text-right font-black">Rs. {formatPKR(group.subtotal.totalAmountReceived, false)}</td>
+                      <td className="border border-slate-400 p-1 text-right font-bold">Rs. {formatPKR(group.subtotal.instituteShare, false)}</td>
+                    </tr>
+                  </React.Fragment>
+                ))
+              ) : (
+                rows.map((r, idx) => (
+                  <tr key={r.key} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                    <td className="border border-slate-300 p-1 text-center font-bold">{idx + 1}</td>
+                    <td className="border border-slate-300 p-1 text-center font-bold">{r.label}</td>
+                    <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.admissionTuitionRegFee, false)}</td>
+                    <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.pupilFee25Percent, false)}</td>
+                    <td className="border border-slate-300 p-1 text-right font-bold bg-slate-100">{formatPKR(r.breakdown.totalTevtaDues, false)}</td>
+                    <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.pupilFee75Percent, false)}</td>
+                    <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.collegeSecurity, false)}</td>
+                    <td className="border border-slate-300 p-1 text-right">{formatPKR(r.breakdown.boardCharges, false)}</td>
+                    <td className="border border-slate-300 p-1 text-right">{r.breakdown.shortCourseSelfFinance > 0 ? formatPKR(r.breakdown.shortCourseSelfFinance, false) : '-'}</td>
+                    <td className="border border-slate-300 p-1 text-right">{r.breakdown.bankProfit > 0 ? formatPKR(r.breakdown.bankProfit, false) : '-'}</td>
+                    <td className="border border-slate-300 p-1 text-right font-bold bg-slate-100">{formatPKR(r.breakdown.subTotalInstituteShare, false)}</td>
+                    <td className="border border-slate-300 p-1 text-right font-black bg-cyan-50">{formatPKR(r.breakdown.totalAmountReceived, false)}</td>
+                    <td className="border border-slate-300 p-1 text-right font-bold bg-indigo-50">{formatPKR(r.breakdown.instituteShare, false)}</td>
+                  </tr>
+                ))
+              )}
             </tbody>
             <tfoot>
               <tr className="bg-slate-200 font-bold text-slate-950">

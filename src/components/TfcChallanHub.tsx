@@ -14,6 +14,7 @@ import {
   ChallanFeeBreakdown,
 } from '../data/tfcChallanData';
 import { TfcReceiptsReportView } from './TfcReceiptsReportView';
+import { TfcCourseMultiSelect } from './TfcCourseMultiSelect';
 import { formatPKR, formatCNIC } from '../lib/formatters';
 import { generateReceiptsRegisterPdf, generateHardCashBookPdf } from '../lib/tfcPdfGenerator';
 import {
@@ -166,8 +167,13 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
-  const [selectedCourse, setSelectedCourse] = useState<string>('ALL');
+  const [selectedCourses, setSelectedCourses] = useState<string[]>(['ALL']);
   const [selectedDate, setSelectedDate] = useState<string>('ALL');
+
+  const isCourseSelected = useCallback((courseAbbr: string) => {
+    if (!selectedCourses || selectedCourses.length === 0 || selectedCourses.includes('ALL')) return true;
+    return selectedCourses.includes(courseAbbr);
+  }, [selectedCourses]);
   const [activeSubTab, setActiveSubTab] = useState<
     'DATE_WISE_RECEIPTS' | 'MONTH_WISE_RECEIPTS' | 'OVERVIEW' | 'CASHBOOK_GEN' | 'HARD_CASHBOOK' | 'COURSE_MATRIX' | 'DIRECTORY'
   >('DATE_WISE_RECEIPTS');
@@ -277,7 +283,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         const d = parseChallanDate(c.challanPaymentDate);
         if (`${d.monthName} ${d.year}` !== selectedMonth) return false;
       }
-      if (selectedCourse !== 'ALL' && c.courseAbbreviation !== selectedCourse) return false;
+      if (!isCourseSelected(c.courseAbbreviation)) return false;
       if (selectedDate !== 'ALL' && c.challanPaymentDate !== selectedDate) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -295,7 +301,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       }
       return true;
     });
-  }, [challans, selectedMonth, selectedCourse, selectedDate, searchQuery]);
+  }, [challans, selectedMonth, isCourseSelected, selectedDate, searchQuery]);
 
   // Financial Totals with exact head breakdown
   const totals = useMemo(() => {
@@ -1000,7 +1006,12 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
     generateReceiptsRegisterPdf({
       mode,
       periodLabel: selectedMonth === 'ALL' ? 'All Months' : selectedMonth,
-      courseFilter: selectedCourse === 'ALL' ? 'All Courses' : (COURSE_TITLE_MAP[selectedCourse] || selectedCourse),
+      courseFilter:
+        selectedCourses.length === 0 || selectedCourses.includes('ALL')
+          ? 'All Courses'
+          : selectedCourses.length === 1
+          ? (COURSE_TITLE_MAP[selectedCourses[0]] || selectedCourses[0])
+          : `${selectedCourses.length} Courses (${selectedCourses.join(', ')})`,
       rows,
       grandTotal,
       totalChallans: filteredChallans.length,
@@ -1724,21 +1735,15 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
             />
           </div>
 
-          {/* Course Filter */}
-          <select
-            value={selectedCourse}
-            onChange={(e) => setSelectedCourse(e.target.value)}
-            className={`px-2.5 py-1.5 text-xs rounded-xl border focus:outline-hidden focus:ring-2 focus:ring-teal-500 font-bold ${
-              darkMode ? 'bg-slate-950 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-            }`}
-          >
-            <option value="ALL">All Courses ({challans.length})</option>
-            {distinctCourses.map((c) => (
-              <option key={c} value={c}>
-                {c} - {COURSE_TITLE_MAP[c] || c}
-              </option>
-            ))}
-          </select>
+          {/* Course Multi-Select Filter */}
+          <TfcCourseMultiSelect
+            availableCourses={distinctCourses}
+            selectedCourses={selectedCourses}
+            onChange={setSelectedCourses}
+            challans={challans}
+            darkMode={darkMode}
+            size="sm"
+          />
 
           {/* Date Filter */}
           <select
@@ -1768,6 +1773,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         {activeSubTab === 'DATE_WISE_RECEIPTS' && (
           <TfcReceiptsReportView
             challans={challans}
+            selectedCourses={selectedCourses}
+            onSelectedCoursesChange={setSelectedCourses}
             darkMode={darkMode}
             initialMode="DATE_WISE"
             customGvtiwLogo={customGvtiwLogo}
@@ -1782,6 +1789,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         {activeSubTab === 'MONTH_WISE_RECEIPTS' && (
           <TfcReceiptsReportView
             challans={challans}
+            selectedCourses={selectedCourses}
+            onSelectedCoursesChange={setSelectedCourses}
             darkMode={darkMode}
             initialMode="MONTH_WISE"
             customGvtiwLogo={customGvtiwLogo}
