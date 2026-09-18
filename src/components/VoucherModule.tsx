@@ -274,9 +274,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
       const isoChequeDate = toIsoDate(savedVoucher.chequeDate) || '2026-07-03';
       const pakChequeDate = formatPakistaniDate(savedVoucher.chequeDate) || '03-Jul-2026';
 
-      const postPayload = JSON.stringify({
-        pin: activePin,
-        action: 'submitNewVoucher',
+      const params: Record<string, any> = {
         mode: isAmend ? 'amend' : 'new',
         srNo: isAmend ? savedVoucher.srNo : null,
         bankHead: savedVoucher.bankAccount,
@@ -313,20 +311,58 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
         accountHead: savedVoucher.accountHead,
         narration: savedVoucher.description,
         description: savedVoucher.description,
+      };
+
+      const queryParams = new URLSearchParams({
+        pin: activePin,
+        action: 'submitNewVoucher',
+        command: 'submitNewVoucher',
+      });
+      Object.entries(params).forEach(([key, val]) => {
+        if (val !== undefined && val !== null) {
+          queryParams.set(key, String(val));
+        }
       });
 
-      const response = await fetch(webAppUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: postPayload,
-      });
+      let json: any = null;
+      let callHandled = false;
 
-      if (!response.ok) {
-        notifySyncStatus('failed');
-        return { success: false, code: 'NETWORK_ERROR', message: 'Network response was not ok' };
+      // 1. Primary method: GET with query params (Identical to Admin Hub where amend is verified working)
+      try {
+        const getRes = await fetch(`${webAppUrl}?${queryParams.toString()}`, {
+          method: 'GET',
+        });
+        if (getRes.ok) {
+          json = await getRes.json();
+          callHandled = true;
+        }
+      } catch (getErr) {
+        // Fallback to POST
       }
 
-      const json = await response.json();
+      // 2. Fallback: POST with plain text body (supplying data: params and ...params to satisfy GAS doPost)
+      if (!callHandled) {
+        const postPayload = JSON.stringify({
+          pin: activePin,
+          action: 'submitNewVoucher',
+          command: 'submitNewVoucher',
+          data: params,
+          ...params,
+        });
+
+        const postRes = await fetch(webAppUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: postPayload,
+        });
+
+        if (!postRes.ok) {
+          notifySyncStatus('failed');
+          return { success: false, code: 'NETWORK_ERROR', message: 'Network response was not ok' };
+        }
+
+        json = await postRes.json();
+      }
       if (json.success) {
         setVouchers((prev) => {
           let updated: MasterVoucher[];
@@ -407,10 +443,8 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
       const isoBcDate = toIsoDate(date) || date;
       const pakBcDate = formatPakistaniDate(date);
 
-      const requestPayload = isAmend
+      const params: Record<string, any> = isAmend
         ? {
-            pin: activePin,
-            action: 'submitNewVoucher',
             mode: 'amend',
             srNo: targetSrNo,
             bankHead: bankFullName,
@@ -449,8 +483,6 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
             description: memo,
           }
         : {
-            pin: activePin,
-            action: 'recordDirectBankCharge',
             mode: 'new',
             srNo: targetSrNo,
             bank: bankFullName,
@@ -463,18 +495,55 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
             accountHead: accountHead,
           };
 
-      const response = await fetch(webAppUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(requestPayload),
+      const actionName = isAmend ? 'submitNewVoucher' : 'recordDirectBankCharge';
+      const queryParams = new URLSearchParams({
+        pin: activePin,
+        action: actionName,
+        command: actionName,
+      });
+      Object.entries(params).forEach(([key, val]) => {
+        if (val !== undefined && val !== null) {
+          queryParams.set(key, String(val));
+        }
       });
 
-      if (!response.ok) {
-        notifySyncStatus('failed');
-        return { success: false, code: 'NETWORK_ERROR', message: 'Network response was not ok' };
+      let json: any = null;
+      let callHandled = false;
+
+      // 1. Primary method: GET with query params
+      try {
+        const getRes = await fetch(`${webAppUrl}?${queryParams.toString()}`, {
+          method: 'GET',
+        });
+        if (getRes.ok) {
+          json = await getRes.json();
+          callHandled = true;
+        }
+      } catch (getErr) {
+        // Fallback to POST
       }
 
-      const json = await response.json();
+      // 2. Fallback: POST with plain text body (including data: params)
+      if (!callHandled) {
+        const postRes = await fetch(webAppUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            pin: activePin,
+            action: actionName,
+            command: actionName,
+            data: params,
+            ...params,
+          }),
+        });
+
+        if (!postRes.ok) {
+          notifySyncStatus('failed');
+          return { success: false, code: 'NETWORK_ERROR', message: 'Network response was not ok' };
+        }
+
+        json = await postRes.json();
+      }
       if (json.success) {
         setVouchers((prev) => {
           let updated: MasterVoucher[];
