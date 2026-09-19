@@ -1444,15 +1444,15 @@ export function DirectorReconciliationReport({
   const bankStmtStorageKey = `gvtiw_tevta_bank_stmt_${selectedAccountKey}_${selectedFY}_${fromDate}_${toDate}`;
   const [bankStatementBalance, setBankStatementBalance] = useState<number>(() => {
     try {
-      const saved =
-        localStorage.getItem(bankStmtStorageKey) ||
-        localStorage.getItem(`gvtiw_tevta_bank_stmt_${selectedAccountKey}_${selectedFY}_${fromDate.substring(0, 7)}_${toDate.substring(0, 7)}`);
+      const saved = localStorage.getItem(bankStmtStorageKey);
       if (saved !== null && saved !== '') {
         const val = parseNumericAmount(saved);
         if (!isNaN(val)) return val;
       }
     } catch {}
-    return selectedFY === '2025-26' ? 3044164.95 : 1743235.0;
+    if (selectedAccountKey === 'NS' && selectedFY === '2025-26') return 3044164.95;
+    if (selectedAccountKey === 'NS' && selectedFY === '2026-27') return 1743235.0;
+    return liveCashBookStates[selectedAccountKey]?.closingBalance ?? calculatedCashBookBalance;
   });
 
   const [editingBankBalanceStr, setEditingBankBalanceStr] = useState<string>(() =>
@@ -1461,9 +1461,7 @@ export function DirectorReconciliationReport({
 
   useEffect(() => {
     try {
-      const saved =
-        localStorage.getItem(bankStmtStorageKey) ||
-        localStorage.getItem(`gvtiw_tevta_bank_stmt_${selectedAccountKey}_${selectedFY}_${fromDate.substring(0, 7)}_${toDate.substring(0, 7)}`);
+      const saved = localStorage.getItem(bankStmtStorageKey);
       if (saved !== null && saved !== '') {
         const val = parseNumericAmount(saved);
         if (!isNaN(val)) {
@@ -1473,10 +1471,15 @@ export function DirectorReconciliationReport({
         }
       }
     } catch {}
-    const def = selectedFY === '2025-26' ? 3044164.95 : 1743235.0;
+    let def = calculatedCashBookBalance;
+    if (selectedAccountKey === 'NS' && selectedFY === '2025-26') def = 3044164.95;
+    else if (selectedAccountKey === 'NS' && selectedFY === '2026-27') def = 1743235.0;
+    else if (liveCashBookStates[selectedAccountKey]?.closingBalance !== undefined) {
+      def = liveCashBookStates[selectedAccountKey].closingBalance;
+    }
     setBankStatementBalance(def);
     setEditingBankBalanceStr(formatNumberLive(def));
-  }, [bankStmtStorageKey, selectedFY, fromDate, toDate]);
+  }, [bankStmtStorageKey, selectedAccountKey, selectedFY, calculatedCashBookBalance, liveCashBookStates]);
 
   // Dedicated own-fund heads list (mirroring Voucher Entry rules)
   const DEDICATED_OWN_FUND_HEADS = useMemo(
@@ -1531,13 +1534,10 @@ export function DirectorReconciliationReport({
   const unpresentedStorageKey = `gvtiw_tevta_unpresented_manual_${selectedAccountKey}_${selectedFY}_${fromDate}_${toDate}`;
   const [manualCheques, setManualCheques] = useState<ManualUnpresentedCheque[]>(() => {
     try {
-      const saved =
-        localStorage.getItem(unpresentedStorageKey) ||
-        localStorage.getItem(`gvtiw_tevta_unpresented_manual_${selectedAccountKey}_${selectedFY}_${fromDate.substring(0, 7)}_${toDate.substring(0, 7)}`) ||
-        localStorage.getItem(`gvtiw_tevta_unpresented_manual_${initialAccountKey}_2026-27`);
+      const saved = localStorage.getItem(unpresentedStorageKey);
       if (saved) return JSON.parse(saved);
     } catch {}
-    return []; // FIX 5: 100% manual entry - never auto-populate from mock data
+    return []; // Clean isolated manual entry per account and period
   });
 
   // Sync manual cheques from localStorage when account or period changes
