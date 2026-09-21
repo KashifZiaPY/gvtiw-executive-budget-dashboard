@@ -222,28 +222,30 @@ export function generateReceiptsRegisterPdf(options: ReceiptsPdfOptions): void {
   doc.setTextColor(30, 41, 59);
 
   // 3 signatures
-  const sig1X = 25;
+  const sig1X = 45;
   const sig2X = pageWidth / 2;
-  const sig3X = pageWidth - 35;
-
-  doc.text('Prepared By: __________________', sig1X, signY, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.text('Dealing Assistant / Junior Clerk', sig1X, signY + 4, { align: 'center' });
+  const sig3X = pageWidth - 45;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Verified By: __________________', sig2X, signY, { align: 'center' });
+  doc.text('KASHIF ZIA', sig1X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('Accountant / Incharge TFC', sig2X, signY + 4, { align: 'center' });
+  doc.text('Accountant / Prepared by:', sig1X, signY + 4, { align: 'center' });
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Approved By: __________________', sig3X, signY, { align: 'center' });
+  doc.text('ANEEBA JAMIL', sig2X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('Acting Principal (SHAZIA KHADIM)', sig3X, signY + 4, { align: 'center' });
+  doc.text('CO-Signatory / Checked by:', sig2X, signY + 4, { align: 'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('SHAZIA KHADIM', sig3X, signY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text('Acting Principal / DDO / Approved by:', sig3X, signY + 4, { align: 'center' });
 
   const cleanFilename = `GVTIW_TFC_${mode === 'DATE_WISE' ? 'Date_Wise_Receipts' : 'Month_Wise_Receipts'}_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(cleanFilename);
@@ -523,28 +525,30 @@ export function generateHardCashBookPdf(options: HardCashBookPdfOptions): void {
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 41, 59);
 
-  const sig1X = 25;
+  const sig1X = 45;
   const sig2X = pageWidth / 2;
-  const sig3X = pageWidth - 35;
-
-  doc.text('Prepared By: __________________', sig1X, signY, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.text('Dealing Assistant / Junior Clerk', sig1X, signY + 4, { align: 'center' });
+  const sig3X = pageWidth - 45;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Verified By: __________________', sig2X, signY, { align: 'center' });
+  doc.text('KASHIF ZIA', sig1X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('Accountant / Incharge TFC', sig2X, signY + 4, { align: 'center' });
+  doc.text('Accountant / Prepared by:', sig1X, signY + 4, { align: 'center' });
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Approved By: __________________', sig3X, signY, { align: 'center' });
+  doc.text('ANEEBA JAMIL', sig2X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('Acting Principal (SHAZIA KHADIM)', sig3X, signY + 4, { align: 'center' });
+  doc.text('CO-Signatory / Checked by:', sig2X, signY + 4, { align: 'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('SHAZIA KHADIM', sig3X, signY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text('Acting Principal / DDO / Approved by:', sig3X, signY + 4, { align: 'center' });
 
   const cleanFilename = `GVTIW_TFC_Hard_CashBook_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(cleanFilename);

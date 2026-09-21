@@ -140,16 +140,16 @@ export const OFFICIAL_SIGNATORIES: OfficialSignatory[] = [
   {
     name: 'KASHIF ZIA',
     role: 'Accountant',
-    label: 'PREPARED BY:',
+    label: 'Prepared by:',
   },
   {
     name: 'ANEEBA JAMIL',
     role: 'CO-Signatory',
-    label: 'CHECKED BY:',
+    label: 'Checked by:',
   },
   {
     name: 'SHAZIA KHADIM',
     role: 'Acting Principal / DDO',
-    label: 'APPROVED BY:',
+    label: 'Approved by:',
   },
 ];

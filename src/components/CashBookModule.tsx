@@ -511,16 +511,16 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
 
           <div class="sig-box">
             <div class="sig-col">
-              <strong>Kashif Zia</strong>
-              <span>Prepared by: Accountant</span>
+              <strong>KASHIF ZIA</strong>
+              <span>Accountant / Prepared by:</span>
             </div>
             <div class="sig-col">
               <strong>ANEEBA JAMIL</strong>
-              <span>Checked by: CO-Signatory</span>
+              <span>CO-Signatory / Checked by:</span>
             </div>
             <div class="sig-col">
               <strong>SHAZIA KHADIM</strong>
-              <span>Approved by: Acting Principal / DDO</span>
+              <span>Acting Principal / DDO / Approved by:</span>
             </div>
           </div>
 

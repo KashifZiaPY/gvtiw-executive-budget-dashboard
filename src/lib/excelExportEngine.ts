@@ -1606,19 +1606,19 @@ export async function exportNsOwnWorkingExcel(p: NsOwnWorkingExcelParams): Promi
   currRow++;
   ws.mergeCells(`B${currRow}:D${currRow}`);
   const st1 = ws.getCell(`B${currRow}`);
-  st1.value = 'Prepared by: ACCOUNTANT';
+  st1.value = 'Accountant / Prepared by:';
   st1.font = { name: 'Arial', size: 8.5, color: { argb: '475569' } };
   st1.alignment = { horizontal: 'center' };
 
   ws.mergeCells(`F${currRow}:H${currRow}`);
   const st2 = ws.getCell(`F${currRow}`);
-  st2.value = 'Checked by: CO. SIGNATUREE';
+  st2.value = 'CO-Signatory / Checked by:';
   st2.font = { name: 'Arial', size: 8.5, color: { argb: '475569' } };
   st2.alignment = { horizontal: 'center' };
 
   ws.mergeCells(`K${currRow}:M${currRow}`);
   const st3 = ws.getCell(`K${currRow}`);
-  st3.value = 'Approved by: ACTING PRINCIPAL / DDO';
+  st3.value = 'Acting Principal / DDO / Approved by:';
   st3.font = { name: 'Arial', size: 8.5, color: { argb: '475569' } };
   st3.alignment = { horizontal: 'center' };
 

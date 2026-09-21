@@ -179,13 +179,16 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
           {/* Signatures Section */}
           <div className="pt-14 grid grid-cols-3 gap-8 text-center text-xs text-slate-800">
             <div className="border-t-2 border-slate-700 pt-2 font-bold">
-              Prepared by: Accountant
+              <div>KASHIF ZIA</div>
+              <div className="text-[10px] font-normal text-slate-600">Accountant / Prepared by:</div>
             </div>
             <div className="border-t-2 border-slate-700 pt-2 font-bold">
-              Verified by: Co. Signature
+              <div>ANEEBA JAMIL</div>
+              <div className="text-[10px] font-normal text-slate-600">CO-Signatory / Checked by:</div>
             </div>
             <div className="border-t-2 border-slate-700 pt-2 font-bold">
-              Approved by: HOI / DDO
+              <div>SHAZIA KHADIM</div>
+              <div className="text-[10px] font-normal text-slate-600">Acting Principal / DDO / Approved by:</div>
             </div>
           </div>
 

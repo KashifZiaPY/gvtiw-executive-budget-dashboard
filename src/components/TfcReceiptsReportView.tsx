@@ -2539,18 +2539,18 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
           </table>
 
           {/* Signatures */}
-          <div className="mt-8 pt-4 grid grid-cols-3 gap-4 text-center text-xs text-slate-800">
+          <div className="mt-8 pt-4 grid grid-cols-3 gap-6 text-center text-xs text-slate-800">
             <div>
-              <div className="font-bold border-t border-slate-400 pt-1">Dealing Assistant</div>
-              <div className="text-[10px] text-slate-500">Junior Clerk / TFC Incharge</div>
+              <div className="font-bold border-t border-slate-400 pt-1 uppercase">KASHIF ZIA</div>
+              <div className="text-[10px] text-slate-600 font-medium">Accountant / Prepared by:</div>
             </div>
             <div>
-              <div className="font-bold border-t border-slate-400 pt-1">Verified By</div>
-              <div className="text-[10px] text-slate-500">Accountant / Senior Clerk</div>
+              <div className="font-bold border-t border-slate-400 pt-1 uppercase">ANEEBA JAMIL</div>
+              <div className="text-[10px] text-slate-600 font-medium">CO-Signatory / Checked by:</div>
             </div>
             <div>
-              <div className="font-bold border-t border-slate-400 pt-1">Approved By</div>
-              <div className="text-[10px] text-slate-500">Acting Principal (SHAZIA KHADIM)</div>
+              <div className="font-bold border-t border-slate-400 pt-1 uppercase">SHAZIA KHADIM</div>
+              <div className="text-[10px] text-slate-600 font-medium">Acting Principal / DDO / Approved by:</div>
             </div>
           </div>
         </div>,
