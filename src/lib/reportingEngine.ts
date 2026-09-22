@@ -151,6 +151,29 @@ export function parseDateToTimestamp(dateStr?: string): number {
 }
 
 /**
+ * Normalize head string by replacing en-dash / em-dash, collapsing whitespace, and lowercasing
+ */
+export function normalizeHeadString(str?: string): string {
+  if (!str) return '';
+  return str
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/\s*-\s*/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Extract leading alphanumeric code (e.g. "A00000NTTM" or "A03302-AA")
+ */
+export function extractHeadCode(str?: string): string {
+  if (!str) return '';
+  const cleaned = str.replace(/[\u2013\u2014]/g, '-').trim();
+  const match = cleaned.match(/^([A-Za-z0-9]+(?:-[A-Za-z0-9]+)?)/);
+  return match ? match[1].toUpperCase() : '';
+}
+
+/**
  * Format timestamp into standard Pakistani official audit date e.g. "05-Sep-2026 05:43 PM"
  */
 export function formatGeneratedTimestamp(d: Date = new Date()): string {
@@ -655,31 +678,38 @@ export function generateHeadExpenditureStatementData(
   if (isGroupedAllHeads) {
     targetHeads = [...canonicalAccounts];
   } else {
-    const selLower = selectedHead.trim().toLowerCase();
+    const selNorm = normalizeHeadString(selectedHead);
+    const selCode = extractHeadCode(selectedHead).toLowerCase();
 
-    // 1. Direct exact match by head name or code
-    let matched = canonicalAccounts.filter(
-      (a) => a.head.trim().toLowerCase() === selLower || a.code.trim().toLowerCase() === selLower
-    );
+    // 1. Direct exact match by normalized head name or code
+    let matched = canonicalAccounts.filter((a) => {
+      const aHeadNorm = normalizeHeadString(a.head);
+      const aCodeNorm = normalizeHeadString(a.code);
+      return aHeadNorm === selNorm || aCodeNorm === selNorm || (selCode.length >= 4 && aCodeNorm === selCode);
+    });
 
-    // 2. If no direct match, try matching by code prefix or head prefix
+    // 2. If no direct match, try matching by code prefix or head prefix or substring
     if (matched.length === 0) {
-      matched = canonicalAccounts.filter(
-        (a) =>
-          a.code.trim().toLowerCase().startsWith(selLower) ||
-          a.head.trim().toLowerCase().includes(selLower) ||
-          selLower.startsWith(a.code.trim().toLowerCase())
-      );
+      matched = canonicalAccounts.filter((a) => {
+        const aHeadNorm = normalizeHeadString(a.head);
+        const aCodeNorm = normalizeHeadString(a.code);
+        return (
+          aCodeNorm.startsWith(selNorm) ||
+          aHeadNorm.includes(selNorm) ||
+          selNorm.startsWith(aCodeNorm) ||
+          (selCode.length >= 4 && (aCodeNorm === selCode || aHeadNorm.startsWith(selCode)))
+        );
+      });
     }
 
     // 3. Disambiguate if multiple matches (e.g. A03302 vs A03302-AA)
     if (matched.length > 1) {
-      if (selLower.includes('-ns') || selLower.includes('non salary') || selLower.endsWith('ns')) {
+      if (selNorm.includes('-ns') || selNorm.includes('non salary') || selNorm.endsWith('ns')) {
         const nsOnly = matched.filter(
           (a) => a.category === 'Non Salary' || a.head.toUpperCase().includes('-NS')
         );
         if (nsOnly.length > 0) matched = nsOnly;
-      } else if (selLower.includes('-aa') || selLower.includes('aaa') || selLower.endsWith('aa')) {
+      } else if (selNorm.includes('-aa') || selNorm.includes('aaa') || selNorm.endsWith('aa')) {
         const aaaOnly = matched.filter(
           (a) =>
             a.category === 'AAA' ||
@@ -690,7 +720,30 @@ export function generateHeadExpenditureStatementData(
       }
     }
 
-    targetHeads = matched.length > 0 ? matched : canonicalAccounts.filter((a) => a.head.toLowerCase() === selLower);
+    if (matched.length > 0) {
+      targetHeads = matched;
+    } else {
+      // Safe fallback: match by lowercase substring if available, or construct synthetic entry
+      const fallbackMatch = canonicalAccounts.filter((a) => a.head.toLowerCase() === selectedHead.toLowerCase());
+      if (fallbackMatch.length > 0) {
+        targetHeads = fallbackMatch;
+      } else {
+        const codeFromSel = selCode || selectedHead.split(/[-–— ]/)[0] || selectedHead;
+        targetHeads = [{
+          code: codeFromSel.toUpperCase(),
+          head: selectedHead,
+          category: selectedHead.toUpperCase().includes('NAVTTC') ? 'NAVTTC' : 'Non Salary',
+          opening: 0,
+          reappr: 0,
+          receipts: 0,
+          payments: 0,
+          balance: 0,
+          burnRate: 0,
+          lastActivity: new Date().toISOString(),
+          hash: '0.00|0.00|0.00|0.00|0.00',
+        }];
+      }
+    }
   }
 
   // Apply search query filter if provided
@@ -808,13 +861,26 @@ export function generateHeadExpenditureStatementData(
     headTitleOnly = headTitleOnly.replace(/\b(NS|AAA|AA|PLACEMENT|GOVT|TEVTA)\b/gi, '').trim().toUpperCase();
 
     // 1. Collect all payment vouchers matching this head & bank
+    const normAccHead = normalizeHeadString(acc.head);
+    const normAccCode = normalizeHeadString(acc.code);
+
+    let stage1BankCount = 0;
+    let stage2HeadCount = 0;
+
     const allHeadVouchers = vouchers.filter((v) => {
-      // Respect selected bank filter
-      if (selectedBank !== 'ALL' && !v.bankAccount.includes(selectedBank)) {
-        return false;
+      // Respect selected bank filter (using canonical key mapping or case-insensitive substring)
+      if (selectedBank !== 'ALL') {
+        const vBankKey = resolveBankKeyFromAccount(v.bankAccount);
+        const selBankKey = resolveBankKeyFromAccount(selectedBank);
+        const bankMatches = vBankKey === selBankKey || v.bankAccount.toUpperCase().includes(selectedBank.toUpperCase());
+        if (!bankMatches) {
+          return false;
+        }
       }
+      stage1BankCount++;
 
       const vHeadUpper = (v.accountHead || '').toUpperCase().trim();
+      const normVHead = normalizeHeadString(v.accountHead);
       const vBankUpper = (v.bankAccount || '').toUpperCase().trim();
       const vNoUpper = (v.voucherNo || '').toUpperCase().trim();
 
@@ -850,33 +916,48 @@ export function generateHeadExpenditureStatementData(
       // Placement Accounts ONLY accept Placement vouchers
       if (isPlacementAccount && !isVoucherPlacement) return false;
 
-      // NAVTTC Accounts DO NOT accept AAA or Non Salary vouchers
-      if (isNavttcAccount && (isVoucherAAA || isVoucherNS)) return false;
+      // NAVTTC Accounts DO NOT accept AAA vouchers (NAVTTC courses disburse under the Non-Salary BOP account)
+      if (isNavttcAccount && isVoucherAAA) return false;
 
-      // Direct exact match
-      if (vHeadUpper === accHeadUpper) return true;
+      // Direct exact match (casing / whitespace / dash insensitive)
+      if (vHeadUpper === accHeadUpper || normVHead === normAccHead) {
+        stage2HeadCount++;
+        return true;
+      }
 
       // Direct code match (ensuring no suffix confusion)
-      if (vHeadUpper.startsWith(accCodeUpper) || (accCodeUpper.length >= 4 && vHeadUpper.includes(accCodeUpper))) {
+      if (
+        vHeadUpper.startsWith(accCodeUpper) ||
+        normVHead.startsWith(normAccCode) ||
+        (accCodeUpper.length >= 4 && vHeadUpper.includes(accCodeUpper))
+      ) {
         if (isNSAccount && (vHeadUpper.includes('-AA') || vHeadUpper.includes('AAA'))) {
           return false;
         }
+        stage2HeadCount++;
         return true;
       }
 
       // Base code or keyword match for AAA vouchers
       if (isAAAAccount && isVoucherAAA) {
-        if (vHeadUpper.includes(baseCode)) return true;
-        if (headTitleOnly.length >= 4 && vHeadUpper.includes(headTitleOnly)) return true;
+        if (vHeadUpper.includes(baseCode)) {
+          stage2HeadCount++;
+          return true;
+        }
+        if (headTitleOnly.length >= 4 && vHeadUpper.includes(headTitleOnly)) {
+          stage2HeadCount++;
+          return true;
+        }
       }
 
-      // Base code or keyword match for Non-Salary vouchers
-      if (isNSAccount && !isVoucherAAA) {
+      // Base code or keyword match for Non-Salary and NAVTTC vouchers
+      if ((isNSAccount || isNavttcAccount) && !isVoucherAAA) {
         if (
           (vHeadUpper.includes(baseCode) || (headTitleOnly.length >= 4 && vHeadUpper.includes(headTitleOnly))) &&
           !vHeadUpper.includes('-AA') &&
           !vHeadUpper.includes('AAA')
         ) {
+          stage2HeadCount++;
           return true;
         }
       }
@@ -1025,6 +1106,11 @@ export function generateHeadExpenditureStatementData(
     }
 
     // Process Payments
+    let stage3InPeriodCount = 0;
+    let stage3InPeriodSum = 0;
+    let stage3PrePeriodCount = 0;
+    let stage3PrePeriodSum = 0;
+
     for (const v of allHeadVouchers) {
       const vDateStr = v.chequeDate || v.billDate || '03-Jul-2026';
       const vTs = parseDateToTimestamp(vDateStr);
@@ -1032,7 +1118,11 @@ export function generateHeadExpenditureStatementData(
 
       if (fromTs > 0 && vTs < fromTs) {
         prePeriodExpenditure += amt;
+        stage3PrePeriodCount++;
+        stage3PrePeriodSum += amt;
       } else if (vTs <= toTs) {
+        stage3InPeriodCount++;
+        stage3InPeriodSum += amt;
         const bankKey = resolveBankKeyFromAccount(v.bankAccount);
         inPeriodTransactions.push({
           id: `HEAD-${acc.code}-V${v.srNo}`,
@@ -1052,6 +1142,11 @@ export function generateHeadExpenditureStatementData(
         });
       }
     }
+
+    // Temporary row-count logging per head across filter stages (bank -> head -> date)
+    console.log(
+      `[MultiHeadFilter:${acc.code}] Stage 0 (Pool): ${vouchers.length} | Stage 1 (Bank '${selectedBank}'): ${stage1BankCount} | Stage 2 (Head '${acc.code}'): ${stage2HeadCount} | Stage 3 (Date '${fromDate || 'START'}' to '${toDate || 'END'}'): ${stage3InPeriodCount} in-period (Rs. ${stage3InPeriodSum}), ${stage3PrePeriodCount} pre-period (Rs. ${stage3PrePeriodSum})`
+    );
 
     // Sort unified transactions chronologically
     inPeriodTransactions.sort((a, b) => {
@@ -1198,12 +1293,20 @@ export function generateMultiHeadExpenditureStatementData(
   // Order the selected heads in the exact order they appear in canonicalAccounts (dropdown order)
   const orderedHeads: string[] = [];
   for (const acc of canonicalAccounts) {
+    const aHeadNorm = normalizeHeadString(acc.head);
+    const aCodeNorm = normalizeHeadString(acc.code);
     if (
-      headsToProcess.some(
-        (sh) =>
-          sh.trim().toLowerCase() === acc.head.trim().toLowerCase() ||
-          sh.trim().toLowerCase() === acc.code.trim().toLowerCase()
-      )
+      headsToProcess.some((sh) => {
+        const shNorm = normalizeHeadString(sh);
+        const shCode = extractHeadCode(sh).toLowerCase();
+        return (
+          shNorm === aHeadNorm ||
+          shNorm === aCodeNorm ||
+          shNorm.startsWith(aCodeNorm) ||
+          aHeadNorm.startsWith(shNorm) ||
+          (shCode.length >= 4 && (shCode === aCodeNorm || aHeadNorm.startsWith(shCode)))
+        );
+      })
     ) {
       orderedHeads.push(acc.head);
     }
@@ -1211,7 +1314,14 @@ export function generateMultiHeadExpenditureStatementData(
 
   // Any head that didn't match canonicalAccounts directly is appended
   for (const sh of headsToProcess) {
-    if (!orderedHeads.some((oh) => oh.trim().toLowerCase() === sh.trim().toLowerCase())) {
+    const shNorm = normalizeHeadString(sh);
+    const shCode = extractHeadCode(sh).toLowerCase();
+    const alreadyPresent = orderedHeads.some((oh) => {
+      const ohNorm = normalizeHeadString(oh);
+      const ohCode = extractHeadCode(oh).toLowerCase();
+      return ohNorm === shNorm || (shCode.length >= 4 && shCode === ohCode);
+    });
+    if (!alreadyPresent) {
       orderedHeads.push(sh);
     }
   }
@@ -1248,6 +1358,10 @@ export function generateMultiHeadExpenditureStatementData(
   const selectedHeadCodes = headReports.map(
     (hr) => hr.groups[0]?.headCode || hr.title.split(' — ')[0] || ''
   ).filter(Boolean);
+
+  console.log(
+    `[MultiHeadReport:GrandTotal] Selected: ${headsToProcess.length} heads | Ordered: ${orderedHeads.length} heads | Bank: '${selectedBank}' | Date: '${fromDate || 'START'}' to '${toDate || 'END'}' => Total Tx: ${grandTransactions}, Allocation: Rs. ${grandAllocation}, Expenditure: Rs. ${grandExpenditure}, Closing: Rs. ${grandClosing}`
+  );
 
   return {
     isMultiHead: headReports.length >= 2,
@@ -1482,14 +1596,14 @@ export function generateOfficialStatementPrintHtml(params: {
         <meta charset="utf-8" />
         <title>${params.title} — GVTI(W) Samanabad</title>
         <style>
-          @page { size: A4 landscape; margin: 7mm; }
+          @page { size: A4 landscape; margin: 6mm; }
           * { box-sizing: border-box; }
           body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
             color: #0f172a;
             margin: 0;
-            padding: 8px;
-            font-size: 9px;
+            padding: 0;
+            font-size: 8.5px;
             background-color: #ffffff;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
@@ -1499,19 +1613,21 @@ export function generateOfficialStatementPrintHtml(params: {
             align-items: center;
             justify-content: space-between;
             border-bottom: 2.5px solid #0b2545;
-            padding-bottom: 6px;
-            margin-bottom: 8px;
+            padding-bottom: 5px;
+            margin-bottom: 6px;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           .logo-container {
-            width: 58px;
-            height: 58px;
+            width: 52px;
+            height: 52px;
             display: flex;
             align-items: center;
             justify-content: center;
           }
           .logo-container img {
-            max-width: 56px;
-            max-height: 56px;
+            max-width: 50px;
+            max-height: 50px;
             object-fit: contain;
           }
           .header-text-block {
@@ -1520,7 +1636,7 @@ export function generateOfficialStatementPrintHtml(params: {
             padding: 0 10px;
           }
           .header-text-block h1 {
-            font-size: 15px;
+            font-size: 14px;
             margin: 0;
             font-weight: 900;
             color: #002b66;
@@ -1528,21 +1644,21 @@ export function generateOfficialStatementPrintHtml(params: {
             letter-spacing: 0.5px;
           }
           .header-text-block .sub1 {
-            font-size: 9px;
+            font-size: 8.5px;
             font-weight: 700;
             color: #475569;
-            margin: 2px 0 0 0;
+            margin: 1px 0 0 0;
           }
           .header-text-block .statement-title {
-            font-size: 12.5px;
+            font-size: 11.5px;
             font-weight: 900;
             color: #0f172a;
-            margin: 3px 0 0 0;
+            margin: 2px 0 0 0;
             text-transform: uppercase;
             letter-spacing: 0.5px;
           }
           .header-text-block .acct-text {
-            font-size: 9.5px;
+            font-size: 9px;
             font-weight: 800;
             color: #1e3a8a;
             font-family: monospace;
@@ -1550,8 +1666,8 @@ export function generateOfficialStatementPrintHtml(params: {
           }
           .meta-side-box {
             text-align: right;
-            font-size: 8.5px;
-            line-height: 1.4;
+            font-size: 8px;
+            line-height: 1.35;
             color: #334155;
             font-family: monospace;
             min-width: 170px;
@@ -1562,54 +1678,74 @@ export function generateOfficialStatementPrintHtml(params: {
           .kpi-cards-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 8px;
+            gap: 6px;
+            margin-bottom: 6px;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 8.5px;
+            font-size: 8px;
+            break-inside: auto;
+            page-break-inside: auto;
+          }
+          thead {
+            display: table-header-group;
+            break-inside: avoid;
+            page-break-inside: avoid;
+            break-after: avoid;
+          }
+          tbody {
+            break-inside: auto;
+            page-break-inside: auto;
+          }
+          tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
           th {
             background-color: #0b2545;
             color: #ffffff;
-            padding: 5px 4px;
-            font-size: 8.5px;
+            padding: 4px 3px;
+            font-size: 7.5px;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.3px;
             border: 1px solid #0b2545;
           }
           .signatures-container {
-            margin-top: 30px;
+            margin-top: 20px;
             display: flex;
             justify-content: space-between;
+            break-inside: avoid;
             page-break-inside: avoid;
           }
           .sig-column {
             width: 28%;
             text-align: center;
             border-top: 1.5px solid #475569;
-            padding-top: 5px;
+            padding-top: 4px;
           }
           .sig-column strong {
             display: block;
-            font-size: 9.5px;
+            font-size: 9px;
             color: #0f172a;
           }
           .sig-column span {
-            font-size: 8.5px;
+            font-size: 8px;
             color: #475569;
           }
           .official-footer-strip {
-            margin-top: 15px;
+            margin-top: 10px;
             padding-top: 4px;
             border-top: 1px solid #cbd5e1;
             display: flex;
             justify-content: space-between;
-            font-size: 7.5px;
+            font-size: 7px;
             color: #64748b;
             font-family: monospace;
+            break-inside: avoid;
             page-break-inside: avoid;
           }
         </style>
@@ -1698,21 +1834,21 @@ export function generateMultiHeadStatementPrintHtml(params: {
 
   // Build Grand Total 4 KPI Boxes
   const grandKpiHtml = `
-    <div style="border: 1.5px solid #94a3b8; border-radius: 6px; padding: 7px 10px; background-color: #f8fafc; text-align: center;">
-      <span style="display: block; font-size: 8.5px; text-transform: uppercase; font-weight: 800; color: #475569; letter-spacing: 0.5px;">GRAND BUDGET ALLOCATION (B/D)</span>
-      <strong style="display: block; font-size: 13px; font-family: monospace; font-weight: 900; color: #0b2545; margin-top: 3px;">Rs. ${formatCurrency2Decimals(multiHeadData.grandTotal.budgetAllocationOpening)}</strong>
+    <div style="border: 1.5px solid #94a3b8; border-radius: 4px; padding: 4px 8px; background-color: #f8fafc; text-align: center;">
+      <span style="display: block; font-size: 7.5px; text-transform: uppercase; font-weight: 800; color: #475569; letter-spacing: 0.5px;">GRAND BUDGET ALLOCATION (B/D)</span>
+      <strong style="display: block; font-size: 12px; font-family: monospace; font-weight: 900; color: #0b2545; margin-top: 2px;">Rs. ${formatCurrency2Decimals(multiHeadData.grandTotal.budgetAllocationOpening)}</strong>
     </div>
-    <div style="border: 1.5px solid #86efac; border-radius: 6px; padding: 7px 10px; background-color: #f0fdf4; text-align: center;">
-      <span style="display: block; font-size: 8.5px; text-transform: uppercase; font-weight: 800; color: #166534; letter-spacing: 0.5px;">TOTAL RECEIPTS / REAPPR (+)</span>
-      <strong style="display: block; font-size: 13px; font-family: monospace; font-weight: 900; color: #15803d; margin-top: 3px;">Rs. ${formatCurrency2Decimals(multiHeadData.grandTotal.receiptsReappr)}</strong>
+    <div style="border: 1.5px solid #86efac; border-radius: 4px; padding: 4px 8px; background-color: #f0fdf4; text-align: center;">
+      <span style="display: block; font-size: 7.5px; text-transform: uppercase; font-weight: 800; color: #166534; letter-spacing: 0.5px;">TOTAL RECEIPTS / REAPPR (+)</span>
+      <strong style="display: block; font-size: 12px; font-family: monospace; font-weight: 900; color: #15803d; margin-top: 2px;">Rs. ${formatCurrency2Decimals(multiHeadData.grandTotal.receiptsReappr)}</strong>
     </div>
-    <div style="border: 1.5px solid #fca5a5; border-radius: 6px; padding: 7px 10px; background-color: #fef2f2; text-align: center;">
-      <span style="display: block; font-size: 8.5px; text-transform: uppercase; font-weight: 800; color: #991b1b; letter-spacing: 0.5px;">TOTAL EXPENDITURE (-)</span>
-      <strong style="display: block; font-size: 13px; font-family: monospace; font-weight: 900; color: #b91c1c; margin-top: 3px;">Rs. ${formatCurrency2Decimals(multiHeadData.grandTotal.totalExpenditure)}</strong>
+    <div style="border: 1.5px solid #fca5a5; border-radius: 4px; padding: 4px 8px; background-color: #fef2f2; text-align: center;">
+      <span style="display: block; font-size: 7.5px; text-transform: uppercase; font-weight: 800; color: #991b1b; letter-spacing: 0.5px;">TOTAL EXPENDITURE (-)</span>
+      <strong style="display: block; font-size: 12px; font-family: monospace; font-weight: 900; color: #b91c1c; margin-top: 2px;">Rs. ${formatCurrency2Decimals(multiHeadData.grandTotal.totalExpenditure)}</strong>
     </div>
-    <div style="border: 1.5px solid #93c5fd; border-radius: 6px; padding: 7px 10px; background-color: #eff6ff; text-align: center;">
-      <span style="display: block; font-size: 8.5px; text-transform: uppercase; font-weight: 800; color: #1e40af; letter-spacing: 0.5px;">NET UNSPENT CLOSING (C/D)</span>
-      <strong style="display: block; font-size: 13px; font-family: monospace; font-weight: 900; color: #1d4ed8; margin-top: 3px;">Rs. ${formatCurrency2Decimals(multiHeadData.grandTotal.closingUnspentBalance)}</strong>
+    <div style="border: 1.5px solid #93c5fd; border-radius: 4px; padding: 4px 8px; background-color: #eff6ff; text-align: center;">
+      <span style="display: block; font-size: 7.5px; text-transform: uppercase; font-weight: 800; color: #1e40af; letter-spacing: 0.5px;">NET UNSPENT CLOSING (C/D)</span>
+      <strong style="display: block; font-size: 12px; font-family: monospace; font-weight: 900; color: #1d4ed8; margin-top: 2px;">Rs. ${formatCurrency2Decimals(multiHeadData.grandTotal.closingUnspentBalance)}</strong>
     </div>
   `;
 
@@ -1723,22 +1859,22 @@ export function generateMultiHeadStatementPrintHtml(params: {
 
     // Per-head 4 KPI boxes
     const perHeadKpiHtml = `
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 8px;">
-        <div style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px 6px; background-color: #f8fafc; text-align: center;">
-          <span style="display: block; font-size: 7.5px; text-transform: uppercase; font-weight: 700; color: #64748b;">ALLOCATION (B/D)</span>
-          <strong style="display: block; font-size: 11px; font-family: monospace; font-weight: 900; color: #0b2545;">Rs. ${formatCurrency2Decimals(hr.budgetAllocationOpening)}</strong>
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 5px;">
+        <div style="border: 1px solid #cbd5e1; border-radius: 3px; padding: 3px 5px; background-color: #f8fafc; text-align: center;">
+          <span style="display: block; font-size: 7px; text-transform: uppercase; font-weight: 700; color: #64748b;">ALLOCATION (B/D)</span>
+          <strong style="display: block; font-size: 10px; font-family: monospace; font-weight: 900; color: #0b2545;">Rs. ${formatCurrency2Decimals(hr.budgetAllocationOpening)}</strong>
         </div>
-        <div style="border: 1px solid #bbf7d0; border-radius: 4px; padding: 4px 6px; background-color: #f0fdf4; text-align: center;">
-          <span style="display: block; font-size: 7.5px; text-transform: uppercase; font-weight: 700; color: #166534;">RECEIPTS (+)</span>
-          <strong style="display: block; font-size: 11px; font-family: monospace; font-weight: 900; color: #15803d;">Rs. ${formatCurrency2Decimals(hr.receiptsReappr)}</strong>
+        <div style="border: 1px solid #bbf7d0; border-radius: 3px; padding: 3px 5px; background-color: #f0fdf4; text-align: center;">
+          <span style="display: block; font-size: 7px; text-transform: uppercase; font-weight: 700; color: #166534;">RECEIPTS (+)</span>
+          <strong style="display: block; font-size: 10px; font-family: monospace; font-weight: 900; color: #15803d;">Rs. ${formatCurrency2Decimals(hr.receiptsReappr)}</strong>
         </div>
-        <div style="border: 1px solid #fecaca; border-radius: 4px; padding: 4px 6px; background-color: #fef2f2; text-align: center;">
-          <span style="display: block; font-size: 7.5px; text-transform: uppercase; font-weight: 700; color: #991b1b;">EXPENDITURE (-)</span>
-          <strong style="display: block; font-size: 11px; font-family: monospace; font-weight: 900; color: #b91c1c;">Rs. ${formatCurrency2Decimals(hr.totalExpenditure)}</strong>
+        <div style="border: 1px solid #fecaca; border-radius: 3px; padding: 3px 5px; background-color: #fef2f2; text-align: center;">
+          <span style="display: block; font-size: 7px; text-transform: uppercase; font-weight: 700; color: #991b1b;">EXPENDITURE (-)</span>
+          <strong style="display: block; font-size: 10px; font-family: monospace; font-weight: 900; color: #b91c1c;">Rs. ${formatCurrency2Decimals(hr.totalExpenditure)}</strong>
         </div>
-        <div style="border: 1px solid #bfdbfe; border-radius: 4px; padding: 4px 6px; background-color: #eff6ff; text-align: center;">
-          <span style="display: block; font-size: 7.5px; text-transform: uppercase; font-weight: 700; color: #1e40af;">CLOSING (C/D)</span>
-          <strong style="display: block; font-size: 11px; font-family: monospace; font-weight: 900; color: #1d4ed8;">Rs. ${formatCurrency2Decimals(hr.closingUnspentBalance)}</strong>
+        <div style="border: 1px solid #bfdbfe; border-radius: 3px; padding: 3px 5px; background-color: #eff6ff; text-align: center;">
+          <span style="display: block; font-size: 7px; text-transform: uppercase; font-weight: 700; color: #1e40af;">CLOSING (C/D)</span>
+          <strong style="display: block; font-size: 10px; font-family: monospace; font-weight: 900; color: #1d4ed8;">Rs. ${formatCurrency2Decimals(hr.closingUnspentBalance)}</strong>
         </div>
       </div>
     `;
@@ -1816,18 +1952,20 @@ export function generateMultiHeadStatementPrintHtml(params: {
     `;
 
     return `
-      <div style="margin-top: 18px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; background: #ffffff; page-break-inside: avoid;">
-        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #0b2545; padding-bottom: 5px; margin-bottom: 8px;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="background: #0b2545; color: #ffffff; font-size: 9px; font-weight: 900; font-family: monospace; padding: 2px 7px; border-radius: 4px;">#${idx + 1}</span>
-            <strong style="font-size: 11px; color: #0f172a; text-transform: uppercase;">${headCode} — ${headTitle}</strong>
+      <div class="head-section">
+        <div class="head-top-block">
+          <div class="head-title-bar">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="background: #0b2545; color: #ffffff; font-size: 8.5px; font-weight: 900; font-family: monospace; padding: 1px 6px; border-radius: 3px;">#${idx + 1}</span>
+              <strong style="font-size: 10.5px; color: #0f172a; text-transform: uppercase;">${headCode} — ${headTitle}</strong>
+            </div>
+            <div style="font-size: 8px; font-family: monospace; color: #64748b;">
+              ${hr.allRows.length} Line Items • ${hr.headCodeText}
+            </div>
           </div>
-          <div style="font-size: 9px; font-family: monospace; color: #64748b;">
-            ${hr.allRows.length} Line Items • ${hr.headCodeText}
-          </div>
-        </div>
 
-        ${perHeadKpiHtml}
+          ${perHeadKpiHtml}
+        </div>
 
         <table>
           <thead>
@@ -1862,10 +2000,14 @@ export function generateMultiHeadStatementPrintHtml(params: {
         <style>
           @page {
             size: A4 landscape;
-            margin: 8mm 8mm;
+            margin: 6mm 6mm;
           }
           @media print {
             body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .head-section {
+              break-inside: auto !important;
+              page-break-inside: auto !important;
+            }
           }
           * { box-sizing: border-box; }
           body {
@@ -1873,24 +2015,26 @@ export function generateMultiHeadStatementPrintHtml(params: {
             color: #0f172a;
             background: #ffffff;
             margin: 0;
-            padding: 8px;
-            font-size: 8.5px;
-            line-height: 1.25;
+            padding: 0;
+            font-size: 8px;
+            line-height: 1.2;
           }
           .header-container {
             display: flex;
             align-items: center;
             justify-content: space-between;
             border-bottom: 2px solid #0b2545;
-            padding-bottom: 8px;
-            margin-bottom: 10px;
+            padding-bottom: 5px;
+            margin-bottom: 6px;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
-          .logo-box { width: 50px; height: 50px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-          .logo-box img { max-width: 50px; max-height: 50px; object-fit: contain; }
-          .inst-center { text-align: center; flex: 1; margin: 0 10px; }
+          .logo-box { width: 44px; height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+          .logo-box img { max-width: 44px; max-height: 44px; object-fit: contain; }
+          .inst-center { text-align: center; flex: 1; margin: 0 8px; }
           .inst-h1 { font-size: 13px; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; margin: 0; color: #0b2545; }
-          .inst-sub { font-size: 8.5px; color: #475569; font-weight: 600; margin: 1px 0 0 0; }
-          .statement-badge { display: inline-block; font-size: 10px; font-weight: 900; text-transform: uppercase; background: #0b2545; color: #ffffff; padding: 2px 10px; border-radius: 4px; margin-top: 3px; }
+          .inst-sub { font-size: 8px; color: #475569; font-weight: 600; margin: 1px 0 0 0; }
+          .statement-badge { display: inline-block; font-size: 9.5px; font-weight: 900; text-transform: uppercase; background: #0b2545; color: #ffffff; padding: 2px 8px; border-radius: 3px; margin-top: 2px; }
           .meta-side-box {
             font-size: 7.5px;
             font-family: monospace;
@@ -1898,7 +2042,8 @@ export function generateMultiHeadStatementPrintHtml(params: {
             text-align: right;
             border-left: 1px solid #cbd5e1;
             padding-left: 8px;
-            line-height: 1.4;
+            line-height: 1.35;
+            white-space: nowrap;
           }
           .badges-strip {
             display: flex;
@@ -1906,7 +2051,7 @@ export function generateMultiHeadStatementPrintHtml(params: {
             justify-content: center;
             gap: 4px;
             flex-wrap: wrap;
-            margin-top: 3px;
+            margin-top: 2px;
           }
           .head-badge {
             background: #e2e8f0;
@@ -1915,29 +2060,81 @@ export function generateMultiHeadStatementPrintHtml(params: {
             border-radius: 3px;
             font-weight: 800;
             font-family: monospace;
-            font-size: 8px;
+            font-size: 7.5px;
             border: 1px solid #cbd5e1;
           }
           .grand-kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin-bottom: 12px;
+            gap: 6px;
+            margin-bottom: 6px;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
-          table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 8px; }
+          .head-section {
+            margin-top: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 6px 8px;
+            background: #ffffff;
+            break-inside: auto;
+            page-break-inside: auto;
+          }
+          .head-section:first-of-type {
+            margin-top: 2px;
+          }
+          .head-top-block {
+            break-inside: avoid;
+            page-break-inside: avoid;
+            break-after: avoid;
+            page-break-after: avoid;
+          }
+          .head-title-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1.5px solid #0b2545;
+            padding-bottom: 4px;
+            margin-bottom: 5px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 2px;
+            font-size: 7.8px;
+            break-inside: auto;
+            page-break-inside: auto;
+          }
+          thead {
+            display: table-header-group;
+            break-inside: avoid;
+            page-break-inside: avoid;
+            break-after: avoid;
+          }
+          tbody {
+            break-inside: auto;
+            page-break-inside: auto;
+          }
+          tfoot {
+            display: table-footer-group;
+          }
+          tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
           th {
             background-color: #0b2545;
             color: #ffffff;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.3px;
-            padding: 4px 4px;
+            padding: 3.5px 3px;
             border: 1px solid #0b2545;
             font-size: 7.5px;
             text-align: center;
           }
           td {
-            padding: 3px 4px;
+            padding: 2.5px 3px;
             border: 1px solid #cbd5e1;
             vertical-align: middle;
           }
@@ -1950,19 +2147,20 @@ export function generateMultiHeadStatementPrintHtml(params: {
           .text-emerald { color: #15803d; font-weight: 700; }
           .text-rose { color: #b91c1c; font-weight: 700; }
           .text-navy { color: #0b2545; font-weight: 900; }
-          .opening-row { background-color: #f1f5f9 !important; }
-          .subtotal-row { background-color: #e2e8f0 !important; }
-          .closing-row { background-color: #eff6ff !important; border-top: 1.5px solid #0b2545; }
+          .opening-row { background-color: #f1f5f9 !important; break-inside: avoid; page-break-inside: avoid; }
+          .subtotal-row { background-color: #e2e8f0 !important; break-inside: avoid; page-break-inside: avoid; }
+          .closing-row { background-color: #eff6ff !important; border-top: 1.5px solid #0b2545; break-inside: avoid; page-break-inside: avoid; }
           .bold-text { font-weight: 700; color: #0f172a; }
           .desc-text { color: #475569; font-size: 7.5px; }
           .bill-info-text { font-family: monospace; font-size: 7px; color: #0284c7; }
           .signatures-container {
-            margin-top: 24px;
-            padding-top: 8px;
+            margin-top: 16px;
+            padding-top: 6px;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 20px;
             text-align: center;
+            break-inside: avoid;
             page-break-inside: avoid;
           }
           .sig-column {
@@ -1971,14 +2169,16 @@ export function generateMultiHeadStatementPrintHtml(params: {
             font-size: 8px;
           }
           .official-footer-strip {
-            margin-top: 12px;
-            padding-top: 5px;
+            margin-top: 8px;
+            padding-top: 4px;
             border-top: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
             font-size: 7px;
             font-family: monospace;
             color: #94a3b8;
+            break-inside: avoid;
+            page-break-inside: avoid;
           }
         </style>
       </head>

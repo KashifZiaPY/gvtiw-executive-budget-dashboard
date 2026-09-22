@@ -38,6 +38,9 @@ import {
   MultiHeadReportResult,
   CashBookStatementRow,
   resolveBankKeyFromAccount,
+  parseDateToTimestamp,
+  normalizeHeadString,
+  extractHeadCode,
   formatGeneratedTimestamp,
   buildPeriodLabel,
 } from '../lib/reportingEngine';
@@ -451,21 +454,43 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   const filteredVouchers = useMemo(() => {
     return vouchers.filter((v) => {
       // Bank filter
-      if (selectedBank !== 'ALL' && !v.bankAccount.includes(selectedBank)) return false;
+      if (selectedBank !== 'ALL') {
+        const vBankKey = resolveBankKeyFromAccount(v.bankAccount);
+        const selBankKey = resolveBankKeyFromAccount(selectedBank);
+        const bankMatches = vBankKey === selBankKey || v.bankAccount.toUpperCase().includes(selectedBank.toUpperCase());
+        if (!bankMatches) return false;
+      }
 
       // Date filter
       const vDateStr = v.chequeDate || v.billDate;
       if (fromDate || toDate) {
-        const vTime = new Date(vDateStr).getTime();
-        if (fromDate && vTime < new Date(fromDate).getTime()) return false;
-        if (toDate && vTime > new Date(toDate).getTime()) return false;
+        const vTime = parseDateToTimestamp(vDateStr);
+        const fromTs = fromDate ? parseDateToTimestamp(fromDate) : 0;
+        const toTs = toDate ? parseDateToTimestamp(toDate) + 86400000 - 1 : Infinity;
+        if (fromTs > 0 && vTime < fromTs) return false;
+        if (vTime > toTs) return false;
       }
 
       // Tab-specific filters
       if (activeReportTab === 'HEAD') {
         const isAll = selectedHeads.length === 0 || selectedHeads.includes('ALL');
-        if (!isAll && !selectedHeads.includes(v.accountHead)) {
-          return false;
+        if (!isAll) {
+          const normVHead = normalizeHeadString(v.accountHead);
+          const vCode = extractHeadCode(v.accountHead).toLowerCase();
+          const matchHead = selectedHeads.some((sh) => {
+            const shNorm = normalizeHeadString(sh);
+            const shCode = extractHeadCode(sh).toLowerCase();
+            return (
+              shNorm === normVHead ||
+              shNorm === vCode ||
+              normVHead.startsWith(shNorm) ||
+              shNorm.startsWith(normVHead) ||
+              (shCode.length >= 4 && (normVHead.startsWith(shCode) || vCode === shCode))
+            );
+          });
+          if (!matchHead) {
+            return false;
+          }
         }
       }
 
