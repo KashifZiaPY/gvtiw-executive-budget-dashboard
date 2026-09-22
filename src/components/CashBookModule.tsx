@@ -20,6 +20,10 @@ import {
   formatCashBookBillInfo,
   parseDateToTimestamp,
   generateCashBookStatementData,
+  isNavttcHead,
+  compareChequeWiseThenDate,
+  compareCashBookItems,
+  NAVTTC_OPENING_GRANT_BALANCE,
 } from '../lib/reportingEngine';
 import { getOpeningBalance } from '../lib/balanceEngine';
 import { formatPKR, format12HourDate, formatPakistaniDate } from '../lib/formatters';
@@ -41,6 +45,8 @@ import {
   Trash2,
   X,
   Building2,
+  GraduationCap,
+  ArrowUpDown,
 } from 'lucide-react';
 import { AccountHeadDisplay } from './AccountHeadTag';
 import { TfcChallanHub } from './TfcChallanHub';
@@ -77,6 +83,10 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
   const [customFromDate, setCustomFromDate] = useState('');
   const [customToDate, setCustomToDate] = useState('');
   const [selectedVoucherForPAF, setSelectedVoucherForPAF] = useState<MasterVoucher | null>(null);
+
+  // Sub-Ledger Presentation States for Non-Salary Account (allows extracting dedicated NAVTTC cashbook)
+  const [nsSubMode, setNsSubMode] = useState<'ALL' | 'REGULAR' | 'NAVTTC'>('ALL');
+  const [navttcSortOrder, setNavttcSortOrder] = useState<'CHEQUE_THEN_DATE' | 'DATE_THEN_CHEQUE'>('CHEQUE_THEN_DATE');
 
   // Custom User Recorded Receipt Modal
   const [showRecordReceiptModal, setShowRecordReceiptModal] = useState(false);
@@ -181,6 +191,62 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
 
   const currentAccount = cashBookStates[activeAccountKey];
 
+  const isNavttcActive = activeAccountKey === 'NS' && nsSubMode === 'NAVTTC';
+  const isRegularNsActive = activeAccountKey === 'NS' && nsSubMode === 'REGULAR';
+
+  // Compute full-year unspent closing balance for NAVTTC (to display on the tab badge)
+  const navttcFullClosingBalance = useMemo(() => {
+    const allNsStatement = generateCashBookStatementData(
+      liveVouchers,
+      cashBookStates,
+      'NS',
+      undefined,
+      undefined
+    );
+    const allNsRows = allNsStatement.groups.length > 0 ? allNsStatement.groups[0].rows : [];
+    let totRec = 0;
+    let totPay = 0;
+    for (const r of allNsRows) {
+      if (isNavttcHead(r.accountHead)) {
+        totRec += r.receipts || 0;
+        totPay += r.payments || 0;
+      }
+    }
+    return Math.round((NAVTTC_OPENING_GRANT_BALANCE + totRec - totPay) * 100) / 100;
+  }, [liveVouchers, cashBookStates]);
+
+  // Active Folio Metadata for title, bank details, and exports
+  const activeFolioMeta = useMemo(() => {
+    if (isNavttcActive) {
+      return {
+        fullName: 'NAVTTC Special Training Program Cash Book (FY 2026-2027)',
+        shortName: 'NAVTTC Program',
+        code: 'NAVTTC',
+        accountNo: '6580006795600014 (Sub-Ledger)',
+        bankName: 'The Bank of Punjab (BOP)',
+        branch: 'Samanabad, Faisalabad',
+        themeColor: {
+          primary: '#059669',
+          badgeBg: 'bg-emerald-950/60',
+          badgeBorder: 'border-emerald-500/40',
+          text: 'text-emerald-300',
+        },
+      };
+    }
+    if (isRegularNsActive) {
+      return {
+        fullName: 'Regular Non-Salary (Excluding NAVTTC) Cash Book',
+        shortName: 'Regular Non-Salary',
+        code: 'NS-REG',
+        accountNo: '6580006795600014',
+        bankName: currentAccount.meta.bankName,
+        branch: currentAccount.meta.branch,
+        themeColor: currentAccount.meta.themeColor,
+      };
+    }
+    return currentAccount.meta;
+  }, [isNavttcActive, isRegularNsActive, currentAccount]);
+
   // Map period filter to date range and label
   const periodDateRange = useMemo(() => {
     if (periodFilter === 'JUL') {
@@ -219,14 +285,111 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     );
   }, [liveVouchers, cashBookStates, activeAccountKey, periodDateRange.fromDate, periodDateRange.toDate]);
 
+  // Core Active Ledger Data:
+  // For standard accounts (PF, FC, SEC, SC, AA) and All-NS ('ALL'), strictly preserves existing statementData.
+  // For 'NAVTTC', extracts NAVTTC records from NS, sorts cheque-wise then date-wise, and calculates running balance.
+  // For 'REGULAR', filters out NAVTTC records from NS.
+  const activeLedgerData = useMemo(() => {
+    if (activeAccountKey !== 'NS' || nsSubMode === 'ALL') {
+      const rawRows = statementData.groups.length > 0 ? statementData.groups[0].rows : [];
+      return {
+        openingBalance: statementData.openingBalance,
+        rows: rawRows,
+        totalReceipts: statementData.totalReceipts,
+        totalPayments: statementData.totalPayments,
+        closingBalance: statementData.closingBalance,
+      };
+    }
+
+    // We are on NS with a sub-mode ('NAVTTC' or 'REGULAR')
+    const allNsStatement = generateCashBookStatementData(
+      liveVouchers,
+      cashBookStates,
+      'NS',
+      undefined,
+      undefined
+    );
+    const allNsRows = allNsStatement.groups.length > 0 ? allNsStatement.groups[0].rows : [];
+
+    const isNavttc = nsSubMode === 'NAVTTC';
+    const subRowsAllTime = allNsRows.filter((r) => {
+      const match = isNavttcHead(r.accountHead);
+      return isNavttc ? match : !match;
+    });
+
+    const baseOpening = isNavttc
+      ? NAVTTC_OPENING_GRANT_BALANCE
+      : Math.round(((cashBookStates.NS?.openingBalance ?? 2387207) - NAVTTC_OPENING_GRANT_BALANCE) * 100) / 100;
+
+    const fromTs = periodDateRange.fromDate ? parseDateToTimestamp(periodDateRange.fromDate) : null;
+    const toTs = periodDateRange.toDate ? parseDateToTimestamp(periodDateRange.toDate) : null;
+
+    let preRec = 0;
+    let prePay = 0;
+    const inPeriodRows: typeof allNsRows = [];
+
+    for (const r of subRowsAllTime) {
+      const dTs = parseDateToTimestamp(r.date);
+      if (fromTs !== null && dTs < fromTs) {
+        preRec += r.receipts || 0;
+        prePay += r.payments || 0;
+      } else if (toTs === null || dTs <= toTs) {
+        inPeriodRows.push({ ...r });
+      }
+    }
+
+    const effectiveOpening = Math.round((baseOpening + preRec - prePay) * 100) / 100;
+
+    // Apply sort order
+    if (isNavttc && navttcSortOrder === 'CHEQUE_THEN_DATE') {
+      inPeriodRows.sort(compareChequeWiseThenDate);
+    } else {
+      inPeriodRows.sort(compareCashBookItems);
+    }
+
+    // Sequentially compute exact running balance in active display order
+    let runningBal = effectiveOpening;
+    let totRec = 0;
+    let totPay = 0;
+
+    const finalRows = inPeriodRows.map((r) => {
+      const rec = r.receipts || 0;
+      const pay = r.payments || 0;
+      totRec += rec;
+      totPay += pay;
+      runningBal = Math.round((runningBal + rec - pay) * 100) / 100;
+      return {
+        ...r,
+        balance: runningBal,
+      };
+    });
+
+    return {
+      openingBalance: effectiveOpening,
+      rows: finalRows,
+      totalReceipts: Math.round(totRec * 100) / 100,
+      totalPayments: Math.round(totPay * 100) / 100,
+      closingBalance: runningBal,
+    };
+  }, [
+    activeAccountKey,
+    nsSubMode,
+    statementData,
+    liveVouchers,
+    cashBookStates,
+    periodDateRange.fromDate,
+    periodDateRange.toDate,
+    navttcSortOrder,
+  ]);
+
   // Rolling running opening balance before the selected period starts
   const periodOpeningBalance = useMemo(() => {
-    return statementData.openingBalance;
-  }, [statementData.openingBalance]);
+    return activeLedgerData.openingBalance;
+  }, [activeLedgerData.openingBalance]);
 
   // Filtered Ledger Entries by Search & Period Range (interleaved chronologically with running balances)
   const filteredEntries = useMemo(() => {
-    const rawRows = statementData.groups.length > 0 ? statementData.groups[0].rows : [];
+    const rawRows = activeLedgerData.rows;
     
     // Map CashBookStatementRow to CashBookEntry format compatible with table and exports
     const mappedEntries: CashBookEntry[] = rawRows.map((r, idx) => {
@@ -280,16 +443,16 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         entry.voucherSerial.toLowerCase().includes(t)
       );
     });
-  }, [statementData, searchTerm]);
+  }, [activeLedgerData.rows, searchTerm]);
 
   // Period-aware financial totals (opening balance, total receipts, total payments, net closing balance)
   const periodFinancials = useMemo(() => {
     if (!searchTerm) {
       return {
-        openingBalance: statementData.openingBalance,
-        totalReceipts: statementData.totalReceipts,
-        totalPayments: statementData.totalPayments,
-        closingBalance: statementData.closingBalance,
+        openingBalance: activeLedgerData.openingBalance,
+        totalReceipts: activeLedgerData.totalReceipts,
+        totalPayments: activeLedgerData.totalPayments,
+        closingBalance: activeLedgerData.closingBalance,
       };
     }
     let totRec = 0;
@@ -305,7 +468,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       totalPayments: Math.round(totPay * 100) / 100,
       closingBalance: closeBal,
     };
-  }, [searchTerm, statementData, filteredEntries, periodOpeningBalance]);
+  }, [searchTerm, activeLedgerData, filteredEntries, periodOpeningBalance]);
 
   // Find linked voucher for a given entry
   const voucherMap = useMemo(() => {
@@ -363,8 +526,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       'data:text/csv;charset=utf-8,' +
       [
         '"Source: CashBook → Double-Column Folio"',
-        `CashBook: ${currentAccount.meta.fullName} - Account No: ${currentAccount.meta.accountNo}`,
-        `Period: ${periodDateRange.label} | Opening Balance: ${periodFinancials.openingBalance} | Total Receipts: ${periodFinancials.totalReceipts} | Total Payments: ${periodFinancials.totalPayments} | Closing Balance: ${periodFinancials.closingBalance}`,
+        `CashBook: ${activeFolioMeta.fullName} - Account No: ${activeFolioMeta.accountNo}`,
+        `Period: ${periodDateRange.label} | Opening Balance: ${periodFinancials.openingBalance} | Total Receipts: ${periodFinancials.totalReceipts} | Total Payments: ${periodFinancials.totalPayments} | Closing Balance: ${periodFinancials.closingBalance}${isNavttcActive ? ` | Sort: ${navttcSortOrder}` : ''}`,
         headers.join(','),
         ...rows.map((r) => r.join(',')),
         '',
@@ -374,7 +537,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `GVTIW_CashBook_${activeAccountKey}_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `GVTIW_CashBook_${activeFolioMeta.code}_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -424,7 +587,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>CashBook - ${currentAccount.meta.shortName} (FY 2026-27)</title>
+          <title>CashBook - ${activeFolioMeta.shortName} (FY 2026-27)</title>
           <style>
             @page { size: A4 landscape; margin: 8mm; }
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; font-size: 11px; }
@@ -432,12 +595,14 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
             .header-box h1 { font-size: 16px; margin: 0; text-transform: uppercase; color: #0f172a; font-weight: 900; }
             .header-box h2 { font-size: 13px; margin: 3px 0 0 0; text-transform: uppercase; color: #1e3a8a; font-weight: 800; }
             .header-box p { font-size: 10px; margin: 2px 0 0 0; color: #475569; font-weight: 600; font-family: monospace; }
-            .meta-strip { display: flex; justify-content: space-between; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; margin-bottom: 12px; font-size: 11px; font-weight: bold; }
+            .meta-strip { display: flex; justify-content: space-between; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; margin-bottom: 12px; font-size: 11px; font-weight: bold; flex-wrap: wrap; gap: 6px; }
             .metrics-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; text-align: center; }
             .metric-card { border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px; background-color: #f8fafc; }
             .metric-card span { display: block; font-size: 9px; text-transform: uppercase; color: #64748b; font-weight: bold; }
             .metric-card strong { font-size: 13px; font-family: monospace; }
-            table { width: 100%; border-collapse: collapse; font-size: 10px; }
+            table { width: 100%; border-collapse: collapse; font-size: 10px; break-inside: auto; }
+            thead { display: table-header-group; }
+            tr { break-inside: avoid; }
             th { background-color: #0f172a; color: #ffffff; padding: 6px 4px; text-align: left; font-size: 9px; text-transform: uppercase; border: 1px solid #0f172a; }
             .sig-box { margin-top: 35px; display: flex; justify-content: space-between; page-break-inside: avoid; }
             .sig-col { text-align: center; width: 28%; border-top: 1px solid #475569; padding-top: 6px; }
@@ -450,12 +615,13 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
             <div style="font-size: 8px; font-family: monospace; color: #475569; font-weight: bold; margin-bottom: 3px;">Source: CashBook → Double-Column Folio</div>
             <p>TECHNICAL EDUCATION & VOCATIONAL TRAINING AUTHORITY • GOVERNMENT OF PUNJAB</p>
             <h1>GOVT. VOCATIONAL TRAINING INSTITUTE FOR WOMEN SAMANABAD, FAISALABAD</h1>
-            <h2>OFFICIAL CASH BOOK FOLIO — FY 2026-2027</h2>
-            <p>${currentAccount.meta.fullName} • A/C NO: ${currentAccount.meta.accountNo} (${currentAccount.meta.bankName})</p>
+            <h2>${isNavttcActive ? 'OFFICIAL NAVTTC SPECIAL CASH BOOK FOLIO — FY 2026-2027' : 'OFFICIAL CASH BOOK FOLIO — FY 2026-2027'}</h2>
+            <p>${activeFolioMeta.fullName} • A/C NO: ${activeFolioMeta.accountNo} (${activeFolioMeta.bankName})</p>
           </div>
 
           <div class="meta-strip">
-            <div><span>Account: </span>${currentAccount.meta.shortName} (${currentAccount.meta.code})</div>
+            <div><span>Account: </span>${activeFolioMeta.shortName} (${activeFolioMeta.code})</div>
+            ${isNavttcActive ? `<div><span>Sort: </span>${navttcSortOrder === 'CHEQUE_THEN_DATE' ? 'Cheque-wise → Date-wise' : 'Date-wise → Cheque-wise'}</div>` : ''}
             <div><span>Period Filter: </span>${periodDateRange.label}</div>
             <div><span>Total Records: </span>${filteredEntries.length}</div>
             <div><span>Printed Date: </span>${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
@@ -553,12 +719,17 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           {(Object.keys(INSTITUTIONAL_BANK_ACCOUNTS) as BankAccountKey[]).map((key) => {
             const accMeta = INSTITUTIONAL_BANK_ACCOUNTS[key];
             const state = cashBookStates[key];
-            const isActive = activeAccountKey === key;
+            const isActive = activeAccountKey === key && (key !== 'NS' || nsSubMode !== 'NAVTTC');
 
             return (
               <button
                 key={key}
-                onClick={() => setActiveAccountKey(key)}
+                onClick={() => {
+                  setActiveAccountKey(key);
+                  if (key === 'NS' && nsSubMode === 'NAVTTC') {
+                    setNsSubMode('ALL');
+                  }
+                }}
                 className={`flex-1 min-w-[170px] p-3 rounded-xl border text-left transition-all cursor-pointer ${
                   isActive
                     ? darkMode
@@ -600,7 +771,159 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
               </button>
             );
           })}
+
+          {/* Dedicated NAVTTC Special Sub-Ledger Quick Tab */}
+          <button
+            onClick={() => {
+              setActiveAccountKey('NS');
+              setNsSubMode('NAVTTC');
+            }}
+            className={`flex-1 min-w-[185px] p-3 rounded-xl border text-left transition-all cursor-pointer ${
+              isNavttcActive
+                ? darkMode
+                  ? 'bg-emerald-950/60 border-emerald-400 text-white shadow-lg ring-1 ring-emerald-400/50'
+                  : 'bg-emerald-50 border-emerald-600 text-emerald-950 shadow-md ring-1 ring-emerald-600/30'
+                : darkMode
+                ? 'bg-slate-900/50 border-slate-800 text-slate-400 hover:bg-slate-800/80 hover:text-white'
+                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-extrabold text-xs tracking-wider uppercase flex items-center gap-1.5">
+                <GraduationCap className="w-3.5 h-3.5 text-emerald-400" />
+                NAVTTC Special
+              </span>
+              <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold ${
+                isNavttcActive
+                  ? 'bg-emerald-600 text-white'
+                  : darkMode
+                  ? 'bg-emerald-950/70 border border-emerald-600/40 text-emerald-300'
+                  : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+              }`}>
+                SUB-CB
+              </span>
+            </div>
+            <p className={`text-[10px] font-mono truncate ${darkMode ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+              Extracted from NS BOP
+            </p>
+            <p className={`text-sm font-black font-mono mt-1 ${
+              isNavttcActive
+                ? darkMode
+                  ? 'text-emerald-300'
+                  : 'text-emerald-700 font-black'
+                : darkMode
+                ? 'text-emerald-400'
+                : 'text-emerald-700 font-bold'
+            }`}>
+              {formatPKR(navttcFullClosingBalance, false)}
+            </p>
+          </button>
         </div>
+
+        {/* Sub-Ledger Presentation Modes for Non-Salary BOP Account */}
+        {activeAccountKey === 'NS' && (
+          <div className={`mt-2.5 pt-2.5 border-t flex flex-wrap items-center justify-between gap-3 px-2 ${
+            darkMode ? 'border-slate-800' : 'border-slate-200'
+          }`}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`text-xs font-bold uppercase tracking-wider ${
+                darkMode ? 'text-slate-400' : 'text-slate-600'
+              }`}>
+                NS Account Cashbook View:
+              </span>
+              <div className={`inline-flex rounded-lg p-0.5 border ${
+                darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-100 border-slate-300'
+              }`}>
+                <button
+                  onClick={() => setNsSubMode('ALL')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                    nsSubMode === 'ALL'
+                      ? darkMode
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white text-blue-950 shadow-xs'
+                      : darkMode
+                      ? 'text-slate-400 hover:text-white'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All NS (Consolidated BOP)
+                </button>
+                <button
+                  onClick={() => setNsSubMode('REGULAR')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                    nsSubMode === 'REGULAR'
+                      ? darkMode
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white text-blue-950 shadow-xs'
+                      : darkMode
+                      ? 'text-slate-400 hover:text-white'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Regular Non-Salary (Excl. NAVTTC)
+                </button>
+                <button
+                  onClick={() => setNsSubMode('NAVTTC')}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    nsSubMode === 'NAVTTC'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : darkMode
+                      ? 'text-emerald-400 hover:bg-emerald-950/40'
+                      : 'text-emerald-700 hover:bg-emerald-50'
+                  }`}
+                >
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>NAVTTC Special Cashbook</span>
+                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-950/70 border border-emerald-400/50 text-emerald-200 font-bold">
+                    Rs. {Number(navttcFullClosingBalance).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Sort Order Selector when NAVTTC Cashbook is active */}
+            {isNavttcActive && (
+              <div className="flex items-center gap-2">
+                <span className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1 ${
+                  darkMode ? 'text-slate-400' : 'text-slate-600'
+                }`}>
+                  <ArrowUpDown className="w-3.5 h-3.5 text-emerald-400" />
+                  Sort Order:
+                </span>
+                <div className={`inline-flex rounded-lg p-0.5 border ${
+                  darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-100 border-slate-300'
+                }`}>
+                  <button
+                    onClick={() => setNavttcSortOrder('CHEQUE_THEN_DATE')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                      navttcSortOrder === 'CHEQUE_THEN_DATE'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : darkMode
+                        ? 'text-slate-400 hover:text-white'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                    title="Display Cheque-wise, then Date-wise"
+                  >
+                    Cheque-Wise → Date-Wise
+                  </button>
+                  <button
+                    onClick={() => setNavttcSortOrder('DATE_THEN_CHEQUE')}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                      navttcSortOrder === 'DATE_THEN_CHEQUE'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : darkMode
+                        ? 'text-slate-400 hover:text-white'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                    title="Display Date-wise chronological order"
+                  >
+                    Date-Wise → Cheque-Wise
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ------------------------------------------------------------- */}
@@ -608,14 +931,22 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       {/* ------------------------------------------------------------- */}
       <div className={`p-5 rounded-2xl border relative overflow-hidden transition-all ${
         darkMode
-          ? 'bg-gradient-to-r from-[#0F1D3B] via-[#0B132B] to-[#132247] border-slate-700 text-white'
+          ? isNavttcActive
+            ? 'bg-gradient-to-r from-[#06241b] via-[#0B132B] to-[#0b291d] border-emerald-600/40 text-white'
+            : 'bg-gradient-to-r from-[#0F1D3B] via-[#0B132B] to-[#132247] border-slate-700 text-white'
+          : isNavttcActive
+          ? 'bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 border-emerald-800 text-white shadow-xl'
           : 'bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 border-slate-800 text-white shadow-xl'
       }`}>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase font-mono tracking-wider bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                Official Double-Column Folio (2026-27)
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase font-mono tracking-wider border ${
+                isNavttcActive
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                  : 'bg-blue-500/20 text-blue-300 border-blue-400/30'
+              }`}>
+                {isNavttcActive ? 'NAVTTC Special Sub-Ledger (2026-27)' : 'Official Double-Column Folio (2026-27)'}
               </span>
               <span className="flex items-center gap-1 text-[10px] text-emerald-300 font-mono bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-500/40 shadow-xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -623,14 +954,15 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                 {lastSyncTime && <span className="opacity-70">({lastSyncTime})</span>}
               </span>
               <span className="text-xs text-slate-300 font-mono">
-                {currentAccount.meta.bankName} • {currentAccount.meta.branch}
+                {activeFolioMeta.bankName} • {activeFolioMeta.branch}
               </span>
             </div>
-            <h2 className="text-lg sm:text-xl font-black tracking-tight mt-1 text-white uppercase">
-              {currentAccount.meta.fullName}
+            <h2 className="text-lg sm:text-xl font-black tracking-tight mt-1 text-white uppercase flex items-center gap-2">
+              {isNavttcActive && <GraduationCap className="w-5 h-5 text-emerald-400 shrink-0" />}
+              <span>{activeFolioMeta.fullName}</span>
             </h2>
             <p className="text-xs text-slate-300 font-mono mt-0.5">
-              Dedicated Ledger Account Number: <strong className="text-amber-300">{currentAccount.meta.accountNo}</strong>
+              Dedicated Ledger Account Number: <strong className="text-amber-300">{activeFolioMeta.accountNo}</strong>
             </p>
           </div>
 
@@ -653,7 +985,9 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
             </button>
             <button
               onClick={handlePrint}
-              className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              className={`px-3 py-2 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md transition-all cursor-pointer ${
+                isNavttcActive ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-blue-600 hover:bg-blue-500'
+              }`}
             >
               <Printer className="w-3.5 h-3.5 text-amber-300" />
               <span>Print CashBook</span>
@@ -665,7 +999,11 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-4 border-t border-white/10 text-xs font-mono">
           <div className="bg-black/30 p-3 rounded-xl border border-white/10">
             <span className="text-[10px] text-slate-400 block uppercase font-bold">
-              {activeAccountKey === 'AA' ? '1. Opening Assigned Ceiling' : '1. Opening Cash Balance'}
+              {isNavttcActive
+                ? '1. NAVTTC Opening Grant'
+                : activeAccountKey === 'AA'
+                ? '1. Opening Assigned Ceiling'
+                : '1. Opening Cash Balance'}
             </span>
             <span className="text-base font-black text-blue-300">
               {formatPKR(periodFinancials.openingBalance, false)}
@@ -694,7 +1032,11 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
 
           <div className="bg-black/30 p-3 rounded-xl border border-amber-400/30">
             <span className="text-[10px] text-amber-300 block uppercase font-black">
-              {activeAccountKey === 'AA' ? '4. Available Budget Ceiling' : '4. Net Bank Closing Balance'}
+              {isNavttcActive
+                ? '4. NAVTTC Unspent Balance'
+                : activeAccountKey === 'AA'
+                ? '4. Available Budget Ceiling'
+                : '4. Net Bank Closing Balance'}
             </span>
             <span className="text-base font-black text-amber-300">
               {formatPKR(periodFinancials.closingBalance, false)}
@@ -786,6 +1128,26 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
             {filteredEntries.length} Records
           </div>
         </div>
+
+        {/* Informative Guidance Banner for NAVTTC Special Sub-Ledger */}
+        {isNavttcActive && (
+          <div className="w-full mt-3 p-3 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-xs text-emerald-200 flex flex-wrap items-center justify-between gap-2 shadow-xs">
+            <div className="flex items-center gap-2">
+              <GraduationCap className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>
+                <strong>NAVTTC Special Training Program Cash Book:</strong> Displaying all NAVTTC heads extracted from BOP Non-Salary A/C <span className="font-mono text-emerald-300 font-bold">6580006795600014</span>.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] font-mono">
+              <span className="px-2.5 py-0.5 rounded bg-emerald-900/80 border border-emerald-500/50 text-emerald-300 font-bold">
+                Opening Grant: Rs. 1,223,066.00
+              </span>
+              <span className="px-2.5 py-0.5 rounded bg-emerald-900/80 border border-emerald-500/50 text-emerald-300 font-bold">
+                Sort: {navttcSortOrder === 'CHEQUE_THEN_DATE' ? 'Cheque-Wise → Date-Wise' : 'Date-Wise → Cheque-Wise'}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ------------------------------------------------------------- */}
@@ -815,7 +1177,11 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
             <tbody className={`divide-y font-sans ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
               
               {/* Opening Balance Row */}
-              <tr className={`font-bold ${darkMode ? 'bg-slate-900/60 text-slate-300' : 'bg-slate-100 text-slate-900'}`}>
+              <tr className={`font-bold ${
+                isNavttcActive
+                  ? darkMode ? 'bg-emerald-950/40 text-emerald-200' : 'bg-emerald-50/80 text-emerald-950'
+                  : darkMode ? 'bg-slate-900/60 text-slate-300' : 'bg-slate-100 text-slate-900'
+              }`}>
                 <td className={`py-2.5 px-2 text-center font-mono ${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>—</td>
                 <td className={`py-2.5 px-3 font-mono font-bold ${darkMode ? 'text-slate-300' : 'text-slate-950'}`}>
                   {periodDateRange.displayStartDate}
@@ -824,13 +1190,25 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                   {periodDateRange.displayMonth}
                 </td>
                 <td className={`py-2.5 px-2 text-center font-mono ${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>—</td>
-                <td colSpan={3} className={`py-2.5 px-4 font-black uppercase ${darkMode ? 'text-blue-400' : 'text-blue-950'}`}>
-                  OPENING BALANCE BROUGHT FORWARD ({periodDateRange.label})
+                <td colSpan={3} className={`py-2.5 px-4 font-black uppercase ${
+                  isNavttcActive
+                    ? darkMode ? 'text-emerald-400' : 'text-emerald-900'
+                    : darkMode ? 'text-blue-400' : 'text-blue-950'
+                }`}>
+                  {isNavttcActive
+                    ? `NAVTTC OPENING SPECIAL GRANT ALLOCATION BROUGHT FORWARD (${periodDateRange.label})`
+                    : isRegularNsActive
+                    ? `REGULAR NON-SALARY OPENING BALANCE BROUGHT FORWARD (${periodDateRange.label})`
+                    : `OPENING BALANCE BROUGHT FORWARD (${periodDateRange.label})`}
                 </td>
                 <td className={`py-2.5 px-3 text-center font-mono ${darkMode ? 'text-slate-500' : 'text-slate-600'}`}>—</td>
                 <td className={`py-2.5 px-3 text-right font-mono font-bold ${darkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>—</td>
                 <td className={`py-2.5 px-3 text-right font-mono font-bold ${darkMode ? 'text-rose-400' : 'text-rose-700'}`}>—</td>
-                <td className={`py-2.5 px-3 text-right font-mono font-black ${darkMode ? 'text-amber-300' : 'text-amber-900'}`}>
+                <td className={`py-2.5 px-3 text-right font-mono font-black ${
+                  isNavttcActive
+                    ? darkMode ? 'text-emerald-300' : 'text-emerald-900'
+                    : darkMode ? 'text-amber-300' : 'text-amber-900'
+                }`}>
                   {formatPKR(periodFinancials.openingBalance, false)}
                 </td>
                 <td className="py-2.5 px-2 text-center text-slate-400">—</td>

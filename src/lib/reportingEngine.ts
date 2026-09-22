@@ -218,6 +218,89 @@ export function isBankChargeVoucher(v: MasterVoucher): boolean {
 }
 
 /**
+ * NAVTTC Grant Opening Balance (Total Brought Forward Allocation)
+ * A00000NTTM (527,067) + A00000NTTR (463,120) + A00000NTADC (-9,293) + A00000NTOH (190,075) + A00000NTADM (52,097) = 1,223,066.00
+ */
+export const NAVTTC_OPENING_GRANT_BALANCE = 1223066.0;
+
+/**
+ * Checks if a budget account head belongs to the NAVTTC Special Training Program
+ */
+export function isNavttcHead(head?: string): boolean {
+  if (!head) return false;
+  const h = head.toUpperCase();
+  return (
+    h.includes('NAVTTC') ||
+    h.startsWith('A00000NT') ||
+    h.includes('NTTM') ||
+    h.includes('NTTR') ||
+    h.includes('NTADC') ||
+    h.includes('NTOH') ||
+    h.includes('NTADM')
+  );
+}
+
+/**
+ * Cheque-wise, then Date-wise Comparator for CashBook Statement entries:
+ * 1. Cheque number (numerically ascending when both rows have a valid cheque)
+ * 2. Date (chronological ascending)
+ * 3. Voucher number as a tie-breaker
+ */
+export function compareChequeWiseThenDate(
+  a: {
+    chequeNo?: string;
+    dateTs?: number;
+    date?: string;
+    voucherNo?: string;
+    srNo?: number | string;
+    id?: string;
+  },
+  b: {
+    chequeNo?: string;
+    dateTs?: number;
+    date?: string;
+    voucherNo?: string;
+    srNo?: number | string;
+    id?: string;
+  }
+): number {
+  const hasA = hasValidChequeNo(a.chequeNo);
+  const hasB = hasValidChequeNo(b.chequeNo);
+
+  if (hasA && hasB) {
+    const chqA = (a.chequeNo || '').trim();
+    const chqB = (b.chequeNo || '').trim();
+    if (chqA !== chqB) {
+      const chqCmp = chqA.localeCompare(chqB, undefined, { numeric: true, sensitivity: 'base' });
+      if (chqCmp !== 0) return chqCmp;
+    }
+  } else if (hasA !== hasB) {
+    // Put valid cheque items in sequence
+    return hasA ? -1 : 1;
+  }
+
+  // Secondary: Date
+  const aTs = a.dateTs ?? parseDateToTimestamp(a.date);
+  const bTs = b.dateTs ?? parseDateToTimestamp(b.date);
+  if (aTs !== bTs) {
+    return aTs - bTs;
+  }
+
+  // Tertiary: Voucher number
+  const vNoA = (a.voucherNo || '').trim();
+  const vNoB = (b.voucherNo || '').trim();
+  if (vNoA && vNoB && vNoA !== '—' && vNoB !== '—' && vNoA !== vNoB) {
+    const vCmp = vNoA.localeCompare(vNoB, undefined, { numeric: true, sensitivity: 'base' });
+    if (vCmp !== 0) return vCmp;
+  }
+
+  // Fallback to srNo
+  const aSr = typeof a.srNo === 'number' ? a.srNo : parseInt(String(a.srNo || 0), 10) || 0;
+  const bSr = typeof b.srNo === 'number' ? b.srNo : parseInt(String(b.srNo || 0), 10) || 0;
+  return aSr - bSr;
+}
+
+/**
  * Universal Stable Deterministic Comparator for CashBook Statement entries:
  * 1. Date (primary, chronological ascending)
  * 2. Cheque number, numerically ascending when both rows have one (secondary)
@@ -225,25 +308,29 @@ export function isBankChargeVoucher(v: MasterVoucher): boolean {
  */
 export function compareCashBookItems(
   a: {
-    dateTs: number;
+    dateTs?: number;
+    date?: string;
     chequeNo?: string;
     chequeDateTs?: number;
     voucherNo?: string;
-    srNo?: number;
+    srNo?: number | string;
     id?: string;
   },
   b: {
-    dateTs: number;
+    dateTs?: number;
+    date?: string;
     chequeNo?: string;
     chequeDateTs?: number;
     voucherNo?: string;
-    srNo?: number;
+    srNo?: number | string;
     id?: string;
   }
 ): number {
   // 1. Primary: Date (chronological, ascending)
-  if (a.dateTs !== b.dateTs) {
-    return a.dateTs - b.dateTs;
+  const aTs = a.dateTs ?? parseDateToTimestamp(a.date);
+  const bTs = b.dateTs ?? parseDateToTimestamp(b.date);
+  if (aTs !== bTs) {
+    return aTs - bTs;
   }
 
   // 2. Secondary: Cheque number, numerically ascending when both rows have one
@@ -268,15 +355,15 @@ export function compareCashBookItems(
   }
 
   // Cheque date if available
-  const chqDateTsA = a.chequeDateTs ?? a.dateTs;
-  const chqDateTsB = b.chequeDateTs ?? b.dateTs;
+  const chqDateTsA = a.chequeDateTs ?? aTs;
+  const chqDateTsB = b.chequeDateTs ?? bTs;
   if (chqDateTsA !== chqDateTsB) {
     return chqDateTsA - chqDateTsB;
   }
 
   // Fallback to original entry sequence (srNo)
-  const srA = a.srNo ?? 0;
-  const srB = b.srNo ?? 0;
+  const srA = typeof a.srNo === 'number' ? a.srNo : parseInt(String(a.srNo || 0), 10) || 0;
+  const srB = typeof b.srNo === 'number' ? b.srNo : parseInt(String(b.srNo || 0), 10) || 0;
   if (srA !== srB) {
     return srA - srB;
   }
