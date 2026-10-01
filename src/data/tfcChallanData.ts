@@ -140,7 +140,8 @@ export function parseFeeRegisterStudentInfo(
   rawName: string,
   courseName?: string,
   paymentType?: string,
-  fallbackCourseAbbr?: string
+  fallbackCourseAbbr?: string,
+  totalAmount?: number
 ): FeeRegisterStudentInfo {
   const raw = String(rawName || '').trim();
   const parts = raw.split('-').map((p) => p.trim());
@@ -211,11 +212,30 @@ export function parseFeeRegisterStudentInfo(
     fatherName = sub[sub.length - 1].trim();
   }
 
-  // Check installment keywords in raw string or fatherName
-  const instRegex = /(inst\s*\d*|installment\s*\d*|1st\s*inst|2nd\s*inst)/i;
-  const matchInst = (raw + ' ' + pTypeStr).match(instRegex);
-  if (matchInst && !installmentNotice) {
-    installmentNotice = matchInst[0];
+  // Only Matric Vocational courses (9th: MVi & 10th: MVii) are entitled to pay in installments
+  const isMatricVocational = tradeCode === 'MVi' || tradeCode === 'MVii';
+
+  if (isMatricVocational) {
+    // Check installment keywords in raw string or paymentType
+    const instRegex = /(inst\s*\d*|installment\s*\d*|1st\s*inst|2nd\s*inst|3rd\s*inst)/i;
+    const matchInst = (raw + ' ' + pTypeStr).match(instRegex);
+    if (matchInst && !installmentNotice) {
+      installmentNotice = matchInst[0];
+    }
+
+    // Automatic installment recognition by fee structure
+    if (!installmentNotice && typeof totalAmount === 'number') {
+      if (tradeCode === 'MVi') {
+        if (totalAmount === 5234) {
+          installmentNotice = '1st Installment (Inst-1)';
+        } else if (totalAmount === 2244) {
+          installmentNotice = '2nd Installment (Inst-2)';
+        }
+      }
+    }
+  } else {
+    // All other courses are strictly Full Challan
+    installmentNotice = '';
   }
 
   const tradeTitle = COURSE_TITLE_MAP[tradeCode] || (courseName || tradeCode);

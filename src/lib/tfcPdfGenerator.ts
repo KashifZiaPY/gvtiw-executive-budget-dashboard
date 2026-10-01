@@ -191,25 +191,6 @@ export function generateReceiptsRegisterPdf(options: ReceiptsPdfOptions): void {
       12: { halign: 'right', cellWidth: 22, fontStyle: 'bold', fillColor: [238, 242, 255] }, // Inst Share
     },
     margin: { left: 10, right: 10, bottom: 20 },
-    didDrawPage: (data) => {
-      // Footer page count
-      const pageCount = doc.internal.pages.length - 1;
-      const currentPage = data.pageNumber;
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(148, 163, 184);
-      doc.text(
-        `Govt. Vocational Training Institute for Women, Samanabad Faisalabad — Official TFC Portal — Page ${currentPage} of ${pageCount}`,
-        10,
-        doc.internal.pageSize.getHeight() - 6
-      );
-      doc.text(
-        `Strictly for Institutional Audit & TEVTA Financial Reconciliation`,
-        pageWidth - 10,
-        doc.internal.pageSize.getHeight() - 6,
-        { align: 'right' }
-      );
-    },
   });
 
   // Signature section on the last page
@@ -246,6 +227,26 @@ export function generateReceiptsRegisterPdf(options: ReceiptsPdfOptions): void {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.text('Acting Principal / DDO / Approved by:', sig3X, signY + 4, { align: 'center' });
+
+  // Two-pass Footer
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `Govt. Vocational Training Institute for Women, Samanabad Faisalabad — Official TFC Portal`,
+      10,
+      pageHeight - 6
+    );
+    doc.text(
+      `Page ${i} of ${totalPages}`,
+      pageWidth - 10,
+      pageHeight - 6,
+      { align: 'right' }
+    );
+  }
 
   const cleanFilename = `GVTIW_TFC_${mode === 'DATE_WISE' ? 'Date_Wise_Receipts' : 'Month_Wise_Receipts'}_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(cleanFilename);
@@ -496,24 +497,6 @@ export function generateHardCashBookPdf(options: HardCashBookPdfOptions): void {
       14: { halign: 'right', cellWidth: 16, fontStyle: 'bold' }, // Inst
     },
     margin: { left: 8, right: 8, bottom: 20 },
-    didDrawPage: (data) => {
-      const pageCount = doc.internal.pages.length - 1;
-      const currentPage = data.pageNumber;
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(148, 163, 184);
-      doc.text(
-        `Govt. Vocational Training Institute for Women, Samanabad Faisalabad — TFC Hard CashBook Register — Page ${currentPage} of ${pageCount}`,
-        8,
-        doc.internal.pageSize.getHeight() - 6
-      );
-      doc.text(
-        `Reconciled against BOP Portal & Official Hard CashBook Ledger`,
-        pageWidth - 8,
-        doc.internal.pageSize.getHeight() - 6,
-        { align: 'right' }
-      );
-    },
   });
 
   // Signature section
@@ -550,6 +533,26 @@ export function generateHardCashBookPdf(options: HardCashBookPdfOptions): void {
   doc.setFontSize(7);
   doc.text('Acting Principal / DDO / Approved by:', sig3X, signY + 4, { align: 'center' });
 
+  // Two-pass Footer
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `Govt. Vocational Training Institute for Women, Samanabad Faisalabad — TFC Hard CashBook Register`,
+      8,
+      pageHeight - 6
+    );
+    doc.text(
+      `Page ${i} of ${totalPages}`,
+      pageWidth - 8,
+      pageHeight - 6,
+      { align: 'right' }
+    );
+  }
+
   const cleanFilename = `GVTIW_TFC_Hard_CashBook_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(cleanFilename);
 }
@@ -560,9 +563,11 @@ export interface FeeRegisterPdfRow {
   challanId: string;
   rollNo: string;
   traineeName: string;
+  cnic?: string;
   fatherName: string;
   admissionTuition: number;
   pupil25: number;
+  tevtaDues?: number;
   welfare75: number;
   sports: number;
   magazine: number;
@@ -570,6 +575,7 @@ export interface FeeRegisterPdfRow {
   library: number;
   security: number;
   boardOther: number;
+  instSubtotal?: number;
   totalAmount: number;
   remarks: string;
 }
@@ -582,6 +588,7 @@ export interface FeeRegisterTradeGroupPdf {
   subtotal: {
     admissionTuition: number;
     pupil25: number;
+    tevtaDues?: number;
     welfare75: number;
     sports: number;
     magazine: number;
@@ -601,6 +608,7 @@ export interface FeeRegisterPdfOptions {
   grandTotal: {
     admissionTuition: number;
     pupil25: number;
+    tevtaDues?: number;
     welfare75: number;
     sports: number;
     magazine: number;
@@ -658,19 +666,19 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
   doc.setTextColor(50, 50, 50);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Period / Filter: ${periodLabel}`, 8, 26);
-  doc.text(`Trade Filter: ${tradeFilterLabel}`, 90, 26);
+  doc.text(`Period / Filter: ${periodLabel}`, 6, 26);
+  doc.text(`Trade Filter: ${tradeFilterLabel}`, 88, 26);
   doc.text(`Total Trainees: ${totalTrainees} (${tradeGroups.length} Trades)`, 175, 26);
   doc.text(
     `Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString()}`,
-    pageWidth - 8,
+    pageWidth - 6,
     26,
     { align: 'right' }
   );
 
   // 3. Summary KPI Block
   doc.setFillColor(241, 245, 249);
-  doc.roundedRect(8, 29, pageWidth - 16, 11, 1.5, 1.5, 'F');
+  doc.roundedRect(6, 29, pageWidth - 12, 11, 1.5, 1.5, 'F');
   doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
 
@@ -683,9 +691,9 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
     { label: 'BOARD / OTHER DUES', value: `Rs. ${formatPKR(grandTotal.boardOther, false)}` },
   ];
 
-  const colW = (pageWidth - 20) / kpis.length;
+  const colW = (pageWidth - 12) / kpis.length;
   kpis.forEach((kpi, idx) => {
-    const x = 10 + idx * colW;
+    const x = 8 + idx * colW;
     doc.setTextColor(100, 116, 139);
     doc.text(kpi.label, x, 33);
     doc.setTextColor(15, 23, 42);
@@ -697,10 +705,8 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
   const tableHeaders: any[] = [
     [
       { content: 'TRAINEE PARTICULARS (COLS A TO F)', colSpan: 6, styles: { halign: 'center', fillColor: [15, 76, 60] } },
-      { content: 'TEVTA DUES (HO)', colSpan: 2, styles: { halign: 'center', fillColor: [30, 64, 175] } },
-      { content: 'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION', colSpan: 5, styles: { halign: 'center', fillColor: [13, 148, 136] } },
-      { content: 'SECURITY', colSpan: 1, styles: { halign: 'center', fillColor: [180, 83, 9] } },
-      { content: 'BOARD / OTH', colSpan: 1, styles: { halign: 'center', fillColor: [109, 40, 217] } },
+      { content: 'TEVTA DUES (HO)', colSpan: 3, styles: { halign: 'center', fillColor: [30, 64, 175] } },
+      { content: 'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION (COLS I TO O)', colSpan: 8, styles: { halign: 'center', fillColor: [13, 148, 136] } },
       { content: 'TOTAL', colSpan: 1, styles: { halign: 'center', fillColor: [15, 76, 60] } },
       { content: 'STATUS', colSpan: 1, styles: { halign: 'center', fillColor: [71, 85, 105] } },
     ],
@@ -713,13 +719,15 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
       'Father Name\n(F)',
       'Adm/Tuition\n(G)',
       '25% PF\n(H)',
-      'Welfare Fund\n(I)',
-      'Sports\n(J)',
-      'Magaz.\n(K)',
-      'Medical\n(L)',
-      'Library\n(M)',
+      'Subtotal\nTEVTA (G+H)',
+      'Welfare\nFund (I)',
+      'Stationary\nExam (J)',
+      'Computer\nFund (K)',
+      'M & E\nBreakage (L)',
+      'Sports\nFund (M)',
       'Security\n(N)',
       'Board/Oth\n(O)',
+      'Subtotal\n(I:O)',
       'Total PKR\n(P)',
       'Remarks\n(Q)',
     ],
@@ -733,7 +741,7 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
     tableBody.push([
       {
         content: `TRADE: ${group.tradeTitle.toUpperCase()} (${group.tradeCode}) — ${group.traineeCount} TRAINEES`,
-        colSpan: 17,
+        colSpan: 19,
         styles: {
           fillColor: [22, 101, 52] as [number, number, number],
           textColor: [255, 255, 255] as [number, number, number],
@@ -746,15 +754,18 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
 
     // Trainee Rows sorted chronologically by Date
     group.rows.forEach((r) => {
+      const tevtaSub = r.tevtaDues ?? (r.admissionTuition + r.pupil25);
+      const instSub = r.instSubtotal ?? (r.welfare75 + r.security + r.boardOther);
       tableBody.push([
         r.srNo,
         r.dateStr,
         r.challanId,
         r.rollNo,
-        r.traineeName,
+        r.cnic ? `${r.traineeName.toUpperCase()}\nCNIC: ${r.cnic}` : r.traineeName.toUpperCase(),
         r.fatherName,
         formatPKR(r.admissionTuition, false),
         formatPKR(r.pupil25, false),
+        formatPKR(tevtaSub, false),
         formatPKR(r.welfare75, false),
         '-',
         '-',
@@ -762,12 +773,15 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
         '-',
         formatPKR(r.security, false),
         r.boardOther === 0 ? '-' : formatPKR(r.boardOther, false),
+        formatPKR(instSub, false),
         formatPKR(r.totalAmount, false),
         r.remarks || 'Full Challan',
       ]);
     });
 
     // Trade Subtotal Row
+    const groupTevtaSub = group.subtotal.tevtaDues ?? (group.subtotal.admissionTuition + group.subtotal.pupil25);
+    const groupInstSub = group.subtotal.welfare75 + group.subtotal.security + group.subtotal.boardOther;
     tableBody.push([
       {
         content: `Subtotal (${group.tradeCode})`,
@@ -777,6 +791,7 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
           halign: 'right',
           fillColor: [240, 253, 244] as [number, number, number],
           textColor: [22, 101, 52] as [number, number, number],
+          fontSize: 7.0,
         },
       },
       {
@@ -786,6 +801,10 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
       {
         content: formatPKR(group.subtotal.pupil25, false),
         styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+      },
+      {
+        content: formatPKR(groupTevtaSub, false),
+        styles: { fontStyle: 'bold', fontSize: 7.2, halign: 'right', fillColor: [224, 242, 254] as [number, number, number], textColor: [30, 64, 175] as [number, number, number] },
       },
       {
         content: formatPKR(group.subtotal.welfare75, false),
@@ -804,8 +823,12 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
         styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
       },
       {
+        content: formatPKR(groupInstSub, false),
+        styles: { fontStyle: 'bold', fontSize: 7.2, halign: 'right', fillColor: [204, 251, 241] as [number, number, number], textColor: [15, 118, 110] as [number, number, number] },
+      },
+      {
         content: formatPKR(group.subtotal.totalAmount, false),
-        styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+        styles: { fontStyle: 'bold', fontSize: 7.5, halign: 'right', fillColor: [240, 253, 244] as [number, number, number], textColor: [22, 101, 52] as [number, number, number] },
       },
       {
         content: `${group.traineeCount} Trainees`,
@@ -815,6 +838,8 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
   });
 
   // 6. Grand Total Footer Row
+  const grandTevtaSub = grandTotal.tevtaDues ?? (grandTotal.admissionTuition + grandTotal.pupil25);
+  const grandInstSub = grandTotal.welfare75 + grandTotal.security + grandTotal.boardOther;
   const tableFoot: any[] = [
     [
       {
@@ -844,6 +869,16 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
           halign: 'right',
           fillColor: [15, 76, 60] as [number, number, number],
           textColor: [255, 255, 255] as [number, number, number],
+        },
+      },
+      {
+        content: formatPKR(grandTevtaSub, false),
+        styles: {
+          fontStyle: 'bold',
+          fontSize: 7.5,
+          halign: 'right',
+          fillColor: [30, 64, 175] as [number, number, number],
+          textColor: [254, 240, 138] as [number, number, number],
         },
       },
       {
@@ -906,9 +941,20 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
         },
       },
       {
+        content: formatPKR(grandInstSub, false),
+        styles: {
+          fontStyle: 'bold',
+          fontSize: 7.5,
+          halign: 'right',
+          fillColor: [13, 148, 136] as [number, number, number],
+          textColor: [254, 240, 138] as [number, number, number],
+        },
+      },
+      {
         content: formatPKR(grandTotal.totalAmount, false),
         styles: {
           fontStyle: 'bold',
+          fontSize: 8.0,
           halign: 'right',
           fillColor: [15, 76, 60] as [number, number, number],
           textColor: [254, 240, 138] as [number, number, number],
@@ -931,10 +977,11 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
     head: tableHeaders,
     body: tableBody,
     foot: tableFoot,
+    showFoot: 'lastPage',
     theme: 'grid',
     styles: {
-      fontSize: 6,
-      cellPadding: 1,
+      fontSize: 6.2,
+      cellPadding: { top: 1.2, bottom: 1.2, left: 1, right: 1 },
       lineColor: [203, 213, 225],
       lineWidth: 0.15,
       textColor: [15, 23, 42],
@@ -946,52 +993,93 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      fontSize: 6.5,
+      fontSize: 6.0,
+      cellPadding: { top: 1.5, bottom: 1.5, left: 0.8, right: 0.8 },
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 7 }, // Sr #
-      1: { halign: 'center', cellWidth: 15 }, // Date
-      2: { halign: 'center', cellWidth: 13, fontStyle: 'bold' }, // Challan #
-      3: { halign: 'center', cellWidth: 18 }, // Roll #
-      4: { halign: 'left', cellWidth: 26 }, // Trainee Name
-      5: { halign: 'left', cellWidth: 26 }, // Father Name
-      6: { halign: 'right', cellWidth: 15 }, // Adm/Tuition
-      7: { halign: 'right', cellWidth: 12 }, // 25% PF
-      8: { halign: 'right', cellWidth: 16, fontStyle: 'bold' }, // Welfare Fund (75%)
-      9: { halign: 'center', cellWidth: 8, textColor: [148, 163, 184] }, // Sports
-      10: { halign: 'center', cellWidth: 8, textColor: [148, 163, 184] }, // Magaz
-      11: { halign: 'center', cellWidth: 8, textColor: [148, 163, 184] }, // Medical
-      12: { halign: 'center', cellWidth: 8, textColor: [148, 163, 184] }, // Library
-      13: { halign: 'right', cellWidth: 14 }, // Security
-      14: { halign: 'right', cellWidth: 15 }, // Board/Other
-      15: { halign: 'right', cellWidth: 16, fontStyle: 'bold' }, // Total
-      16: { halign: 'center', cellWidth: 18 }, // Remarks
+      0: { halign: 'center', cellWidth: 6 }, // Sr # (A)
+      1: { halign: 'center', cellWidth: 13.5 }, // Date (B)
+      2: { halign: 'center', cellWidth: 12.5, fontStyle: 'bold' }, // Challan # (C)
+      3: { halign: 'center', cellWidth: 15, fontStyle: 'bold' }, // Roll # (D)
+      4: { halign: 'left', cellWidth: 35, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 23, 42] }, // Trainee Name & CNIC (E)
+      5: { halign: 'left', cellWidth: 24, fontSize: 6.2 }, // Father Name (F)
+      6: { halign: 'right', cellWidth: 13 }, // Adm/Tuition (G)
+      7: { halign: 'right', cellWidth: 10.5 }, // 25% PF (H)
+      8: { halign: 'right', cellWidth: 17, fontStyle: 'bold', fontSize: 7.0, textColor: [30, 64, 175] }, // Subtotal TEVTA (G+H)
+      9: { halign: 'right', cellWidth: 13 }, // Welfare Fund (I)
+      10: { halign: 'center', cellWidth: 11, textColor: [148, 163, 184] }, // Stationary / Exam (J)
+      11: { halign: 'center', cellWidth: 11, textColor: [148, 163, 184] }, // Computer Fund (K)
+      12: { halign: 'center', cellWidth: 11, textColor: [148, 163, 184] }, // M & E Breakage (L)
+      13: { halign: 'center', cellWidth: 11, textColor: [148, 163, 184] }, // Sports Fund (M)
+      14: { halign: 'right', cellWidth: 11.5 }, // Security (N)
+      15: { halign: 'right', cellWidth: 12.5 }, // Board/Other (O)
+      16: { halign: 'right', cellWidth: 17, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 118, 110] }, // Subtotal (I:O)
+      17: { halign: 'right', cellWidth: 18.5, fontStyle: 'bold', fontSize: 7.2, textColor: [6, 95, 70] }, // Total PKR (P)
+      18: { halign: 'center', cellWidth: 21 }, // Remarks (Q)
     },
-    margin: { left: 8, right: 8, bottom: 20 },
-    didDrawPage: (data) => {
-      const pageCount = doc.internal.pages.length - 1;
-      const currentPage = data.pageNumber;
-      doc.setFontSize(6.5);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(148, 163, 184);
-      doc.text(
-        `Govt. Vocational Training Institute for Women, Samanabad Faisalabad — Official Fee Register — Page ${currentPage} of ${pageCount}`,
-        8,
-        doc.internal.pageSize.getHeight() - 6
-      );
-      doc.text(
-        `Cols J:M reserved as 100% of 75% Pupil Fund is treated in Welfare Fund (Col I). Reconciled against BOP TFC Account.`,
-        pageWidth - 8,
-        doc.internal.pageSize.getHeight() - 6,
-        { align: 'right' }
-      );
+    margin: { left: 6, right: 6, bottom: 16 },
+    didParseCell: (data) => {
+      // For Trainee Name column: capture text lines and keep spacing
+      if (data.section === 'body' && data.column.index === 4) {
+        (data.cell as any)._traineeLines = [...data.cell.text];
+        data.cell.text = (data.cell as any)._traineeLines.map(() => ' ');
+      }
+      // Highlight & enlarge Subtotal TEVTA column (column index 8)
+      if (data.section === 'body' && data.column.index === 8) {
+        data.cell.styles.fillColor = [239, 246, 255]; // Soft blue 50
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fontSize = 7.0; // Same size as student name
+        data.cell.styles.textColor = [30, 64, 175]; // Blue 800
+      }
+      // Highlight & enlarge Subtotal (I:O) column (column index 16)
+      if (data.section === 'body' && data.column.index === 16) {
+        data.cell.styles.fillColor = [240, 253, 250]; // Soft teal 50
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fontSize = 7.0; // Same size as student name
+        data.cell.styles.textColor = [15, 118, 110]; // Teal 700
+      }
+      // Highlight & enlarge Total PKR column (column index 17)
+      if (data.section === 'body' && data.column.index === 17) {
+        data.cell.styles.fillColor = [236, 253, 245]; // Soft emerald 50
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fontSize = 7.2; // Extra readable
+        data.cell.styles.textColor = [6, 95, 70]; // Emerald 800
+      }
+    },
+    didDrawCell: (data) => {
+      // Draw Student Name in BOLD CAPITAL LETTERS and CNIC in NORMAL (NOT BOLD) REGULAR font
+      if (data.section === 'body' && data.column.index === 4 && (data.cell as any)._traineeLines) {
+        const lines: string[] = (data.cell as any)._traineeLines;
+        const name = (lines[0] || '').toUpperCase();
+        const cnicLine = lines[1] || '';
+        const x = data.cell.x + data.cell.padding('left');
+        const y = data.cell.y + data.cell.padding('top') + 2.8;
+
+        // 1. Student Name in BOLD CAPITAL LETTERS
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(7.0);
+        doc.setTextColor(15, 23, 42); // deep slate-950 high contrast
+        doc.text(name, x, y);
+
+        // 2. CNIC in NORMAL (NOT BOLD) REGULAR FONT
+        if (cnicLine) {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(5.6);
+          doc.setTextColor(100, 116, 139); // clean slate grey
+          doc.text(cnicLine, x, y + 3.2);
+        }
+      }
     },
   });
 
   // Official Signature Section
   const finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY : 170;
   const pageHeight = doc.internal.pageSize.getHeight();
-  const signY = finalY + 16 > pageHeight - 18 ? pageHeight - 15 : Math.max(finalY + 10, pageHeight - 20);
+  let signY = finalY + 14;
+  if (signY + 12 > pageHeight - 8) {
+    doc.addPage();
+    signY = 30;
+  }
 
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
@@ -1021,6 +1109,30 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.text('Acting Principal / DDO / Approved by:', sig3X, signY + 4, { align: 'center' });
+
+  // Two-pass Footer: Accurate "Page X of TotalPages" on every single page
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139); // clean slate grey
+
+    // Left side: Clean Report Name only
+    doc.text(
+      'Govt. Vocational Training Institute for Women, Samanabad Faisalabad — Official Fee Register',
+      6,
+      pageHeight - 6
+    );
+
+    // Right side: Accurate Current Page of Total Pages (e.g. Page 1 of 13)
+    doc.text(
+      `Page ${i} of ${totalPages}`,
+      pageWidth - 6,
+      pageHeight - 6,
+      { align: 'right' }
+    );
+  }
 
   const cleanFilename = `GVTIW_Official_Fee_Register_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(cleanFilename);
