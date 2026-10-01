@@ -553,3 +553,475 @@ export function generateHardCashBookPdf(options: HardCashBookPdfOptions): void {
   const cleanFilename = `GVTIW_TFC_Hard_CashBook_${new Date().toISOString().slice(0, 10)}.pdf`;
   doc.save(cleanFilename);
 }
+
+export interface FeeRegisterPdfRow {
+  srNo: number;
+  dateStr: string;
+  challanId: string;
+  rollNo: string;
+  traineeName: string;
+  fatherName: string;
+  admissionTuition: number;
+  pupil25: number;
+  welfare75: number;
+  sports: number;
+  magazine: number;
+  medical: number;
+  library: number;
+  security: number;
+  boardOther: number;
+  totalAmount: number;
+  remarks: string;
+}
+
+export interface FeeRegisterTradeGroupPdf {
+  tradeCode: string;
+  tradeTitle: string;
+  traineeCount: number;
+  rows: FeeRegisterPdfRow[];
+  subtotal: {
+    admissionTuition: number;
+    pupil25: number;
+    welfare75: number;
+    sports: number;
+    magazine: number;
+    medical: number;
+    library: number;
+    security: number;
+    boardOther: number;
+    totalAmount: number;
+  };
+}
+
+export interface FeeRegisterPdfOptions {
+  periodLabel: string;
+  tradeFilterLabel: string;
+  totalTrainees: number;
+  tradeGroups: FeeRegisterTradeGroupPdf[];
+  grandTotal: {
+    admissionTuition: number;
+    pupil25: number;
+    welfare75: number;
+    sports: number;
+    magazine: number;
+    medical: number;
+    library: number;
+    security: number;
+    boardOther: number;
+    totalAmount: number;
+  };
+}
+
+export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
+  const { periodLabel, tradeFilterLabel, totalTrainees, tradeGroups, grandTotal } = options;
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // 1. Official Header Banner
+  doc.setFillColor(15, 76, 60); // TEVTA Dark Emerald
+  doc.rect(0, 0, pageWidth, 22, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.text(
+    'GOVT. VOCATIONAL TRAINING INSTITUTE FOR WOMEN, SAMANABAD FAISALABAD',
+    pageWidth / 2,
+    8,
+    { align: 'center' }
+  );
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(
+    'TEVTA FEE COLLECTION (TFC) BANK ACCOUNT # 6580027832200011 (BANK OF PUNJAB)',
+    pageWidth / 2,
+    14,
+    { align: 'center' }
+  );
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text(
+    'OFFICIAL FEE REGISTER & HEAD-WISE TRAINEE ALLOCATION (GROUPED BY TRADE & SORTED BY DATE)',
+    pageWidth / 2,
+    19,
+    { align: 'center' }
+  );
+
+  // 2. Metadata Ribbon
+  doc.setTextColor(50, 50, 50);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Period / Filter: ${periodLabel}`, 8, 26);
+  doc.text(`Trade Filter: ${tradeFilterLabel}`, 90, 26);
+  doc.text(`Total Trainees: ${totalTrainees} (${tradeGroups.length} Trades)`, 175, 26);
+  doc.text(
+    `Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString()}`,
+    pageWidth - 8,
+    26,
+    { align: 'right' }
+  );
+
+  // 3. Summary KPI Block
+  doc.setFillColor(241, 245, 249);
+  doc.roundedRect(8, 29, pageWidth - 16, 11, 1.5, 1.5, 'F');
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+
+  const tevtaDuesTotal = grandTotal.admissionTuition + grandTotal.pupil25;
+  const kpis = [
+    { label: 'TOTAL COLLECTION', value: `Rs. ${formatPKR(grandTotal.totalAmount, false)}` },
+    { label: 'TEVTA DUES (HO)', value: `Rs. ${formatPKR(tevtaDuesTotal, false)}` },
+    { label: 'WELFARE FUND (75% PF)', value: `Rs. ${formatPKR(grandTotal.welfare75, false)}` },
+    { label: 'COLLEGE SECURITY', value: `Rs. ${formatPKR(grandTotal.security, false)}` },
+    { label: 'BOARD / OTHER DUES', value: `Rs. ${formatPKR(grandTotal.boardOther, false)}` },
+  ];
+
+  const colW = (pageWidth - 20) / kpis.length;
+  kpis.forEach((kpi, idx) => {
+    const x = 10 + idx * colW;
+    doc.setTextColor(100, 116, 139);
+    doc.text(kpi.label, x, 33);
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.text(kpi.value, x, 38);
+  });
+
+  // 4. Two-Tier Table Headers
+  const tableHeaders: any[] = [
+    [
+      { content: 'TRAINEE PARTICULARS (COLS A TO F)', colSpan: 6, styles: { halign: 'center', fillColor: [15, 76, 60] } },
+      { content: 'TEVTA DUES (HO)', colSpan: 2, styles: { halign: 'center', fillColor: [30, 64, 175] } },
+      { content: 'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION', colSpan: 5, styles: { halign: 'center', fillColor: [13, 148, 136] } },
+      { content: 'SECURITY', colSpan: 1, styles: { halign: 'center', fillColor: [180, 83, 9] } },
+      { content: 'BOARD / OTH', colSpan: 1, styles: { halign: 'center', fillColor: [109, 40, 217] } },
+      { content: 'TOTAL', colSpan: 1, styles: { halign: 'center', fillColor: [15, 76, 60] } },
+      { content: 'STATUS', colSpan: 1, styles: { halign: 'center', fillColor: [71, 85, 105] } },
+    ],
+    [
+      'Sr #\n(A)',
+      'Date\n(B)',
+      'Challan #\n(C)',
+      'Roll #\n(D)',
+      'Trainee Name\n(E)',
+      'Father Name\n(F)',
+      'Adm/Tuition\n(G)',
+      '25% PF\n(H)',
+      'Welfare Fund\n(I)',
+      'Sports\n(J)',
+      'Magaz.\n(K)',
+      'Medical\n(L)',
+      'Library\n(M)',
+      'Security\n(N)',
+      'Board/Oth\n(O)',
+      'Total PKR\n(P)',
+      'Remarks\n(Q)',
+    ],
+  ];
+
+  // 5. Table Body with Trade Sections and Subtotals
+  const tableBody: any[] = [];
+
+  tradeGroups.forEach((group) => {
+    // Trade Header Section Banner
+    tableBody.push([
+      {
+        content: `TRADE: ${group.tradeTitle.toUpperCase()} (${group.tradeCode}) — ${group.traineeCount} TRAINEES`,
+        colSpan: 17,
+        styles: {
+          fillColor: [22, 101, 52] as [number, number, number],
+          textColor: [255, 255, 255] as [number, number, number],
+          fontStyle: 'bold',
+          halign: 'left',
+          fontSize: 7.5,
+        },
+      },
+    ]);
+
+    // Trainee Rows sorted chronologically by Date
+    group.rows.forEach((r) => {
+      tableBody.push([
+        r.srNo,
+        r.dateStr,
+        r.challanId,
+        r.rollNo,
+        r.traineeName,
+        r.fatherName,
+        formatPKR(r.admissionTuition, false),
+        formatPKR(r.pupil25, false),
+        formatPKR(r.welfare75, false),
+        '-',
+        '-',
+        '-',
+        '-',
+        formatPKR(r.security, false),
+        r.boardOther === 0 ? '-' : formatPKR(r.boardOther, false),
+        formatPKR(r.totalAmount, false),
+        r.remarks || 'Full Challan',
+      ]);
+    });
+
+    // Trade Subtotal Row
+    tableBody.push([
+      {
+        content: `Subtotal (${group.tradeCode})`,
+        colSpan: 6,
+        styles: {
+          fontStyle: 'bold',
+          halign: 'right',
+          fillColor: [240, 253, 244] as [number, number, number],
+          textColor: [22, 101, 52] as [number, number, number],
+        },
+      },
+      {
+        content: formatPKR(group.subtotal.admissionTuition, false),
+        styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+      },
+      {
+        content: formatPKR(group.subtotal.pupil25, false),
+        styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+      },
+      {
+        content: formatPKR(group.subtotal.welfare75, false),
+        styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+      },
+      { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
+      { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
+      { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
+      { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
+      {
+        content: formatPKR(group.subtotal.security, false),
+        styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+      },
+      {
+        content: group.subtotal.boardOther === 0 ? '-' : formatPKR(group.subtotal.boardOther, false),
+        styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+      },
+      {
+        content: formatPKR(group.subtotal.totalAmount, false),
+        styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+      },
+      {
+        content: `${group.traineeCount} Trainees`,
+        styles: { fontStyle: 'bold', halign: 'center', fillColor: [240, 253, 244] as [number, number, number] },
+      },
+    ]);
+  });
+
+  // 6. Grand Total Footer Row
+  const tableFoot: any[] = [
+    [
+      {
+        content: `GRAND TOTAL (${totalTrainees} Trainees across ${tradeGroups.length} Trades)`,
+        colSpan: 6,
+        styles: {
+          fontStyle: 'bold',
+          halign: 'right',
+          fillColor: [15, 76, 60] as [number, number, number],
+          textColor: [255, 255, 255] as [number, number, number],
+          fontSize: 7.5,
+        },
+      },
+      {
+        content: formatPKR(grandTotal.admissionTuition, false),
+        styles: {
+          fontStyle: 'bold',
+          halign: 'right',
+          fillColor: [15, 76, 60] as [number, number, number],
+          textColor: [255, 255, 255] as [number, number, number],
+        },
+      },
+      {
+        content: formatPKR(grandTotal.pupil25, false),
+        styles: {
+          fontStyle: 'bold',
+          halign: 'right',
+          fillColor: [15, 76, 60] as [number, number, number],
+          textColor: [255, 255, 255] as [number, number, number],
+        },
+      },
+      {
+        content: formatPKR(grandTotal.welfare75, false),
+        styles: {
+          fontStyle: 'bold',
+          halign: 'right',
+          fillColor: [15, 76, 60] as [number, number, number],
+          textColor: [254, 240, 138] as [number, number, number],
+        },
+      },
+      {
+        content: '-',
+        styles: {
+          halign: 'center',
+          fillColor: [15, 76, 60] as [number, number, number],
+          textColor: [203, 213, 225] as [number, number, number],
+        },
+      },
+      {
+        content: '-',
+        styles: {
+          halign: 'center',
+          fillColor: [15, 76, 60] as [number, number, number],
+          textColor: [203, 213, 225] as [number, number, number],
+        },
+      },
+      {
+        content: '-',
+        styles: {
+          halign: 'center',
+          fillColor: [15, 76, 60] as [number, number, number],
+          textColor: [203, 213, 225] as [number, number, number],
+        },
+      },
+      {
+        content: '-',
+        styles: {
+          halign: 'center',
+          fillColor: [15, 76, 60] as [number, number, number],
+          textColor: [203, 213, 225] as [number, number, number],
+        },
+      },
+      {
+        content: formatPKR(grandTotal.security, false),
+        styles: {
+          fontStyle: 'bold',
+          halign: 'right',
+          fillColor: [15, 76, 60] as [number, number, number],
+          textColor: [255, 255, 255] as [number, number, number],
+        },
+      },
+      {
+        content: grandTotal.boardOther === 0 ? '-' : formatPKR(grandTotal.boardOther, false),
+        styles: {
+          fontStyle: 'bold',
+          halign: 'right',
+          fillColor: [15, 76, 60] as [number, number, number],
+          textColor: [255, 255, 255] as [number, number, number],
+        },
+      },
+      {
+        content: formatPKR(grandTotal.totalAmount, false),
+        styles: {
+          fontStyle: 'bold',
+          halign: 'right',
+          fillColor: [15, 76, 60] as [number, number, number],
+          textColor: [254, 240, 138] as [number, number, number],
+        },
+      },
+      {
+        content: 'RECONCILED',
+        styles: {
+          fontStyle: 'bold',
+          halign: 'center',
+          fillColor: [15, 76, 60] as [number, number, number],
+          textColor: [167, 243, 208] as [number, number, number],
+        },
+      },
+    ],
+  ];
+
+  autoTable(doc, {
+    startY: 42,
+    head: tableHeaders,
+    body: tableBody,
+    foot: tableFoot,
+    theme: 'grid',
+    styles: {
+      fontSize: 6,
+      cellPadding: 1,
+      lineColor: [203, 213, 225],
+      lineWidth: 0.15,
+      textColor: [15, 23, 42],
+      font: 'helvetica',
+    },
+    headStyles: {
+      fillColor: [15, 76, 60],
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      halign: 'center',
+      valign: 'middle',
+      fontSize: 6.5,
+    },
+    columnStyles: {
+      0: { halign: 'center', cellWidth: 7 }, // Sr #
+      1: { halign: 'center', cellWidth: 15 }, // Date
+      2: { halign: 'center', cellWidth: 13, fontStyle: 'bold' }, // Challan #
+      3: { halign: 'center', cellWidth: 18 }, // Roll #
+      4: { halign: 'left', cellWidth: 26 }, // Trainee Name
+      5: { halign: 'left', cellWidth: 26 }, // Father Name
+      6: { halign: 'right', cellWidth: 15 }, // Adm/Tuition
+      7: { halign: 'right', cellWidth: 12 }, // 25% PF
+      8: { halign: 'right', cellWidth: 16, fontStyle: 'bold' }, // Welfare Fund (75%)
+      9: { halign: 'center', cellWidth: 8, textColor: [148, 163, 184] }, // Sports
+      10: { halign: 'center', cellWidth: 8, textColor: [148, 163, 184] }, // Magaz
+      11: { halign: 'center', cellWidth: 8, textColor: [148, 163, 184] }, // Medical
+      12: { halign: 'center', cellWidth: 8, textColor: [148, 163, 184] }, // Library
+      13: { halign: 'right', cellWidth: 14 }, // Security
+      14: { halign: 'right', cellWidth: 15 }, // Board/Other
+      15: { halign: 'right', cellWidth: 16, fontStyle: 'bold' }, // Total
+      16: { halign: 'center', cellWidth: 18 }, // Remarks
+    },
+    margin: { left: 8, right: 8, bottom: 20 },
+    didDrawPage: (data) => {
+      const pageCount = doc.internal.pages.length - 1;
+      const currentPage = data.pageNumber;
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        `Govt. Vocational Training Institute for Women, Samanabad Faisalabad — Official Fee Register — Page ${currentPage} of ${pageCount}`,
+        8,
+        doc.internal.pageSize.getHeight() - 6
+      );
+      doc.text(
+        `Cols J:M reserved as 100% of 75% Pupil Fund is treated in Welfare Fund (Col I). Reconciled against BOP TFC Account.`,
+        pageWidth - 8,
+        doc.internal.pageSize.getHeight() - 6,
+        { align: 'right' }
+      );
+    },
+  });
+
+  // Official Signature Section
+  const finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY : 170;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const signY = finalY + 16 > pageHeight - 18 ? pageHeight - 15 : Math.max(finalY + 10, pageHeight - 20);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(30, 41, 59);
+
+  const sig1X = 45;
+  const sig2X = pageWidth / 2;
+  const sig3X = pageWidth - 45;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('KASHIF ZIA', sig1X, signY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text('Accountant / Prepared by:', sig1X, signY + 4, { align: 'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('ANEEBA JAMIL', sig2X, signY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text('CO-Signatory / Checked by:', sig2X, signY + 4, { align: 'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('SHAZIA KHADIM', sig3X, signY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text('Acting Principal / DDO / Approved by:', sig3X, signY + 4, { align: 'center' });
+
+  const cleanFilename = `GVTIW_Official_Fee_Register_${new Date().toISOString().slice(0, 10)}.pdf`;
+  doc.save(cleanFilename);
+}

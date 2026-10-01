@@ -14,6 +14,7 @@ import {
   ChallanFeeBreakdown,
 } from '../data/tfcChallanData';
 import { TfcReceiptsReportView } from './TfcReceiptsReportView';
+import { TfcFeeRegisterView } from './TfcFeeRegisterView';
 import { TfcCourseMultiSelect } from './TfcCourseMultiSelect';
 import { formatPKR, formatCNIC, formatPakistaniDate } from '../lib/formatters';
 import { generateReceiptsRegisterPdf, generateHardCashBookPdf } from '../lib/tfcPdfGenerator';
@@ -40,6 +41,7 @@ import {
   ShieldCheck,
   BookOpen,
   FileText,
+  ClipboardList,
   X,
 } from 'lucide-react';
 
@@ -178,7 +180,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
     return selectedCourses.includes(courseAbbr);
   }, [selectedCourses]);
   const [activeSubTab, setActiveSubTab] = useState<
-    'DATE_WISE_RECEIPTS' | 'MONTH_WISE_RECEIPTS' | 'OVERVIEW' | 'CASHBOOK_GEN' | 'HARD_CASHBOOK' | 'COURSE_MATRIX' | 'DIRECTORY'
+    'DATE_WISE_RECEIPTS' | 'MONTH_WISE_RECEIPTS' | 'OVERVIEW' | 'CASHBOOK_GEN' | 'HARD_CASHBOOK' | 'FEE_REGISTER' | 'COURSE_MATRIX' | 'DIRECTORY'
   >('DATE_WISE_RECEIPTS');
   const [postingGrouping, setPostingGrouping] = useState<'DATE_WISE' | 'DATE_COURSE_WISE'>('DATE_COURSE_WISE');
   const [startRow, setStartRow] = useState<number>(6);
@@ -951,6 +953,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
     switch (activeSubTab) {
       case 'HARD_CASHBOOK':
         return 'Hard CashBook';
+      case 'FEE_REGISTER':
+        return 'Official Fee Register';
       case 'DATE_WISE_RECEIPTS':
         return 'Date Wise Receipts';
       case 'MONTH_WISE_RECEIPTS':
@@ -1731,6 +1735,19 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Hard CashBook Entry</span>
+          </button>
+          <button
+            onClick={() => setActiveSubTab('FEE_REGISTER')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeSubTab === 'FEE_REGISTER'
+                ? 'bg-teal-700 text-white shadow-md'
+                : darkMode
+                ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                : 'text-slate-700 hover:bg-white hover:text-slate-950 border border-transparent hover:border-slate-300'
+            }`}
+          >
+            <ClipboardList className="w-3.5 h-3.5" />
+            <span>Fee Register</span>
           </button>
           <button
             onClick={() => setActiveSubTab('COURSE_MATRIX')}
@@ -2799,6 +2816,19 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
               </div>
             </div>
           </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* SUB-TAB: OFFICIAL FEE REGISTER (GROUPED BY TRADE & DATE)       */}
+        {/* ============================================================= */}
+        {activeSubTab === 'FEE_REGISTER' && (
+          <TfcFeeRegisterView
+            challans={challans}
+            darkMode={darkMode}
+            customGvtiwLogo={customGvtiwLogo}
+            customTevtaLogo={customTevtaLogo}
+            customGopLogo={customGopLogo}
+          />
         )}
 
         {/* ============================================================= */}

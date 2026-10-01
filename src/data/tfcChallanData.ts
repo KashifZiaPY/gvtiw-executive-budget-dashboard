@@ -120,6 +120,116 @@ export function parseTraineeNameField(rawName: string): {
   };
 }
 
+export interface FeeRegisterStudentInfo {
+  tradeCode: string;
+  tradeTitle: string;
+  rollNo: string;
+  traineeName: string;
+  fatherName: string;
+  installmentNotice: string;
+}
+
+/**
+ * Robust extractor for Fee Register from BOP_TFC_RAW Column M (Name)
+ * Handles standard formats e.g. "MVi0926-01-Malaika-M Iqbal"
+ * Handles D/O variants e.g. "MVii0926-01-Noor Fatima D/O Sabir"
+ * Handles installment indicators in paymentType or name suffix
+ * Ensures date-wise placement in the relevant trade group
+ */
+export function parseFeeRegisterStudentInfo(
+  rawName: string,
+  courseName?: string,
+  paymentType?: string,
+  fallbackCourseAbbr?: string
+): FeeRegisterStudentInfo {
+  const raw = String(rawName || '').trim();
+  const parts = raw.split('-').map((p) => p.trim());
+
+  let tradeCode = fallbackCourseAbbr && fallbackCourseAbbr !== 'OTHER' ? fallbackCourseAbbr : 'OTHER';
+  const p0 = parts[0] || '';
+  const upper0 = p0.toUpperCase();
+
+  if (upper0.startsWith('MVII') || upper0.startsWith('MV2')) tradeCode = 'MVii';
+  else if (upper0.startsWith('MVI') || upper0.startsWith('MV1')) tradeCode = 'MVi';
+  else if (upper0.startsWith('ADDM')) tradeCode = 'ADDM';
+  else if (upper0.startsWith('BTE')) tradeCode = 'BTE';
+  else if (upper0.startsWith('BT')) tradeCode = 'BT';
+  else if (upper0.startsWith('CK')) tradeCode = 'CK';
+  else if (upper0.startsWith('CO')) tradeCode = 'CO';
+  else if (upper0.startsWith('DM')) tradeCode = 'DM';
+  else if (upper0.startsWith('FD')) tradeCode = 'FD';
+  else if (upper0.startsWith('TUV')) tradeCode = 'TUV';
+  else if (courseName) {
+    const cUpper = courseName.toUpperCase();
+    if (cUpper.includes('MVII') || cUpper.includes('2ND YEAR')) tradeCode = 'MVii';
+    else if (cUpper.includes('MVI') || cUpper.includes('1ST YEAR')) tradeCode = 'MVi';
+    else if (cUpper.includes('DIPLOMA') && cUpper.includes('DRESS')) tradeCode = 'ADDM';
+    else if (cUpper.includes('BEAUTICIAN') && (cUpper.includes('SELF') || cUpper.includes('EVENING'))) tradeCode = 'BTE';
+    else if (cUpper.includes('BEAUTICIAN')) tradeCode = 'BT';
+    else if (cUpper.includes('COOK') || cUpper.includes('CHEF')) tradeCode = 'CK';
+    else if (cUpper.includes('COMPUTER')) tradeCode = 'CO';
+    else if (cUpper.includes('DRESS')) tradeCode = 'DM';
+    else if (cUpper.includes('FASHION')) tradeCode = 'FD';
+    else if (cUpper.includes('TUV')) tradeCode = 'TUV';
+  }
+
+  let rollNo = '';
+  let traineeName = '';
+  let fatherName = '—';
+  let installmentNotice = '';
+
+  const pTypeStr = String(paymentType || '').trim();
+  if (pTypeStr && pTypeStr.toLowerCase() !== 'full challan') {
+    installmentNotice = pTypeStr;
+  }
+
+  if (parts.length >= 4) {
+    rollNo = `${parts[0]}-${parts[1]}`;
+    traineeName = parts[2];
+    fatherName = parts.slice(3).join(' - ');
+  } else if (parts.length === 3) {
+    rollNo = `${parts[0]}-${parts[1]}`;
+    traineeName = parts[2];
+  } else if (parts.length === 2) {
+    rollNo = parts[0];
+    traineeName = parts[1];
+  } else {
+    rollNo = parts[0] || '';
+    traineeName = raw;
+  }
+
+  // Handle D/O notation in traineeName or fatherName
+  if (traineeName.includes(' D/O ') || traineeName.includes(' d/o ') || traineeName.includes(' D/o ')) {
+    const sub = traineeName.split(/ D\/O | d\/o | D\/o /i);
+    traineeName = sub[0].trim();
+    if (sub[1] && (!fatherName || fatherName === '—')) {
+      fatherName = sub[1].trim();
+    }
+  }
+  if (fatherName.includes(' D/O ') || fatherName.includes(' d/o ') || fatherName.includes(' D/o ')) {
+    const sub = fatherName.split(/ D\/O | d\/o | D\/o /i);
+    fatherName = sub[sub.length - 1].trim();
+  }
+
+  // Check installment keywords in raw string or fatherName
+  const instRegex = /(inst\s*\d*|installment\s*\d*|1st\s*inst|2nd\s*inst)/i;
+  const matchInst = (raw + ' ' + pTypeStr).match(instRegex);
+  if (matchInst && !installmentNotice) {
+    installmentNotice = matchInst[0];
+  }
+
+  const tradeTitle = COURSE_TITLE_MAP[tradeCode] || (courseName || tradeCode);
+
+  return {
+    tradeCode,
+    tradeTitle,
+    rollNo: rollNo || '—',
+    traineeName: traineeName || raw,
+    fatherName: fatherName || '—',
+    installmentNotice,
+  };
+}
+
 /**
  * Returns strictly clean course/trade abbreviation without session or roll numbers
  * e.g. 'MVi0926-01' -> 'MVi', 'MVii0926-02' -> 'MVii', 'ADDM0926-03' -> 'ADDM'
