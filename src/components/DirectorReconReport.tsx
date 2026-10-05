@@ -1100,8 +1100,13 @@ export function DirectorReconciliationReport({
         praPaid = praOnBill + 100;
       }
       const net = Number(v.chequeAmountNet) || 0;
+
+      // In Bank Reconciliation (BRS), the bank outflow is the total of cheques drawn from the bank (Net + IT + PRA)
+      const chqsTotal = net + it + praPaid;
       const gross =
-        Number(v.billAmountGross) > 0
+        chqsTotal > 0
+          ? chqsTotal
+          : Number(v.billAmountGross) > 0
           ? Number(v.billAmountGross)
           : Number(v.billAmtExclTax || 0) > 0
           ? Number(v.billAmtExclTax) + gst + praOnBill
@@ -1336,7 +1341,9 @@ export function DirectorReconciliationReport({
 
       mPayments.forEach((p) => {
         pHeads.push(p.headOfAccount || p.remarks);
-        const amt = p.totalBillAmount || p.netAmountPaid;
+        // Bank outflow in BRS is the total of cheques drawn from the bank (Net + IT + PRA)
+        const chqSum = (p.netAmountPaid || 0) + (p.incomeTax || 0) + (p.praAmount || 0);
+        const amt = chqSum > 0 ? chqSum : (p.totalBillAmount || p.netAmountPaid);
         const txt = `${p.headOfAccount} ${p.remarks} ${p.paidTo}`.toLowerCase();
         if (txt.includes('bank charge') || txt.includes('service charge') || txt.includes('fed') || txt.includes('a03101')) {
           chargesP += amt;
