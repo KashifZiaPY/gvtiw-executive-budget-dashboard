@@ -565,6 +565,11 @@ export interface FeeRegisterPdfRow {
   traineeName: string;
   cnic?: string;
   fatherName: string;
+  // Optional installment columns for dedicated installment report
+  inst1Info?: string;
+  inst2Info?: string;
+  inst1Amount?: number;
+  inst2Amount?: number;
   admissionTuition: number;
   pupil25: number;
   tevtaDues?: number;
@@ -584,6 +589,8 @@ export interface FeeRegisterTradeGroupPdf {
   tradeCode: string;
   tradeTitle: string;
   traineeCount: number;
+  inst1Total?: number;
+  inst2Total?: number;
   rows: FeeRegisterPdfRow[];
   subtotal: {
     admissionTuition: number;
@@ -604,6 +611,9 @@ export interface FeeRegisterPdfOptions {
   periodLabel: string;
   tradeFilterLabel: string;
   totalTrainees: number;
+  reportTitle?: string;
+  isInstallmentAligned?: boolean;
+  printDirectly?: boolean;
   tradeGroups: FeeRegisterTradeGroupPdf[];
   grandTotal: {
     admissionTuition: number;
@@ -616,12 +626,24 @@ export interface FeeRegisterPdfOptions {
     library: number;
     security: number;
     boardOther: number;
+    instSubtotal?: number;
     totalAmount: number;
+    inst1Total?: number;
+    inst2Total?: number;
   };
 }
 
 export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
-  const { periodLabel, tradeFilterLabel, totalTrainees, tradeGroups, grandTotal } = options;
+  const {
+    periodLabel,
+    tradeFilterLabel,
+    totalTrainees,
+    tradeGroups,
+    grandTotal,
+    isInstallmentAligned = false,
+    reportTitle,
+    printDirectly = false,
+  } = options;
   const doc = new jsPDF({
     orientation: 'landscape',
     unit: 'mm',
@@ -653,14 +675,15 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
     { align: 'center' }
   );
 
-  doc.setFontSize(9);
+  const mainTitle =
+    reportTitle ||
+    (isInstallmentAligned
+      ? 'OFFICIAL FEE REGISTER — INSTALLMENT-ALIGNED TRAINEE HEADCOUNT'
+      : 'OFFICIAL FEE REGISTER & HEAD-WISE TRAINEE ALLOCATION (GROUPED BY TRADE & SORTED BY DATE)');
+
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'bold');
-  doc.text(
-    'OFFICIAL FEE REGISTER & HEAD-WISE TRAINEE ALLOCATION (GROUPED BY TRADE & SORTED BY DATE)',
-    pageWidth / 2,
-    19,
-    { align: 'center' }
-  );
+  doc.text(mainTitle, pageWidth / 2, 19, { align: 'center' });
 
   // 2. Metadata Ribbon
   doc.setTextColor(50, 50, 50);
@@ -668,7 +691,10 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
   doc.setFont('helvetica', 'normal');
   doc.text(`Period / Filter: ${periodLabel}`, 6, 26);
   doc.text(`Trade Filter: ${tradeFilterLabel}`, 88, 26);
-  doc.text(`Total Trainees: ${totalTrainees} (${tradeGroups.length} Trades)`, 175, 26);
+  const countLabel = isInstallmentAligned
+    ? `Unique Students: ${totalTrainees} (${tradeGroups.length} Trades)`
+    : `Total Trainees: ${totalTrainees} (${tradeGroups.length} Trades)`;
+  doc.text(countLabel, 175, 26);
   doc.text(
     `Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString()}`,
     pageWidth - 6,
@@ -702,45 +728,81 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
   });
 
   // 4. Two-Tier Table Headers
-  const tableHeaders: any[] = [
-    [
-      { content: 'TRAINEE PARTICULARS (COLS A TO F)', colSpan: 6, styles: { halign: 'center', fillColor: [15, 76, 60] } },
-      { content: 'TEVTA DUES (HO)', colSpan: 3, styles: { halign: 'center', fillColor: [30, 64, 175] } },
-      { content: 'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION (COLS I TO O)', colSpan: 8, styles: { halign: 'center', fillColor: [13, 148, 136] } },
-      { content: 'TOTAL', colSpan: 1, styles: { halign: 'center', fillColor: [15, 76, 60] } },
-      { content: 'STATUS', colSpan: 1, styles: { halign: 'center', fillColor: [71, 85, 105] } },
-    ],
-    [
-      'Sr #\n(A)',
-      'Date\n(B)',
-      'Challan #\n(C)',
-      'Roll #\n(D)',
-      'Trainee Name\n(E)',
-      'Father Name\n(F)',
-      'Adm/Tuition\n(G)',
-      '25% PF\n(H)',
-      'Subtotal\nTEVTA (G+H)',
-      'Welfare\nFund (I)',
-      'Stationary\nExam (J)',
-      'Computer\nFund (K)',
-      'M & E\nBreakage (L)',
-      'Sports\nFund (M)',
-      'Security\n(N)',
-      'Board/Oth\n(O)',
-      'Subtotal\n(I:O)',
-      'Total PKR\n(P)',
-      'Remarks\n(Q)',
-    ],
-  ];
+  const tableHeaders: any[] = isInstallmentAligned
+    ? [
+        [
+          { content: 'TRAINEE PARTICULARS (COLS A TO D)', colSpan: 4, styles: { halign: 'center', fillColor: [15, 76, 60] } },
+          { content: 'INSTALLMENT SUBMISSIONS (COLS E TO F)', colSpan: 2, styles: { halign: 'center', fillColor: [180, 83, 9] } },
+          { content: 'TEVTA DUES (HO)', colSpan: 3, styles: { halign: 'center', fillColor: [30, 64, 175] } },
+          { content: 'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION (COLS J TO Q)', colSpan: 8, styles: { halign: 'center', fillColor: [13, 148, 136] } },
+          { content: 'TOTAL', colSpan: 1, styles: { halign: 'center', fillColor: [15, 76, 60] } },
+          { content: 'STATUS', colSpan: 1, styles: { halign: 'center', fillColor: [71, 85, 105] } },
+        ],
+        [
+          'Sr #\n(A)',
+          'Roll #\n(B)',
+          'Trainee Name & CNIC\n(C)',
+          'Father Name\n(D)',
+          '1st Installment\n(E)',
+          '2nd Installment\n(F)',
+          'Adm/Tuition\n(G)',
+          '25% PF\n(H)',
+          'Subtotal\nTEVTA (G+H)',
+          'Welfare\nFund (I)',
+          'Stationary\nExam (J)',
+          'Computer\nFund (K)',
+          'M & E\nBreakage (L)',
+          'Sports\nFund (M)',
+          'Security\n(N)',
+          'Board/Oth\n(O)',
+          'Subtotal\n(I:O)',
+          'Total PKR\n(P)',
+          'Remarks / Status\n(Q)',
+        ],
+      ]
+    : [
+        [
+          { content: 'TRAINEE PARTICULARS (COLS A TO F)', colSpan: 6, styles: { halign: 'center', fillColor: [15, 76, 60] } },
+          { content: 'TEVTA DUES (HO)', colSpan: 3, styles: { halign: 'center', fillColor: [30, 64, 175] } },
+          { content: 'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION (COLS I TO O)', colSpan: 8, styles: { halign: 'center', fillColor: [13, 148, 136] } },
+          { content: 'TOTAL', colSpan: 1, styles: { halign: 'center', fillColor: [15, 76, 60] } },
+          { content: 'STATUS', colSpan: 1, styles: { halign: 'center', fillColor: [71, 85, 105] } },
+        ],
+        [
+          'Sr #\n(A)',
+          'Date\n(B)',
+          'Challan #\n(C)',
+          'Roll #\n(D)',
+          'Trainee Name\n(E)',
+          'Father Name\n(F)',
+          'Adm/Tuition\n(G)',
+          '25% PF\n(H)',
+          'Subtotal\nTEVTA (G+H)',
+          'Welfare\nFund (I)',
+          'Stationary\nExam (J)',
+          'Computer\nFund (K)',
+          'M & E\nBreakage (L)',
+          'Sports\nFund (M)',
+          'Security\n(N)',
+          'Board/Oth\n(O)',
+          'Subtotal\n(I:O)',
+          'Total PKR\n(P)',
+          'Remarks\n(Q)',
+        ],
+      ];
 
   // 5. Table Body with Trade Sections and Subtotals
   const tableBody: any[] = [];
 
   tradeGroups.forEach((group) => {
     // Trade Header Section Banner
+    const bannerLabel = isInstallmentAligned
+      ? `TRADE: ${group.tradeTitle.toUpperCase()} (${group.tradeCode}) — ${group.traineeCount} UNIQUE ENROLLED STUDENTS`
+      : `TRADE: ${group.tradeTitle.toUpperCase()} (${group.tradeCode}) — ${group.traineeCount} TRAINEES`;
+
     tableBody.push([
       {
-        content: `TRADE: ${group.tradeTitle.toUpperCase()} (${group.tradeCode}) — ${group.traineeCount} TRAINEES`,
+        content: bannerLabel,
         colSpan: 19,
         styles: {
           fillColor: [22, 101, 52] as [number, number, number],
@@ -752,225 +814,485 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
       },
     ]);
 
-    // Trainee Rows sorted chronologically by Date
+    // Trainee Rows
+    const isMV = group.tradeCode === 'MVi' || group.tradeCode === 'MVii';
+
     group.rows.forEach((r) => {
       const tevtaSub = r.tevtaDues ?? (r.admissionTuition + r.pupil25);
       const instSub = r.instSubtotal ?? (r.welfare75 + r.security + r.boardOther);
-      tableBody.push([
-        r.srNo,
-        r.dateStr,
-        r.challanId,
-        r.rollNo,
-        r.cnic ? `${r.traineeName.toUpperCase()}\nCNIC: ${r.cnic}` : r.traineeName.toUpperCase(),
-        r.fatherName,
-        formatPKR(r.admissionTuition, false),
-        formatPKR(r.pupil25, false),
-        formatPKR(tevtaSub, false),
-        formatPKR(r.welfare75, false),
-        '-',
-        '-',
-        '-',
-        '-',
-        formatPKR(r.security, false),
-        r.boardOther === 0 ? '-' : formatPKR(r.boardOther, false),
-        formatPKR(instSub, false),
-        formatPKR(r.totalAmount, false),
-        r.remarks || 'Full Challan',
-      ]);
+
+      if (isInstallmentAligned) {
+        const inst1Text = isMV ? (r.inst1Info || (r.challanId ? `Ch# ${r.challanId}\nRs. ${formatPKR(r.inst1Amount ?? r.totalAmount, false)}` : '—')) : '—';
+        const inst2Text = isMV ? (r.inst2Info || (r.inst2Amount && r.inst2Amount > 0 ? `Rs. ${formatPKR(r.inst2Amount, false)}` : (r.remarks?.includes('Installment') ? 'Awaiting 2nd' : '—'))) : '—';
+
+        tableBody.push([
+          r.srNo,
+          r.rollNo,
+          r.cnic ? `${r.traineeName.toUpperCase()}\nCNIC: ${r.cnic}` : r.traineeName.toUpperCase(),
+          r.fatherName,
+          inst1Text,
+          inst2Text,
+          formatPKR(r.admissionTuition, false),
+          formatPKR(r.pupil25, false),
+          formatPKR(tevtaSub, false),
+          formatPKR(r.welfare75, false),
+          '-',
+          '-',
+          '-',
+          '-',
+          formatPKR(r.security, false),
+          r.boardOther === 0 ? '-' : formatPKR(r.boardOther, false),
+          formatPKR(instSub, false),
+          formatPKR(r.totalAmount, false),
+          r.remarks || 'Full Challan',
+        ]);
+      } else {
+        tableBody.push([
+          r.srNo,
+          r.dateStr,
+          r.challanId,
+          r.rollNo,
+          r.cnic ? `${r.traineeName.toUpperCase()}\nCNIC: ${r.cnic}` : r.traineeName.toUpperCase(),
+          r.fatherName,
+          formatPKR(r.admissionTuition, false),
+          formatPKR(r.pupil25, false),
+          formatPKR(tevtaSub, false),
+          formatPKR(r.welfare75, false),
+          '-',
+          '-',
+          '-',
+          '-',
+          formatPKR(r.security, false),
+          r.boardOther === 0 ? '-' : formatPKR(r.boardOther, false),
+          formatPKR(instSub, false),
+          formatPKR(r.totalAmount, false),
+          r.remarks || 'Full Challan',
+        ]);
+      }
     });
 
     // Trade Subtotal Row
     const groupTevtaSub = group.subtotal.tevtaDues ?? (group.subtotal.admissionTuition + group.subtotal.pupil25);
     const groupInstSub = group.subtotal.welfare75 + group.subtotal.security + group.subtotal.boardOther;
-    tableBody.push([
-      {
-        content: `Subtotal (${group.tradeCode})`,
-        colSpan: 6,
-        styles: {
-          fontStyle: 'bold',
-          halign: 'right',
-          fillColor: [240, 253, 244] as [number, number, number],
-          textColor: [22, 101, 52] as [number, number, number],
-          fontSize: 7.0,
+
+    if (isInstallmentAligned) {
+      tableBody.push([
+        {
+          content: `Subtotal (${group.tradeCode})`,
+          colSpan: 4,
+          styles: {
+            fontStyle: 'bold',
+            halign: 'right',
+            fillColor: [240, 253, 244] as [number, number, number],
+            textColor: [22, 101, 52] as [number, number, number],
+            fontSize: 7.0,
+          },
         },
-      },
-      {
-        content: formatPKR(group.subtotal.admissionTuition, false),
-        styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
-      },
-      {
-        content: formatPKR(group.subtotal.pupil25, false),
-        styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
-      },
-      {
-        content: formatPKR(groupTevtaSub, false),
-        styles: { fontStyle: 'bold', fontSize: 7.2, halign: 'right', fillColor: [224, 242, 254] as [number, number, number], textColor: [30, 64, 175] as [number, number, number] },
-      },
-      {
-        content: formatPKR(group.subtotal.welfare75, false),
-        styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
-      },
-      { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
-      { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
-      { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
-      { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
-      {
-        content: formatPKR(group.subtotal.security, false),
-        styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
-      },
-      {
-        content: group.subtotal.boardOther === 0 ? '-' : formatPKR(group.subtotal.boardOther, false),
-        styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
-      },
-      {
-        content: formatPKR(groupInstSub, false),
-        styles: { fontStyle: 'bold', fontSize: 7.2, halign: 'right', fillColor: [204, 251, 241] as [number, number, number], textColor: [15, 118, 110] as [number, number, number] },
-      },
-      {
-        content: formatPKR(group.subtotal.totalAmount, false),
-        styles: { fontStyle: 'bold', fontSize: 7.5, halign: 'right', fillColor: [240, 253, 244] as [number, number, number], textColor: [22, 101, 52] as [number, number, number] },
-      },
-      {
-        content: `${group.traineeCount} Trainees`,
-        styles: { fontStyle: 'bold', halign: 'center', fillColor: [240, 253, 244] as [number, number, number] },
-      },
-    ]);
+        {
+          content: isMV && group.inst1Total ? formatPKR(group.inst1Total, false) : '—',
+          styles: { fontStyle: 'bold', halign: 'center', fillColor: [254, 243, 199] as [number, number, number], textColor: [180, 83, 9] as [number, number, number], fontSize: 6.5 },
+        },
+        {
+          content: isMV && group.inst2Total ? formatPKR(group.inst2Total, false) : '—',
+          styles: { fontStyle: 'bold', halign: 'center', fillColor: [254, 243, 199] as [number, number, number], textColor: [180, 83, 9] as [number, number, number], fontSize: 6.5 },
+        },
+        {
+          content: formatPKR(group.subtotal.admissionTuition, false),
+          styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+        },
+        {
+          content: formatPKR(group.subtotal.pupil25, false),
+          styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+        },
+        {
+          content: formatPKR(groupTevtaSub, false),
+          styles: { fontStyle: 'bold', fontSize: 7.2, halign: 'right', fillColor: [224, 242, 254] as [number, number, number], textColor: [30, 64, 175] as [number, number, number] },
+        },
+        {
+          content: formatPKR(group.subtotal.welfare75, false),
+          styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+        },
+        { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
+        { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
+        { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
+        { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
+        {
+          content: formatPKR(group.subtotal.security, false),
+          styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+        },
+        {
+          content: group.subtotal.boardOther === 0 ? '-' : formatPKR(group.subtotal.boardOther, false),
+          styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+        },
+        {
+          content: formatPKR(groupInstSub, false),
+          styles: { fontStyle: 'bold', fontSize: 7.2, halign: 'right', fillColor: [204, 251, 241] as [number, number, number], textColor: [15, 118, 110] as [number, number, number] },
+        },
+        {
+          content: formatPKR(group.subtotal.totalAmount, false),
+          styles: { fontStyle: 'bold', fontSize: 7.5, halign: 'right', fillColor: [240, 253, 244] as [number, number, number], textColor: [22, 101, 52] as [number, number, number] },
+        },
+        {
+          content: `${group.traineeCount} Trainees`,
+          styles: { fontStyle: 'bold', halign: 'center', fillColor: [240, 253, 244] as [number, number, number] },
+        },
+      ]);
+    } else {
+      tableBody.push([
+        {
+          content: `Subtotal (${group.tradeCode})`,
+          colSpan: 6,
+          styles: {
+            fontStyle: 'bold',
+            halign: 'right',
+            fillColor: [240, 253, 244] as [number, number, number],
+            textColor: [22, 101, 52] as [number, number, number],
+            fontSize: 7.0,
+          },
+        },
+        {
+          content: formatPKR(group.subtotal.admissionTuition, false),
+          styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+        },
+        {
+          content: formatPKR(group.subtotal.pupil25, false),
+          styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+        },
+        {
+          content: formatPKR(groupTevtaSub, false),
+          styles: { fontStyle: 'bold', fontSize: 7.2, halign: 'right', fillColor: [224, 242, 254] as [number, number, number], textColor: [30, 64, 175] as [number, number, number] },
+        },
+        {
+          content: formatPKR(group.subtotal.welfare75, false),
+          styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+        },
+        { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
+        { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
+        { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
+        { content: '-', styles: { halign: 'center', fillColor: [240, 253, 244] as [number, number, number] } },
+        {
+          content: formatPKR(group.subtotal.security, false),
+          styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+        },
+        {
+          content: group.subtotal.boardOther === 0 ? '-' : formatPKR(group.subtotal.boardOther, false),
+          styles: { fontStyle: 'bold', halign: 'right', fillColor: [240, 253, 244] as [number, number, number] },
+        },
+        {
+          content: formatPKR(groupInstSub, false),
+          styles: { fontStyle: 'bold', fontSize: 7.2, halign: 'right', fillColor: [204, 251, 241] as [number, number, number], textColor: [15, 118, 110] as [number, number, number] },
+        },
+        {
+          content: formatPKR(group.subtotal.totalAmount, false),
+          styles: { fontStyle: 'bold', fontSize: 7.5, halign: 'right', fillColor: [240, 253, 244] as [number, number, number], textColor: [22, 101, 52] as [number, number, number] },
+        },
+        {
+          content: `${group.traineeCount} Trainees`,
+          styles: { fontStyle: 'bold', halign: 'center', fillColor: [240, 253, 244] as [number, number, number] },
+        },
+      ]);
+    }
   });
 
   // 6. Grand Total Footer Row
   const grandTevtaSub = grandTotal.tevtaDues ?? (grandTotal.admissionTuition + grandTotal.pupil25);
   const grandInstSub = grandTotal.welfare75 + grandTotal.security + grandTotal.boardOther;
-  const tableFoot: any[] = [
-    [
-      {
-        content: `GRAND TOTAL (${totalTrainees} Trainees across ${tradeGroups.length} Trades)`,
-        colSpan: 6,
-        styles: {
-          fontStyle: 'bold',
-          halign: 'right',
-          fillColor: [15, 76, 60] as [number, number, number],
-          textColor: [255, 255, 255] as [number, number, number],
-          fontSize: 7.5,
-        },
-      },
-      {
-        content: formatPKR(grandTotal.admissionTuition, false),
-        styles: {
-          fontStyle: 'bold',
-          halign: 'right',
-          fillColor: [15, 76, 60] as [number, number, number],
-          textColor: [255, 255, 255] as [number, number, number],
-        },
-      },
-      {
-        content: formatPKR(grandTotal.pupil25, false),
-        styles: {
-          fontStyle: 'bold',
-          halign: 'right',
-          fillColor: [15, 76, 60] as [number, number, number],
-          textColor: [255, 255, 255] as [number, number, number],
-        },
-      },
-      {
-        content: formatPKR(grandTevtaSub, false),
-        styles: {
-          fontStyle: 'bold',
-          fontSize: 7.5,
-          halign: 'right',
-          fillColor: [30, 64, 175] as [number, number, number],
-          textColor: [254, 240, 138] as [number, number, number],
-        },
-      },
-      {
-        content: formatPKR(grandTotal.welfare75, false),
-        styles: {
-          fontStyle: 'bold',
-          halign: 'right',
-          fillColor: [15, 76, 60] as [number, number, number],
-          textColor: [254, 240, 138] as [number, number, number],
-        },
-      },
-      {
-        content: '-',
-        styles: {
-          halign: 'center',
-          fillColor: [15, 76, 60] as [number, number, number],
-          textColor: [203, 213, 225] as [number, number, number],
-        },
-      },
-      {
-        content: '-',
-        styles: {
-          halign: 'center',
-          fillColor: [15, 76, 60] as [number, number, number],
-          textColor: [203, 213, 225] as [number, number, number],
-        },
-      },
-      {
-        content: '-',
-        styles: {
-          halign: 'center',
-          fillColor: [15, 76, 60] as [number, number, number],
-          textColor: [203, 213, 225] as [number, number, number],
-        },
-      },
-      {
-        content: '-',
-        styles: {
-          halign: 'center',
-          fillColor: [15, 76, 60] as [number, number, number],
-          textColor: [203, 213, 225] as [number, number, number],
-        },
-      },
-      {
-        content: formatPKR(grandTotal.security, false),
-        styles: {
-          fontStyle: 'bold',
-          halign: 'right',
-          fillColor: [15, 76, 60] as [number, number, number],
-          textColor: [255, 255, 255] as [number, number, number],
-        },
-      },
-      {
-        content: grandTotal.boardOther === 0 ? '-' : formatPKR(grandTotal.boardOther, false),
-        styles: {
-          fontStyle: 'bold',
-          halign: 'right',
-          fillColor: [15, 76, 60] as [number, number, number],
-          textColor: [255, 255, 255] as [number, number, number],
-        },
-      },
-      {
-        content: formatPKR(grandInstSub, false),
-        styles: {
-          fontStyle: 'bold',
-          fontSize: 7.5,
-          halign: 'right',
-          fillColor: [13, 148, 136] as [number, number, number],
-          textColor: [254, 240, 138] as [number, number, number],
-        },
-      },
-      {
-        content: formatPKR(grandTotal.totalAmount, false),
-        styles: {
-          fontStyle: 'bold',
-          fontSize: 8.0,
-          halign: 'right',
-          fillColor: [15, 76, 60] as [number, number, number],
-          textColor: [254, 240, 138] as [number, number, number],
-        },
-      },
-      {
-        content: 'RECONCILED',
-        styles: {
-          fontStyle: 'bold',
-          halign: 'center',
-          fillColor: [15, 76, 60] as [number, number, number],
-          textColor: [167, 243, 208] as [number, number, number],
-        },
-      },
-    ],
-  ];
+
+  const tableFoot: any[] = isInstallmentAligned
+    ? [
+        [
+          {
+            content: `GRAND TOTAL (${totalTrainees} Unique Trainees across ${tradeGroups.length} Trades)`,
+            colSpan: 4,
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [255, 255, 255] as [number, number, number],
+              fontSize: 7.5,
+            },
+          },
+          {
+            content: grandTotal.inst1Total ? formatPKR(grandTotal.inst1Total, false) : '—',
+            styles: { fontStyle: 'bold', halign: 'center', fillColor: [22, 101, 52] as [number, number, number], textColor: [254, 243, 199] as [number, number, number], fontSize: 6.8 },
+          },
+          {
+            content: grandTotal.inst2Total ? formatPKR(grandTotal.inst2Total, false) : '—',
+            styles: { fontStyle: 'bold', halign: 'center', fillColor: [22, 101, 52] as [number, number, number], textColor: [254, 243, 199] as [number, number, number], fontSize: 6.8 },
+          },
+          {
+            content: formatPKR(grandTotal.admissionTuition, false),
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [255, 255, 255] as [number, number, number],
+              fontSize: 7.2,
+            },
+          },
+          {
+            content: formatPKR(grandTotal.pupil25, false),
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [255, 255, 255] as [number, number, number],
+              fontSize: 7.2,
+            },
+          },
+          {
+            content: formatPKR(grandTevtaSub, false),
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [30, 64, 175] as [number, number, number],
+              textColor: [254, 240, 138] as [number, number, number],
+              fontSize: 7.8,
+            },
+          },
+          {
+            content: formatPKR(grandTotal.welfare75, false),
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [254, 240, 138] as [number, number, number],
+              fontSize: 7.2,
+            },
+          },
+          { content: '-', styles: { halign: 'center', fillColor: [15, 76, 60] as [number, number, number], textColor: [203, 213, 225] as [number, number, number] } },
+          { content: '-', styles: { halign: 'center', fillColor: [15, 76, 60] as [number, number, number], textColor: [203, 213, 225] as [number, number, number] } },
+          { content: '-', styles: { halign: 'center', fillColor: [15, 76, 60] as [number, number, number], textColor: [203, 213, 225] as [number, number, number] } },
+          { content: '-', styles: { halign: 'center', fillColor: [15, 76, 60] as [number, number, number], textColor: [203, 213, 225] as [number, number, number] } },
+          {
+            content: formatPKR(grandTotal.security, false),
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [255, 255, 255] as [number, number, number],
+              fontSize: 7.2,
+            },
+          },
+          {
+            content: grandTotal.boardOther === 0 ? '-' : formatPKR(grandTotal.boardOther, false),
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [255, 255, 255] as [number, number, number],
+              fontSize: 7.2,
+            },
+          },
+          {
+            content: formatPKR(grandInstSub, false),
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [13, 148, 136] as [number, number, number],
+              textColor: [254, 240, 138] as [number, number, number],
+              fontSize: 7.8,
+            },
+          },
+          {
+            content: formatPKR(grandTotal.totalAmount, false),
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [254, 240, 138] as [number, number, number],
+              fontSize: 8.5,
+            },
+          },
+          {
+            content: 'RECONCILED',
+            styles: {
+              fontStyle: 'bold',
+              halign: 'center',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [167, 243, 208] as [number, number, number],
+              fontSize: 7.0,
+            },
+          },
+        ],
+      ]
+    : [
+        [
+          {
+            content: `GRAND TOTAL (${totalTrainees} Trainees across ${tradeGroups.length} Trades)`,
+            colSpan: 6,
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [255, 255, 255] as [number, number, number],
+              fontSize: 7.5,
+            },
+          },
+          {
+            content: formatPKR(grandTotal.admissionTuition, false),
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [255, 255, 255] as [number, number, number],
+            },
+          },
+          {
+            content: formatPKR(grandTotal.pupil25, false),
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [255, 255, 255] as [number, number, number],
+            },
+          },
+          {
+            content: formatPKR(grandTevtaSub, false),
+            styles: {
+              fontStyle: 'bold',
+              fontSize: 7.5,
+              halign: 'right',
+              fillColor: [30, 64, 175] as [number, number, number],
+              textColor: [254, 240, 138] as [number, number, number],
+            },
+          },
+          {
+            content: formatPKR(grandTotal.welfare75, false),
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [254, 240, 138] as [number, number, number],
+            },
+          },
+          {
+            content: '-',
+            styles: {
+              halign: 'center',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [203, 213, 225] as [number, number, number],
+            },
+          },
+          {
+            content: '-',
+            styles: {
+              halign: 'center',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [203, 213, 225] as [number, number, number],
+            },
+          },
+          {
+            content: '-',
+            styles: {
+              halign: 'center',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [203, 213, 225] as [number, number, number],
+            },
+          },
+          {
+            content: '-',
+            styles: {
+              halign: 'center',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [203, 213, 225] as [number, number, number],
+            },
+          },
+          {
+            content: formatPKR(grandTotal.security, false),
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [255, 255, 255] as [number, number, number],
+            },
+          },
+          {
+            content: grandTotal.boardOther === 0 ? '-' : formatPKR(grandTotal.boardOther, false),
+            styles: {
+              fontStyle: 'bold',
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [255, 255, 255] as [number, number, number],
+            },
+          },
+          {
+            content: formatPKR(grandInstSub, false),
+            styles: {
+              fontStyle: 'bold',
+              fontSize: 7.5,
+              halign: 'right',
+              fillColor: [13, 148, 136] as [number, number, number],
+              textColor: [254, 240, 138] as [number, number, number],
+            },
+          },
+          {
+            content: formatPKR(grandTotal.totalAmount, false),
+            styles: {
+              fontStyle: 'bold',
+              fontSize: 8.0,
+              halign: 'right',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [254, 240, 138] as [number, number, number],
+            },
+          },
+          {
+            content: 'RECONCILED',
+            styles: {
+              fontStyle: 'bold',
+              halign: 'center',
+              fillColor: [15, 76, 60] as [number, number, number],
+              textColor: [167, 243, 208] as [number, number, number],
+            },
+          },
+        ],
+      ];
+
+  const nameColIndex = isInstallmentAligned ? 2 : 4;
+
+  const columnStyles: any = isInstallmentAligned
+    ? {
+        0: { halign: 'center', cellWidth: 6 }, // Sr # (A)
+        1: { halign: 'center', cellWidth: 15, fontStyle: 'bold' }, // Roll # (B)
+        2: { halign: 'left', cellWidth: 32, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 23, 42] }, // Trainee Name (C)
+        3: { halign: 'left', cellWidth: 20, fontSize: 6.2 }, // Father Name (D)
+        4: { halign: 'center', cellWidth: 17, fontSize: 5.8 }, // 1st Installment (E)
+        5: { halign: 'center', cellWidth: 17, fontSize: 5.8 }, // 2nd Installment (F)
+        6: { halign: 'right', cellWidth: 13 }, // Adm/Tuition (G)
+        7: { halign: 'right', cellWidth: 10.5 }, // 25% PF (H)
+        8: { halign: 'right', cellWidth: 16, fontStyle: 'bold', fontSize: 7.0, textColor: [30, 64, 175] }, // Subtotal TEVTA (G+H)
+        9: { halign: 'right', cellWidth: 13 }, // Welfare Fund (I)
+        10: { halign: 'center', cellWidth: 9, textColor: [148, 163, 184] }, // Stationary / Exam (J)
+        11: { halign: 'center', cellWidth: 9, textColor: [148, 163, 184] }, // Computer Fund (K)
+        12: { halign: 'center', cellWidth: 9, textColor: [148, 163, 184] }, // M & E Breakage (L)
+        13: { halign: 'center', cellWidth: 9, textColor: [148, 163, 184] }, // Sports Fund (M)
+        14: { halign: 'right', cellWidth: 11.5 }, // Security (N)
+        15: { halign: 'right', cellWidth: 12 }, // Board/Other (O)
+        16: { halign: 'right', cellWidth: 16, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 118, 110] }, // Subtotal (I:O)
+        17: { halign: 'right', cellWidth: 18, fontStyle: 'bold', fontSize: 7.2, textColor: [6, 95, 70] }, // Total PKR (P)
+        18: { halign: 'center', cellWidth: 20 }, // Remarks (Q)
+      }
+    : {
+        0: { halign: 'center', cellWidth: 6 }, // Sr # (A)
+        1: { halign: 'center', cellWidth: 13.5 }, // Date (B)
+        2: { halign: 'center', cellWidth: 12.5, fontStyle: 'bold' }, // Challan # (C)
+        3: { halign: 'center', cellWidth: 15, fontStyle: 'bold' }, // Roll # (D)
+        4: { halign: 'left', cellWidth: 35, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 23, 42] }, // Trainee Name & CNIC (E)
+        5: { halign: 'left', cellWidth: 24, fontSize: 6.2 }, // Father Name (F)
+        6: { halign: 'right', cellWidth: 13 }, // Adm/Tuition (G)
+        7: { halign: 'right', cellWidth: 10.5 }, // 25% PF (H)
+        8: { halign: 'right', cellWidth: 17, fontStyle: 'bold', fontSize: 7.0, textColor: [30, 64, 175] }, // Subtotal TEVTA (G+H)
+        9: { halign: 'right', cellWidth: 13 }, // Welfare Fund (I)
+        10: { halign: 'center', cellWidth: 11, textColor: [148, 163, 184] }, // Stationary / Exam (J)
+        11: { halign: 'center', cellWidth: 11, textColor: [148, 163, 184] }, // Computer Fund (K)
+        12: { halign: 'center', cellWidth: 11, textColor: [148, 163, 184] }, // M & E Breakage (L)
+        13: { halign: 'center', cellWidth: 11, textColor: [148, 163, 184] }, // Sports Fund (M)
+        14: { halign: 'right', cellWidth: 11.5 }, // Security (N)
+        15: { halign: 'right', cellWidth: 12.5 }, // Board/Other (O)
+        16: { halign: 'right', cellWidth: 17, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 118, 110] }, // Subtotal (I:O)
+        17: { halign: 'right', cellWidth: 18.5, fontStyle: 'bold', fontSize: 7.2, textColor: [6, 95, 70] }, // Total PKR (P)
+        18: { halign: 'center', cellWidth: 21 }, // Remarks (Q)
+      };
 
   autoTable(doc, {
     startY: 42,
@@ -996,31 +1318,11 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
       fontSize: 6.0,
       cellPadding: { top: 1.5, bottom: 1.5, left: 0.8, right: 0.8 },
     },
-    columnStyles: {
-      0: { halign: 'center', cellWidth: 6 }, // Sr # (A)
-      1: { halign: 'center', cellWidth: 13.5 }, // Date (B)
-      2: { halign: 'center', cellWidth: 12.5, fontStyle: 'bold' }, // Challan # (C)
-      3: { halign: 'center', cellWidth: 15, fontStyle: 'bold' }, // Roll # (D)
-      4: { halign: 'left', cellWidth: 35, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 23, 42] }, // Trainee Name & CNIC (E)
-      5: { halign: 'left', cellWidth: 24, fontSize: 6.2 }, // Father Name (F)
-      6: { halign: 'right', cellWidth: 13 }, // Adm/Tuition (G)
-      7: { halign: 'right', cellWidth: 10.5 }, // 25% PF (H)
-      8: { halign: 'right', cellWidth: 17, fontStyle: 'bold', fontSize: 7.0, textColor: [30, 64, 175] }, // Subtotal TEVTA (G+H)
-      9: { halign: 'right', cellWidth: 13 }, // Welfare Fund (I)
-      10: { halign: 'center', cellWidth: 11, textColor: [148, 163, 184] }, // Stationary / Exam (J)
-      11: { halign: 'center', cellWidth: 11, textColor: [148, 163, 184] }, // Computer Fund (K)
-      12: { halign: 'center', cellWidth: 11, textColor: [148, 163, 184] }, // M & E Breakage (L)
-      13: { halign: 'center', cellWidth: 11, textColor: [148, 163, 184] }, // Sports Fund (M)
-      14: { halign: 'right', cellWidth: 11.5 }, // Security (N)
-      15: { halign: 'right', cellWidth: 12.5 }, // Board/Other (O)
-      16: { halign: 'right', cellWidth: 17, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 118, 110] }, // Subtotal (I:O)
-      17: { halign: 'right', cellWidth: 18.5, fontStyle: 'bold', fontSize: 7.2, textColor: [6, 95, 70] }, // Total PKR (P)
-      18: { halign: 'center', cellWidth: 21 }, // Remarks (Q)
-    },
+    columnStyles,
     margin: { left: 6, right: 6, bottom: 16 },
     didParseCell: (data) => {
       // For Trainee Name column: capture text lines and keep spacing
-      if (data.section === 'body' && data.column.index === 4) {
+      if (data.section === 'body' && data.column.index === nameColIndex) {
         (data.cell as any)._traineeLines = [...data.cell.text];
         data.cell.text = (data.cell as any)._traineeLines.map(() => ' ');
       }
@@ -1048,7 +1350,7 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
     },
     didDrawCell: (data) => {
       // Draw Student Name in BOLD CAPITAL LETTERS and CNIC in NORMAL (NOT BOLD) REGULAR font
-      if (data.section === 'body' && data.column.index === 4 && (data.cell as any)._traineeLines) {
+      if (data.section === 'body' && data.column.index === nameColIndex && (data.cell as any)._traineeLines) {
         const lines: string[] = (data.cell as any)._traineeLines;
         const name = (lines[0] || '').toUpperCase();
         const cnicLine = lines[1] || '';
@@ -1134,6 +1436,46 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
     );
   }
 
-  const cleanFilename = `GVTIW_Official_Fee_Register_${new Date().toISOString().slice(0, 10)}.pdf`;
-  doc.save(cleanFilename);
+  if (printDirectly) {
+    // Direct Print Mode: trigger browser print dialog on this exact official PDF report
+    doc.autoPrint();
+    const pdfBlob = doc.output('blob');
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '1px';
+    iframe.style.height = '1px';
+    iframe.style.border = 'none';
+    iframe.style.opacity = '0.01';
+    iframe.src = pdfUrl;
+    document.body.appendChild(iframe);
+
+    const triggerPrint = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (err) {
+        console.warn('Direct iframe PDF print failed, falling back to window.print()', err);
+        window.print();
+      }
+    };
+
+    iframe.onload = () => {
+      setTimeout(triggerPrint, 350);
+    };
+    setTimeout(triggerPrint, 800);
+
+    // Clean up
+    setTimeout(() => {
+      try {
+        document.body.removeChild(iframe);
+        URL.revokeObjectURL(pdfUrl);
+      } catch {}
+    }, 60000);
+  } else {
+    const cleanFilename = `GVTIW_Official_Fee_Register_${new Date().toISOString().slice(0, 10)}.pdf`;
+    doc.save(cleanFilename);
+  }
 }

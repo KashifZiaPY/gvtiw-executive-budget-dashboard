@@ -188,7 +188,9 @@
   body:has(#print-tfc-portal) #root,
   body.tfc-print-active #root,
   body:has(#print-director-recon-portal) #root,
-  body.director-recon-print-active #root {
+  body.director-recon-print-active #root,
+  body:has(#print-fee-register-portal) #root,
+  body.fee-register-print-active #root {
     display: none !important;
   }
 
@@ -218,6 +220,23 @@
 
   /* Official TFC Fee Hub Landscape Report Portal */
   #print-tfc-portal {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    background: white !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Official Fee Register Landscape Report Portal */
+  #print-fee-register-portal {
     display: block !important;
     position: static !important;
     inset: auto !important;
