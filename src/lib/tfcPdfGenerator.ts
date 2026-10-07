@@ -844,7 +844,7 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
           r.boardOther === 0 ? '-' : formatPKR(r.boardOther, false),
           formatPKR(instSub, false),
           formatPKR(r.totalAmount, false),
-          r.remarks || 'Full Challan',
+          r.remarks || 'Full Prescribed Fee',
         ]);
       } else {
         tableBody.push([
@@ -866,7 +866,7 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
           r.boardOther === 0 ? '-' : formatPKR(r.boardOther, false),
           formatPKR(instSub, false),
           formatPKR(r.totalAmount, false),
-          r.remarks || 'Full Challan',
+          r.remarks || 'Full Prescribed Fee',
         ]);
       }
     });

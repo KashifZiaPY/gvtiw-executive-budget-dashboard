@@ -6,6 +6,7 @@ import {
   computeChallanFeeBreakdown,
   parseFeeRegisterStudentInfo,
   COURSE_TITLE_MAP,
+  PRESCRIBED_COURSE_FEE_MAP,
 } from '../data/tfcChallanData';
 import { formatPKR } from '../lib/formatters';
 import { generateFeeRegisterPdf } from '../lib/tfcPdfGenerator';
@@ -669,25 +670,8 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         const first = challanList[0];
         const second = challanList.length > 1 ? challanList[1] : null;
 
-        // Installment detection (STRICTLY for Matric Vocational MVi & MVii):
-        const isMultipleSubmissions = isMatricVocational && challanList.length > 1;
-        const isMViInstAmount = isMatricVocational && (first.challan.totalAmount === 5445 || first.challan.totalAmount === 5234 || first.challan.totalAmount === 2244);
-        const hasInstRemark = isMatricVocational && challanList.some(
-          (item) =>
-            (item.challan.paymentType && item.challan.paymentType.toLowerCase().includes('inst')) ||
-            (item.info.installmentNotice && item.info.installmentNotice.toLowerCase().includes('inst'))
-        );
-
-        const isInstallmentCase = isMatricVocational && (isMultipleSubmissions || isMViInstAmount || hasInstRemark);
-
-        // Installment details: ONLY populated for Matric Vocational (MVi & MVii)
-        const inst1ChallanId = isMatricVocational ? first.challan.challanId : '';
-        const inst1Date = isMatricVocational ? first.dateInfo.displayDmy : '';
-        const inst1Amount = isMatricVocational ? first.challan.totalAmount : 0;
-
-        const inst2ChallanId = isMatricVocational && second ? second.challan.challanId : '';
-        const inst2Date = isMatricVocational && second ? second.dateInfo.displayDmy : '';
-        const inst2Amount = isMatricVocational && second ? second.challan.totalAmount : 0;
+        const prescribedInfo = PRESCRIBED_COURSE_FEE_MAP[tCode];
+        const prescribedFullFee = prescribedInfo ? prescribedInfo.fullFee : 0;
 
         // Aggregate financial columns across student's challans
         let admTuitionSum = 0;
@@ -712,15 +696,50 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
 
         const instSubtotalSum = welfare75Sum + secSum + boardOtherSum;
 
-        let status = 'Full Challan';
-        let remarks = isMatricVocational ? 'Full Challan' : (first.info.remarks || 'Full Challan');
+        // Full Prescribed Fee Check:
+        // If fee paid is >= prescribed full fee (e.g. MVi >= 9722, MVii >= 5445, FD >= 7114, ADDM >= 8332, CO >= 4809, BT/DM/CK >= 4509, BTE >= 10012),
+        // it is marked as Full Fee Paid, and NO awaiting text is written.
+        // If fee is less than prescribed fee, up to 3 installments are permitted with explicit awaiting status.
+        const isFullFeePaid = prescribedFullFee > 0
+          ? totalAmountSum >= prescribedFullFee
+          : (!isMatricVocational || challanList.length === 1);
 
-        if (isMultipleSubmissions) {
-          status = '2 Installments Submitted';
-          remarks = `1st Inst (Ch# ${inst1ChallanId}): Rs. ${formatPKR(inst1Amount, false)} + 2nd Inst (Ch# ${inst2ChallanId}): Rs. ${formatPKR(inst2Amount, false)}`;
+        const isInstallmentCase = isMatricVocational && !isFullFeePaid;
+
+        // Installment details (populated for Matric Vocational)
+        const inst1ChallanId = isMatricVocational && challanList[0] ? challanList[0].challan.challanId : '';
+        const inst1Date = isMatricVocational && challanList[0] ? challanList[0].dateInfo.displayDmy : '';
+        const inst1Amount = isMatricVocational && challanList[0] ? challanList[0].challan.totalAmount : 0;
+
+        const inst2ChallanId = isMatricVocational && challanList[1] ? challanList[1].challan.challanId : '';
+        const inst2Date = isMatricVocational && challanList[1] ? challanList[1].dateInfo.displayDmy : '';
+        const inst2Amount = isMatricVocational && challanList[1] ? challanList[1].challan.totalAmount : 0;
+
+        let status = 'Full Fee Paid';
+        let remarks = isMatricVocational ? 'Full Fee Paid' : (first.info.remarks || 'Full Prescribed Fee');
+
+        if (isFullFeePaid) {
+          if (challanList.length > 1) {
+            status = 'Full Fee Paid (2 Installments)';
+            remarks = `1st Inst (Ch# ${inst1ChallanId}): Rs. ${formatPKR(inst1Amount, false)} + 2nd Inst (Ch# ${inst2ChallanId}): Rs. ${formatPKR(inst2Amount, false)}`;
+          } else {
+            status = 'Full Fee Paid';
+            remarks = 'Full Prescribed Fee';
+          }
         } else if (isInstallmentCase) {
-          status = '1st Installment Paid (Awaiting 2nd)';
-          remarks = `1st Installment (Ch# ${inst1ChallanId}): Rs. ${formatPKR(inst1Amount, false)}`;
+          const balance = prescribedFullFee > totalAmountSum ? prescribedFullFee - totalAmountSum : 0;
+          if (challanList.length === 1) {
+            status = '1st Inst Paid (Awaiting 2nd)';
+            remarks = `1st Inst (Ch# ${inst1ChallanId}): Rs. ${formatPKR(inst1Amount, false)} • Balance: Rs. ${formatPKR(balance, false)}`;
+          } else if (challanList.length === 2) {
+            status = '2nd Inst Paid (Awaiting 3rd)';
+            remarks = `1st Inst (Ch# ${inst1ChallanId}): Rs. ${formatPKR(inst1Amount, false)} + 2nd Inst (Ch# ${inst2ChallanId}): Rs. ${formatPKR(inst2Amount, false)} • Balance: Rs. ${formatPKR(balance, false)}`;
+          } else {
+            status = `${challanList.length} Installments Submitted`;
+            remarks = challanList
+              .map((item, idx) => `${idx + 1}st Inst (Ch# ${item.challan.challanId}): Rs. ${formatPKR(item.challan.totalAmount, false)}`)
+              .join(' + ');
+          }
         }
 
         const studentRow: FeeRegisterStudentRow = {
@@ -755,7 +774,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           totalAmount: totalAmountSum,
 
           isInstallmentCase,
-          installmentCount: isMultipleSubmissions ? 2 : (isInstallmentCase ? 1 : 0),
+          installmentCount: challanList.length > 1 ? challanList.length : (isInstallmentCase ? 1 : 0),
           status,
           remarks,
           challanCount: challanList.length,

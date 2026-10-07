@@ -378,6 +378,101 @@ export const COURSE_TITLE_MAP: Record<string, string> = {
   OTHER: 'General / Other Trainee Course',
 };
 
+// Official Prescribed Course Fee Reference Schedule (2026-27 Morning & Evening Shifts)
+export interface PrescribedCourseFee {
+  tradeCode: string;
+  tradeTitle: string;
+  boardRegistration: number;
+  admissionTuition: number;
+  pupilFund: number;
+  instituteSecurity: number;
+  fullFee: number;
+}
+
+export const PRESCRIBED_COURSE_FEE_MAP: Record<string, PrescribedCourseFee> = {
+  MVi: {
+    tradeCode: 'MVi',
+    tradeTitle: 'Matric Vocational 9th',
+    boardRegistration: 2990,
+    admissionTuition: 2420,
+    pupilFund: 3025,
+    instituteSecurity: 1287,
+    fullFee: 9722, // Rs. 9,722 Full Prescribed Fee
+  },
+  MVii: {
+    tradeCode: 'MVii',
+    tradeTitle: 'Matric Vocational 10th',
+    boardRegistration: 0,
+    admissionTuition: 2420,
+    pupilFund: 3025,
+    instituteSecurity: 0,
+    fullFee: 5445, // Rs. 5,445 Full Prescribed Fee
+  },
+  FD: {
+    tradeCode: 'FD',
+    tradeTitle: 'Fashion Designing L-III',
+    boardRegistration: 1800,
+    admissionTuition: 2195,
+    pupilFund: 3120,
+    instituteSecurity: 0,
+    fullFee: 7114, // Rs. 7,114 Full Prescribed Fee
+  },
+  ADDM: {
+    tradeCode: 'ADDM',
+    tradeTitle: 'Advance Diploma Dress Making',
+    boardRegistration: 1600,
+    admissionTuition: 2420,
+    pupilFund: 3025,
+    instituteSecurity: 1287,
+    fullFee: 8332, // Rs. 8,332 Full Prescribed Fee
+  },
+  CO: {
+    tradeCode: 'CO',
+    tradeTitle: 'Computer Operator Level-III',
+    boardRegistration: 1800,
+    admissionTuition: 1199,
+    pupilFund: 1810,
+    instituteSecurity: 0,
+    fullFee: 4809, // Rs. 4,809 Full Prescribed Fee
+  },
+  DM: {
+    tradeCode: 'DM',
+    tradeTitle: 'Dress Making Level-II',
+    boardRegistration: 1500,
+    admissionTuition: 1199,
+    pupilFund: 1810,
+    instituteSecurity: 0,
+    fullFee: 4509, // Rs. 4,509 Full Prescribed Fee
+  },
+  BT: {
+    tradeCode: 'BT',
+    tradeTitle: 'Beautician Level-II (Morning)',
+    boardRegistration: 1500,
+    admissionTuition: 1199,
+    pupilFund: 1810,
+    instituteSecurity: 0,
+    fullFee: 4509, // Rs. 4,509 Full Prescribed Fee
+  },
+  CK: {
+    tradeCode: 'CK',
+    tradeTitle: 'Professional Cooking Level-II (Morning)',
+    boardRegistration: 1500,
+    admissionTuition: 1199,
+    pupilFund: 1810,
+    instituteSecurity: 0,
+    fullFee: 4509, // Rs. 4,509 Full Prescribed Fee
+  },
+  BTE: {
+    tradeCode: 'BTE',
+    tradeTitle: 'Beautician Self-Finance (Evening)',
+    boardRegistration: 0,
+    admissionTuition: 0,
+    pupilFund: 0,
+    instituteSecurity: 0,
+    fullFee: 10012, // Rs. 10,012 Full Prescribed Fee
+  },
+};
+
 export type OtherFeeClassification = 'SELF_FINANCE_BTE' | 'TUV_CERTIFICATION' | 'BOARD_CHARGES';
 
 export interface OtherFeeDetails {
