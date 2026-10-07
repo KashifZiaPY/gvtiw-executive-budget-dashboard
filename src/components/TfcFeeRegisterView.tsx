@@ -1000,15 +1000,11 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         '25% Pupil Fund (I)',
         'Subtotal TEVTA (H+I)',
         'Welfare Fund 75% (K)',
-        'Stationary / Exam (L)',
-        'Computer Fund (M)',
-        'M & E Breakage (N)',
-        'Sports Fund (O)',
-        'Institute Security (P)',
-        'Board / Other Fee (Q)',
-        'Subtotal Inst. (K:Q)',
-        'Total Amount PKR (S)',
-        'Remarks / Status (T)',
+        'Institute Security (L)',
+        'Board / Other Fee (M)',
+        'Subtotal Inst. (K:M)',
+        'Total Amount PKR (O)',
+        'Remarks / Status (P)',
       ];
 
       const lines: string[] = [headers.join('\t')];
@@ -1036,10 +1032,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
               r.pupil25,
               r.tevtaDues,
               r.welfare75,
-              '-',
-              '-',
-              '-',
-              '-',
               r.security,
               r.boardOther === 0 ? '-' : r.boardOther,
               r.instSubtotal,
@@ -1064,10 +1056,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             sec.subtotal.pupil25,
             sec.subtotal.tevtaDues,
             sec.subtotal.welfare75,
-            '-',
-            '-',
-            '-',
-            '-',
             sec.subtotal.security,
             sec.subtotal.boardOther === 0 ? '-' : sec.subtotal.boardOther,
             sec.subtotal.welfare75 + sec.subtotal.security + sec.subtotal.boardOther,
@@ -1092,10 +1080,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           studentGrandTotal.pupil25,
           studentGrandTotal.tevtaDues,
           studentGrandTotal.welfare75,
-          '-',
-          '-',
-          '-',
-          '-',
           studentGrandTotal.security,
           studentGrandTotal.boardOther === 0 ? '-' : studentGrandTotal.boardOther,
           studentGrandTotal.welfare75 + studentGrandTotal.security + studentGrandTotal.boardOther,
@@ -1123,15 +1107,11 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
       '25% Pupil Fund (H)',
       'Subtotal TEVTA (G+H)',
       'Welfare Fund 75% (I)',
-      'Stationary / Exam (J)',
-      'Computer Fund (K)',
-      'M & E Breakage (L)',
-      'Sports Fund (M)',
-      'Institute Security (N)',
-      'Board / Other Fee (O)',
-      'Subtotal Inst. (I:O)',
-      'Total Amount PKR (P)',
-      'Remarks / Installment (Q)',
+      'Institute Security (J)',
+      'Board / Other Fee (K)',
+      'Subtotal Inst. (I:K)',
+      'Total Amount PKR (M)',
+      'Remarks / Installment (N)',
     ];
 
     const lines: string[] = [headers.join('\t')];
@@ -1153,10 +1133,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             r.pupil25,
             r.tevtaDues,
             r.welfare75,
-            '-',
-            '-',
-            '-',
-            '-',
             r.security,
             r.boardOther === 0 ? '-' : r.boardOther,
             r.instSubtotal,
@@ -1180,10 +1156,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           sec.subtotal.pupil25,
           sec.subtotal.tevtaDues,
           sec.subtotal.welfare75,
-          '-',
-          '-',
-          '-',
-          '-',
           sec.subtotal.security,
           sec.subtotal.boardOther === 0 ? '-' : sec.subtotal.boardOther,
           sec.subtotal.welfare75 + sec.subtotal.security + sec.subtotal.boardOther,
@@ -1207,10 +1179,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         grandTotal.pupil25,
         grandTotal.tevtaDues,
         grandTotal.welfare75,
-        '-',
-        '-',
-        '-',
-        '-',
         grandTotal.security,
         grandTotal.boardOther === 0 ? '-' : grandTotal.boardOther,
         grandTotal.welfare75 + grandTotal.security + grandTotal.boardOther,
@@ -1259,15 +1227,11 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           '25% Pupil Fund (I)',
           'Subtotal TEVTA (H+I)',
           'Welfare Fund 75% (K)',
-          'Stationary / Exam (L)',
-          'Computer Fund (M)',
-          'M & E Breakage (N)',
-          'Sports Fund (O)',
-          'Institute Security (P)',
-          'Board / Other Fee (Q)',
-          'Subtotal Inst. (K:Q)',
-          'Total Amount PKR (S)',
-          'Remarks / Status (T)',
+          'Institute Security (L)',
+          'Board / Other Fee (M)',
+          'Subtotal Inst. (K:M)',
+          'Total Amount PKR (O)',
+          'Remarks / Status (P)',
         ].map(escapeCsv).join(','),
       ];
 
@@ -1296,10 +1260,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
               r.pupil25,
               r.tevtaDues,
               r.welfare75,
-              '-',
-              '-',
-              '-',
-              '-',
               r.security,
               r.boardOther === 0 ? '-' : r.boardOther,
               r.instSubtotal,
@@ -1322,10 +1282,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             sec.subtotal.pupil25,
             sec.subtotal.tevtaDues,
             sec.subtotal.welfare75,
-            '-',
-            '-',
-            '-',
-            '-',
             sec.subtotal.security,
             sec.subtotal.boardOther === 0 ? '-' : sec.subtotal.boardOther,
             sec.subtotal.welfare75 + sec.subtotal.security + sec.subtotal.boardOther,
@@ -1348,10 +1304,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           studentGrandTotal.pupil25,
           studentGrandTotal.tevtaDues,
           studentGrandTotal.welfare75,
-          '-',
-          '-',
-          '-',
-          '-',
           studentGrandTotal.security,
           studentGrandTotal.boardOther === 0 ? '-' : studentGrandTotal.boardOther,
           studentGrandTotal.welfare75 + studentGrandTotal.security + studentGrandTotal.boardOther,
@@ -1377,7 +1329,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
       escapeCsv('GOVT. VOCATIONAL TRAINING INSTITUTE FOR WOMEN, SAMANABAD FAISALABAD'),
       escapeCsv('OFFICIAL FEE REGISTER & TRAINEE ALLOCATION — ACADEMIC YEAR 2026–2027 (A/C: 6580027832200011)'),
       escapeCsv(`Period: ${activePeriodLabel} | Trade Filter: ${selectedTrade === 'ALL' ? 'All Trades' : selectedTrade} | Total Trainees: ${grandTotal.totalTrainees}`),
-      escapeCsv('Note: Cols J:M (Stationary/Exam, Computer, M&E Breakage, Sports) reserved as 100% of 75% Pupil Fund is treated in Welfare Fund (Col I)'),
+      escapeCsv('Note: 100% of 75% Pupil Fund is treated under Welfare Fund (Col I)'),
       '',
       [
         'Sr # (A)',
@@ -1390,15 +1342,11 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         '25% Pupil Fund (H)',
         'Subtotal TEVTA (G+H)',
         'Welfare Fund 75% (I)',
-        'Stationary / Exam (J)',
-        'Computer Fund (K)',
-        'M & E Breakage (L)',
-        'Sports Fund (M)',
-        'Institute Security (N)',
-        'Board / Other Fee (O)',
-        'Subtotal Inst. (I:O)',
-        'Total Amount PKR (P)',
-        'Remarks / Installment (Q)',
+        'Institute Security (J)',
+        'Board / Other Fee (K)',
+        'Subtotal Inst. (I:K)',
+        'Total Amount PKR (M)',
+        'Remarks / Installment (N)',
       ].map(escapeCsv).join(','),
     ];
 
@@ -1417,10 +1365,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             r.pupil25,
             r.tevtaDues,
             r.welfare75,
-            '-',
-            '-',
-            '-',
-            '-',
             r.security,
             r.boardOther === 0 ? '-' : r.boardOther,
             r.instSubtotal,
@@ -1442,10 +1386,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           sec.subtotal.pupil25,
           sec.subtotal.tevtaDues,
           sec.subtotal.welfare75,
-          '-',
-          '-',
-          '-',
-          '-',
           sec.subtotal.security,
           sec.subtotal.boardOther === 0 ? '-' : sec.subtotal.boardOther,
           sec.subtotal.welfare75 + sec.subtotal.security + sec.subtotal.boardOther,
@@ -1467,10 +1407,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         grandTotal.pupil25,
         grandTotal.tevtaDues,
         grandTotal.welfare75,
-        '-',
-        '-',
-        '-',
-        '-',
         grandTotal.security,
         grandTotal.boardOther === 0 ? '-' : grandTotal.boardOther,
         grandTotal.welfare75 + grandTotal.security + grandTotal.boardOther,
@@ -1559,10 +1495,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           '',
           '',
           '',
-          '',
-          '',
-          '',
-          '',
           'TOTAL',
           'STATUS',
         ]);
@@ -1573,9 +1505,9 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         sheet.mergeCells('A5:D5');
         sheet.mergeCells('E5:G5');
         sheet.mergeCells('H5:J5');
-        sheet.mergeCells('K5:R5');
-        sheet.mergeCells('S5:S5');
-        sheet.mergeCells('T5:T5');
+        sheet.mergeCells('K5:N5');
+        sheet.mergeCells('O5:O5');
+        sheet.mergeCells('P5:P5');
 
         const headerRow = sheet.addRow([
           'Sr #\n(A)',
@@ -1589,15 +1521,11 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           '25% PF\n(I)',
           'Subtotal TEVTA\n(H+I)',
           'Welfare Fund\n(K)',
-          'Stationary / Exam\n(L)',
-          'Computer Fund\n(M)',
-          'M & E Breakage\n(N)',
-          'Sports Fund\n(O)',
-          'Institute Security\n(P)',
-          'Board / Other Fee\n(Q)',
-          'Subtotal\n(K:Q)',
-          'Total Amount PKR\n(S)',
-          'Remarks / Status\n(T)',
+          'Institute Security\n(L)',
+          'Board / Other Fee\n(M)',
+          'Subtotal\n(K:M)',
+          'Total Amount PKR\n(O)',
+          'Remarks / Status\n(P)',
         ]);
         headerRow.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
         headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -1606,24 +1534,20 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         sheet.columns = [
           { width: 8 },  // Sr # (A)
           { width: 16 }, // Roll # (B)
-          { width: 30 }, // Trainee Name & CNIC (C)
-          { width: 24 }, // Father Name (D)
-          { width: 24 }, // 1st Installment (E)
-          { width: 24 }, // 2nd Installment (F)
-          { width: 24 }, // 3rd Installment (G)
+          { width: 34 }, // Trainee Name & CNIC (C)
+          { width: 26 }, // Father Name (D)
+          { width: 25 }, // 1st Installment (E)
+          { width: 25 }, // 2nd Installment (F)
+          { width: 25 }, // 3rd Installment (G)
           { width: 15 }, // Adm/Tuition (H)
           { width: 14 }, // 25% PF (I)
           { width: 17 }, // Subtotal TEVTA (H+I)
           { width: 16 }, // Welfare Fund (K)
-          { width: 15 }, // Stationary (L)
-          { width: 15 }, // Computer (M)
-          { width: 15 }, // Breakage (N)
-          { width: 14 }, // Sports (O)
-          { width: 16 }, // Security (P)
-          { width: 16 }, // Board/Other (Q)
-          { width: 17 }, // Subtotal (K:Q)
-          { width: 18 }, // Total (S)
-          { width: 26 }, // Remarks / Status (T)
+          { width: 16 }, // Security (L)
+          { width: 16 }, // Board/Other (M)
+          { width: 17 }, // Subtotal (K:M)
+          { width: 18 }, // Total (O)
+          { width: 30 }, // Remarks / Status (P)
         ];
 
         studentTradeSections.forEach((sec) => {
@@ -1633,7 +1557,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           ]);
           tradeBanner.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
           tradeBanner.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E3A8A' } };
-          sheet.mergeCells(`A${sheet.rowCount}:T${sheet.rowCount}`);
+          sheet.mergeCells(`A${sheet.rowCount}:P${sheet.rowCount}`);
           tradeBanner.alignment = { vertical: 'middle', horizontal: 'left' };
 
           sec.rows.forEach((r) => {
@@ -1654,10 +1578,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
               r.pupil25,
               r.tevtaDues,
               r.welfare75,
-              '-',
-              '-',
-              '-',
-              '-',
               r.security,
               r.boardOther === 0 ? '-' : r.boardOther,
               r.instSubtotal,
@@ -1686,7 +1606,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             row.getCell(7).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
 
-            [8, 9, 10, 11, 16, 17, 18, 19].forEach((colIdx) => {
+            [8, 9, 10, 11, 12, 13, 14, 15].forEach((colIdx) => {
               const cell = row.getCell(colIdx);
               if (typeof cell.value === 'number') {
                 cell.numFmt = '#,##0';
@@ -1697,17 +1617,12 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             // Highlight subtotal & total
             row.getCell(10).font = { bold: true };
             row.getCell(10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FF' } };
-            row.getCell(18).font = { bold: true };
-            row.getCell(18).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
-            row.getCell(19).font = { bold: true };
-            row.getCell(19).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } };
+            row.getCell(14).font = { bold: true };
+            row.getCell(14).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
+            row.getCell(15).font = { bold: true };
+            row.getCell(15).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } };
 
-            [12, 13, 14, 15].forEach((colIdx) => {
-              row.getCell(colIdx).alignment = { horizontal: 'center' };
-              row.getCell(colIdx).font = { color: { argb: 'FF94A3B8' } };
-            });
-
-            row.getCell(20).alignment = { horizontal: 'left' };
+            row.getCell(16).alignment = { horizontal: 'left' };
           });
 
           // Subtotal Row
@@ -1723,10 +1638,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             sec.subtotal.pupil25,
             sec.subtotal.tevtaDues,
             sec.subtotal.welfare75,
-            '-',
-            '-',
-            '-',
-            '-',
             sec.subtotal.security,
             sec.subtotal.boardOther === 0 ? '-' : sec.subtotal.boardOther,
             sec.subtotal.welfare75 + sec.subtotal.security + sec.subtotal.boardOther,
@@ -1739,14 +1650,14 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           sheet.mergeCells(`A${sheet.rowCount}:D${sheet.rowCount}`);
           subtotalRow.getCell(1).alignment = { horizontal: 'right' };
 
-          [5, 6, 7, 8, 9, 10, 11, 16, 17, 18, 19].forEach((colIdx) => {
+          [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].forEach((colIdx) => {
             const cell = subtotalRow.getCell(colIdx);
             if (typeof cell.value === 'number') {
               cell.numFmt = '#,##0';
               cell.alignment = { horizontal: 'right' };
             }
           });
-          subtotalRow.getCell(20).alignment = { horizontal: 'center' };
+          subtotalRow.getCell(16).alignment = { horizontal: 'center' };
         });
 
         // Grand Total Row
@@ -1762,10 +1673,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           studentGrandTotal.pupil25,
           studentGrandTotal.tevtaDues,
           studentGrandTotal.welfare75,
-          '-',
-          '-',
-          '-',
-          '-',
           studentGrandTotal.security,
           studentGrandTotal.boardOther === 0 ? '-' : studentGrandTotal.boardOther,
           studentGrandTotal.welfare75 + studentGrandTotal.security + studentGrandTotal.boardOther,
@@ -1778,14 +1685,14 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         sheet.mergeCells(`A${sheet.rowCount}:D${sheet.rowCount}`);
         grandRow.getCell(1).alignment = { horizontal: 'right' };
 
-        [5, 6, 7, 8, 9, 10, 11, 16, 17, 18, 19].forEach((colIdx) => {
+        [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15].forEach((colIdx) => {
           const cell = grandRow.getCell(colIdx);
           if (typeof cell.value === 'number') {
             cell.numFmt = '#,##0';
             cell.alignment = { horizontal: 'right' };
           }
         });
-        grandRow.getCell(20).alignment = { horizontal: 'center' };
+        grandRow.getCell(16).alignment = { horizontal: 'center' };
 
         // Signatories
         sheet.addRow([]);
@@ -1831,7 +1738,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
       }
 
       // -------------------------------------------------------------
-      // EXCEL EXPORT FOR TRANSACTION LEDGER (CLASSIC 19-COLUMNS)
+      // EXCEL EXPORT FOR TRANSACTION LEDGER (CLASSIC 15-COLUMNS)
       // -------------------------------------------------------------
       const superHeader = sheet.addRow([
         'TRAINEE PARTICULARS (COLS A TO F)',
@@ -1843,11 +1750,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         'TEVTA DUES (HO)',
         '',
         '',
-        'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION (COLS I TO O)',
-        '',
-        '',
-        '',
-        '',
+        'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION',
         '',
         '',
         '',
@@ -1864,9 +1767,9 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
 
       sheet.mergeCells('A5:F5'); // Trainee Particulars
       sheet.mergeCells('G5:I5'); // TEVTA Dues (HO)
-      sheet.mergeCells('J5:Q5'); // Pupil Welfare & Institutional Allocation
-      sheet.mergeCells('R5:R5'); // Total
-      sheet.mergeCells('S5:S5'); // Status
+      sheet.mergeCells('J5:M5'); // Pupil Welfare & Institutional Allocation
+      sheet.mergeCells('N5:N5'); // Total
+      sheet.mergeCells('O5:O5'); // Status
 
       // 3. Column Header Row (Row 6) with exact indicators
       const headerRow = sheet.addRow([
@@ -1880,15 +1783,11 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         '25% PF\n(H)',
         'Subtotal TEVTA\n(G+H)',
         'Welfare Fund\n(I)',
-        'Stationary / Exam\n(J)',
-        'Computer Fund\n(K)',
-        'M & E Breakage\n(L)',
-        'Sports Fund\n(M)',
-        'Institute Security\n(N)',
-        'Board / Other Fee\n(O)',
-        'Subtotal\n(I:O)',
-        'Total Amount PKR\n(P)',
-        'Remarks / Installment\n(Q)',
+        'Institute Security\n(J)',
+        'Board / Other Fee\n(K)',
+        'Subtotal\n(I:K)',
+        'Total Amount PKR\n(M)',
+        'Remarks / Installment\n(N)',
       ]);
       headerRow.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
       headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
@@ -1904,21 +1803,17 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         { width: 15 }, // Date (B)
         { width: 14 }, // Challan # (C)
         { width: 18 }, // Roll # (D)
-        { width: 28 }, // Trainee Name & CNIC (E)
+        { width: 34 }, // Trainee Name & CNIC (E)
         { width: 26 }, // Father Name (F)
         { width: 16 }, // Adm/Tuition (G)
         { width: 14 }, // 25% PF (H)
         { width: 17 }, // Subtotal TEVTA (G+H)
         { width: 16 }, // Welfare Fund (I)
-        { width: 16 }, // Stationary / Exam (J)
-        { width: 15 }, // Computer Fund (K)
-        { width: 15 }, // M & E Breakage (L)
-        { width: 14 }, // Sports Fund (M)
-        { width: 16 }, // Security (N)
-        { width: 16 }, // Board/Other (O)
-        { width: 17 }, // Subtotal (I:O)
-        { width: 18 }, // Total (P)
-        { width: 24 }, // Remarks / Installment (Q)
+        { width: 16 }, // Security (J)
+        { width: 16 }, // Board/Other (K)
+        { width: 17 }, // Subtotal (I:K)
+        { width: 18 }, // Total (M)
+        { width: 28 }, // Remarks / Installment (N)
       ];
 
       // 4. Data Rows Grouped by Trade
@@ -1933,7 +1828,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           pattern: 'solid',
           fgColor: { argb: 'FF1E3A8A' }, // Deep Blue
         };
-        sheet.mergeCells(`A${sheet.rowCount}:S${sheet.rowCount}`);
+        sheet.mergeCells(`A${sheet.rowCount}:O${sheet.rowCount}`);
         tradeBanner.alignment = { vertical: 'middle', horizontal: 'left' };
 
         const startTradeRow = sheet.rowCount + 1;
@@ -1951,10 +1846,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             r.pupil25,
             r.tevtaDues,
             r.welfare75,
-            '-', // Col J empty
-            '-', // Col K empty
-            '-', // Col L empty
-            '-', // Col M empty
             r.security,
             r.boardOther === 0 ? '-' : r.boardOther,
             r.instSubtotal,
@@ -1989,7 +1880,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           row.getCell(6).alignment = { horizontal: 'left' };
 
           // Number formatting
-          [7, 8, 9, 10, 15, 16, 17, 18].forEach((colIdx) => {
+          [7, 8, 9, 10, 11, 12, 13, 14].forEach((colIdx) => {
             const cell = row.getCell(colIdx);
             if (typeof cell.value === 'number') {
               cell.numFmt = '#,##0';
@@ -2002,21 +1893,15 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           tevtaCell.font = { bold: true };
           tevtaCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEBF5FF' } };
 
-          const instCell = row.getCell(17);
+          const instCell = row.getCell(13);
           instCell.font = { bold: true };
           instCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } };
 
-          const totalCell = row.getCell(18);
+          const totalCell = row.getCell(14);
           totalCell.font = { bold: true };
           totalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } };
 
-          // Empty dashes for Cols J to M
-          [11, 12, 13, 14].forEach((colIdx) => {
-            row.getCell(colIdx).alignment = { horizontal: 'center' };
-            row.getCell(colIdx).font = { color: { argb: 'FF94A3B8' } };
-          });
-
-          row.getCell(19).alignment = { horizontal: 'left' };
+          row.getCell(15).alignment = { horizontal: 'left' };
         });
 
         const endTradeRow = sheet.rowCount;
@@ -2033,14 +1918,10 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           { formula: `SUM(H${startTradeRow}:H${endTradeRow})` },
           { formula: `SUM(I${startTradeRow}:I${endTradeRow})` },
           { formula: `SUM(J${startTradeRow}:J${endTradeRow})` },
-          '-',
-          '-',
-          '-',
-          '-',
-          { formula: `SUM(O${startTradeRow}:O${endTradeRow})` },
-          sec.subtotal.boardOther === 0 ? '-' : { formula: `SUM(P${startTradeRow}:P${endTradeRow})` },
-          { formula: `SUM(Q${startTradeRow}:Q${endTradeRow})` },
-          { formula: `SUM(R${startTradeRow}:R${endTradeRow})` },
+          { formula: `SUM(K${startTradeRow}:K${endTradeRow})` },
+          sec.subtotal.boardOther === 0 ? '-' : { formula: `SUM(L${startTradeRow}:L${endTradeRow})` },
+          { formula: `SUM(M${startTradeRow}:M${endTradeRow})` },
+          { formula: `SUM(N${startTradeRow}:N${endTradeRow})` },
           `${sec.traineeCount} Trainees`,
         ]);
 
@@ -2053,16 +1934,13 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         sheet.mergeCells(`A${sheet.rowCount}:F${sheet.rowCount}`);
         subtotalRow.getCell(1).alignment = { horizontal: 'right' };
 
-        [7, 8, 9, 10, 15, 16, 17, 18].forEach((colIdx) => {
+        [7, 8, 9, 10, 11, 12, 13, 14].forEach((colIdx) => {
           const cell = subtotalRow.getCell(colIdx);
           cell.numFmt = '#,##0';
           cell.alignment = { horizontal: 'right' };
         });
 
-        [11, 12, 13, 14].forEach((colIdx) => {
-          subtotalRow.getCell(colIdx).alignment = { horizontal: 'center' };
-        });
-        subtotalRow.getCell(19).alignment = { horizontal: 'center' };
+        subtotalRow.getCell(15).alignment = { horizontal: 'center' };
       });
 
       // 5. GRAND TOTAL ROW
@@ -2077,10 +1955,6 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         grandTotal.pupil25,
         grandTotal.tevtaDues,
         grandTotal.welfare75,
-        '-',
-        '-',
-        '-',
-        '-',
         grandTotal.security,
         grandTotal.boardOther === 0 ? '-' : grandTotal.boardOther,
         grandTotal.welfare75 + grandTotal.security + grandTotal.boardOther,
@@ -2097,16 +1971,12 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
       sheet.mergeCells(`A${sheet.rowCount}:F${sheet.rowCount}`);
       grandRow.getCell(1).alignment = { horizontal: 'right' };
 
-      [7, 8, 9, 10, 15, 16, 17, 18].forEach((colIdx) => {
+      [7, 8, 9, 10, 11, 12, 13, 14].forEach((colIdx) => {
         const cell = grandRow.getCell(colIdx);
         cell.numFmt = '#,##0';
         cell.alignment = { horizontal: 'right' };
       });
-      [11, 12, 13, 14].forEach((colIdx) => {
-        grandRow.getCell(colIdx).alignment = { horizontal: 'center' };
-        grandRow.getCell(colIdx).font = { color: { argb: 'FFCBD5E1' } };
-      });
-      grandRow.getCell(19).alignment = { horizontal: 'center' };
+      grandRow.getCell(15).alignment = { horizontal: 'center' };
 
       // 6. Signatory Rows
       sheet.addRow([]);
@@ -2230,35 +2100,89 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
     });
   };
 
-  // Requirement #1: Direct Print of official Fee Register report (matches PDF export exactly, no whole-page display print)
+  // Requirement #1: Direct Print of official Fee Register report (Fixed 0 KB issue: triggers direct vector PDF print spooler)
   const handlePrint = () => {
     setIsPrinting(true);
-    setShowPrintPortal(true);
-    document.body.classList.add('fee-register-print-active');
-
-    let styleEl = document.getElementById('fee-register-landscape-rule');
-    if (!styleEl) {
-      styleEl = document.createElement('style');
-      styleEl.id = 'fee-register-landscape-rule';
-      styleEl.innerHTML = `@page { size: A4 landscape !important; margin: 6mm 5mm !important; }`;
-      document.head.appendChild(styleEl);
+    try {
+      generateFeeRegisterPdf({
+        periodLabel: activePeriodLabel,
+        tradeFilterLabel: selectedTrade === 'ALL' ? 'All Trades' : (COURSE_TITLE_MAP[selectedTrade] || selectedTrade),
+        totalTrainees: activeGrandTotal.totalTrainees,
+        isInstallmentAligned: isInstallmentAlignedMode,
+        reportTitle:
+          reportViewMode === 'INSTALLMENTS_ONLY'
+            ? 'OFFICIAL FEE REGISTER — DEDICATED INSTALLMENT CASES'
+            : isInstallmentAlignedMode
+            ? 'OFFICIAL FEE REGISTER — STUDENT-ALIGNED REGISTER (INSTALLMENT CASES CONSOLIDATED)'
+            : 'OFFICIAL FEE REGISTER (CHALLAN TRANSACTION LEDGER)',
+        tradeGroups: activeTradeSections.map((sec) => ({
+          tradeCode: sec.tradeCode,
+          tradeTitle: sec.tradeTitle,
+          traineeCount: sec.traineeCount,
+          inst1Total: (sec as any).inst1Total,
+          inst2Total: (sec as any).inst2Total,
+          inst3Total: (sec as any).inst3Total,
+          rows: sec.rows.map((r: any) => ({
+            srNo: r.srNo,
+            dateStr: r.dateStr || r.inst1Date || '',
+            challanId: r.challanId || r.inst1ChallanId || '',
+            rollNo: r.rollNo,
+            traineeName: r.traineeName,
+            cnic: r.cnic,
+            fatherName: r.fatherName,
+            inst1Info: r.inst1ChallanId ? `Ch# ${r.inst1ChallanId} (${r.inst1Date})\nRs. ${formatPKR(r.inst1Amount, false)}` : '',
+            inst2Info: r.inst2ChallanId ? `Ch# ${r.inst2ChallanId} (${r.inst2Date})\nRs. ${formatPKR(r.inst2Amount, false)}` : (r.isInstallmentCase ? 'Awaiting 2nd' : '—'),
+            inst3Info: r.inst3ChallanId ? `Ch# ${r.inst3ChallanId} (${r.inst3Date})\nRs. ${formatPKR(r.inst3Amount, false)}` : (r.isInstallmentCase ? (r.inst2ChallanId ? 'Awaiting 3rd' : '—') : '—'),
+            inst1Date: r.inst1Date,
+            inst2Date: r.inst2Date,
+            inst3Date: r.inst3Date,
+            inst1ChallanId: r.inst1ChallanId,
+            inst2ChallanId: r.inst2ChallanId,
+            inst3ChallanId: r.inst3ChallanId,
+            inst1Amount: r.inst1Amount,
+            inst2Amount: r.inst2Amount,
+            inst3Amount: r.inst3Amount,
+            admissionTuition: r.admissionTuition,
+            pupil25: r.pupil25,
+            tevtaDues: r.tevtaDues,
+            welfare75: r.welfare75,
+            sports: 0,
+            magazine: 0,
+            medical: 0,
+            library: 0,
+            security: r.security,
+            boardOther: r.boardOther,
+            instSubtotal: r.instSubtotal,
+            totalAmount: r.totalAmount,
+            remarks: r.remarks || (r.isInstallmentCase ? 'Installment Case' : 'Full Challan'),
+          })),
+          subtotal: sec.subtotal,
+        })),
+        grandTotal: {
+          admissionTuition: activeGrandTotal.admissionTuition,
+          pupil25: activeGrandTotal.pupil25,
+          tevtaDues: activeGrandTotal.tevtaDues,
+          welfare75: activeGrandTotal.welfare75,
+          sports: 0,
+          magazine: 0,
+          medical: 0,
+          library: 0,
+          security: activeGrandTotal.security,
+          boardOther: activeGrandTotal.boardOther,
+          instSubtotal: activeGrandTotal.welfare75 + activeGrandTotal.security + activeGrandTotal.boardOther,
+          totalAmount: activeGrandTotal.totalAmount,
+          inst1Total: (activeGrandTotal as any).inst1Total,
+          inst2Total: (activeGrandTotal as any).inst2Total,
+          inst3Total: (activeGrandTotal as any).inst3Total,
+        },
+        printDirectly: true,
+      });
+    } catch (err) {
+      console.warn('Vector PDF print encountered an issue, falling back to window.print:', err);
+      window.print();
+    } finally {
+      setTimeout(() => setIsPrinting(false), 1500);
     }
-
-    setTimeout(() => {
-      try {
-        window.print();
-      } catch (err) {
-        console.warn('Direct window.print encountered an issue:', err);
-      }
-      setTimeout(() => {
-        setIsPrinting(false);
-        setShowPrintPortal(false);
-        document.body.classList.remove('fee-register-print-active');
-        if (styleEl && styleEl.parentNode) {
-          styleEl.parentNode.removeChild(styleEl);
-        }
-      }, 1000);
-    }, 250);
   };
 
   return (
@@ -2630,7 +2554,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 2. INSTITUTIONAL RULE NOTICE (COLS J:M WELFARE POLICY)         */}
+      {/* 2. INSTITUTIONAL RULE NOTICE (STREAMLINED 16/15 COLS LAYOUT)  */}
       {/* ------------------------------------------------------------- */}
       <div
         className={`px-4 py-3 rounded-xl border flex items-start gap-3 ${
@@ -2644,14 +2568,14 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           </span>
           {isInstallmentAlignedMode ? (
             <>
-              Students paying in multiple installments (1st & 2nd installment) are aligned into dedicated installment columns (<strong>Cols E & F</strong>).{' '}
+              Students paying in multiple installments are aligned into dedicated installment columns (<strong>Cols E, F & G</strong>) with Challan #, Payment Date, and Amount.{' '}
               <strong>Trainee headcount does NOT increase</strong> when a student pays in installments. In accordance with institutional pupil fund administration, the{' '}
-              <strong>entire 75% Pupil Fund</strong> is treated under the <strong>Welfare Fund column (Col I)</strong>, with Columns J through M displaying dashes (<strong>-</strong>).
+              <strong>entire 75% Pupil Fund</strong> is treated under the <strong>Welfare Fund column (Col K)</strong>. Unused empty fund columns have been removed to allocate generous space for student particulars, challan payment dates, and remarks.
             </>
           ) : (
             <>
               In accordance with institutional pupil fund administration, the <strong>entire 75% Pupil Fund</strong> is treated under the{' '}
-              <strong>Welfare Fund column (Col I)</strong>. Consequently, <strong>Columns J through M</strong> (Stationary / Exam, Computer Fund, M & E Breakage, Sports Fund) remain intentionally empty (reserved for future breakdown) and display dashes (<strong>-</strong>).
+              <strong>Welfare Fund column (Col I)</strong>. Unused empty fund columns have been removed to optimize page space and enhance legibility across all reports, printouts, and exports.
             </>
           )}
         </div>
@@ -2877,7 +2801,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             isFullHeight ? 'max-h-none' : 'max-h-[72vh]'
           } relative scrollbar-thin scrollbar-thumb-slate-400 hover:scrollbar-thumb-slate-500 dark:scrollbar-thumb-slate-600 dark:hover:scrollbar-thumb-slate-500 scrollbar-track-slate-100 dark:scrollbar-track-slate-900`}
         >
-          <table className="w-full text-left text-xs border-separate border-spacing-0 min-w-[1650px]">
+          <table className="w-full text-left text-xs border-separate border-spacing-0 min-w-[1400px]">
             {/* Super Headings Sticky at Top */}
             <thead className="sticky top-0 z-30 shadow-xs">
               {isInstallmentAlignedMode ? (
@@ -2896,8 +2820,8 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                     <th colSpan={3} className="py-2.5 px-3 text-center border-b border-r border-teal-700 bg-blue-900 text-blue-100">
                       TEVTA Dues (HO)
                     </th>
-                    <th colSpan={8} className="py-2.5 px-3 text-center border-b border-r border-teal-700 bg-teal-900 text-teal-100">
-                      Pupil Welfare & Institutional Allocation (Cols K to R)
+                    <th colSpan={4} className="py-2.5 px-3 text-center border-b border-r border-teal-700 bg-teal-900 text-teal-100">
+                      Pupil Welfare & Institutional Allocation (Cols K to N)
                     </th>
                     <th colSpan={1} className="py-2.5 px-3 text-center border-b border-r border-teal-700">
                       Total
@@ -2920,11 +2844,11 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                       <div>Roll #</div>
                       <div className="text-[10px] text-slate-400 font-mono font-normal">(B)</div>
                     </th>
-                    <th className="py-2.5 px-3 min-w-[190px] border-r border-slate-200 dark:border-slate-700">
+                    <th className="py-2.5 px-3 min-w-[210px] border-r border-slate-200 dark:border-slate-700">
                       <div>Trainee Name & CNIC</div>
                       <div className="text-[10px] text-slate-400 font-mono font-normal">(C)</div>
                     </th>
-                    <th className="py-2.5 px-3 min-w-[150px] border-r border-slate-200 dark:border-slate-700">
+                    <th className="py-2.5 px-3 min-w-[170px] border-r border-slate-200 dark:border-slate-700">
                       <div>Father Name</div>
                       <div className="text-[10px] text-slate-400 font-mono font-normal">(D)</div>
                     </th>
@@ -2956,41 +2880,25 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                       <div>Welfare Fund</div>
                       <div className="text-[10px] font-mono font-normal">(K) 75% PF</div>
                     </th>
-                    <th className="py-2.5 px-2 text-center w-24 border-r border-slate-200 dark:border-slate-700 text-slate-400">
-                      <div>Stationary / Exam</div>
-                      <div className="text-[10px] font-mono font-normal">(L) [—]</div>
-                    </th>
-                    <th className="py-2.5 px-2 text-center w-20 border-r border-slate-200 dark:border-slate-700 text-slate-400">
-                      <div>Computer Fund</div>
-                      <div className="text-[10px] font-mono font-normal">(M) [—]</div>
-                    </th>
-                    <th className="py-2.5 px-2 text-center w-24 border-r border-slate-200 dark:border-slate-700 text-slate-400">
-                      <div>M & E Breakage</div>
-                      <div className="text-[10px] font-mono font-normal">(N) [—]</div>
-                    </th>
-                    <th className="py-2.5 px-2 text-center w-20 border-r border-slate-200 dark:border-slate-700 text-slate-400">
-                      <div>Sports Fund</div>
-                      <div className="text-[10px] font-mono font-normal">(O) [—]</div>
-                    </th>
                     <th className="py-2.5 px-2.5 text-right w-24 border-r border-slate-200 dark:border-slate-700 font-mono">
                       <div>Security</div>
-                      <div className="text-[10px] text-slate-400 font-mono font-normal">(P)</div>
+                      <div className="text-[10px] text-slate-400 font-mono font-normal">(L)</div>
                     </th>
                     <th className="py-2.5 px-2.5 text-right w-24 border-r border-slate-200 dark:border-slate-700 font-mono">
                       <div>Board / Oth</div>
-                      <div className="text-[10px] text-slate-400 font-mono font-normal">(Q)</div>
+                      <div className="text-[10px] text-slate-400 font-mono font-normal">(M)</div>
                     </th>
                     <th className="py-2.5 px-2.5 text-right w-26 border-r border-slate-200 dark:border-slate-700 font-black text-teal-900 dark:text-teal-200 bg-teal-50/70 dark:bg-teal-950/40">
                       <div>Subtotal</div>
-                      <div className="text-[10px] font-mono font-normal">(K:Q)</div>
+                      <div className="text-[10px] font-mono font-normal">(K:M)</div>
                     </th>
                     <th className="py-2.5 px-3 text-right w-28 border-r border-slate-200 dark:border-slate-700 font-black font-mono text-emerald-800 dark:text-emerald-300 bg-emerald-100/60 dark:bg-emerald-950/40 text-sm">
                       <div>Total PKR</div>
-                      <div className="text-[10px] font-mono font-normal">(S)</div>
+                      <div className="text-[10px] font-mono font-normal">(O)</div>
                     </th>
                     <th className="py-2.5 px-3 text-left w-36">
                       <div>Remarks / Status</div>
-                      <div className="text-[10px] text-slate-400 font-mono font-normal">(T)</div>
+                      <div className="text-[10px] text-slate-400 font-mono font-normal">(P)</div>
                     </th>
                   </tr>
                 </>
@@ -3007,8 +2915,8 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                     <th colSpan={3} className="py-2.5 px-3 text-center border-b border-r border-teal-700 bg-blue-900 text-blue-100">
                       TEVTA Dues (HO)
                     </th>
-                    <th colSpan={8} className="py-2.5 px-3 text-center border-b border-r border-teal-700 bg-teal-900 text-teal-100">
-                      Pupil Welfare & Institutional Allocation (Cols I to O)
+                    <th colSpan={4} className="py-2.5 px-3 text-center border-b border-r border-teal-700 bg-teal-900 text-teal-100">
+                      Pupil Welfare & Institutional Allocation (Cols I to L)
                     </th>
                     <th colSpan={1} className="py-2.5 px-3 text-center border-b border-r border-teal-700">
                       Total
@@ -3039,7 +2947,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                       <div>Roll #</div>
                       <div className="text-[10px] text-slate-400 font-mono font-normal">(D)</div>
                     </th>
-                    <th className="py-2.5 px-3 min-w-[170px] border-r border-slate-200 dark:border-slate-700">
+                    <th className="py-2.5 px-3 min-w-[200px] border-r border-slate-200 dark:border-slate-700">
                       <div>Trainee Name</div>
                       <div className="text-[10px] text-slate-400 font-mono font-normal">(E)</div>
                     </th>
@@ -3063,41 +2971,25 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                       <div>Welfare Fund</div>
                       <div className="text-[10px] font-mono font-normal">(I) 75% PF</div>
                     </th>
-                    <th className="py-2.5 px-2 text-center w-24 border-r border-slate-200 dark:border-slate-700 text-slate-400">
-                      <div>Stationary / Exam</div>
-                      <div className="text-[10px] font-mono font-normal">(J) [—]</div>
-                    </th>
-                    <th className="py-2.5 px-2 text-center w-20 border-r border-slate-200 dark:border-slate-700 text-slate-400">
-                      <div>Computer Fund</div>
-                      <div className="text-[10px] font-mono font-normal">(K) [—]</div>
-                    </th>
-                    <th className="py-2.5 px-2 text-center w-24 border-r border-slate-200 dark:border-slate-700 text-slate-400">
-                      <div>M & E Breakage</div>
-                      <div className="text-[10px] font-mono font-normal">(L) [—]</div>
-                    </th>
-                    <th className="py-2.5 px-2 text-center w-20 border-r border-slate-200 dark:border-slate-700 text-slate-400">
-                      <div>Sports Fund</div>
-                      <div className="text-[10px] font-mono font-normal">(M) [—]</div>
-                    </th>
                     <th className="py-2.5 px-2.5 text-right w-24 border-r border-slate-200 dark:border-slate-700 font-mono">
                       <div>Security</div>
-                      <div className="text-[10px] text-slate-400 font-mono font-normal">(N)</div>
+                      <div className="text-[10px] text-slate-400 font-mono font-normal">(J)</div>
                     </th>
                     <th className="py-2.5 px-2.5 text-right w-24 border-r border-slate-200 dark:border-slate-700 font-mono">
                       <div>Board / Oth</div>
-                      <div className="text-[10px] text-slate-400 font-mono font-normal">(O)</div>
+                      <div className="text-[10px] text-slate-400 font-mono font-normal">(K)</div>
                     </th>
                     <th className="py-2.5 px-2.5 text-right w-26 border-r border-slate-200 dark:border-slate-700 font-black text-teal-900 dark:text-teal-200 bg-teal-50/70 dark:bg-teal-950/40">
                       <div>Subtotal</div>
-                      <div className="text-[10px] font-mono font-normal">(I:O)</div>
+                      <div className="text-[10px] font-mono font-normal">(I:K)</div>
                     </th>
                     <th className="py-2.5 px-3 text-right w-28 border-r border-slate-200 dark:border-slate-700 font-black font-mono text-emerald-800 dark:text-emerald-300 bg-emerald-100/60 dark:bg-emerald-950/40 text-sm">
                       <div>Total PKR</div>
-                      <div className="text-[10px] font-mono font-normal">(P)</div>
+                      <div className="text-[10px] font-mono font-normal">(M)</div>
                     </th>
                     <th className="py-2.5 px-3 text-left w-36">
                       <div>Remarks</div>
-                      <div className="text-[10px] text-slate-400 font-mono font-normal">(Q)</div>
+                      <div className="text-[10px] text-slate-400 font-mono font-normal">(N)</div>
                     </th>
                   </tr>
                 </>
@@ -3108,7 +3000,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             <tbody>
               {activeTradeSections.length === 0 ? (
                 <tr>
-                  <td colSpan={19} className="py-12 text-center text-slate-400">
+                  <td colSpan={isInstallmentAlignedMode ? 16 : 15} className="py-12 text-center text-slate-400">
                     No trainee records match your current filters.
                   </td>
                 </tr>
@@ -3129,7 +3021,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                             : 'bg-emerald-900 hover:bg-emerald-950 text-white border-emerald-950'
                         }`}
                       >
-                        <td colSpan={19} className="py-2.5 px-4">
+                        <td colSpan={16} className="py-2.5 px-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
                               {isCollapsed ? (
@@ -3292,47 +3184,27 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                                 {formatPKR(r.welfare75, false)}
                               </td>
 
-                              {/* Col L: Stationary / Exam [—] */}
-                              <td className="py-2 px-2 text-center font-mono text-slate-400 border-r border-slate-200 dark:border-slate-800">
-                                —
-                              </td>
-
-                              {/* Col M: Computer Fund [—] */}
-                              <td className="py-2 px-2 text-center font-mono text-slate-400 border-r border-slate-200 dark:border-slate-800">
-                                —
-                              </td>
-
-                              {/* Col N: M & E Breakage [—] */}
-                              <td className="py-2 px-2 text-center font-mono text-slate-400 border-r border-slate-200 dark:border-slate-800">
-                                —
-                              </td>
-
-                              {/* Col O: Sports Fund [—] */}
-                              <td className="py-2 px-2 text-center font-mono text-slate-400 border-r border-slate-200 dark:border-slate-800">
-                                —
-                              </td>
-
-                              {/* Col P: Security */}
+                              {/* Col L: Security */}
                               <td className="py-2 px-2.5 text-right font-mono font-semibold text-amber-800 dark:text-amber-400 border-r border-slate-200 dark:border-slate-800">
                                 {formatPKR(r.security, false)}
                               </td>
 
-                              {/* Col Q: Board/Other */}
+                              {/* Col M: Board/Other */}
                               <td className="py-2 px-2.5 text-right font-mono font-semibold text-purple-800 dark:text-purple-400 border-r border-slate-200 dark:border-slate-800">
                                 {r.boardOther === 0 ? '—' : formatPKR(r.boardOther, false)}
                               </td>
 
-                              {/* Subtotal (K:Q) */}
+                              {/* Subtotal (K:M) */}
                               <td className="py-2 px-2.5 text-right font-mono font-black text-[12.5px] text-teal-900 dark:text-teal-300 bg-teal-50/70 dark:bg-teal-950/30 border-r border-slate-200 dark:border-slate-800">
                                 {formatPKR(r.instSubtotal, false)}
                               </td>
 
-                              {/* Col S: Total Amount PKR */}
+                              {/* Col O: Total Amount PKR */}
                               <td className="py-2 px-3 text-right font-mono font-black text-emerald-800 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/40 border-r border-slate-200 dark:border-slate-800 text-sm">
                                 {formatPKR(r.totalAmount, false)}
                               </td>
 
-                              {/* Col T: Remarks / Status */}
+                              {/* Col P: Remarks / Status */}
                               <td className="py-2 px-3">
                                 {r.isInstallmentCase ? (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
@@ -3383,17 +3255,13 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                           <td className="py-2.5 px-2.5 text-right text-teal-800 dark:text-teal-300 border-r border-slate-200 dark:border-slate-700">
                             {formatPKR(sec.subtotal.welfare75, false)}
                           </td>
-                          <td className="py-2.5 px-2 text-center text-slate-400 border-r border-slate-200 dark:border-slate-700">—</td>
-                          <td className="py-2.5 px-2 text-center text-slate-400 border-r border-slate-200 dark:border-slate-700">—</td>
-                          <td className="py-2.5 px-2 text-center text-slate-400 border-r border-slate-200 dark:border-slate-700">—</td>
-                          <td className="py-2.5 px-2 text-center text-slate-400 border-r border-slate-200 dark:border-slate-700">—</td>
                           <td className="py-2.5 px-2.5 text-right text-amber-800 dark:text-amber-400 border-r border-slate-200 dark:border-slate-700">
                             {formatPKR(sec.subtotal.security, false)}
                           </td>
                           <td className="py-2.5 px-2.5 text-right text-purple-800 dark:text-purple-400 border-r border-slate-200 dark:border-slate-700">
                             {sec.subtotal.boardOther === 0 ? '—' : formatPKR(sec.subtotal.boardOther, false)}
                           </td>
-                          {/* Subtotal (K:Q) */}
+                          {/* Subtotal (K:M) */}
                           <td className="py-2.5 px-2.5 text-right font-black text-[12.5px] text-teal-900 dark:text-teal-300 bg-teal-100/60 dark:bg-teal-950/40 border-r border-slate-200 dark:border-slate-700">
                             {formatPKR(sec.subtotal.welfare75 + sec.subtotal.security + sec.subtotal.boardOther, false)}
                           </td>
@@ -3425,7 +3293,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                             : 'bg-emerald-900 hover:bg-emerald-950 text-white border-emerald-950'
                         }`}
                       >
-                        <td colSpan={19} className="py-2.5 px-4">
+                        <td colSpan={15} className="py-2.5 px-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
                               {isCollapsed ? (
@@ -3536,47 +3404,27 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                                 {formatPKR(r.welfare75, false)}
                               </td>
 
-                              {/* Col J: Stationary / Exam [—] */}
-                              <td className="py-2 px-2 text-center font-mono text-slate-400 border-r border-slate-200 dark:border-slate-800">
-                                —
-                              </td>
-
-                              {/* Col K: Computer Fund [—] */}
-                              <td className="py-2 px-2 text-center font-mono text-slate-400 border-r border-slate-200 dark:border-slate-800">
-                                —
-                              </td>
-
-                              {/* Col L: M & E Breakage [—] */}
-                              <td className="py-2 px-2 text-center font-mono text-slate-400 border-r border-slate-200 dark:border-slate-800">
-                                —
-                              </td>
-
-                              {/* Col M: Sports Fund [—] */}
-                              <td className="py-2 px-2 text-center font-mono text-slate-400 border-r border-slate-200 dark:border-slate-800">
-                                —
-                              </td>
-
-                              {/* Col N: Security */}
+                              {/* Col J: Security */}
                               <td className="py-2 px-2.5 text-right font-mono font-semibold text-amber-800 dark:text-amber-400 border-r border-slate-200 dark:border-slate-800">
                                 {formatPKR(r.security, false)}
                               </td>
 
-                              {/* Col O: Board/Other */}
+                              {/* Col K: Board/Other */}
                               <td className="py-2 px-2.5 text-right font-mono font-semibold text-purple-800 dark:text-purple-400 border-r border-slate-200 dark:border-slate-800">
                                 {r.boardOther === 0 ? '—' : formatPKR(r.boardOther, false)}
                               </td>
 
-                              {/* Subtotal (I:O) */}
+                              {/* Subtotal (I:K) */}
                               <td className="py-2 px-2.5 text-right font-mono font-black text-[12.5px] text-teal-900 dark:text-teal-300 bg-teal-50/70 dark:bg-teal-950/30 border-r border-slate-200 dark:border-slate-800">
                                 {formatPKR(r.instSubtotal, false)}
                               </td>
 
-                              {/* Col P: Total Amount PKR */}
+                              {/* Col M: Total Amount PKR */}
                               <td className="py-2 px-3 text-right font-mono font-black text-emerald-800 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/40 border-r border-slate-200 dark:border-slate-800 text-sm">
                                 {formatPKR(r.totalAmount, false)}
                               </td>
 
-                              {/* Col Q: Remarks / Installment */}
+                              {/* Col N: Remarks / Installment */}
                               <td className="py-2 px-3">
                                 {isInst ? (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
@@ -3618,17 +3466,13 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                           <td className="py-2.5 px-2.5 text-right text-teal-800 dark:text-teal-300 border-r border-slate-200 dark:border-slate-700">
                             {formatPKR(sec.subtotal.welfare75, false)}
                           </td>
-                          <td className="py-2.5 px-2 text-center text-slate-400 border-r border-slate-200 dark:border-slate-700">—</td>
-                          <td className="py-2.5 px-2 text-center text-slate-400 border-r border-slate-200 dark:border-slate-700">—</td>
-                          <td className="py-2.5 px-2 text-center text-slate-400 border-r border-slate-200 dark:border-slate-700">—</td>
-                          <td className="py-2.5 px-2 text-center text-slate-400 border-r border-slate-200 dark:border-slate-700">—</td>
                           <td className="py-2.5 px-2.5 text-right text-amber-800 dark:text-amber-400 border-r border-slate-200 dark:border-slate-700">
                             {formatPKR(sec.subtotal.security, false)}
                           </td>
                           <td className="py-2.5 px-2.5 text-right text-purple-800 dark:text-purple-400 border-r border-slate-200 dark:border-slate-700">
                             {sec.subtotal.boardOther === 0 ? '—' : formatPKR(sec.subtotal.boardOther, false)}
                           </td>
-                          {/* Subtotal (I:O) */}
+                          {/* Subtotal (I:K) */}
                           <td className="py-2.5 px-2.5 text-right font-black text-[12.5px] text-teal-900 dark:text-teal-300 bg-teal-100/60 dark:bg-teal-950/40 border-r border-slate-200 dark:border-slate-700">
                             {formatPKR(sec.subtotal.welfare75 + sec.subtotal.security + sec.subtotal.boardOther, false)}
                           </td>
@@ -3681,17 +3525,13 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                   <td className="py-3 px-2.5 text-right text-amber-300 border-r border-teal-800/80">
                     {formatPKR(studentGrandTotal.welfare75, false)}
                   </td>
-                  <td className="py-3 px-2 text-center text-teal-300/60 border-r border-teal-800/80">—</td>
-                  <td className="py-3 px-2 text-center text-teal-300/60 border-r border-teal-800/80">—</td>
-                  <td className="py-3 px-2 text-center text-teal-300/60 border-r border-teal-800/80">—</td>
-                  <td className="py-3 px-2 text-center text-teal-300/60 border-r border-teal-800/80">—</td>
                   <td className="py-3 px-2.5 text-right border-r border-teal-800/80">
                     {formatPKR(studentGrandTotal.security, false)}
                   </td>
                   <td className="py-3 px-2.5 text-right border-r border-teal-800/80">
                     {studentGrandTotal.boardOther === 0 ? '—' : formatPKR(studentGrandTotal.boardOther, false)}
                   </td>
-                  {/* Grand Total (K:Q) */}
+                  {/* Grand Total (K:M) */}
                   <td className="py-3 px-2.5 text-right text-cyan-300 font-black bg-teal-950/40 border-r border-teal-800/80">
                     {formatPKR(studentGrandTotal.welfare75 + studentGrandTotal.security + studentGrandTotal.boardOther, false)}
                   </td>
@@ -3726,17 +3566,13 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                   <td className="py-3 px-2.5 text-right text-amber-300 border-r border-teal-800/80">
                     {formatPKR(grandTotal.welfare75, false)}
                   </td>
-                  <td className="py-3 px-2 text-center text-teal-300/60 border-r border-teal-800/80">—</td>
-                  <td className="py-3 px-2 text-center text-teal-300/60 border-r border-teal-800/80">—</td>
-                  <td className="py-3 px-2 text-center text-teal-300/60 border-r border-teal-800/80">—</td>
-                  <td className="py-3 px-2 text-center text-teal-300/60 border-r border-teal-800/80">—</td>
                   <td className="py-3 px-2.5 text-right border-r border-teal-800/80">
                     {formatPKR(grandTotal.security, false)}
                   </td>
                   <td className="py-3 px-2.5 text-right border-r border-teal-800/80">
                     {grandTotal.boardOther === 0 ? '—' : formatPKR(grandTotal.boardOther, false)}
                   </td>
-                  {/* Grand Total (I:O) */}
+                  {/* Grand Total (I:K) */}
                   <td className="py-3 px-2.5 text-right text-cyan-300 font-black bg-teal-950/40 border-r border-teal-800/80">
                     {formatPKR(grandTotal.welfare75 + grandTotal.security + grandTotal.boardOther, false)}
                   </td>
@@ -3780,93 +3616,85 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             </div>
           </div>
 
-          {/* Print Table */}
-          <table className="w-full text-[8px] border-collapse border border-slate-400">
+          {/* Print Table (Ink Efficient: Crisp borders, high contrast, clean headers, zero ink waste) */}
+          <table className="w-full text-[8px] border-collapse border border-slate-700 text-black">
             <thead>
               {isInstallmentAlignedMode ? (
                 <>
-                  <tr className="bg-emerald-950 text-white font-bold text-center uppercase tracking-wider text-[8.5px]">
-                    <th colSpan={4} className="border border-slate-400 py-1.5 px-1 bg-emerald-900">
+                  <tr className="bg-slate-200 text-black font-extrabold text-center uppercase tracking-wider text-[8.5px] border-b border-slate-700">
+                    <th colSpan={4} className="border border-slate-700 py-1 px-1 bg-slate-200">
                       Trainee Particulars (Cols A to D)
                     </th>
-                    <th colSpan={3} className="border border-slate-400 py-1.5 px-1 bg-amber-800">
-                      Installment Submissions (MVi / MVii Only) (Cols E to G)
+                    <th colSpan={3} className="border border-slate-700 py-1 px-1 bg-slate-100">
+                      Installment Submissions (MVi / MVii) (Cols E to G)
                     </th>
-                    <th colSpan={3} className="border border-slate-400 py-1.5 px-1 bg-blue-900">
+                    <th colSpan={3} className="border border-slate-700 py-1 px-1 bg-slate-200">
                       TEVTA Dues (HO)
                     </th>
-                    <th colSpan={8} className="border border-slate-400 py-1.5 px-1 bg-teal-900">
-                      Pupil Welfare & Institutional Allocation (Cols K to R)
+                    <th colSpan={4} className="border border-slate-700 py-1 px-1 bg-slate-100">
+                      Pupil Welfare & Institutional Allocation (Cols K to N)
                     </th>
-                    <th colSpan={1} className="border border-slate-400 py-1.5 px-1 bg-emerald-900">
+                    <th colSpan={1} className="border border-slate-700 py-1 px-1 bg-slate-200">
                       Total
                     </th>
-                    <th colSpan={1} className="border border-slate-400 py-1.5 px-1 bg-slate-800">
+                    <th colSpan={1} className="border border-slate-700 py-1 px-1 bg-slate-100">
                       Status
                     </th>
                   </tr>
-                  <tr className="bg-slate-100 text-slate-900 font-bold text-center text-[8px]">
-                    <th className="border border-slate-400 p-1 w-7">Sr # (A)</th>
-                    <th className="border border-slate-400 p-1 w-16">Roll # (B)</th>
-                    <th className="border border-slate-400 p-1 min-w-[120px] text-left">Trainee Name & CNIC (C)</th>
-                    <th className="border border-slate-400 p-1 min-w-[100px] text-left">Father Name (D)</th>
-                    <th className="border border-slate-400 p-1 w-20 bg-amber-50">1st Installment (E)</th>
-                    <th className="border border-slate-400 p-1 w-20 bg-amber-50">2nd Installment (F)</th>
-                    <th className="border border-slate-400 p-1 w-20 bg-amber-50">3rd Installment (G)</th>
-                    <th className="border border-slate-400 p-1 w-14 text-right">Adm/Tuition (H)</th>
-                    <th className="border border-slate-400 p-1 w-12 text-right">25% PF (I)</th>
-                    <th className="border border-slate-400 p-1 w-16 text-right bg-blue-50">Subtotal TEVTA (H+I)</th>
-                    <th className="border border-slate-400 p-1 w-16 text-right bg-teal-50">Welfare Fund (K)</th>
-                    <th className="border border-slate-400 p-1 w-10 text-center text-slate-400">Stationary (L)</th>
-                    <th className="border border-slate-400 p-1 w-10 text-center text-slate-400">Computer (M)</th>
-                    <th className="border border-slate-400 p-1 w-10 text-center text-slate-400">Breakage (N)</th>
-                    <th className="border border-slate-400 p-1 w-10 text-center text-slate-400">Sports (O)</th>
-                    <th className="border border-slate-400 p-1 w-14 text-right">Security (P)</th>
-                    <th className="border border-slate-400 p-1 w-14 text-right">Board/Oth (Q)</th>
-                    <th className="border border-slate-400 p-1 w-16 text-right bg-teal-50">Subtotal (K:Q)</th>
-                    <th className="border border-slate-400 p-1 w-16 text-right bg-emerald-50">Total PKR (S)</th>
-                    <th className="border border-slate-400 p-1 w-24 text-left">Remarks / Status (T)</th>
+                  <tr className="bg-slate-100 text-black font-bold text-center text-[8px] border-b border-slate-700">
+                    <th className="border border-slate-700 p-1 w-7">Sr # (A)</th>
+                    <th className="border border-slate-700 p-1 w-16">Roll # (B)</th>
+                    <th className="border border-slate-700 p-1 min-w-[140px] text-left">Trainee Name & CNIC (C)</th>
+                    <th className="border border-slate-700 p-1 min-w-[110px] text-left">Father Name (D)</th>
+                    <th className="border border-slate-700 p-1 w-24">1st Installment (E)</th>
+                    <th className="border border-slate-700 p-1 w-24">2nd Installment (F)</th>
+                    <th className="border border-slate-700 p-1 w-24">3rd Installment (G)</th>
+                    <th className="border border-slate-700 p-1 w-14 text-right">Adm/Tuition (H)</th>
+                    <th className="border border-slate-700 p-1 w-12 text-right">25% PF (I)</th>
+                    <th className="border border-slate-700 p-1 w-16 text-right font-black">Subtotal TEVTA (H+I)</th>
+                    <th className="border border-slate-700 p-1 w-16 text-right">Welfare Fund (K)</th>
+                    <th className="border border-slate-700 p-1 w-14 text-right">Security (L)</th>
+                    <th className="border border-slate-700 p-1 w-14 text-right">Board/Oth (M)</th>
+                    <th className="border border-slate-700 p-1 w-16 text-right font-black">Subtotal (K:M)</th>
+                    <th className="border border-slate-700 p-1 w-18 text-right font-black">Total PKR (O)</th>
+                    <th className="border border-slate-700 p-1 w-28 text-left">Remarks / Status (P)</th>
                   </tr>
                 </>
               ) : (
                 <>
-                  <tr className="bg-emerald-950 text-white font-bold text-center uppercase tracking-wider text-[8.5px]">
-                    <th colSpan={6} className="border border-slate-400 py-1.5 px-1 bg-emerald-900">
+                  <tr className="bg-slate-200 text-black font-extrabold text-center uppercase tracking-wider text-[8.5px] border-b border-slate-700">
+                    <th colSpan={6} className="border border-slate-700 py-1 px-1 bg-slate-200">
                       Trainee Particulars (Cols A to F)
                     </th>
-                    <th colSpan={3} className="border border-slate-400 py-1.5 px-1 bg-blue-900">
+                    <th colSpan={3} className="border border-slate-700 py-1 px-1 bg-slate-100">
                       TEVTA Dues (HO)
                     </th>
-                    <th colSpan={8} className="border border-slate-400 py-1.5 px-1 bg-teal-900">
-                      Pupil Welfare & Institutional Allocation (Cols I to O)
+                    <th colSpan={4} className="border border-slate-700 py-1 px-1 bg-slate-200">
+                      Pupil Welfare & Institutional Allocation (Cols I to L)
                     </th>
-                    <th colSpan={1} className="border border-slate-400 py-1.5 px-1 bg-emerald-900">
+                    <th colSpan={1} className="border border-slate-700 py-1 px-1 bg-slate-100">
                       Total
                     </th>
-                    <th colSpan={1} className="border border-slate-400 py-1.5 px-1 bg-slate-800">
+                    <th colSpan={1} className="border border-slate-700 py-1 px-1 bg-slate-200">
                       Status
                     </th>
                   </tr>
-                  <tr className="bg-slate-100 text-slate-900 font-bold text-center text-[8px]">
-                    <th className="border border-slate-400 p-1 w-7">Sr # (A)</th>
-                    <th className="border border-slate-400 p-1 w-14">Date (B)</th>
-                    <th className="border border-slate-400 p-1 w-14">Challan # (C)</th>
-                    <th className="border border-slate-400 p-1 w-16">Roll # (D)</th>
-                    <th className="border border-slate-400 p-1 min-w-[120px] text-left">Trainee Name (E)</th>
-                    <th className="border border-slate-400 p-1 min-w-[100px] text-left">Father Name (F)</th>
-                    <th className="border border-slate-400 p-1 w-14 text-right">Adm/Tuition (G)</th>
-                    <th className="border border-slate-400 p-1 w-12 text-right">25% PF (H)</th>
-                    <th className="border border-slate-400 p-1 w-16 text-right bg-blue-50">Subtotal TEVTA (G+H)</th>
-                    <th className="border border-slate-400 p-1 w-16 text-right bg-teal-50">Welfare Fund (I)</th>
-                    <th className="border border-slate-400 p-1 w-10 text-center text-slate-400">Stationary (J)</th>
-                    <th className="border border-slate-400 p-1 w-10 text-center text-slate-400">Computer (K)</th>
-                    <th className="border border-slate-400 p-1 w-10 text-center text-slate-400">Breakage (L)</th>
-                    <th className="border border-slate-400 p-1 w-10 text-center text-slate-400">Sports (M)</th>
-                    <th className="border border-slate-400 p-1 w-14 text-right">Security (N)</th>
-                    <th className="border border-slate-400 p-1 w-14 text-right">Board/Oth (O)</th>
-                    <th className="border border-slate-400 p-1 w-16 text-right bg-teal-50">Subtotal (I:O)</th>
-                    <th className="border border-slate-400 p-1 w-16 text-right bg-emerald-50">Total PKR (P)</th>
-                    <th className="border border-slate-400 p-1 w-20 text-left">Remarks (Q)</th>
+                  <tr className="bg-slate-100 text-black font-bold text-center text-[8px] border-b border-slate-700">
+                    <th className="border border-slate-700 p-1 w-7">Sr # (A)</th>
+                    <th className="border border-slate-700 p-1 w-14">Date (B)</th>
+                    <th className="border border-slate-700 p-1 w-14">Challan # (C)</th>
+                    <th className="border border-slate-700 p-1 w-16">Roll # (D)</th>
+                    <th className="border border-slate-700 p-1 min-w-[140px] text-left">Trainee Name (E)</th>
+                    <th className="border border-slate-700 p-1 min-w-[110px] text-left">Father Name (F)</th>
+                    <th className="border border-slate-700 p-1 w-14 text-right">Adm/Tuition (G)</th>
+                    <th className="border border-slate-700 p-1 w-12 text-right">25% PF (H)</th>
+                    <th className="border border-slate-700 p-1 w-16 text-right font-black">Subtotal TEVTA (G+H)</th>
+                    <th className="border border-slate-700 p-1 w-16 text-right">Welfare Fund (I)</th>
+                    <th className="border border-slate-700 p-1 w-14 text-right">Security (J)</th>
+                    <th className="border border-slate-700 p-1 w-14 text-right">Board/Oth (K)</th>
+                    <th className="border border-slate-700 p-1 w-16 text-right font-black">Subtotal (I:K)</th>
+                    <th className="border border-slate-700 p-1 w-18 text-right font-black">Total PKR (M)</th>
+                    <th className="border border-slate-700 p-1 w-24 text-left">Remarks (N)</th>
                   </tr>
                 </>
               )}
@@ -3878,9 +3706,9 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                   return (
                     <React.Fragment key={`print-sec-${sec.tradeCode}`}>
                       {/* Trade Section Header Banner */}
-                      <tr className="bg-emerald-900 text-white font-bold text-left">
-                        <td colSpan={20} className="border border-slate-400 py-1 px-2">
-                          <div className="flex items-center justify-between">
+                      <tr className="bg-slate-200 text-black font-extrabold text-left border-y border-slate-700">
+                        <td colSpan={16} className="border border-slate-700 py-1 px-2">
+                          <div className="flex items-center justify-between font-bold">
                             <span>
                               TRADE: {sec.tradeTitle.toUpperCase()} ({sec.tradeCode}) — {sec.traineeCount} UNIQUE ENROLLED STUDENTS
                               {isMV && sec.installmentCount > 0 ? ` (${sec.installmentCount} Installment Cases)` : ''}
@@ -3890,96 +3718,84 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                         </td>
                       </tr>
                       {sec.rows.map((r) => {
-                        const inst1Str = isMV && r.inst1ChallanId ? `Ch# ${r.inst1ChallanId} (${r.inst1Date}): Rs. ${formatPKR(r.inst1Amount, false)}` : '—';
-                        const inst2Str = isMV && r.inst2ChallanId ? `Ch# ${r.inst2ChallanId} (${r.inst2Date}): Rs. ${formatPKR(r.inst2Amount, false)}` : (isMV && r.isInstallmentCase ? 'Awaiting 2nd' : '—');
-                        const inst3Str = isMV && r.inst3ChallanId ? `Ch# ${r.inst3ChallanId} (${r.inst3Date}): Rs. ${formatPKR(r.inst3Amount, false)}` : (isMV && r.isInstallmentCase ? (r.inst2ChallanId ? 'Awaiting 3rd' : '—') : '—');
-
                         return (
-                          <tr key={`print-row-${r.studentKey}`} className="border-b border-slate-300">
-                            <td className="border border-slate-300 p-1 text-center font-mono">{r.srNo}</td>
-                            <td className="border border-slate-300 p-1 text-center font-mono font-bold">{r.rollNo}</td>
-                            <td className="border border-slate-300 p-1 text-left">
-                              <div className="font-bold uppercase text-[8.5px]">{r.traineeName.toUpperCase()}</div>
-                              {r.cnic && <div className="text-[7.5px] text-slate-500 font-mono">CNIC: {r.cnic}</div>}
+                          <tr key={`print-row-${r.studentKey}`} className="border-b border-slate-400">
+                            <td className="border border-slate-400 p-1 text-center font-mono">{r.srNo}</td>
+                            <td className="border border-slate-400 p-1 text-center font-mono font-bold">{r.rollNo}</td>
+                            <td className="border border-slate-400 p-1 text-left">
+                              <div className="font-bold uppercase text-[8.5px] text-black">{r.traineeName.toUpperCase()}</div>
+                              {r.cnic && <div className="text-[7.5px] text-slate-700 font-mono">CNIC: {r.cnic}</div>}
                             </td>
-                            <td className="border border-slate-300 p-1 text-left">{r.fatherName}</td>
-                            <td className="border border-slate-300 p-1 text-center font-mono bg-amber-50/50">
+                            <td className="border border-slate-400 p-1 text-left">{r.fatherName}</td>
+                            <td className="border border-slate-400 p-1 text-center font-mono">
                               {r.inst1Amount > 0 ? (
                                 <div>
-                                  <div className="font-bold text-[8.5px]">Rs. {formatPKR(r.inst1Amount, false)}</div>
-                                  <div className="text-[7px] text-slate-600 font-mono leading-tight">Ch# {r.inst1ChallanId}{r.inst1Date ? ` (${r.inst1Date})` : ''}</div>
+                                  <div className="font-bold text-[8.5px] text-black">Rs. {formatPKR(r.inst1Amount, false)}</div>
+                                  <div className="text-[7px] text-slate-700 font-mono leading-tight">Ch# {r.inst1ChallanId}{r.inst1Date ? ` (${r.inst1Date})` : ''}</div>
                                 </div>
                               ) : (
                                 <span className="text-slate-400">—</span>
                               )}
                             </td>
-                            <td className="border border-slate-300 p-1 text-center font-mono bg-amber-50/50">
+                            <td className="border border-slate-400 p-1 text-center font-mono">
                               {r.inst2Amount > 0 ? (
                                 <div>
-                                  <div className="font-bold text-[8.5px]">Rs. {formatPKR(r.inst2Amount, false)}</div>
-                                  <div className="text-[7px] text-slate-600 font-mono leading-tight">Ch# {r.inst2ChallanId}{r.inst2Date ? ` (${r.inst2Date})` : ''}</div>
+                                  <div className="font-bold text-[8.5px] text-black">Rs. {formatPKR(r.inst2Amount, false)}</div>
+                                  <div className="text-[7px] text-slate-700 font-mono leading-tight">Ch# {r.inst2ChallanId}{r.inst2Date ? ` (${r.inst2Date})` : ''}</div>
                                 </div>
                               ) : r.isInstallmentCase ? (
-                                <span className="text-[7.5px] font-bold text-amber-800 bg-amber-100 px-1 py-0.5 rounded">Awaiting 2nd</span>
+                                <span className="text-[7.5px] font-bold text-slate-800 border border-slate-400 px-1 py-0.5 rounded">Awaiting 2nd</span>
                               ) : (
                                 <span className="text-slate-400">—</span>
                               )}
                             </td>
-                            <td className="border border-slate-300 p-1 text-center font-mono bg-amber-50/50">
+                            <td className="border border-slate-400 p-1 text-center font-mono">
                               {r.inst3Amount > 0 ? (
                                 <div>
-                                  <div className="font-bold text-[8.5px]">Rs. {formatPKR(r.inst3Amount, false)}</div>
-                                  <div className="text-[7px] text-slate-600 font-mono leading-tight">Ch# {r.inst3ChallanId}{r.inst3Date ? ` (${r.inst3Date})` : ''}</div>
+                                  <div className="font-bold text-[8.5px] text-black">Rs. {formatPKR(r.inst3Amount, false)}</div>
+                                  <div className="text-[7px] text-slate-700 font-mono leading-tight">Ch# {r.inst3ChallanId}{r.inst3Date ? ` (${r.inst3Date})` : ''}</div>
                                 </div>
                               ) : r.isInstallmentCase ? (
-                                <span className="text-[7.5px] font-bold text-amber-800 bg-amber-100 px-1 py-0.5 rounded">{r.inst2ChallanId ? 'Awaiting 3rd' : '—'}</span>
+                                <span className="text-[7.5px] font-bold text-slate-800 border border-slate-400 px-1 py-0.5 rounded">{r.inst2ChallanId ? 'Awaiting 3rd' : '—'}</span>
                               ) : (
                                 <span className="text-slate-400">—</span>
                               )}
                             </td>
-                            <td className="border border-slate-300 p-1 text-right font-mono">{formatPKR(r.admissionTuition, false)}</td>
-                            <td className="border border-slate-300 p-1 text-right font-mono">{formatPKR(r.pupil25, false)}</td>
-                            <td className="border border-slate-300 p-1 text-right font-mono font-bold bg-blue-50/60 text-blue-900">{formatPKR(r.tevtaDues, false)}</td>
-                            <td className="border border-slate-300 p-1 text-right font-mono font-bold bg-teal-50/40 text-teal-900">{formatPKR(r.welfare75, false)}</td>
-                            <td className="border border-slate-300 p-1 text-center text-slate-400">—</td>
-                            <td className="border border-slate-300 p-1 text-center text-slate-400">—</td>
-                            <td className="border border-slate-300 p-1 text-center text-slate-400">—</td>
-                            <td className="border border-slate-300 p-1 text-center text-slate-400">—</td>
-                            <td className="border border-slate-300 p-1 text-right font-mono">{formatPKR(r.security, false)}</td>
-                            <td className="border border-slate-300 p-1 text-right font-mono">{r.boardOther === 0 ? '—' : formatPKR(r.boardOther, false)}</td>
-                            <td className="border border-slate-300 p-1 text-right font-mono font-bold bg-teal-50/60 text-teal-900">{formatPKR(r.instSubtotal, false)}</td>
-                            <td className="border border-slate-300 p-1 text-right font-mono font-bold bg-emerald-50 text-emerald-950">{formatPKR(r.totalAmount, false)}</td>
-                            <td className="border border-slate-300 p-1 text-left">{r.remarks}</td>
+                            <td className="border border-slate-400 p-1 text-right font-mono">{formatPKR(r.admissionTuition, false)}</td>
+                            <td className="border border-slate-400 p-1 text-right font-mono">{formatPKR(r.pupil25, false)}</td>
+                            <td className="border border-slate-400 p-1 text-right font-mono font-bold text-black">{formatPKR(r.tevtaDues, false)}</td>
+                            <td className="border border-slate-400 p-1 text-right font-mono font-bold text-black">{formatPKR(r.welfare75, false)}</td>
+                            <td className="border border-slate-400 p-1 text-right font-mono">{formatPKR(r.security, false)}</td>
+                            <td className="border border-slate-400 p-1 text-right font-mono">{r.boardOther === 0 ? '—' : formatPKR(r.boardOther, false)}</td>
+                            <td className="border border-slate-400 p-1 text-right font-mono font-bold text-black">{formatPKR(r.instSubtotal, false)}</td>
+                            <td className="border border-slate-400 p-1 text-right font-mono font-black text-black text-[9px]">{formatPKR(r.totalAmount, false)}</td>
+                            <td className="border border-slate-400 p-1 text-left">{r.remarks}</td>
                           </tr>
                         );
                       })}
                       {/* Subtotal Row */}
-                      <tr className="bg-emerald-50/90 font-bold border-t-2 border-emerald-900 text-[8px]">
-                        <td colSpan={4} className="border border-slate-400 p-1 text-right font-bold">
+                      <tr className="bg-slate-100 font-bold border-t-2 border-slate-700 text-[8px]">
+                        <td colSpan={4} className="border border-slate-700 p-1 text-right font-bold">
                           Subtotal ({sec.tradeCode}):
                         </td>
-                        <td className="border border-slate-400 p-1 text-center font-mono">
+                        <td className="border border-slate-700 p-1 text-center font-mono font-bold">
                           {isMV && sec.inst1Total > 0 ? `Rs. ${formatPKR(sec.inst1Total, false)}` : '—'}
                         </td>
-                        <td className="border border-slate-400 p-1 text-center font-mono">
+                        <td className="border border-slate-700 p-1 text-center font-mono font-bold">
                           {isMV && sec.inst2Total > 0 ? `Rs. ${formatPKR(sec.inst2Total, false)}` : '—'}
                         </td>
-                        <td className="border border-slate-400 p-1 text-center font-mono">
+                        <td className="border border-slate-700 p-1 text-center font-mono font-bold">
                           {isMV && sec.inst3Total > 0 ? `Rs. ${formatPKR(sec.inst3Total, false)}` : '—'}
                         </td>
-                        <td className="border border-slate-400 p-1 text-right font-mono">{formatPKR(sec.subtotal.admissionTuition, false)}</td>
-                        <td className="border border-slate-400 p-1 text-right font-mono">{formatPKR(sec.subtotal.pupil25, false)}</td>
-                        <td className="border border-slate-400 p-1 text-right font-mono bg-blue-100/70 text-blue-900">{formatPKR(sec.subtotal.tevtaDues, false)}</td>
-                        <td className="border border-slate-400 p-1 text-right font-mono bg-teal-100/60 text-teal-900">{formatPKR(sec.subtotal.welfare75, false)}</td>
-                        <td className="border border-slate-400 p-1 text-center text-slate-400">—</td>
-                        <td className="border border-slate-400 p-1 text-center text-slate-400">—</td>
-                        <td className="border border-slate-400 p-1 text-center text-slate-400">—</td>
-                        <td className="border border-slate-400 p-1 text-center text-slate-400">—</td>
-                        <td className="border border-slate-400 p-1 text-right font-mono">{formatPKR(sec.subtotal.security, false)}</td>
-                        <td className="border border-slate-400 p-1 text-right font-mono">{sec.subtotal.boardOther === 0 ? '—' : formatPKR(sec.subtotal.boardOther, false)}</td>
-                        <td className="border border-slate-400 p-1 text-right font-mono bg-teal-100/70 text-teal-900">{formatPKR(sec.subtotal.welfare75 + sec.subtotal.security + sec.subtotal.boardOther, false)}</td>
-                        <td className="border border-slate-400 p-1 text-right font-mono bg-emerald-100 text-emerald-950">{formatPKR(sec.subtotal.totalAmount, false)}</td>
-                        <td className="border border-slate-400 p-1 text-left">{sec.traineeCount} Students</td>
+                        <td className="border border-slate-700 p-1 text-right font-mono">{formatPKR(sec.subtotal.admissionTuition, false)}</td>
+                        <td className="border border-slate-700 p-1 text-right font-mono">{formatPKR(sec.subtotal.pupil25, false)}</td>
+                        <td className="border border-slate-700 p-1 text-right font-mono font-black">{formatPKR(sec.subtotal.tevtaDues, false)}</td>
+                        <td className="border border-slate-700 p-1 text-right font-mono font-bold">{formatPKR(sec.subtotal.welfare75, false)}</td>
+                        <td className="border border-slate-700 p-1 text-right font-mono">{formatPKR(sec.subtotal.security, false)}</td>
+                        <td className="border border-slate-700 p-1 text-right font-mono">{sec.subtotal.boardOther === 0 ? '—' : formatPKR(sec.subtotal.boardOther, false)}</td>
+                        <td className="border border-slate-700 p-1 text-right font-mono font-black">{formatPKR(sec.subtotal.welfare75 + sec.subtotal.security + sec.subtotal.boardOther, false)}</td>
+                        <td className="border border-slate-700 p-1 text-right font-mono font-black text-[9px]">{formatPKR(sec.subtotal.totalAmount, false)}</td>
+                        <td className="border border-slate-700 p-1 text-left">{sec.traineeCount} Students</td>
                       </tr>
                     </React.Fragment>
                   );
@@ -3987,58 +3803,50 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
               ) : (
                 tradeSections.map((sec) => (
                   <React.Fragment key={`print-raw-sec-${sec.tradeCode}`}>
-                    <tr className="bg-emerald-900 text-white font-bold text-left">
-                      <td colSpan={19} className="border border-slate-400 py-1 px-2">
-                        <div className="flex items-center justify-between">
+                    <tr className="bg-slate-200 text-black font-extrabold text-left border-y border-slate-700">
+                      <td colSpan={15} className="border border-slate-700 py-1 px-2">
+                        <div className="flex items-center justify-between font-bold">
                           <span>TRADE: {sec.tradeTitle.toUpperCase()} ({sec.tradeCode}) — {sec.traineeCount} TRAINEES</span>
                           <span>Subtotal: Rs. {formatPKR(sec.subtotal.totalAmount, false)}</span>
                         </div>
                       </td>
                     </tr>
                     {sec.rows.map((r) => (
-                      <tr key={`print-raw-row-${r.challanId}`} className="border-b border-slate-300">
-                        <td className="border border-slate-300 p-1 text-center font-mono">{r.srNo}</td>
-                        <td className="border border-slate-300 p-1 text-center font-mono">{r.dateStr}</td>
-                        <td className="border border-slate-300 p-1 text-center font-mono">{r.challanId}</td>
-                        <td className="border border-slate-300 p-1 text-center font-mono font-bold">{r.rollNo}</td>
-                        <td className="border border-slate-300 p-1 text-left">
-                          <div className="font-bold uppercase text-[8.5px]">{r.traineeName.toUpperCase()}</div>
-                          {r.cnic && <div className="text-[7.5px] text-slate-500 font-mono">CNIC: {r.cnic}</div>}
+                      <tr key={`print-raw-row-${r.challanId}`} className="border-b border-slate-400">
+                        <td className="border border-slate-400 p-1 text-center font-mono">{r.srNo}</td>
+                        <td className="border border-slate-400 p-1 text-center font-mono">{r.dateStr}</td>
+                        <td className="border border-slate-400 p-1 text-center font-mono">{r.challanId}</td>
+                        <td className="border border-slate-400 p-1 text-center font-mono font-bold">{r.rollNo}</td>
+                        <td className="border border-slate-400 p-1 text-left">
+                          <div className="font-bold uppercase text-[8.5px] text-black">{r.traineeName.toUpperCase()}</div>
+                          {r.cnic && <div className="text-[7.5px] text-slate-700 font-mono">CNIC: {r.cnic}</div>}
                         </td>
-                        <td className="border border-slate-300 p-1 text-left">{r.fatherName}</td>
-                        <td className="border border-slate-300 p-1 text-right font-mono">{formatPKR(r.admissionTuition, false)}</td>
-                        <td className="border border-slate-300 p-1 text-right font-mono">{formatPKR(r.pupil25, false)}</td>
-                        <td className="border border-slate-300 p-1 text-right font-mono font-bold bg-blue-50/60 text-blue-900">{formatPKR(r.tevtaDues, false)}</td>
-                        <td className="border border-slate-300 p-1 text-right font-mono font-bold bg-teal-50/40 text-teal-900">{formatPKR(r.welfare75, false)}</td>
-                        <td className="border border-slate-300 p-1 text-center text-slate-400">—</td>
-                        <td className="border border-slate-300 p-1 text-center text-slate-400">—</td>
-                        <td className="border border-slate-300 p-1 text-center text-slate-400">—</td>
-                        <td className="border border-slate-300 p-1 text-center text-slate-400">—</td>
-                        <td className="border border-slate-300 p-1 text-right font-mono">{formatPKR(r.security, false)}</td>
-                        <td className="border border-slate-300 p-1 text-right font-mono">{r.boardOther === 0 ? '—' : formatPKR(r.boardOther, false)}</td>
-                        <td className="border border-slate-300 p-1 text-right font-mono font-bold bg-teal-50/60 text-teal-900">{formatPKR(r.instSubtotal, false)}</td>
-                        <td className="border border-slate-300 p-1 text-right font-mono font-bold bg-emerald-50 text-emerald-950">{formatPKR(r.totalAmount, false)}</td>
-                        <td className="border border-slate-300 p-1 text-left">{r.remarks}</td>
+                        <td className="border border-slate-400 p-1 text-left">{r.fatherName}</td>
+                        <td className="border border-slate-400 p-1 text-right font-mono">{formatPKR(r.admissionTuition, false)}</td>
+                        <td className="border border-slate-400 p-1 text-right font-mono">{formatPKR(r.pupil25, false)}</td>
+                        <td className="border border-slate-400 p-1 text-right font-mono font-black">{formatPKR(r.tevtaDues, false)}</td>
+                        <td className="border border-slate-400 p-1 text-right font-mono font-bold">{formatPKR(r.welfare75, false)}</td>
+                        <td className="border border-slate-400 p-1 text-right font-mono">{formatPKR(r.security, false)}</td>
+                        <td className="border border-slate-400 p-1 text-right font-mono">{r.boardOther === 0 ? '—' : formatPKR(r.boardOther, false)}</td>
+                        <td className="border border-slate-400 p-1 text-right font-mono font-black">{formatPKR(r.instSubtotal, false)}</td>
+                        <td className="border border-slate-400 p-1 text-right font-mono font-black text-[9px]">{formatPKR(r.totalAmount, false)}</td>
+                        <td className="border border-slate-400 p-1 text-left">{r.remarks}</td>
                       </tr>
                     ))}
                     {/* Subtotal Row */}
-                    <tr className="bg-emerald-50/90 font-bold border-t-2 border-emerald-900 text-[8px]">
-                      <td colSpan={6} className="border border-slate-400 p-1 text-right font-bold">
+                    <tr className="bg-slate-100 font-bold border-t-2 border-slate-700 text-[8px]">
+                      <td colSpan={6} className="border border-slate-700 p-1 text-right font-bold">
                         Subtotal ({sec.tradeCode}):
                       </td>
-                      <td className="border border-slate-400 p-1 text-right font-mono">{formatPKR(sec.subtotal.admissionTuition, false)}</td>
-                      <td className="border border-slate-400 p-1 text-right font-mono">{formatPKR(sec.subtotal.pupil25, false)}</td>
-                      <td className="border border-slate-400 p-1 text-right font-mono bg-blue-100/70 text-blue-900">{formatPKR(sec.subtotal.tevtaDues, false)}</td>
-                      <td className="border border-slate-400 p-1 text-right font-mono bg-teal-100/60 text-teal-900">{formatPKR(sec.subtotal.welfare75, false)}</td>
-                      <td className="border border-slate-400 p-1 text-center text-slate-400">—</td>
-                      <td className="border border-slate-400 p-1 text-center text-slate-400">—</td>
-                      <td className="border border-slate-400 p-1 text-center text-slate-400">—</td>
-                      <td className="border border-slate-400 p-1 text-center text-slate-400">—</td>
-                      <td className="border border-slate-400 p-1 text-right font-mono">{formatPKR(sec.subtotal.security, false)}</td>
-                      <td className="border border-slate-400 p-1 text-right font-mono">{sec.subtotal.boardOther === 0 ? '—' : formatPKR(sec.subtotal.boardOther, false)}</td>
-                      <td className="border border-slate-400 p-1 text-right font-mono bg-teal-100/70 text-teal-900">{formatPKR(sec.subtotal.welfare75 + sec.subtotal.security + sec.subtotal.boardOther, false)}</td>
-                      <td className="border border-slate-400 p-1 text-right font-mono bg-emerald-100 text-emerald-950">{formatPKR(sec.subtotal.totalAmount, false)}</td>
-                      <td className="border border-slate-400 p-1 text-left">{sec.traineeCount} Trainees</td>
+                      <td className="border border-slate-700 p-1 text-right font-mono">{formatPKR(sec.subtotal.admissionTuition, false)}</td>
+                      <td className="border border-slate-700 p-1 text-right font-mono">{formatPKR(sec.subtotal.pupil25, false)}</td>
+                      <td className="border border-slate-700 p-1 text-right font-mono font-black">{formatPKR(sec.subtotal.tevtaDues, false)}</td>
+                      <td className="border border-slate-700 p-1 text-right font-mono font-bold">{formatPKR(sec.subtotal.welfare75, false)}</td>
+                      <td className="border border-slate-700 p-1 text-right font-mono">{formatPKR(sec.subtotal.security, false)}</td>
+                      <td className="border border-slate-700 p-1 text-right font-mono">{sec.subtotal.boardOther === 0 ? '—' : formatPKR(sec.subtotal.boardOther, false)}</td>
+                      <td className="border border-slate-700 p-1 text-right font-mono font-black">{formatPKR(sec.subtotal.welfare75 + sec.subtotal.security + sec.subtotal.boardOther, false)}</td>
+                      <td className="border border-slate-700 p-1 text-right font-mono font-black text-[9px]">{formatPKR(sec.subtotal.totalAmount, false)}</td>
+                      <td className="border border-slate-700 p-1 text-left">{sec.traineeCount} Trainees</td>
                     </tr>
                   </React.Fragment>
                 ))
@@ -4046,51 +3854,43 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             </tbody>
             <tfoot>
               {isInstallmentAlignedMode ? (
-                <tr className="bg-emerald-950 text-white font-bold border-t-2 border-slate-900 text-[8.5px]">
-                  <td colSpan={4} className="border border-slate-400 p-1.5 text-right font-bold">
+                <tr className="bg-slate-200 text-black font-extrabold border-t-2 border-slate-900 text-[8.5px]">
+                  <td colSpan={4} className="border border-slate-700 p-1.5 text-right font-extrabold">
                     GRAND TOTAL ({studentGrandTotal.totalTrainees} Unique Enrolled Students):
                   </td>
-                  <td className="border border-slate-400 p-1.5 text-center font-mono text-amber-300">
+                  <td className="border border-slate-700 p-1.5 text-center font-mono font-bold">
                     {studentGrandTotal.inst1Total > 0 ? `Rs. ${formatPKR(studentGrandTotal.inst1Total, false)}` : '—'}
                   </td>
-                  <td className="border border-slate-400 p-1.5 text-center font-mono text-amber-300">
+                  <td className="border border-slate-700 p-1.5 text-center font-mono font-bold">
                     {studentGrandTotal.inst2Total > 0 ? `Rs. ${formatPKR(studentGrandTotal.inst2Total, false)}` : '—'}
                   </td>
-                  <td className="border border-slate-400 p-1.5 text-center font-mono text-amber-300">
+                  <td className="border border-slate-700 p-1.5 text-center font-mono font-bold">
                     {studentGrandTotal.inst3Total > 0 ? `Rs. ${formatPKR(studentGrandTotal.inst3Total, false)}` : '—'}
                   </td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono">{formatPKR(studentGrandTotal.admissionTuition, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono">{formatPKR(studentGrandTotal.pupil25, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono text-cyan-300 font-black">{formatPKR(studentGrandTotal.tevtaDues, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono text-amber-300 font-black">{formatPKR(studentGrandTotal.welfare75, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-center text-teal-300/60">—</td>
-                  <td className="border border-slate-400 p-1.5 text-center text-teal-300/60">—</td>
-                  <td className="border border-slate-400 p-1.5 text-center text-teal-300/60">—</td>
-                  <td className="border border-slate-400 p-1.5 text-center text-teal-300/60">—</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono">{formatPKR(studentGrandTotal.security, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono">{studentGrandTotal.boardOther === 0 ? '—' : formatPKR(studentGrandTotal.boardOther, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono text-cyan-300 font-black">{formatPKR(studentGrandTotal.welfare75 + studentGrandTotal.security + studentGrandTotal.boardOther, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono text-amber-300 font-black text-sm">{formatPKR(studentGrandTotal.totalAmount, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-left text-emerald-200">100% RECONCILED</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono">{formatPKR(studentGrandTotal.admissionTuition, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono">{formatPKR(studentGrandTotal.pupil25, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono font-black">{formatPKR(studentGrandTotal.tevtaDues, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono font-black">{formatPKR(studentGrandTotal.welfare75, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono">{formatPKR(studentGrandTotal.security, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono">{studentGrandTotal.boardOther === 0 ? '—' : formatPKR(studentGrandTotal.boardOther, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono font-black">{formatPKR(studentGrandTotal.welfare75 + studentGrandTotal.security + studentGrandTotal.boardOther, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono font-black text-[9.5px]">{formatPKR(studentGrandTotal.totalAmount, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-left font-bold">100% RECONCILED</td>
                 </tr>
               ) : (
-                <tr className="bg-emerald-950 text-white font-bold border-t-2 border-slate-900 text-[8.5px]">
-                  <td colSpan={6} className="border border-slate-400 p-1.5 text-right font-bold">
+                <tr className="bg-slate-200 text-black font-extrabold border-t-2 border-slate-900 text-[8.5px]">
+                  <td colSpan={6} className="border border-slate-700 p-1.5 text-right font-extrabold">
                     GRAND TOTAL ({grandTotal.totalTrainees} Trainees):
                   </td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono">{formatPKR(grandTotal.admissionTuition, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono">{formatPKR(grandTotal.pupil25, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono text-cyan-300 font-black">{formatPKR(grandTotal.tevtaDues, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono text-amber-300 font-black">{formatPKR(grandTotal.welfare75, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-center text-teal-300/60">—</td>
-                  <td className="border border-slate-400 p-1.5 text-center text-teal-300/60">—</td>
-                  <td className="border border-slate-400 p-1.5 text-center text-teal-300/60">—</td>
-                  <td className="border border-slate-400 p-1.5 text-center text-teal-300/60">—</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono">{formatPKR(grandTotal.security, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono">{grandTotal.boardOther === 0 ? '—' : formatPKR(grandTotal.boardOther, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono text-cyan-300 font-black">{formatPKR(grandTotal.welfare75 + grandTotal.security + grandTotal.boardOther, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-right font-mono text-amber-300 font-black text-sm">{formatPKR(grandTotal.totalAmount, false)}</td>
-                  <td className="border border-slate-400 p-1.5 text-left text-emerald-200">100% RECONCILED</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono">{formatPKR(grandTotal.admissionTuition, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono">{formatPKR(grandTotal.pupil25, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono font-black">{formatPKR(grandTotal.tevtaDues, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono font-black">{formatPKR(grandTotal.welfare75, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono">{formatPKR(grandTotal.security, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono">{grandTotal.boardOther === 0 ? '—' : formatPKR(grandTotal.boardOther, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono font-black">{formatPKR(grandTotal.welfare75 + grandTotal.security + grandTotal.boardOther, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-right font-mono font-black text-[9.5px]">{formatPKR(grandTotal.totalAmount, false)}</td>
+                  <td className="border border-slate-700 p-1.5 text-left font-bold">100% RECONCILED</td>
                 </tr>
               )}
             </tfoot>
