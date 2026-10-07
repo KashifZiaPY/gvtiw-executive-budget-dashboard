@@ -624,15 +624,19 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
 
       const isMatricVocational = info.tradeCode === 'MVi' || info.tradeCode === 'MVii';
 
-      // Robust unique student key:
-      // For Matric Vocational (MVi & MVii) ONLY: group multiple installment submissions by the same student
-      // For all other regular/short courses (ADDM, FD, BT, BTE, CK, DM, CO): each challan is a distinct individual submission
+      // Unique Student Identification:
+      // CNIC is the unique primary key for every student (Roll # may be duplicate due to clerical entry errors).
+      // For Matric Vocational (MVi & MVii) ONLY: group multiple installment submissions by the student's unique CNIC.
+      // If CNIC is missing, fallback to Name + Father Name, then Roll #.
+      // For all other regular/short courses (ADDM, FD, BT, BTE, CK, DM, CO): each challan is a distinct individual submission.
       const studentKey = isMatricVocational
-        ? (rollClean
-            ? `${info.tradeCode}::ROLL::${rollClean}`
-            : cnicClean && cnicClean.length >= 8
+        ? (cnicClean && cnicClean.length >= 8
             ? `${info.tradeCode}::CNIC::${cnicClean}`
-            : `${info.tradeCode}::NAME::${nameClean}::${fatherClean}`)
+            : (nameClean && fatherClean)
+            ? `${info.tradeCode}::NAME::${nameClean}::${fatherClean}`
+            : rollClean
+            ? `${info.tradeCode}::ROLL::${rollClean}`
+            : `${info.tradeCode}::CHALLAN::${c.challanId}`)
         : `${info.tradeCode}::CHALLAN::${c.challanId}`;
 
       let studentsMap = tradeStudentsMap.get(info.tradeCode);
