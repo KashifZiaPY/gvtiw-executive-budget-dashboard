@@ -569,6 +569,12 @@ export interface FeeRegisterPdfRow {
   inst1Info?: string;
   inst2Info?: string;
   inst3Info?: string;
+  inst1Date?: string;
+  inst2Date?: string;
+  inst3Date?: string;
+  inst1ChallanId?: string;
+  inst2ChallanId?: string;
+  inst3ChallanId?: string;
   inst1Amount?: number;
   inst2Amount?: number;
   inst3Amount?: number;
@@ -827,9 +833,15 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
       const instSub = r.instSubtotal ?? (r.welfare75 + r.security + r.boardOther);
 
       if (isInstallmentAligned) {
-        const inst1Text = isMV ? (r.inst1Info || (r.challanId ? `Ch# ${r.challanId}\nRs. ${formatPKR(r.inst1Amount ?? r.totalAmount, false)}` : '—')) : '—';
-        const inst2Text = isMV ? (r.inst2Info || (r.inst2Amount && r.inst2Amount > 0 ? `Rs. ${formatPKR(r.inst2Amount, false)}` : (r.remarks?.includes('Installment') ? 'Awaiting 2nd' : '—'))) : '—';
-        const inst3Text = isMV ? (r.inst3Info || (r.inst3Amount && r.inst3Amount > 0 ? `Rs. ${formatPKR(r.inst3Amount, false)}` : (r.remarks?.includes('3rd Installment Awaited') ? 'Awaiting 3rd' : '—'))) : '—';
+        const inst1Text = isMV
+          ? (r.inst1Info || (r.inst1ChallanId ? `Ch# ${r.inst1ChallanId} (${r.inst1Date || ''})\nRs. ${formatPKR(r.inst1Amount ?? r.totalAmount, false)}` : (r.challanId ? `Ch# ${r.challanId} (${r.dateStr || ''})\nRs. ${formatPKR(r.totalAmount, false)}` : '—')))
+          : '—';
+        const inst2Text = isMV
+          ? (r.inst2Info || (r.inst2ChallanId ? `Ch# ${r.inst2ChallanId} (${r.inst2Date || ''})\nRs. ${formatPKR(r.inst2Amount, false)}` : (r.inst2Amount && r.inst2Amount > 0 ? `Rs. ${formatPKR(r.inst2Amount, false)}` : (r.remarks?.includes('Installment') ? 'Awaiting 2nd' : '—'))))
+          : '—';
+        const inst3Text = isMV
+          ? (r.inst3Info || (r.inst3ChallanId ? `Ch# ${r.inst3ChallanId} (${r.inst3Date || ''})\nRs. ${formatPKR(r.inst3Amount, false)}` : (r.inst3Amount && r.inst3Amount > 0 ? `Rs. ${formatPKR(r.inst3Amount, false)}` : (r.remarks?.includes('3rd Installment Awaited') ? 'Awaiting 3rd' : '—'))))
+          : '—';
 
         tableBody.push([
           r.srNo,
@@ -1270,23 +1282,23 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
         0: { halign: 'center', cellWidth: 6 }, // Sr # (A)
         1: { halign: 'center', cellWidth: 14, fontStyle: 'bold' }, // Roll # (B)
         2: { halign: 'left', cellWidth: 30, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 23, 42] }, // Trainee Name & CNIC (C)
-        3: { halign: 'left', cellWidth: 19, fontSize: 6.2 }, // Father Name (D)
-        4: { halign: 'center', cellWidth: 15, fontSize: 5.6 }, // 1st Installment (E)
-        5: { halign: 'center', cellWidth: 15, fontSize: 5.6 }, // 2nd Installment (F)
-        6: { halign: 'center', cellWidth: 15, fontSize: 5.6 }, // 3rd Installment (G)
+        3: { halign: 'left', cellWidth: 18, fontSize: 6.2 }, // Father Name (D)
+        4: { halign: 'center', cellWidth: 16, fontSize: 5.4 }, // 1st Installment (E)
+        5: { halign: 'center', cellWidth: 16, fontSize: 5.4 }, // 2nd Installment (F)
+        6: { halign: 'center', cellWidth: 16, fontSize: 5.4 }, // 3rd Installment (G)
         7: { halign: 'right', cellWidth: 12.5 }, // Adm/Tuition (H)
         8: { halign: 'right', cellWidth: 10 }, // 25% PF (I)
         9: { halign: 'right', cellWidth: 15.5, fontStyle: 'bold', fontSize: 7.0, textColor: [30, 64, 175] }, // Subtotal TEVTA (H+I)
         10: { halign: 'right', cellWidth: 12.5 }, // Welfare Fund (K)
-        11: { halign: 'center', cellWidth: 8.5, textColor: [148, 163, 184] }, // Stationary / Exam (L)
-        12: { halign: 'center', cellWidth: 8.5, textColor: [148, 163, 184] }, // Computer Fund (M)
-        13: { halign: 'center', cellWidth: 8.5, textColor: [148, 163, 184] }, // M & E Breakage (N)
-        14: { halign: 'center', cellWidth: 8.5, textColor: [148, 163, 184] }, // Sports Fund (O)
+        11: { halign: 'center', cellWidth: 8 }, // Stationary / Exam (L)
+        12: { halign: 'center', cellWidth: 8 }, // Computer Fund (M)
+        13: { halign: 'center', cellWidth: 8 }, // M & E Breakage (N)
+        14: { halign: 'center', cellWidth: 8 }, // Sports Fund (O)
         15: { halign: 'right', cellWidth: 11 }, // Security (P)
         16: { halign: 'right', cellWidth: 11.5 }, // Board/Other (Q)
         17: { halign: 'right', cellWidth: 15.5, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 118, 110] }, // Subtotal (K:Q)
         18: { halign: 'right', cellWidth: 17.5, fontStyle: 'bold', fontSize: 7.2, textColor: [6, 95, 70] }, // Total PKR (R)
-        19: { halign: 'center', cellWidth: 20.5 }, // Remarks (S)
+        19: { halign: 'center', cellWidth: 20 }, // Remarks (S)
       }
     : {
         0: { halign: 'center', cellWidth: 6 }, // Sr # (A)

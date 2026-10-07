@@ -1682,9 +1682,9 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             row.getCell(2).alignment = { horizontal: 'center' };
             row.getCell(3).alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
             row.getCell(4).alignment = { horizontal: 'left' };
-            row.getCell(5).alignment = { horizontal: 'center' };
-            row.getCell(6).alignment = { horizontal: 'center' };
-            row.getCell(7).alignment = { horizontal: 'center' };
+            row.getCell(5).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            row.getCell(6).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+            row.getCell(7).alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
 
             [8, 9, 10, 11, 16, 17, 18, 19].forEach((colIdx) => {
               const cell = row.getCell(colIdx);
@@ -2181,9 +2181,15 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
           traineeName: r.traineeName,
           cnic: r.cnic,
           fatherName: r.fatherName,
-          inst1Info: r.inst1ChallanId ? `Ch# ${r.inst1ChallanId}\nRs. ${formatPKR(r.inst1Amount, false)}` : '',
-          inst2Info: r.inst2ChallanId ? `Ch# ${r.inst2ChallanId}\nRs. ${formatPKR(r.inst2Amount, false)}` : (r.isInstallmentCase ? 'Awaiting 2nd' : '—'),
-          inst3Info: r.inst3ChallanId ? `Ch# ${r.inst3ChallanId}\nRs. ${formatPKR(r.inst3Amount, false)}` : (r.isInstallmentCase ? (r.inst2ChallanId ? 'Awaiting 3rd' : '—') : '—'),
+          inst1Info: r.inst1ChallanId ? `Ch# ${r.inst1ChallanId} (${r.inst1Date})\nRs. ${formatPKR(r.inst1Amount, false)}` : '',
+          inst2Info: r.inst2ChallanId ? `Ch# ${r.inst2ChallanId} (${r.inst2Date})\nRs. ${formatPKR(r.inst2Amount, false)}` : (r.isInstallmentCase ? 'Awaiting 2nd' : '—'),
+          inst3Info: r.inst3ChallanId ? `Ch# ${r.inst3ChallanId} (${r.inst3Date})\nRs. ${formatPKR(r.inst3Amount, false)}` : (r.isInstallmentCase ? (r.inst2ChallanId ? 'Awaiting 3rd' : '—') : '—'),
+          inst1Date: r.inst1Date,
+          inst2Date: r.inst2Date,
+          inst3Date: r.inst3Date,
+          inst1ChallanId: r.inst1ChallanId,
+          inst2ChallanId: r.inst2ChallanId,
+          inst3ChallanId: r.inst3ChallanId,
           inst1Amount: r.inst1Amount,
           inst2Amount: r.inst2Amount,
           inst3Amount: r.inst3Amount,
@@ -3897,9 +3903,40 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                               {r.cnic && <div className="text-[7.5px] text-slate-500 font-mono">CNIC: {r.cnic}</div>}
                             </td>
                             <td className="border border-slate-300 p-1 text-left">{r.fatherName}</td>
-                            <td className="border border-slate-300 p-1 text-center font-mono bg-amber-50/50">{inst1Str}</td>
-                            <td className="border border-slate-300 p-1 text-center font-mono bg-amber-50/50">{inst2Str}</td>
-                            <td className="border border-slate-300 p-1 text-center font-mono bg-amber-50/50">{inst3Str}</td>
+                            <td className="border border-slate-300 p-1 text-center font-mono bg-amber-50/50">
+                              {r.inst1Amount > 0 ? (
+                                <div>
+                                  <div className="font-bold text-[8.5px]">Rs. {formatPKR(r.inst1Amount, false)}</div>
+                                  <div className="text-[7px] text-slate-600 font-mono leading-tight">Ch# {r.inst1ChallanId}{r.inst1Date ? ` (${r.inst1Date})` : ''}</div>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </td>
+                            <td className="border border-slate-300 p-1 text-center font-mono bg-amber-50/50">
+                              {r.inst2Amount > 0 ? (
+                                <div>
+                                  <div className="font-bold text-[8.5px]">Rs. {formatPKR(r.inst2Amount, false)}</div>
+                                  <div className="text-[7px] text-slate-600 font-mono leading-tight">Ch# {r.inst2ChallanId}{r.inst2Date ? ` (${r.inst2Date})` : ''}</div>
+                                </div>
+                              ) : r.isInstallmentCase ? (
+                                <span className="text-[7.5px] font-bold text-amber-800 bg-amber-100 px-1 py-0.5 rounded">Awaiting 2nd</span>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </td>
+                            <td className="border border-slate-300 p-1 text-center font-mono bg-amber-50/50">
+                              {r.inst3Amount > 0 ? (
+                                <div>
+                                  <div className="font-bold text-[8.5px]">Rs. {formatPKR(r.inst3Amount, false)}</div>
+                                  <div className="text-[7px] text-slate-600 font-mono leading-tight">Ch# {r.inst3ChallanId}{r.inst3Date ? ` (${r.inst3Date})` : ''}</div>
+                                </div>
+                              ) : r.isInstallmentCase ? (
+                                <span className="text-[7.5px] font-bold text-amber-800 bg-amber-100 px-1 py-0.5 rounded">{r.inst2ChallanId ? 'Awaiting 3rd' : '—'}</span>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </td>
                             <td className="border border-slate-300 p-1 text-right font-mono">{formatPKR(r.admissionTuition, false)}</td>
                             <td className="border border-slate-300 p-1 text-right font-mono">{formatPKR(r.pupil25, false)}</td>
                             <td className="border border-slate-300 p-1 text-right font-mono font-bold bg-blue-50/60 text-blue-900">{formatPKR(r.tevtaDues, false)}</td>
