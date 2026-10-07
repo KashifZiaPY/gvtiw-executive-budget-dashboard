@@ -568,8 +568,10 @@ export interface FeeRegisterPdfRow {
   // Optional installment columns for dedicated installment report
   inst1Info?: string;
   inst2Info?: string;
+  inst3Info?: string;
   inst1Amount?: number;
   inst2Amount?: number;
+  inst3Amount?: number;
   admissionTuition: number;
   pupil25: number;
   tevtaDues?: number;
@@ -591,6 +593,7 @@ export interface FeeRegisterTradeGroupPdf {
   traineeCount: number;
   inst1Total?: number;
   inst2Total?: number;
+  inst3Total?: number;
   rows: FeeRegisterPdfRow[];
   subtotal: {
     admissionTuition: number;
@@ -630,6 +633,7 @@ export interface FeeRegisterPdfOptions {
     totalAmount: number;
     inst1Total?: number;
     inst2Total?: number;
+    inst3Total?: number;
   };
 }
 
@@ -732,9 +736,9 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
     ? [
         [
           { content: 'TRAINEE PARTICULARS (COLS A TO D)', colSpan: 4, styles: { halign: 'center', fillColor: [15, 76, 60] } },
-          { content: 'INSTALLMENT SUBMISSIONS (COLS E TO F)', colSpan: 2, styles: { halign: 'center', fillColor: [180, 83, 9] } },
+          { content: 'INSTALLMENT SUBMISSIONS (COLS E TO G)', colSpan: 3, styles: { halign: 'center', fillColor: [180, 83, 9] } },
           { content: 'TEVTA DUES (HO)', colSpan: 3, styles: { halign: 'center', fillColor: [30, 64, 175] } },
-          { content: 'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION (COLS J TO Q)', colSpan: 8, styles: { halign: 'center', fillColor: [13, 148, 136] } },
+          { content: 'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION (COLS K TO Q)', colSpan: 8, styles: { halign: 'center', fillColor: [13, 148, 136] } },
           { content: 'TOTAL', colSpan: 1, styles: { halign: 'center', fillColor: [15, 76, 60] } },
           { content: 'STATUS', colSpan: 1, styles: { halign: 'center', fillColor: [71, 85, 105] } },
         ],
@@ -745,19 +749,20 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
           'Father Name\n(D)',
           '1st Installment\n(E)',
           '2nd Installment\n(F)',
-          'Adm/Tuition\n(G)',
-          '25% PF\n(H)',
-          'Subtotal\nTEVTA (G+H)',
-          'Welfare\nFund (I)',
-          'Stationary\nExam (J)',
-          'Computer\nFund (K)',
-          'M & E\nBreakage (L)',
-          'Sports\nFund (M)',
-          'Security\n(N)',
-          'Board/Oth\n(O)',
-          'Subtotal\n(I:O)',
-          'Total PKR\n(P)',
-          'Remarks / Status\n(Q)',
+          '3rd Installment\n(G)',
+          'Adm/Tuition\n(H)',
+          '25% PF\n(I)',
+          'Subtotal\nTEVTA (H+I)',
+          'Welfare\nFund (K)',
+          'Stationary\nExam (L)',
+          'Computer\nFund (M)',
+          'M & E\nBreakage (N)',
+          'Sports\nFund (O)',
+          'Security\n(P)',
+          'Board/Oth\n(Q)',
+          'Subtotal\n(K:Q)',
+          'Total PKR\n(R)',
+          'Remarks / Status\n(S)',
         ],
       ]
     : [
@@ -803,7 +808,7 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
     tableBody.push([
       {
         content: bannerLabel,
-        colSpan: 19,
+        colSpan: isInstallmentAligned ? 20 : 19,
         styles: {
           fillColor: [22, 101, 52] as [number, number, number],
           textColor: [255, 255, 255] as [number, number, number],
@@ -824,6 +829,7 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
       if (isInstallmentAligned) {
         const inst1Text = isMV ? (r.inst1Info || (r.challanId ? `Ch# ${r.challanId}\nRs. ${formatPKR(r.inst1Amount ?? r.totalAmount, false)}` : '—')) : '—';
         const inst2Text = isMV ? (r.inst2Info || (r.inst2Amount && r.inst2Amount > 0 ? `Rs. ${formatPKR(r.inst2Amount, false)}` : (r.remarks?.includes('Installment') ? 'Awaiting 2nd' : '—'))) : '—';
+        const inst3Text = isMV ? (r.inst3Info || (r.inst3Amount && r.inst3Amount > 0 ? `Rs. ${formatPKR(r.inst3Amount, false)}` : (r.remarks?.includes('3rd Installment Awaited') ? 'Awaiting 3rd' : '—'))) : '—';
 
         tableBody.push([
           r.srNo,
@@ -832,6 +838,7 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
           r.fatherName,
           inst1Text,
           inst2Text,
+          inst3Text,
           formatPKR(r.admissionTuition, false),
           formatPKR(r.pupil25, false),
           formatPKR(tevtaSub, false),
@@ -894,6 +901,10 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
         },
         {
           content: isMV && group.inst2Total ? formatPKR(group.inst2Total, false) : '—',
+          styles: { fontStyle: 'bold', halign: 'center', fillColor: [254, 243, 199] as [number, number, number], textColor: [180, 83, 9] as [number, number, number], fontSize: 6.5 },
+        },
+        {
+          content: isMV && group.inst3Total ? formatPKR(group.inst3Total, false) : '—',
           styles: { fontStyle: 'bold', halign: 'center', fillColor: [254, 243, 199] as [number, number, number], textColor: [180, 83, 9] as [number, number, number], fontSize: 6.5 },
         },
         {
@@ -1018,6 +1029,10 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
           },
           {
             content: grandTotal.inst2Total ? formatPKR(grandTotal.inst2Total, false) : '—',
+            styles: { fontStyle: 'bold', halign: 'center', fillColor: [22, 101, 52] as [number, number, number], textColor: [254, 243, 199] as [number, number, number], fontSize: 6.8 },
+          },
+          {
+            content: grandTotal.inst3Total ? formatPKR(grandTotal.inst3Total, false) : '—',
             styles: { fontStyle: 'bold', halign: 'center', fillColor: [22, 101, 52] as [number, number, number], textColor: [254, 243, 199] as [number, number, number], fontSize: 6.8 },
           },
           {
@@ -1253,24 +1268,25 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
   const columnStyles: any = isInstallmentAligned
     ? {
         0: { halign: 'center', cellWidth: 6 }, // Sr # (A)
-        1: { halign: 'center', cellWidth: 15, fontStyle: 'bold' }, // Roll # (B)
-        2: { halign: 'left', cellWidth: 32, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 23, 42] }, // Trainee Name (C)
-        3: { halign: 'left', cellWidth: 20, fontSize: 6.2 }, // Father Name (D)
-        4: { halign: 'center', cellWidth: 17, fontSize: 5.8 }, // 1st Installment (E)
-        5: { halign: 'center', cellWidth: 17, fontSize: 5.8 }, // 2nd Installment (F)
-        6: { halign: 'right', cellWidth: 13 }, // Adm/Tuition (G)
-        7: { halign: 'right', cellWidth: 10.5 }, // 25% PF (H)
-        8: { halign: 'right', cellWidth: 16, fontStyle: 'bold', fontSize: 7.0, textColor: [30, 64, 175] }, // Subtotal TEVTA (G+H)
-        9: { halign: 'right', cellWidth: 13 }, // Welfare Fund (I)
-        10: { halign: 'center', cellWidth: 9, textColor: [148, 163, 184] }, // Stationary / Exam (J)
-        11: { halign: 'center', cellWidth: 9, textColor: [148, 163, 184] }, // Computer Fund (K)
-        12: { halign: 'center', cellWidth: 9, textColor: [148, 163, 184] }, // M & E Breakage (L)
-        13: { halign: 'center', cellWidth: 9, textColor: [148, 163, 184] }, // Sports Fund (M)
-        14: { halign: 'right', cellWidth: 11.5 }, // Security (N)
-        15: { halign: 'right', cellWidth: 12 }, // Board/Other (O)
-        16: { halign: 'right', cellWidth: 16, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 118, 110] }, // Subtotal (I:O)
-        17: { halign: 'right', cellWidth: 18, fontStyle: 'bold', fontSize: 7.2, textColor: [6, 95, 70] }, // Total PKR (P)
-        18: { halign: 'center', cellWidth: 20 }, // Remarks (Q)
+        1: { halign: 'center', cellWidth: 14, fontStyle: 'bold' }, // Roll # (B)
+        2: { halign: 'left', cellWidth: 30, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 23, 42] }, // Trainee Name & CNIC (C)
+        3: { halign: 'left', cellWidth: 19, fontSize: 6.2 }, // Father Name (D)
+        4: { halign: 'center', cellWidth: 15, fontSize: 5.6 }, // 1st Installment (E)
+        5: { halign: 'center', cellWidth: 15, fontSize: 5.6 }, // 2nd Installment (F)
+        6: { halign: 'center', cellWidth: 15, fontSize: 5.6 }, // 3rd Installment (G)
+        7: { halign: 'right', cellWidth: 12.5 }, // Adm/Tuition (H)
+        8: { halign: 'right', cellWidth: 10 }, // 25% PF (I)
+        9: { halign: 'right', cellWidth: 15.5, fontStyle: 'bold', fontSize: 7.0, textColor: [30, 64, 175] }, // Subtotal TEVTA (H+I)
+        10: { halign: 'right', cellWidth: 12.5 }, // Welfare Fund (K)
+        11: { halign: 'center', cellWidth: 8.5, textColor: [148, 163, 184] }, // Stationary / Exam (L)
+        12: { halign: 'center', cellWidth: 8.5, textColor: [148, 163, 184] }, // Computer Fund (M)
+        13: { halign: 'center', cellWidth: 8.5, textColor: [148, 163, 184] }, // M & E Breakage (N)
+        14: { halign: 'center', cellWidth: 8.5, textColor: [148, 163, 184] }, // Sports Fund (O)
+        15: { halign: 'right', cellWidth: 11 }, // Security (P)
+        16: { halign: 'right', cellWidth: 11.5 }, // Board/Other (Q)
+        17: { halign: 'right', cellWidth: 15.5, fontStyle: 'bold', fontSize: 7.0, textColor: [15, 118, 110] }, // Subtotal (K:Q)
+        18: { halign: 'right', cellWidth: 17.5, fontStyle: 'bold', fontSize: 7.2, textColor: [6, 95, 70] }, // Total PKR (R)
+        19: { halign: 'center', cellWidth: 20.5 }, // Remarks (S)
       }
     : {
         0: { halign: 'center', cellWidth: 6 }, // Sr # (A)
@@ -1326,22 +1342,25 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
         (data.cell as any)._traineeLines = [...data.cell.text];
         data.cell.text = (data.cell as any)._traineeLines.map(() => ' ');
       }
-      // Highlight & enlarge Subtotal TEVTA column (column index 8)
-      if (data.section === 'body' && data.column.index === 8) {
+      // Highlight & enlarge Subtotal TEVTA column (col 9 in installment mode, col 8 in regular mode)
+      const tevtaColIdx = isInstallmentAligned ? 9 : 8;
+      if (data.section === 'body' && data.column.index === tevtaColIdx) {
         data.cell.styles.fillColor = [239, 246, 255]; // Soft blue 50
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.fontSize = 7.0; // Same size as student name
         data.cell.styles.textColor = [30, 64, 175]; // Blue 800
       }
-      // Highlight & enlarge Subtotal (I:O) column (column index 16)
-      if (data.section === 'body' && data.column.index === 16) {
+      // Highlight & enlarge Subtotal Inst column (col 17 in installment mode, col 16 in regular mode)
+      const instColIdx = isInstallmentAligned ? 17 : 16;
+      if (data.section === 'body' && data.column.index === instColIdx) {
         data.cell.styles.fillColor = [240, 253, 250]; // Soft teal 50
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.fontSize = 7.0; // Same size as student name
         data.cell.styles.textColor = [15, 118, 110]; // Teal 700
       }
-      // Highlight & enlarge Total PKR column (column index 17)
-      if (data.section === 'body' && data.column.index === 17) {
+      // Highlight & enlarge Total PKR column (col 18 in installment mode, col 17 in regular mode)
+      const totalColIdx = isInstallmentAligned ? 18 : 17;
+      if (data.section === 'body' && data.column.index === totalColIdx) {
         data.cell.styles.fillColor = [236, 253, 245]; // Soft emerald 50
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.fontSize = 7.2; // Extra readable
