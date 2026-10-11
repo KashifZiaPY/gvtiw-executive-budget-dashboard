@@ -591,9 +591,9 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           <style>
             @page { size: A4 landscape; margin: 8mm; }
             body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; color: #0f172a; margin: 0; padding: 10px; font-size: 11px; }
-            .header-box { text-align: center; border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; margin-bottom: 12px; }
+            .header-box { text-align: center; border-bottom: 2px solid #064e3b; padding-bottom: 8px; margin-bottom: 12px; }
             .header-box h1 { font-size: 16px; margin: 0; text-transform: uppercase; color: #0f172a; font-weight: 900; }
-            .header-box h2 { font-size: 13px; margin: 3px 0 0 0; text-transform: uppercase; color: #1e3a8a; font-weight: 800; }
+            .header-box h2 { font-size: 13px; margin: 3px 0 0 0; text-transform: uppercase; color: #064e3b; font-weight: 800; }
             .header-box p { font-size: 10px; margin: 2px 0 0 0; color: #475569; font-weight: 600; font-family: monospace; }
             .meta-strip { display: flex; justify-content: space-between; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 12px; margin-bottom: 12px; font-size: 11px; font-weight: bold; flex-wrap: wrap; gap: 6px; }
             .metrics-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; text-align: center; }
@@ -630,7 +630,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           <div class="metrics-strip">
             <div class="metric-card">
               <span>1. Opening Balance</span>
-              <strong style="color: #1e3a8a;">Rs. ${Number(periodFinancials.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
+              <strong style="color: #064e3b;">Rs. ${Number(periodFinancials.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>
             </div>
             <div class="metric-card">
               <span>2. Total Receipts</span>
@@ -713,7 +713,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       {/* 1. MULTI-ACCOUNT TAB SELECTOR                                  */}
       {/* ------------------------------------------------------------- */}
       <div className={`p-2 rounded-2xl border ${
-        darkMode ? 'bg-[#0B132B] border-slate-700/80' : 'bg-white border-slate-200 shadow-sm'
+        darkMode ? 'bg-[#0a2b21] border-slate-700/80' : 'bg-white border-slate-200 shadow-sm'
       }`}>
         <div className="flex items-center gap-2 overflow-x-auto p-1 scrollbar-none">
           {(Object.keys(INSTITUTIONAL_BANK_ACCOUNTS) as BankAccountKey[]).map((key) => {
@@ -932,8 +932,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       <div className={`p-5 rounded-2xl border relative overflow-hidden transition-all ${
         darkMode
           ? isNavttcActive
-            ? 'bg-gradient-to-r from-[#06241b] via-[#0B132B] to-[#0b291d] border-emerald-600/40 text-white'
-            : 'bg-gradient-to-r from-[#0F1D3B] via-[#0B132B] to-[#132247] border-slate-700 text-white'
+            ? 'bg-gradient-to-r from-[#06241b] via-[#0a2b21] to-[#0b291d] border-emerald-600/40 text-white'
+            : 'bg-gradient-to-r from-[#0c2f23] via-[#0a2b21] to-[#0f3a29] border-slate-700 text-white'
           : isNavttcActive
           ? 'bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 border-emerald-800 text-white shadow-xl'
           : 'bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 border-slate-800 text-white shadow-xl'
@@ -1062,7 +1062,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       {/* 3. SEARCH & PERIOD / DATE RANGE FILTER BAR                     */}
       {/* ------------------------------------------------------------- */}
       <div className={`p-4 rounded-xl border flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 ${
-        darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-sm'
+        darkMode ? 'bg-[#0c2f23] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-sm'
       }`}>
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -1154,7 +1154,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       {/* 4. DOUBLE-COLUMN CASHBOOK LEDGER TABLE                         */}
       {/* ------------------------------------------------------------- */}
       <div className={`rounded-xl border overflow-hidden shadow-xl ${
-        darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-300'
+        darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-300'
       }`}>
         <div className="overflow-auto max-h-[calc(100vh-280px)] min-h-[420px] table-scrollbar-always-visible">
           <table className="w-full text-xs text-left border-collapse min-w-[1250px]">
@@ -1232,10 +1232,10 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                       className={`transition-colors ${
                         isEven
                           ? darkMode
-                            ? 'bg-[#0B132B] hover:bg-blue-500/10'
+                            ? 'bg-[#0a2b21] hover:bg-blue-500/10'
                             : 'bg-white hover:bg-blue-50/70'
                           : darkMode
-                          ? 'bg-[#070E20] hover:bg-blue-500/10'
+                          ? 'bg-[#082018] hover:bg-blue-500/10'
                           : 'bg-slate-50/70 hover:bg-blue-50/70'
                       }`}
                     >

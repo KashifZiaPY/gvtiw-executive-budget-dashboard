@@ -17,11 +17,14 @@ import { CashBookModule } from './components/CashBookModule';
 import { VoucherModule } from './components/VoucherModule';
 import { PaymentApprovalForm } from './components/PaymentApprovalForm';
 import { ReportsModule } from './components/ReportsModule';
+import type { ReportTab } from './components/ReportsModule';
+import type { TfcSubTab } from './components/TfcChallanHub';
+import { AppSidebar } from './components/AppSidebar';
 import { AdminHubModule } from './components/AdminHubModule';
 import { PinLockScreen } from './components/PinLockScreen';
 import { AnimatedSplashLogos } from './components/AnimatedSplashLogos';
 import { INITIAL_MASTER_VOUCHERS } from './data/cashBookData';
-import { Loader2, AlertTriangle, LayoutDashboard, BookOpen, Receipt, FileSpreadsheet, Lock } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { fetchDashboardPayload } from './lib/apiEngine';
 
 export type ActiveModuleTab = 'DASHBOARD' | 'CASHBOOK' | 'VOUCHERS' | 'REPORTS' | 'ADMIN';
@@ -72,6 +75,11 @@ class ModuleErrorBoundary extends React.Component<
 
 export default function App() {
   const [activeModule, setActiveModule] = useState<ActiveModuleTab>('DASHBOARD');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Report selection is owned here so the sidebar can drive it (ReportsModule runs in controlled mode).
+  const [activeReportTab, setActiveReportTab] = useState<ReportTab>('DIRECTOR_RECON');
+  // TFC hub sub-view, driven by the sidebar's nested items (TfcChallanHub runs controlled).
+  const [tfcSubTab, setTfcSubTab] = useState<TfcSubTab>('DATE_WISE_RECEIPTS');
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -315,10 +323,28 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col transition-colors duration-200 ${
+      className={`min-h-screen flex transition-colors duration-200 ${
         darkMode ? 'bg-[#03091E] text-slate-100' : 'bg-slate-100 text-slate-900'
       }`}
     >
+      {/* ------------------------------------------------------------- */}
+      {/* LEFT SIDEBAR NAVIGATION (replaces the top tab bar)            */}
+      {/* ------------------------------------------------------------- */}
+      <AppSidebar
+        darkMode={darkMode}
+        activeModule={activeModule}
+        onSelectModule={setActiveModule}
+        isUnlocked={isUnlocked}
+        activeReportTab={activeReportTab}
+        onSelectReportTab={setActiveReportTab}
+        tfcSubTab={tfcSubTab}
+        onSelectTfcSubTab={setTfcSubTab}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
+        onExpand={() => setSidebarCollapsed(false)}
+      />
+
+      <div className="flex-1 flex flex-col min-w-0">
 
       {/* ------------------------------------------------------------- */}
       {/* CORPORATE EXECUTIVE HEADER                                    */}
@@ -339,110 +365,6 @@ export default function App() {
         activeModule={activeModule}
         syncStatus={syncStatus}
       />
-
-      {/* ------------------------------------------------------------- */}
-      {/* MASTER ERP MODULE SWITCHER NAVIGATION BAR                     */}
-      {/* ------------------------------------------------------------- */}
-      <nav className={`border-b sticky top-0 z-30 backdrop-blur-md transition-colors ${
-        darkMode ? 'bg-[#0F1D3B]/90 border-slate-700/80 shadow-lg' : 'bg-white/95 border-slate-200 shadow-sm'
-      }`}>
-        <div className="max-w-7xl mx-auto px-3 sm:px-8 flex items-center justify-between gap-2 overflow-x-auto py-2 scrollbar-none">
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            
-            {/* Tab 1: Executive Dashboard */}
-            <button
-              onClick={() => setActiveModule('DASHBOARD')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                activeModule === 'DASHBOARD'
-                  ? darkMode
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                    : 'bg-blue-600 text-white shadow-md'
-                  : darkMode
-                  ? 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4 text-amber-300" />
-              <span>Executive Budget Matrix</span>
-            </button>
-
-            {/* Tab 2: Digital CashBooks */}
-            <button
-              onClick={() => setActiveModule('CASHBOOK')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                activeModule === 'CASHBOOK'
-                  ? darkMode
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                    : 'bg-blue-600 text-white shadow-md'
-                  : darkMode
-                  ? 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <BookOpen className="w-4 h-4 text-amber-300" />
-              <span>Digital CashBooks (6 A/C)</span>
-            </button>
-
-            {/* Tab 3: Voucher Explorer (PIN Protected) */}
-            <button
-              onClick={() => setActiveModule('VOUCHERS')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                activeModule === 'VOUCHERS'
-                  ? darkMode
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                    : 'bg-blue-600 text-white shadow-md'
-                  : darkMode
-                  ? 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <Receipt className="w-4 h-4 text-amber-300" />
-              <span>Voucher Matrix</span>
-              {!isUnlocked && <Lock className="w-3 h-3 text-amber-400/80 ml-0.5" />}
-            </button>
-
-            {/* Tab 4: Reports & Statements Hub */}
-            <button
-              onClick={() => setActiveModule('REPORTS')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                activeModule === 'REPORTS'
-                  ? darkMode
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
-                    : 'bg-blue-600 text-white shadow-md'
-                  : darkMode
-                  ? 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
-                  : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
-              }`}
-            >
-              <FileSpreadsheet className="w-4 h-4 text-amber-300" />
-              <span>Reports & Statements</span>
-            </button>
-
-            {/* Tab 5: Admin Operations Hub (PIN Protected) */}
-            <button
-              onClick={() => setActiveModule('ADMIN')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                activeModule === 'ADMIN'
-                  ? darkMode
-                    ? 'bg-amber-600 text-white shadow-md shadow-amber-500/20'
-                    : 'bg-amber-600 text-white shadow-md'
-                  : darkMode
-                  ? 'text-amber-300/80 hover:bg-amber-500/20 hover:text-amber-300'
-                  : 'text-amber-800 hover:bg-amber-50 hover:text-amber-900'
-              }`}
-            >
-              <Lock className="w-4 h-4 text-amber-300" />
-              <span>Admin Operations (PIN)</span>
-            </button>
-
-          </div>
-
-          <div className="hidden lg:flex items-center gap-2 text-[11px] font-mono text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Enterprise Suite v3.1 (v3.14 Live)</span>
-          </div>
-        </div>
-      </nav>
 
       {/* ------------------------------------------------------------- */}
       {/* MAIN ACTIVE MODULE CANVAS                                      */}
@@ -518,6 +440,10 @@ export default function App() {
               customGopLogo={customGopLogo}
               isUnlocked={isUnlocked}
               onUnlock={handleUnlock}
+              activeReportTab={activeReportTab}
+              onSelectReportTab={setActiveReportTab}
+              tfcSubTab={tfcSubTab}
+              onTfcSubTabChange={setTfcSubTab}
             />
           </section>
         )}
@@ -559,6 +485,7 @@ export default function App() {
           </span>
         </div>
       </footer>
+      </div>{/* end: flex-1 content column */}
 
       {/* ------------------------------------------------------------- */}
       {/* PRINT REPORT DIALOG                                           */}

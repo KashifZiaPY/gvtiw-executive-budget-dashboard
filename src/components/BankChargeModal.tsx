@@ -231,7 +231,7 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
     >
       <div
         className={`w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden my-auto transition-all animate-in zoom-in-95 duration-150 ${
-          darkMode ? 'bg-[#0c1322] border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
+          darkMode ? 'bg-[#0a211a] border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
         }`}
       >
         {/* EXECUTIVE CORPORATE HEADER */}

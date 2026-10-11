@@ -692,7 +692,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
         
         {/* Total Vouchers Recorded */}
         <div className={`p-4 rounded-xl border transition-all ${
-          darkMode ? 'bg-[#0B132B] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+          darkMode ? 'bg-[#0a2b21] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
         }`}>
           <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase mb-1">
             <span>Total Vouchers</span>
@@ -706,7 +706,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
 
         {/* Net Cheques Disbursed */}
         <div className={`p-4 rounded-xl border transition-all ${
-          darkMode ? 'bg-[#0B132B] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+          darkMode ? 'bg-[#0a2b21] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
         }`}>
           <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase mb-1">
             <span>Net Paid via Cheques</span>
@@ -720,7 +720,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
 
         {/* PRA Punjab Sales Tax Deducted */}
         <div className={`p-4 rounded-xl border transition-all ${
-          darkMode ? 'bg-[#0B132B] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+          darkMode ? 'bg-[#0a2b21] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
         }`}>
           <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase mb-1">
             <span>PRA Tax Deductions</span>
@@ -734,7 +734,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
 
         {/* Withholding Income Tax Deducted */}
         <div className={`p-4 rounded-xl border transition-all ${
-          darkMode ? 'bg-[#0B132B] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+          darkMode ? 'bg-[#0a2b21] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
         }`}>
           <div className="flex items-center justify-between text-slate-400 text-xs font-bold uppercase mb-1">
             <span>Income Tax (WHT)</span>
@@ -751,7 +751,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
       {/* 2. SEARCH & ACCOUNT FILTER BAR                                 */}
       {/* ------------------------------------------------------------- */}
       <div className={`p-4 rounded-xl border flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 ${
-        darkMode ? 'bg-[#0F1D3B] border-slate-700/90 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-sm'
+        darkMode ? 'bg-[#0c2f23] border-slate-700/90 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-sm'
       }`}>
         {/* Search Input */}
         <div className="relative flex-1">
@@ -803,7 +803,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
       {/* 3. MASTER VOUCHER TABLE                                        */}
       {/* ------------------------------------------------------------- */}
       <div className={`rounded-xl border overflow-hidden shadow-xl ${
-        darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-300'
+        darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-300'
       }`}>
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left border-collapse min-w-[1050px]">
@@ -839,10 +839,10 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
                       className={`transition-colors hover:bg-blue-500/10 ${
                         isEven
                           ? darkMode
-                            ? 'bg-[#0B132B]'
+                            ? 'bg-[#0a2b21]'
                             : 'bg-white'
                           : darkMode
-                          ? 'bg-[#070E20]'
+                          ? 'bg-[#082018]'
                           : 'bg-slate-50/70'
                       }`}
                     >

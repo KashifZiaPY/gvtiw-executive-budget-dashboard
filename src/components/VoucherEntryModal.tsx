@@ -1021,7 +1021,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
         /* ------------------------------------------------------------- */
         /* 2. MAIN VOUCHER ENTRY & AMEND FORM                            */
         /* ------------------------------------------------------------- */
-        <div className="bg-white dark:bg-[#0c1322] text-slate-900 dark:text-slate-100 w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col my-auto max-h-[95vh] relative">
+        <div className="bg-white dark:bg-[#0a211a] text-slate-900 dark:text-slate-100 w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col my-auto max-h-[95vh] relative">
           
           {/* ========================================================= */}
           {/* OFFICIAL CORPORATE BUSY SIGN (CONNECTING SYNC ANIMATION)  */}

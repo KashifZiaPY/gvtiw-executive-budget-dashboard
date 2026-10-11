@@ -63,9 +63,9 @@ export const CategoryDeck: React.FC<CategoryDeckProps> = ({
             ? 'border-blue-400 ring-4 ring-blue-500/60 shadow-xl shadow-blue-500/25 -translate-y-1 scale-[1.02] z-10'
             : isAnySelected
             ? 'opacity-65 hover:opacity-100 transition-opacity ' +
-              (darkMode ? 'bg-[#0B132B] border-slate-700/80 hover:border-slate-500' : 'bg-white border-slate-300 hover:border-slate-400')
+              (darkMode ? 'bg-[#0a2b21] border-slate-700/80 hover:border-slate-500' : 'bg-white border-slate-300 hover:border-slate-400')
             : darkMode
-            ? 'bg-[#0B132B] border-slate-700/80 hover:border-slate-500 hover:shadow-lg'
+            ? 'bg-[#0a2b21] border-slate-700/80 hover:border-slate-500 hover:shadow-lg'
             : 'bg-white border-slate-300 hover:border-slate-400'
         }`}
       >
@@ -451,9 +451,9 @@ export const CategoryDeck: React.FC<CategoryDeckProps> = ({
                 ? 'border-amber-400 ring-4 ring-amber-500/60 shadow-xl shadow-amber-500/25 -translate-y-1 scale-[1.02] z-10'
                 : selectedCategory !== 'ALL'
                 ? 'opacity-65 hover:opacity-100 transition-opacity ' +
-                  (darkMode ? 'bg-[#0B132B] border-slate-700/80 hover:border-slate-500' : 'bg-white border-slate-300 hover:border-slate-400')
+                  (darkMode ? 'bg-[#0a2b21] border-slate-700/80 hover:border-slate-500' : 'bg-white border-slate-300 hover:border-slate-400')
                 : darkMode
-                ? 'bg-[#0B132B] border-slate-700/80 hover:border-slate-500'
+                ? 'bg-[#0a2b21] border-slate-700/80 hover:border-slate-500'
                 : 'bg-white border-slate-300 hover:border-slate-400'
             }`}
           >
@@ -529,7 +529,7 @@ export const CategoryDeck: React.FC<CategoryDeckProps> = ({
             selectedCategory === 'ALL'
               ? 'border-amber-500 ring-2 ring-amber-500/40 shadow-amber-500/10'
               : 'border-amber-600/60 hover:border-amber-500'
-          } bg-gradient-to-r from-[#0F2537] via-[#15344F] to-[#0F2537] text-white`}
+          } bg-gradient-to-r from-[#0d3b2e] via-[#15344F] to-[#0d3b2e] text-white`}
         >
           {/* Header */}
           <div className="py-2.5 px-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-black text-xs sm:text-sm tracking-wider flex items-center justify-between uppercase">

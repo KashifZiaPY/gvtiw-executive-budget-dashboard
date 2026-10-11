@@ -87,7 +87,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
       <div
         className={`p-8 rounded-3xl border shadow-xl text-center space-y-6 transition-all ${
           darkMode
-            ? 'bg-[#0B132B] border-slate-800 text-white shadow-indigo-950/40'
+            ? 'bg-[#0a2b21] border-slate-800 text-white shadow-indigo-950/40'
             : 'bg-white border-slate-200 text-slate-900 shadow-indigo-500/5'
         }`}
       >

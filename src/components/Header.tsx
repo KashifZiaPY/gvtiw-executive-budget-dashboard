@@ -52,7 +52,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* ------------------------------------------------------------- */}
       {/* ROW 1: INSTITUTIONAL CREST & MAIN TITLE BANNER                 */}
       {/* ------------------------------------------------------------- */}
-      <div className="w-full px-4 sm:px-8 py-3.5 bg-gradient-to-r from-[#0a192f] via-[#0F2537] to-[#0a192f] border-b border-slate-700/80 shadow-md">
+      <div className="w-full px-4 sm:px-8 py-3.5 bg-gradient-to-r from-[#0a192f] via-[#0d3b2e] to-[#0a192f] border-b border-slate-700/80 shadow-md">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Left Institutional Emblem */}
           <div className="flex items-center gap-3 shrink-0">
@@ -109,7 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* ------------------------------------------------------------- */}
       {/* ROW 2: EXECUTIVE DASHBOARD BLUE RIBBON                         */}
       {/* ------------------------------------------------------------- */}
-      <div className="w-full bg-[#1E3A8A] text-white py-2 px-4 shadow-inner border-b border-blue-900">
+      <div className="w-full bg-[#064e3b] text-white py-2 px-4 shadow-inner border-b border-blue-900">
         <div className="max-w-7xl mx-auto flex items-center justify-center text-center">
           <h2 className="text-xs sm:text-sm md:text-base font-black tracking-widest uppercase text-white font-sans drop-shadow-xs">
             {data.reportTitle} — {data.financialYear}

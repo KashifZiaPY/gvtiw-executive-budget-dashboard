@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   INITIAL_MASTER_VOUCHERS,
   INITIAL_CASHBOOK_STATES,
@@ -16,6 +16,7 @@ import {
   CashBookStatementView,
 } from './CashBookStatementView';
 import { TfcChallanHub } from './TfcChallanHub';
+import type { TfcSubTab } from './TfcChallanHub';
 import {
   HeadExpenditureStatementView,
 } from './HeadExpenditureStatementView';
@@ -53,29 +54,21 @@ import {
   exportGeneralReportExcel,
 } from '../lib/excelExportEngine';
 import {
-  FileSpreadsheet,
   Printer,
   FileCheck,
   Search,
   CheckCircle2,
   Calendar,
-  Layers,
   ArrowDownLeft,
   ArrowUpRight,
   ShieldCheck,
   Download,
-  Users,
-  CreditCard,
-  TrendingUp,
   DollarSign,
   Filter,
   X,
   Sparkles,
   Landmark,
   Receipt,
-  Building2,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import { AccountHeadDisplay, parseAccountHead } from './AccountHeadTag';
 import { DirectorReconciliationReport } from './DirectorReconReport';
@@ -88,9 +81,15 @@ interface ReportsModuleProps {
   customGopLogo?: string | null;
   isUnlocked?: boolean;
   onUnlock?: (typedPin: string) => void;
+  /** Controlled report selection (driven by the app sidebar). Omit both to let the module manage its own tab. */
+  activeReportTab?: ReportTab;
+  onSelectReportTab?: (tab: ReportTab) => void;
+  /** Controlled TFC hub sub-view (driven by the sidebar's nested items). Omit both for self-managed. */
+  tfcSubTab?: TfcSubTab;
+  onTfcSubTabChange?: (t: TfcSubTab) => void;
 }
 
-type ReportTab =
+export type ReportTab =
   | 'DIRECTOR_RECON'
   | 'CASHBOOK'
   | 'HEAD'
@@ -110,19 +109,18 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   customGopLogo,
   isUnlocked = false,
   onUnlock,
+  activeReportTab: controlledReportTab,
+  onSelectReportTab,
+  tfcSubTab,
+  onTfcSubTabChange,
 }) => {
   const [internalUnlocked, setInternalUnlocked] = useState(false);
   const isAuthUnlocked = Boolean(isUnlocked || internalUnlocked);
   const [showPinModal, setShowPinModal] = useState(false);
-  const [activeReportTab, setActiveReportTab] = useState<ReportTab>('DIRECTOR_RECON');
-  const tabBarRef = useRef<HTMLDivElement>(null);
-
-  const scrollTabBar = (direction: 'left' | 'right') => {
-    if (tabBarRef.current) {
-      const scrollDistance = direction === 'left' ? -280 : 280;
-      tabBarRef.current.scrollBy({ left: scrollDistance, behavior: 'smooth' });
-    }
-  };
+  const [internalReportTab, setInternalReportTab] = useState<ReportTab>('DIRECTOR_RECON');
+  // Sidebar-driven (controlled) mode when the parent passes a selection; otherwise the module manages its own tab.
+  const activeReportTab = controlledReportTab ?? internalReportTab;
+  const setActiveReportTab: (tab: ReportTab) => void = onSelectReportTab ?? setInternalReportTab;
   const [vouchers, setVouchers] = useState<MasterVoucher[]>(() => {
     try {
       const cached = localStorage.getItem('gvtiw_live_vouchers_v3');
@@ -568,8 +566,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         label: data.isConsolidated ? 'CONSOLIDATED OPENING (B/D)' : 'OPENING BALANCE (B/D)',
         amount: data.openingBalance,
         color: '#003399',
-        bgColor: '#eff6ff',
-        borderColor: '#93c5fd',
+        bgColor: '#ecfdf4',
+        borderColor: '#6ee7b7',
       },
       {
         label: 'TOTAL RECEIPTS (+)',
@@ -588,7 +586,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       {
         label: data.isConsolidated ? 'CONSOLIDATED CLOSING (C/D)' : 'NET CLOSING BALANCE (C/D)',
         amount: data.closingBalance,
-        color: '#0b2545',
+        color: '#0b3d2e',
         bgColor: '#f8fafc',
         borderColor: '#cbd5e1',
       },
@@ -687,8 +685,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         label: 'BUDGET ALLOCATION (OPENING B/D)',
         amount: data.budgetAllocationOpening,
         color: '#003399',
-        bgColor: '#eff6ff',
-        borderColor: '#93c5fd',
+        bgColor: '#ecfdf4',
+        borderColor: '#6ee7b7',
       },
       {
         label: 'TOTAL RECEIPTS / REAPPR (+)',
@@ -707,7 +705,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       {
         label: 'NET UNSPENT CLOSING (C/D)',
         amount: data.closingUnspentBalance,
-        color: '#0b2545',
+        color: '#0b3d2e',
         bgColor: '#f8fafc',
         borderColor: '#cbd5e1',
       },
@@ -832,7 +830,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 2.5px solid #0b2545;
+            border-bottom: 2.5px solid #0b3d2e;
             padding-bottom: 6px;
             margin-bottom: 8px;
           }
@@ -887,12 +885,12 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             table-layout: fixed;
           }
           th {
-            background-color: #0b2545;
+            background-color: #0b3d2e;
             color: #ffffff;
             padding: 5.5px 4px;
             font-weight: 800;
             text-transform: uppercase;
-            border: 1px solid #0b2545;
+            border: 1px solid #0b3d2e;
             font-size: 8px;
             letter-spacing: 0.2px;
             line-height: 1.15;
@@ -917,10 +915,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </div>
           <div class="header-text-block">
             <div style="font-size: 7.5px; font-family: monospace; color: #475569; font-weight: bold; margin-bottom: 2px;">Source: Reports &amp; Statements → ${mainReportTitle}</div>
-            <h1 style="font-size: 13px; font-weight: 900; color: #0b2545; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">
+            <h1 style="font-size: 13px; font-weight: 900; color: #0b3d2e; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">
               GOVT. VOCATIONAL TRAINING INSTITUTE (W) SAMANABAD, FAISALABAD
             </h1>
-            <h2 style="font-size: 11px; font-weight: 900; color: #002b66; margin: 2px 0 0 0; text-transform: uppercase; letter-spacing: 0.3px;">
+            <h2 style="font-size: 11px; font-weight: 900; color: #065f46; margin: 2px 0 0 0; text-transform: uppercase; letter-spacing: 0.3px;">
               ${mainReportTitle}
             </h2>
             <div style="font-size: 8px; font-weight: 800; color: #475569; margin: 2px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -992,12 +990,12 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 <td class="text-right font-mono font-bold" style="color: #0f172a; white-space: nowrap;">${formatCurrency2Decimals(Number(v.billAmtExclTax || v.billAmountGross))}</td>
                 <td class="text-right font-mono font-bold" style="color: #6b21a8; white-space: nowrap;">${v.gstAmount > 0 ? formatCurrency2Decimals(v.gstAmount) : '—'}</td>
                 <td class="text-right font-mono font-black" style="color: #047857; white-space: nowrap;">${formatCurrency2Decimals(v.chequeAmountNet)}</td>
-                <td class="font-mono font-bold text-center" style="color: #1d4ed8; white-space: nowrap;">${v.voucherNo}</td>
+                <td class="font-mono font-bold text-center" style="color: #047857; white-space: nowrap;">${v.voucherNo}</td>
               </tr>
             `).join('')}
           </tbody>
           <tfoot>
-            <tr style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #0b2545;">
+            <tr style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #0b3d2e;">
               <td colspan="6" class="text-right font-black" style="padding: 6px; text-transform: uppercase; color: #0f172a;">
                 GRAND TOTALS (${filteredVouchers.length} RECORDS):
               </td>
@@ -1074,12 +1072,12 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 <td class="text-right font-mono font-bold" style="color: #92400e; white-space: nowrap;">${Number(v.praTaxOnBill) > 0 ? formatCurrency2Decimals(v.praTaxOnBill) : '—'}</td>
                 <td class="text-right font-mono font-bold" style="color: #92400e; white-space: nowrap;">${v.praAmount > 0 ? formatCurrency2Decimals(v.praAmount) : '—'}</td>
                 <td class="text-right font-mono font-black" style="color: #047857; white-space: nowrap;">${formatCurrency2Decimals(v.chequeAmountNet)}</td>
-                <td class="font-mono font-bold text-center" style="color: #1d4ed8; white-space: nowrap;">${v.voucherNo}</td>
+                <td class="font-mono font-bold text-center" style="color: #047857; white-space: nowrap;">${v.voucherNo}</td>
               </tr>
             `).join('')}
           </tbody>
           <tfoot>
-            <tr style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #0b2545;">
+            <tr style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #0b3d2e;">
               <td colspan="6" class="text-right font-black" style="padding: 6px; text-transform: uppercase; color: #0f172a;">
                 GRAND TOTALS (${filteredVouchers.length} RECORDS):
               </td>
@@ -1150,7 +1148,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             ${filteredVouchers.map((v, i) => `
               <tr style="border-bottom: 1px solid #cbd5e1;">
                 <td class="text-center font-mono" style="color: #475569;">${i + 1}</td>
-                <td class="font-mono font-bold" style="color: #1d4ed8; white-space: nowrap;">${v.voucherNo}</td>
+                <td class="font-mono font-bold" style="color: #047857; white-space: nowrap;">${v.voucherNo}</td>
                 <td class="font-mono" style="white-space: nowrap;">${v.chequeDate || v.billDate}</td>
                 <td style="word-break: break-word;">
                   <div class="font-bold" style="color: #0f172a; line-height: 1.2;">${v.payeeName}</div>
@@ -1171,7 +1169,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             `).join('')}
           </tbody>
           <tfoot>
-            <tr style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #0b2545;">
+            <tr style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #0b3d2e;">
               <td colspan="4" class="text-right font-black" style="padding: 6px; text-transform: uppercase; color: #0f172a;">
                 GRAND TOTALS (${filteredVouchers.length} RECORDS):
               </td>
@@ -2130,214 +2128,6 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     <div className="space-y-6">
       
       {/* ------------------------------------------------------------- */}
-      {/* 1. REPORT CATEGORY SWITCHER TABS (Aligned with Apps Script)    */}
-      {/* ------------------------------------------------------------- */}
-      <div className={`p-2 rounded-2xl border ${
-        darkMode ? 'bg-[#0B132B] border-slate-700/80' : 'bg-white border-slate-200 shadow-sm'
-      }`}>
-        <div className="relative flex items-center gap-1.5">
-          {/* Scroll Left Button for user convenience */}
-          <button
-            type="button"
-            onClick={() => scrollTabBar('left')}
-            title="Scroll reports left"
-            className={`hidden sm:flex items-center justify-center w-8 h-8 rounded-xl border shadow-xs transition-all cursor-pointer shrink-0 ${
-              darkMode
-                ? 'bg-slate-800/90 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'
-                : 'bg-slate-100 border-slate-300 text-slate-700 hover:text-slate-950 hover:bg-slate-200'
-            }`}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-
-          {/* Horizontally scrollable container with always-visible styled scrollbar */}
-          <div
-            ref={tabBarRef}
-            className="flex items-center gap-2 overflow-x-auto p-1 pb-2.5 nav-tab-scrollbar scroll-smooth flex-1"
-          >
-            <button
-              onClick={() => setActiveReportTab('DIRECTOR_RECON')}
-              className={`min-w-[185px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                activeReportTab === 'DIRECTOR_RECON'
-                  ? darkMode ? 'bg-cyan-900/50 border-cyan-400 text-white shadow-md ring-1 ring-cyan-400/40' : 'bg-cyan-50 border-cyan-600 text-cyan-950 shadow-md ring-1 ring-cyan-500'
-                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
-                <Building2 className="w-4 h-4 text-cyan-400 shrink-0" />
-                <span>Accounting Data Entry</span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">Director's Office Reconciliation &amp; Registers</p>
-            </button>
-
-            <button
-              onClick={() => setActiveReportTab('CASHBOOK')}
-              className={`min-w-[160px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                activeReportTab === 'CASHBOOK'
-                  ? darkMode ? 'bg-blue-900/40 border-blue-400 text-white shadow-md' : 'bg-blue-50 border-blue-600 text-blue-950 shadow-md'
-                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
-                <FileSpreadsheet className="w-4 h-4 text-blue-400 shrink-0" />
-                <span>Cashbook Statement</span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">Consolidated &amp; Bank-Wise</p>
-            </button>
-
-            <button
-              onClick={() => setActiveReportTab('HEAD')}
-              className={`min-w-[155px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                activeReportTab === 'HEAD'
-                  ? darkMode ? 'bg-indigo-900/40 border-indigo-400 text-white shadow-md' : 'bg-indigo-50 border-indigo-600 text-indigo-950 shadow-md'
-                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
-                <Layers className="w-4 h-4 text-indigo-400 shrink-0" />
-                <span>Head Expenditure</span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">By Budget Head</p>
-            </button>
-
-            <button
-              onClick={() => setActiveReportTab('NS_OWN_FY26_27')}
-              className={`min-w-[175px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                activeReportTab === 'NS_OWN_FY26_27'
-                  ? darkMode ? 'bg-teal-900/40 border-teal-400 text-white shadow-md' : 'bg-teal-50 border-teal-600 text-teal-950 shadow-md'
-                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
-                <FileSpreadsheet className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>NS &amp; OWN Working</span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">FY 26-27 (GID: 1689777979)</p>
-            </button>
-
-            <button
-              onClick={() => setActiveReportTab('PAYEE')}
-              className={`min-w-[150px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                activeReportTab === 'PAYEE'
-                  ? darkMode ? 'bg-emerald-900/40 border-emerald-400 text-white shadow-md' : 'bg-emerald-50 border-emerald-600 text-emerald-950 shadow-md'
-                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
-                <Users className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Payee Statement</span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">Supplier Ledger</p>
-            </button>
-
-            <button
-              onClick={() => setActiveReportTab('FBR')}
-              className={`min-w-[155px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                activeReportTab === 'FBR'
-                  ? darkMode ? 'bg-purple-900/40 border-purple-400 text-white shadow-md' : 'bg-purple-50 border-purple-600 text-purple-950 shadow-md'
-                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
-                <Landmark className="w-4 h-4 text-purple-400 shrink-0" />
-                <span>FBR Withholding</span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">Monthly Statement</p>
-            </button>
-
-            <button
-              onClick={() => setActiveReportTab('PRA')}
-              className={`min-w-[155px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                activeReportTab === 'PRA'
-                  ? darkMode ? 'bg-amber-900/40 border-amber-400 text-white shadow-md' : 'bg-amber-50 border-amber-600 text-amber-950 shadow-md'
-                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
-                <Receipt className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>PRA Sales Tax</span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">Monthly Statement</p>
-            </button>
-
-            <button
-              onClick={() => setActiveReportTab('CHEQUE')}
-              className={`min-w-[155px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                activeReportTab === 'CHEQUE'
-                  ? darkMode ? 'bg-amber-900/40 border-amber-400 text-white shadow-md' : 'bg-amber-50 border-amber-600 text-amber-950 shadow-md'
-                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
-                <CreditCard className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>Cheque Inquiry</span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">Disbursement Search</p>
-            </button>
-
-            <button
-              onClick={() => setActiveReportTab('AMOUNT')}
-              className={`min-w-[150px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                activeReportTab === 'AMOUNT'
-                  ? darkMode ? 'bg-rose-900/40 border-rose-400 text-white shadow-md' : 'bg-rose-50 border-rose-600 text-rose-950 shadow-md'
-                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
-                <TrendingUp className="w-4 h-4 text-rose-400 shrink-0" />
-                <span>Amount Range</span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">High-Value Audit</p>
-            </button>
-
-            <button
-              onClick={() => setActiveReportTab('PRINT_CENTER')}
-              className={`min-w-[140px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                activeReportTab === 'PRINT_CENTER'
-                  ? darkMode ? 'bg-blue-900/40 border-blue-400 text-white shadow-md' : 'bg-blue-50 border-blue-600 text-blue-950 shadow-md'
-                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
-                <Printer className="w-4 h-4 text-blue-400 shrink-0" />
-                <span>Print Center</span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">PAF by Sr.#</p>
-            </button>
-
-            <button
-              onClick={() => setActiveReportTab('TFC_CHALLAN_HUB')}
-              className={`min-w-[180px] shrink-0 p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                activeReportTab === 'TFC_CHALLAN_HUB'
-                  ? darkMode ? 'bg-teal-900/50 border-teal-400 text-white shadow-md ring-1 ring-teal-400/40' : 'bg-teal-50 border-teal-600 text-teal-950 shadow-md ring-1 ring-teal-500'
-                  : darkMode ? 'bg-transparent border-transparent text-slate-400 hover:text-white hover:bg-slate-800/60' : 'bg-transparent border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold text-xs whitespace-nowrap">
-                <Building2 className="w-4 h-4 text-teal-400 shrink-0" />
-                <span>BOP Fee Challan Hub</span>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-0.5 whitespace-nowrap">TFC Portal &amp; Transfers</p>
-            </button>
-          </div>
-
-          {/* Scroll Right Button for user convenience */}
-          <button
-            type="button"
-            onClick={() => scrollTabBar('right')}
-            title="Scroll reports right"
-            className={`hidden sm:flex items-center justify-center w-8 h-8 rounded-xl border shadow-xs transition-all cursor-pointer shrink-0 ${
-              darkMode
-                ? 'bg-slate-800/90 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700'
-                : 'bg-slate-100 border-slate-300 text-slate-700 hover:text-slate-950 hover:bg-slate-200'
-            }`}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* ------------------------------------------------------------- */}
       {/* 1.5 CFO OPENING BALANCES VERIFICATION STRIP                     */}
       {/* ------------------------------------------------------------- */}
       <div className={`p-3 rounded-xl border flex items-center justify-between flex-wrap gap-3 text-xs ${
@@ -2373,7 +2163,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       {/* ------------------------------------------------------------- */}
       {['CASHBOOK', 'HEAD', 'PAYEE', 'CHEQUE', 'AMOUNT', 'FBR', 'PRA'].includes(activeReportTab) && (
         <div className={`p-4 rounded-xl border space-y-3.5 ${
-          darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-300 shadow-sm'
+          darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-300 shadow-sm'
         }`}>
           {/* Main Controls Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
@@ -2747,31 +2537,31 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
           {/* Summary Strip */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">Gross Claimed</span>
               <span className="text-base font-black font-mono text-slate-900 dark:text-white">
                 {formatPKR(totalGross, false)}
               </span>
             </div>
-            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-purple-900/60 bg-purple-950/20' : 'bg-purple-50 border-purple-200 shadow-xs'}`}>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0a2b21] border-purple-900/60 bg-purple-950/20' : 'bg-purple-50 border-purple-200 shadow-xs'}`}>
               <span className="text-[10px] text-purple-700 dark:text-purple-400 font-bold uppercase block">GST Sales Tax</span>
               <span className="text-base font-black font-mono text-purple-700 dark:text-purple-400">
                 {formatPKR(totalGst, false)}
               </span>
             </div>
-            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">WHT Income Tax</span>
               <span className="text-base font-black font-mono text-rose-700 dark:text-rose-400">
                 {formatPKR(totalWht, false)}
               </span>
             </div>
-            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">PRA Sales Tax</span>
               <span className="text-base font-black font-mono text-amber-700 dark:text-amber-400">
                 {formatPKR(totalPra, false)}
               </span>
             </div>
-            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-emerald-800 bg-emerald-950/20' : 'bg-emerald-50 border-emerald-200 shadow-xs'}`}>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0a2b21] border-emerald-800 bg-emerald-950/20' : 'bg-emerald-50 border-emerald-200 shadow-xs'}`}>
               <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase block">Net Paid (Cheques)</span>
               <span className="text-base font-black font-mono text-emerald-700 dark:text-emerald-400">
                 {formatPKR(totalNet, false)}
@@ -2780,27 +2570,27 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           </div>
 
           {/* Detailed Table */}
-          <div className={`rounded-xl border overflow-hidden shadow-lg ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200'}`}>
+          <div className={`rounded-xl border overflow-hidden shadow-lg ${darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-200'}`}>
             <div className="overflow-auto max-h-[calc(100vh-280px)] min-h-[420px] table-scrollbar-always-visible">
               <table className="w-full text-xs text-left border-collapse min-w-[1200px]">
-                <thead className="bg-[#0b2545] text-white font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-800 sticky top-0 z-20 shadow-sm">
+                <thead className="bg-[#0b3d2e] text-white font-extrabold text-[10px] uppercase tracking-wider border-b border-slate-800 sticky top-0 z-20 shadow-sm">
                   <tr>
-                    <th className="py-2.5 px-2 text-center w-12 border-r border-slate-800 sticky top-0 bg-[#0b2545]">Sr.#</th>
-                    <th className="py-2.5 px-3 border-r border-slate-800 w-24 sticky top-0 bg-[#0b2545]">Voucher#</th>
-                    <th className="py-2.5 px-3 border-r border-slate-800 w-24 sticky top-0 bg-[#0b2545]">Date</th>
-                    <th className="py-2.5 px-3 border-r border-slate-800 min-w-[170px] max-w-[240px] sticky top-0 bg-[#0b2545]">Payee / Vendor</th>
-                    <th className="py-2.5 px-2.5 border-r border-slate-800 w-24 sticky top-0 bg-[#0b2545]">Bill/Invoice #</th>
-                    <th className="py-2.5 px-2.5 border-r border-slate-800 w-24 sticky top-0 bg-[#0b2545]">Bill Date</th>
-                    <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28 sticky top-0 bg-[#0b2545]">Amount Excl. Tax (Rs.)</th>
-                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-24 text-amber-300 sticky top-0 bg-[#0b2545]">PRA (Bill) (Rs.)</th>
-                    <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28 sticky top-0 bg-[#0b2545]">Gross Bill (Rs.)</th>
-                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-24 text-purple-300 sticky top-0 bg-[#0b2545]">GST (Rs.)</th>
-                    <th className="py-2.5 px-3 border-r border-slate-800 sticky top-0 bg-[#0b2545]">Budget Account Head</th>
-                    <th className="py-2.5 px-2 text-center border-r border-slate-800 w-24 sticky top-0 bg-[#0b2545]">Cheque#</th>
-                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-20 text-rose-300 sticky top-0 bg-[#0b2545]">WHT (Rs.)</th>
-                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-20 text-amber-300 sticky top-0 bg-[#0b2545]">PRA (Rs.)</th>
-                    <th className="py-2.5 px-3 text-right w-28 text-emerald-300 sticky top-0 bg-[#0b2545]">Net Paid (Rs.)</th>
-                    <th className="py-2.5 px-2 text-center w-16 sticky top-0 bg-[#0b2545]">PAF</th>
+                    <th className="py-2.5 px-2 text-center w-12 border-r border-slate-800 sticky top-0 bg-[#0b3d2e]">Sr.#</th>
+                    <th className="py-2.5 px-3 border-r border-slate-800 w-24 sticky top-0 bg-[#0b3d2e]">Voucher#</th>
+                    <th className="py-2.5 px-3 border-r border-slate-800 w-24 sticky top-0 bg-[#0b3d2e]">Date</th>
+                    <th className="py-2.5 px-3 border-r border-slate-800 min-w-[170px] max-w-[240px] sticky top-0 bg-[#0b3d2e]">Payee / Vendor</th>
+                    <th className="py-2.5 px-2.5 border-r border-slate-800 w-24 sticky top-0 bg-[#0b3d2e]">Bill/Invoice #</th>
+                    <th className="py-2.5 px-2.5 border-r border-slate-800 w-24 sticky top-0 bg-[#0b3d2e]">Bill Date</th>
+                    <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28 sticky top-0 bg-[#0b3d2e]">Amount Excl. Tax (Rs.)</th>
+                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-24 text-amber-300 sticky top-0 bg-[#0b3d2e]">PRA (Bill) (Rs.)</th>
+                    <th className="py-2.5 px-3 text-right border-r border-slate-800 w-28 sticky top-0 bg-[#0b3d2e]">Gross Bill (Rs.)</th>
+                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-24 text-purple-300 sticky top-0 bg-[#0b3d2e]">GST (Rs.)</th>
+                    <th className="py-2.5 px-3 border-r border-slate-800 sticky top-0 bg-[#0b3d2e]">Budget Account Head</th>
+                    <th className="py-2.5 px-2 text-center border-r border-slate-800 w-24 sticky top-0 bg-[#0b3d2e]">Cheque#</th>
+                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-20 text-rose-300 sticky top-0 bg-[#0b3d2e]">WHT (Rs.)</th>
+                    <th className="py-2.5 px-2.5 text-right border-r border-slate-800 w-20 text-amber-300 sticky top-0 bg-[#0b3d2e]">PRA (Rs.)</th>
+                    <th className="py-2.5 px-3 text-right w-28 text-emerald-300 sticky top-0 bg-[#0b3d2e]">Net Paid (Rs.)</th>
+                    <th className="py-2.5 px-2 text-center w-16 sticky top-0 bg-[#0b3d2e]">PAF</th>
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
@@ -2916,7 +2706,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         <div className="space-y-4">
           {/* Header & Action Strip */}
           <div className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${
-            darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+            darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
           }`}>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -2966,19 +2756,19 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
           {/* KPI Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
               <span className="text-[10px] text-slate-400 font-bold uppercase block">Gross Claimed</span>
               <span className="text-base font-black font-mono text-slate-900 dark:text-white">
                 {formatPKR(totalGross, false)}
               </span>
             </div>
-            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-purple-900/60 bg-purple-950/20' : 'bg-purple-50 border-purple-200 shadow-xs'}`}>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0a2b21] border-purple-900/60 bg-purple-950/20' : 'bg-purple-50 border-purple-200 shadow-xs'}`}>
               <span className="text-[10px] text-purple-700 dark:text-purple-400 font-bold uppercase block">GST / Sales Tax Withheld</span>
               <span className="text-base font-black font-mono text-purple-700 dark:text-purple-400">
                 {formatPKR(totalGst, false)}
               </span>
             </div>
-            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-emerald-900/60 bg-emerald-950/20' : 'bg-emerald-50 border-emerald-200 shadow-xs'}`}>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0a2b21] border-emerald-900/60 bg-emerald-950/20' : 'bg-emerald-50 border-emerald-200 shadow-xs'}`}>
               <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase block">Net Paid (Cheques)</span>
               <span className="text-base font-black font-mono text-emerald-700 dark:text-emerald-400">
                 {formatPKR(totalNet, false)}
@@ -2988,7 +2778,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
           {/* Table Container */}
           <div className={`rounded-xl border overflow-hidden ${
-            darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+            darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
           }`}>
             <div className="overflow-auto max-h-[calc(100vh-280px)] min-h-[420px] table-scrollbar-always-visible">
               <table className="w-full text-xs text-left min-w-[1100px]">
@@ -3137,7 +2927,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         <div className="space-y-4">
           {/* Header & Action Strip */}
           <div className={`p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${
-            darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+            darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
           }`}>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
@@ -3187,25 +2977,25 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
           {/* KPI Summary Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-200 shadow-xs'}`}>
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase block">Total Bill Amount</span>
               <span className="text-base font-black font-mono text-slate-900 dark:text-white">
                 {formatPKR(totalGross, false)}
               </span>
             </div>
-            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-amber-900/60 bg-amber-950/20' : 'bg-amber-50 border-amber-200 shadow-xs'}`}>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0a2b21] border-amber-900/60 bg-amber-950/20' : 'bg-amber-50 border-amber-200 shadow-xs'}`}>
               <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold uppercase block">PRA (Bill)</span>
               <span className="text-base font-black font-mono text-amber-700 dark:text-amber-400">
                 {formatPKR(totalPraOnBill, false)}
               </span>
             </div>
-            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-amber-900/60 bg-amber-950/20' : 'bg-amber-50 border-amber-200 shadow-xs'}`}>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0a2b21] border-amber-900/60 bg-amber-950/20' : 'bg-amber-50 border-amber-200 shadow-xs'}`}>
               <span className="text-[10px] text-amber-700 dark:text-amber-400 font-bold uppercase block">PRA Withheld</span>
               <span className="text-base font-black font-mono text-amber-700 dark:text-amber-400">
                 {formatPKR(totalPra, false)}
               </span>
             </div>
-            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0B132B] border-emerald-900/60 bg-emerald-950/20' : 'bg-emerald-50 border-emerald-200 shadow-xs'}`}>
+            <div className={`p-3.5 rounded-xl border ${darkMode ? 'bg-[#0a2b21] border-emerald-900/60 bg-emerald-950/20' : 'bg-emerald-50 border-emerald-200 shadow-xs'}`}>
               <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-bold uppercase block">Net Paid (Cheques)</span>
               <span className="text-base font-black font-mono text-emerald-700 dark:text-emerald-400">
                 {formatPKR(totalNet, false)}
@@ -3215,7 +3005,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
 
           {/* Table Container */}
           <div className={`rounded-xl border overflow-hidden ${
-            darkMode ? 'bg-[#0B132B] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
+            darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-200 shadow-sm'
           }`}>
             <div className="overflow-auto max-h-[calc(100vh-280px)] min-h-[420px] table-scrollbar-always-visible">
               <table className="w-full text-xs text-left min-w-[1150px]">
@@ -3367,7 +3157,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       {/* TAB: PRINT CENTER */}
       {activeReportTab === 'PRINT_CENTER' && (
         <div className={`p-6 rounded-2xl border max-w-xl mx-auto ${
-          darkMode ? 'bg-[#0B132B] border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-md'
+          darkMode ? 'bg-[#0a2b21] border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-md'
         }`}>
           <div className="text-center mb-6">
             <Printer className="w-8 h-8 text-blue-400 mx-auto mb-2" />
@@ -3411,6 +3201,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           customGvtiwLogo={customGvtiwLogo}
           customTevtaLogo={customTevtaLogo}
           customGopLogo={customGopLogo}
+        
+        activeSubTab={tfcSubTab}
+        onSubTabChange={onTfcSubTabChange}
         />
       )}
 

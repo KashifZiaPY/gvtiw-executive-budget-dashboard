@@ -2557,7 +2557,7 @@ export function DirectorReconciliationReport({
   return (
     <div
       className={`rounded-2xl border transition-colors ${
-        darkMode ? 'bg-[#0B132B] border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+        darkMode ? 'bg-[#0a2b21] border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
       } p-4 sm:p-6 space-y-6`}
     >
       {/* --------------------------------------------------------------- */}
@@ -2798,7 +2798,7 @@ export function DirectorReconciliationReport({
       {/* TAB 1: DATE WISE RECEIPTS                                       */}
       {/* =============================================================== */}
       {activeTab === 'RECEIPTS' && (
-        <div className="space-y-4 bg-white dark:bg-[#0B132B] p-4 sm:p-5 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-sm text-slate-900 dark:text-slate-100">
+        <div className="space-y-4 bg-white dark:bg-[#0a2b21] p-4 sm:p-5 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-sm text-slate-900 dark:text-slate-100">
           {/* Header Block matching official register requirements */}
           <div className="text-center py-2 border-b border-slate-200 dark:border-slate-700/60">
             <h2 className="text-sm sm:text-base font-black uppercase tracking-wide text-slate-900 dark:text-white">
@@ -2850,7 +2850,7 @@ export function DirectorReconciliationReport({
           <div className="overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700 shadow-xs">
             <table className="w-full text-xs border-collapse">
               <thead>
-                <tr className="bg-[#0b2545] text-white border-b border-slate-700 font-bold uppercase text-[11px]">
+                <tr className="bg-[#0b3d2e] text-white border-b border-slate-700 font-bold uppercase text-[11px]">
                   <th className="p-2.5 text-center w-12 border-r border-slate-600">Sr #</th>
                   <th className="p-2.5 text-center w-36 border-r border-slate-600">
                     Date of Receipt <br />
@@ -2896,7 +2896,7 @@ export function DirectorReconciliationReport({
                 )}
               </tbody>
               <tfoot className="table-row-group print:table-row-group" style={{ display: 'table-row-group' }}>
-                <tr className="bg-[#0b2545] text-white font-black border-t-2 border-slate-700 text-xs">
+                <tr className="bg-[#0b3d2e] text-white font-black border-t-2 border-slate-700 text-xs">
                   <td colSpan={4} className="p-3 text-right uppercase tracking-wider border-r border-slate-600">
                     Total Amount:
                   </td>
@@ -2932,7 +2932,7 @@ export function DirectorReconciliationReport({
       {/* TAB 2: RECONCILIATION                                           */}
       {/* =============================================================== */}
       {activeTab === 'RECON' && (
-        <div className="space-y-5 bg-white dark:bg-[#0B132B] p-4 sm:p-5 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-sm text-slate-900 dark:text-slate-100">
+        <div className="space-y-5 bg-white dark:bg-[#0a2b21] p-4 sm:p-5 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-sm text-slate-900 dark:text-slate-100">
           {/* Header Block matching physical TEVTA register */}
           <div className="p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/80 text-xs font-mono space-y-1.5 text-slate-800 dark:text-slate-200">
             <div className="flex flex-wrap items-center justify-between gap-2 font-bold uppercase text-slate-900 dark:text-white">
@@ -2976,7 +2976,7 @@ export function DirectorReconciliationReport({
                 <tr>
                   <th
                     colSpan={7}
-                    className="p-2.5 bg-[#0b2545] text-white uppercase font-black tracking-wider text-center border-r-2 border-b border-slate-600"
+                    className="p-2.5 bg-[#0b3d2e] text-white uppercase font-black tracking-wider text-center border-r-2 border-b border-slate-600"
                   >
                     RECEIPTS
                   </th>
@@ -3076,7 +3076,7 @@ export function DirectorReconciliationReport({
               </tbody>
 
               <tfoot>
-                <tr className="bg-[#0b2545] text-white font-black border-t-2 border-slate-700 text-xs">
+                <tr className="bg-[#0b3d2e] text-white font-black border-t-2 border-slate-700 text-xs">
                   <td className="p-2.5 text-center uppercase tracking-wider border-r border-slate-600">
                     Total
                   </td>
@@ -3247,7 +3247,7 @@ export function DirectorReconciliationReport({
               <div className="overflow-x-auto max-h-56 overflow-y-auto rounded-lg border border-slate-300 dark:border-slate-700">
                 <table className="w-full text-xs border-collapse">
                   <thead>
-                    <tr className="bg-[#0b2545] text-white border-b border-slate-600 font-bold text-[10px] uppercase">
+                    <tr className="bg-[#0b3d2e] text-white border-b border-slate-600 font-bold text-[10px] uppercase">
                       <th className="p-1.5 text-center w-20">Cheque No</th>
                       <th className="p-1.5 text-center w-32 min-w-[120px]">Date</th>
                       <th className="p-1.5 text-left min-w-[140px]">Paid To / By</th>
@@ -3379,7 +3379,7 @@ export function DirectorReconciliationReport({
                     )}
                   </tbody>
                   <tfoot className="table-row-group print:table-row-group" style={{ display: 'table-row-group' }}>
-                    <tr className="bg-[#0b2545] text-white font-bold text-[11px]">
+                    <tr className="bg-[#0b3d2e] text-white font-bold text-[11px]">
                       <td colSpan={4} className="p-1.5 text-right uppercase">
                         Total Unpresented:
                       </td>
@@ -3417,7 +3417,7 @@ export function DirectorReconciliationReport({
       {/* TAB 3: DATE WISE PAYMENTS                                       */}
       {/* =============================================================== */}
       {activeTab === 'PAYMENTS' && (
-        <div className="space-y-4 bg-white dark:bg-[#0B132B] p-4 sm:p-5 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-sm text-slate-900 dark:text-slate-100">
+        <div className="space-y-4 bg-white dark:bg-[#0a2b21] p-4 sm:p-5 rounded-2xl border border-slate-300 dark:border-slate-800 shadow-sm text-slate-900 dark:text-slate-100">
           {/* Header Block matching physical TEVTA register requirements */}
           <div className="text-center py-2 border-b border-slate-200 dark:border-slate-700/60">
             <h2 className="text-sm sm:text-base font-black uppercase tracking-wide text-slate-900 dark:text-white">
@@ -3473,7 +3473,7 @@ export function DirectorReconciliationReport({
           <div className="overflow-x-auto rounded-xl border border-slate-300 dark:border-slate-700 shadow-xs">
             <table className="w-full text-xs border-collapse">
               <thead>
-                <tr className="bg-[#0b2545] text-white border-b border-slate-600 font-bold uppercase text-[11px]">
+                <tr className="bg-[#0b3d2e] text-white border-b border-slate-600 font-bold uppercase text-[11px]">
                   <th className="p-2.5 text-center w-10 border-r border-slate-600">Sr #</th>
                   <th className="p-2.5 text-left border-r border-slate-600 min-w-[180px]">
                     {selectedAccountKey === 'NS' ? 'Non Salary Head of Account' : 'Head of Account'}
@@ -3554,7 +3554,7 @@ export function DirectorReconciliationReport({
                 )}
               </tbody>
               <tfoot className="table-row-group print:table-row-group" style={{ display: 'table-row-group' }}>
-                <tr className="bg-[#0b2545] text-white font-black border-t-2 border-slate-700 text-xs">
+                <tr className="bg-[#0b3d2e] text-white font-black border-t-2 border-slate-700 text-xs">
                   <td colSpan={4} className="p-3 text-right uppercase tracking-wider border-r border-slate-600">
                     Grand Total:
                   </td>

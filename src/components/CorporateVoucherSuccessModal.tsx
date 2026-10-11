@@ -116,7 +116,7 @@ export const CorporateVoucherSuccessModal: React.FC<CorporateVoucherSuccessModal
     >
       <div
         className={`w-full max-w-2xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col my-auto animate-in zoom-in-95 duration-200 transition-all ${
-          darkMode ? 'bg-[#0B132B] border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
+          darkMode ? 'bg-[#0a2b21] border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
         }`}
       >
         {/* ========================================================= */}

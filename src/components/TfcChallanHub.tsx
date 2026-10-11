@@ -54,7 +54,32 @@ interface TfcChallanHubProps {
   customTevtaLogo?: string | null;
   customGopLogo?: string | null;
   onClose?: () => void;
+  /** Controlled sub-tab selection (driven by the app sidebar). Omit both to let the hub manage its own sub-tab. */
+  activeSubTab?: TfcSubTab;
+  onSubTabChange?: (t: TfcSubTab) => void;
 }
+
+/** Sub-views of the BOP Fee Challan Hub. Exported so the sidebar can render them as nested navigation items. */
+export type TfcSubTab =
+  | 'DATE_WISE_RECEIPTS'
+  | 'MONTH_WISE_RECEIPTS'
+  | 'OVERVIEW'
+  | 'CASHBOOK_GEN'
+  | 'HARD_CASHBOOK'
+  | 'FEE_REGISTER'
+  | 'COURSE_MATRIX'
+  | 'DIRECTORY';
+
+export const TFC_SUB_TABS: { value: TfcSubTab; label: string }[] = [
+  { value: 'DATE_WISE_RECEIPTS', label: 'Date Wise Receipts' },
+  { value: 'MONTH_WISE_RECEIPTS', label: 'Month Wise Receipts' },
+  { value: 'OVERVIEW', label: 'Distribution Overview' },
+  { value: 'CASHBOOK_GEN', label: 'Soft CashBook Entry' },
+  { value: 'HARD_CASHBOOK', label: 'Hard CashBook Entry' },
+  { value: 'FEE_REGISTER', label: 'Fee Register' },
+  { value: 'COURSE_MATRIX', label: 'Course-Wise Matrix' },
+  { value: 'DIRECTORY', label: 'Trainee Challan Directory' },
+];
 
 // Helper to parse dates into ISO, comparable timestamp, and standard DD-MMMM-YYYY CashBook format
 function parseChallanDate(rawDate: string) {
@@ -155,6 +180,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   customTevtaLogo,
   customGopLogo,
   onClose,
+  activeSubTab: controlledSubTab,
+  onSubTabChange,
 }) => {
   const [challans, setChallans] = useState<TfcChallanRecord[]>(() => getStoredTfcChallans());
   const [isLoadingBackend, setIsLoadingBackend] = useState<boolean>(false);
@@ -179,9 +206,10 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
     if (!selectedCourses || selectedCourses.length === 0 || selectedCourses.includes('ALL')) return true;
     return selectedCourses.includes(courseAbbr);
   }, [selectedCourses]);
-  const [activeSubTab, setActiveSubTab] = useState<
-    'DATE_WISE_RECEIPTS' | 'MONTH_WISE_RECEIPTS' | 'OVERVIEW' | 'CASHBOOK_GEN' | 'HARD_CASHBOOK' | 'FEE_REGISTER' | 'COURSE_MATRIX' | 'DIRECTORY'
-  >('DATE_WISE_RECEIPTS');
+  const [internalSubTab, setInternalSubTab] = useState<TfcSubTab>('DATE_WISE_RECEIPTS');
+  // Controlled by the sidebar when props are provided; otherwise self-managed (unchanged behavior).
+  const activeSubTab = controlledSubTab ?? internalSubTab;
+  const setActiveSubTab = onSubTabChange ?? setInternalSubTab;
   const [postingGrouping, setPostingGrouping] = useState<'DATE_WISE' | 'DATE_COURSE_WISE'>('DATE_COURSE_WISE');
   const [startRow, setStartRow] = useState<number>(6);
   const [monthDisplayMode, setMonthDisplayMode] = useState<'FORMULA' | 'TEXT'>('FORMULA');
@@ -1662,120 +1690,13 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 3. NAVIGATION SUB-TABS & FILTERS BAR                           */}
+      {/* 3. FILTERS BAR (sub-views now live in the sidebar)                           */}
       {/* ------------------------------------------------------------- */}
       <div
-        className={`px-6 py-3 border-b flex flex-col md:flex-row md:items-center justify-between gap-3 ${
+        className={`px-6 py-3 border-b flex flex-col md:flex-row md:items-center md:justify-end gap-3 ${
           darkMode ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-100 border-slate-300'
         }`}
       >
-        {/* Navigation Sub-Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
-          <button
-            onClick={() => setActiveSubTab('DATE_WISE_RECEIPTS')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'DATE_WISE_RECEIPTS'
-                ? 'bg-emerald-700 text-white shadow-md'
-                : darkMode
-                ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                : 'text-slate-700 hover:bg-white hover:text-slate-950 border border-transparent hover:border-slate-300'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Date Wise Receipts</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('MONTH_WISE_RECEIPTS')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'MONTH_WISE_RECEIPTS'
-                ? 'bg-rose-700 text-white shadow-md'
-                : darkMode
-                ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                : 'text-slate-700 hover:bg-white hover:text-slate-950 border border-transparent hover:border-slate-300'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Month Wise Receipts</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('OVERVIEW')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'OVERVIEW'
-                ? 'bg-teal-700 text-white shadow-md'
-                : darkMode
-                ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                : 'text-slate-700 hover:bg-white hover:text-slate-950 border border-transparent hover:border-slate-300'
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>Distribution Overview</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('CASHBOOK_GEN')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'CASHBOOK_GEN'
-                ? 'bg-emerald-700 text-white shadow-md'
-                : darkMode
-                ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                : 'text-slate-700 hover:bg-white hover:text-slate-950 border border-transparent hover:border-slate-300'
-            }`}
-          >
-            <Receipt className="w-3.5 h-3.5" />
-            <span>Soft CashBook Entry</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('HARD_CASHBOOK')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'HARD_CASHBOOK'
-                ? 'bg-amber-600 text-white shadow-md'
-                : darkMode
-                ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                : 'text-slate-700 hover:bg-white hover:text-slate-950 border border-transparent hover:border-slate-300'
-            }`}
-          >
-            <BookOpen className="w-3.5 h-3.5" />
-            <span>Hard CashBook Entry</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('FEE_REGISTER')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'FEE_REGISTER'
-                ? 'bg-teal-700 text-white shadow-md'
-                : darkMode
-                ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                : 'text-slate-700 hover:bg-white hover:text-slate-950 border border-transparent hover:border-slate-300'
-            }`}
-          >
-            <ClipboardList className="w-3.5 h-3.5" />
-            <span>Fee Register</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('COURSE_MATRIX')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'COURSE_MATRIX'
-                ? 'bg-purple-700 text-white shadow-md'
-                : darkMode
-                ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                : 'text-slate-700 hover:bg-white hover:text-slate-950 border border-transparent hover:border-slate-300'
-            }`}
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Course-Wise Matrix</span>
-          </button>
-          <button
-            onClick={() => setActiveSubTab('DIRECTORY')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeSubTab === 'DIRECTORY'
-                ? 'bg-emerald-700 text-white shadow-md'
-                : darkMode
-                ? 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                : 'text-slate-700 hover:bg-white hover:text-slate-950 border border-transparent hover:border-slate-300'
-            }`}
-          >
-            <UserCheck className="w-3.5 h-3.5" />
-            <span>Trainee Challan Directory ({filteredChallans.length})</span>
-          </button>
-        </div>
 
         {/* Global Filters */}
         <div className="flex items-center gap-2 flex-wrap">

@@ -129,7 +129,7 @@ export const AnimatedSplashLogos: React.FC<AnimatedSplashLogosProps> = ({
           <div
             className={`absolute z-10 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shadow-md transition-all ${
               darkMode
-                ? 'bg-[#0B132B] border border-slate-700 text-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.3)]'
+                ? 'bg-[#0a2b21] border border-slate-700 text-blue-400 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
                 : 'bg-white border border-slate-300 text-blue-600 shadow-[0_2px_8px_rgba(0,0,0,0.08)]'
             }`}
             title="Institutional Data Sync"
@@ -155,10 +155,10 @@ export const AnimatedSplashLogos: React.FC<AnimatedSplashLogosProps> = ({
             >
               <defs>
                 <linearGradient id="tevtaHaloGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#2563eb" stopOpacity="0.95" />
+                  <stop offset="0%" stopColor="#047857" stopOpacity="0.95" />
                   <stop offset="45%" stopColor="#0284c7" stopOpacity="0.75" />
                   <stop offset="75%" stopColor="#38bdf8" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
+                  <stop offset="100%" stopColor="#047857" stopOpacity="0" />
                 </linearGradient>
               </defs>
               <circle
@@ -324,7 +324,7 @@ export const AnimatedSplashLogos: React.FC<AnimatedSplashLogosProps> = ({
           50% {
             left: 100%;
             transform: translateX(-100%);
-            background: linear-gradient(90deg, #38bdf8, #2563eb);
+            background: linear-gradient(90deg, #38bdf8, #047857);
             opacity: 1;
           }
           100% {
