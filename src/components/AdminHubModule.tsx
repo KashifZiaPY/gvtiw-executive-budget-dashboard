@@ -2034,6 +2034,20 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
 
         {/* Left Side: Corporate Dropdown Menus */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap relative z-50">
+          {/* Primary CTA: prominent one-click New Voucher Entry (same action as the dropdown item) */}
+          <button
+            type="button"
+            onClick={() => {
+              setVoucherToAmend(null);
+              setIsNewVoucherModalOpen(true);
+            }}
+            title="New Voucher Entry"
+            className="h-9 px-4 rounded-xl text-xs font-extrabold flex items-center gap-2 transition-all cursor-pointer border whitespace-nowrap shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-600 shadow-md"
+          >
+            <PlusCircle className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">+ New Voucher Entry</span>
+            <span className="sm:hidden">+ New</span>
+          </button>
           {/* MENU 1: VOUCHERS */}
           <div className={`relative ${activeDropdown === 'vouchers' ? 'z-50' : ''}`}>
             <button
