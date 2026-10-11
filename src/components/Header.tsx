@@ -48,11 +48,11 @@ export const Header: React.FC<HeaderProps> = ({
   syncStatus = 'connected',
 }) => {
   return (
-    <header className="w-full transition-colors duration-200 border-b border-slate-800 bg-[#020617] text-white">
+    <header className="w-full transition-colors duration-200 border-b border-indigo-900 bg-indigo-950 text-white">
       {/* ------------------------------------------------------------- */}
       {/* ROW 1: INSTITUTIONAL CREST & MAIN TITLE BANNER                 */}
       {/* ------------------------------------------------------------- */}
-      <div className="w-full px-4 sm:px-8 py-3.5 bg-gradient-to-r from-[#0a192f] via-[#0d3b2e] to-[#0a192f] border-b border-slate-700/80 shadow-md">
+      <div className="w-full px-4 sm:px-8 py-3.5 bg-gradient-to-r from-indigo-950 via-indigo-600 to-indigo-950 border-b border-indigo-400/40 shadow-md">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Left Institutional Emblem */}
           <div className="flex items-center gap-3 shrink-0">
@@ -120,7 +120,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* ------------------------------------------------------------- */}
       {/* ROW 3: SYSTEM STATUS, TELEMETRY & CORPORATE CONTROLS          */}
       {/* ------------------------------------------------------------- */}
-      <div className="w-full bg-[#0B1329] border-b border-slate-800 px-4 sm:px-8 py-2.5">
+      <div className="w-full bg-indigo-950 border-b border-indigo-900 px-4 sm:px-8 py-2.5">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
           {/* Left: System Status, Live Auto-Sync, Sync Now & Latest Activity */}
           <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 font-mono text-[11px] text-slate-300 justify-center md:justify-start">
