@@ -118,7 +118,7 @@ export const LogoUploaderModal: React.FC<LogoUploaderModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-      <div className="w-full max-w-2xl bg-[#0F1D3B] text-slate-100 rounded-2xl border border-slate-700 shadow-2xl overflow-hidden font-sans">
+      <div className="w-full max-w-2xl bg-[#0c2f23] text-slate-100 rounded-2xl border border-slate-700 shadow-2xl overflow-hidden font-sans">
         {/* Header */}
         <div className="p-4 bg-gradient-to-r from-[#0a192f] via-[#0d3b2e] to-[#0a192f] border-b border-slate-700 flex items-center justify-between">
           <div className="flex items-center gap-2.5">

@@ -933,7 +933,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         darkMode
           ? isNavttcActive
             ? 'bg-gradient-to-r from-[#06241b] via-[#0a2b21] to-[#0b291d] border-emerald-600/40 text-white'
-            : 'bg-gradient-to-r from-[#0F1D3B] via-[#0a2b21] to-[#132247] border-slate-700 text-white'
+            : 'bg-gradient-to-r from-[#0c2f23] via-[#0a2b21] to-[#0f3a29] border-slate-700 text-white'
           : isNavttcActive
           ? 'bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 border-emerald-800 text-white shadow-xl'
           : 'bg-gradient-to-r from-blue-900 via-slate-900 to-indigo-950 border-slate-800 text-white shadow-xl'
@@ -1062,7 +1062,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       {/* 3. SEARCH & PERIOD / DATE RANGE FILTER BAR                     */}
       {/* ------------------------------------------------------------- */}
       <div className={`p-4 rounded-xl border flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 ${
-        darkMode ? 'bg-[#0F1D3B] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-sm'
+        darkMode ? 'bg-[#0c2f23] border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-sm'
       }`}>
         <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -1235,7 +1235,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                             ? 'bg-[#0a2b21] hover:bg-blue-500/10'
                             : 'bg-white hover:bg-blue-50/70'
                           : darkMode
-                          ? 'bg-[#070E20] hover:bg-blue-500/10'
+                          ? 'bg-[#082018] hover:bg-blue-500/10'
                           : 'bg-slate-50/70 hover:bg-blue-50/70'
                       }`}
                     >

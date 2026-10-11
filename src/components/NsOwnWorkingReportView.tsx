@@ -1512,7 +1512,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
           <button
             type="button"
             onClick={handlePrint}
-            className="h-9 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer bg-[#0b3d2e] hover:bg-[#133966] text-white"
+            className="h-9 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer bg-[#0b3d2e] hover:bg-[#10402e] text-white"
             title="Print landscape report with signatories"
           >
             <Printer className="w-3.5 h-3.5 text-white" />
@@ -1955,7 +1955,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowSuggestions(false)}
-                  className="px-3 py-1 rounded-lg bg-[#0b3d2e] hover:bg-[#133966] text-white font-bold text-xs shadow-xs cursor-pointer"
+                  className="px-3 py-1 rounded-lg bg-[#0b3d2e] hover:bg-[#10402e] text-white font-bold text-xs shadow-xs cursor-pointer"
                 >
                   Apply & Close
                 </button>
@@ -2117,15 +2117,15 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
               <th className="py-2.5 px-3 w-28 text-right border-r border-slate-700/60 sticky top-0 bg-[#0b3d2e]">
                 Opening Budget
               </th>
-              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isJulActive ? 'bg-[#0f3460] text-cyan-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
+              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isJulActive ? 'bg-[#0e4a34] text-cyan-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
                 Rec (Jul)
                 {isJulActive && <span className="block text-[8px] font-normal text-cyan-300">[Active]</span>}
               </th>
-              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isAugActive ? 'bg-[#0f3460] text-cyan-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
+              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isAugActive ? 'bg-[#0e4a34] text-cyan-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
                 Rec (Aug)
                 {isAugActive && <span className="block text-[8px] font-normal text-cyan-300">[Active]</span>}
               </th>
-              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isSepActive ? 'bg-[#0f3460] text-cyan-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
+              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isSepActive ? 'bg-[#0e4a34] text-cyan-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
                 Rec (Sep)
                 {isSepActive && <span className="block text-[8px] font-normal text-cyan-300">[Active]</span>}
               </th>
@@ -2137,15 +2137,15 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
                 Net Budget
                 <div className="text-[8px] font-normal normal-case text-indigo-200">Alloc + Rec</div>
               </th>
-              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isJulActive ? 'bg-[#0f3460] text-amber-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
+              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isJulActive ? 'bg-[#0e4a34] text-amber-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
                 Exp (Jul)
                 {isJulActive && <span className="block text-[8px] font-normal text-amber-300">[Active]</span>}
               </th>
-              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isAugActive ? 'bg-[#0f3460] text-amber-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
+              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isAugActive ? 'bg-[#0e4a34] text-amber-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
                 Exp (Aug)
                 {isAugActive && <span className="block text-[8px] font-normal text-amber-300">[Active]</span>}
               </th>
-              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isSepActive ? 'bg-[#0f3460] text-amber-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
+              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isSepActive ? 'bg-[#0e4a34] text-amber-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
                 Exp (Sep)
                 {isSepActive && <span className="block text-[8px] font-normal text-amber-300">[Active]</span>}
               </th>

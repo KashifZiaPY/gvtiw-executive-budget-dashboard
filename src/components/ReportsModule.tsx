@@ -16,6 +16,7 @@ import {
   CashBookStatementView,
 } from './CashBookStatementView';
 import { TfcChallanHub } from './TfcChallanHub';
+import type { TfcSubTab } from './TfcChallanHub';
 import {
   HeadExpenditureStatementView,
 } from './HeadExpenditureStatementView';
@@ -83,6 +84,9 @@ interface ReportsModuleProps {
   /** Controlled report selection (driven by the app sidebar). Omit both to let the module manage its own tab. */
   activeReportTab?: ReportTab;
   onSelectReportTab?: (tab: ReportTab) => void;
+  /** Controlled TFC hub sub-view (driven by the sidebar's nested items). Omit both for self-managed. */
+  tfcSubTab?: TfcSubTab;
+  onTfcSubTabChange?: (t: TfcSubTab) => void;
 }
 
 export type ReportTab =
@@ -107,6 +111,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   onUnlock,
   activeReportTab: controlledReportTab,
   onSelectReportTab,
+  tfcSubTab,
+  onTfcSubTabChange,
 }) => {
   const [internalUnlocked, setInternalUnlocked] = useState(false);
   const isAuthUnlocked = Boolean(isUnlocked || internalUnlocked);
@@ -3195,6 +3201,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           customGvtiwLogo={customGvtiwLogo}
           customTevtaLogo={customTevtaLogo}
           customGopLogo={customGopLogo}
+        
+        activeSubTab={tfcSubTab}
+        onSubTabChange={onTfcSubTabChange}
         />
       )}
 

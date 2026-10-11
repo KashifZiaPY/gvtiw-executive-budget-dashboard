@@ -242,7 +242,7 @@ export const HeadWiseTable: React.FC<HeadWiseTableProps> = ({
       {/* TABLE CONTROLS & SEARCH BAR                                    */}
       {/* ------------------------------------------------------------- */}
       <div className={`p-4 border-b flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 ${
-        darkMode ? 'bg-[#0F1D3B] border-slate-700/80' : 'bg-slate-50 border-slate-200'
+        darkMode ? 'bg-[#0c2f23] border-slate-700/80' : 'bg-slate-50 border-slate-200'
       }`}>
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
@@ -521,10 +521,10 @@ export const HeadWiseTable: React.FC<HeadWiseTableProps> = ({
                             ? 'bg-amber-400/20 hover:bg-amber-400/25 border-y-2 border-amber-400 shadow-md ring-1 ring-amber-400/40'
                             : isEven
                             ? darkMode
-                              ? 'bg-[#0a2b21] hover:bg-[#132247]'
+                              ? 'bg-[#0a2b21] hover:bg-[#0f3a29]'
                               : 'bg-white hover:bg-blue-50/50'
                             : darkMode
-                            ? 'bg-[#070E20] hover:bg-[#132247]'
+                            ? 'bg-[#082018] hover:bg-[#0f3a29]'
                             : 'bg-slate-50 hover:bg-blue-50/50'
                         }`}
                       >

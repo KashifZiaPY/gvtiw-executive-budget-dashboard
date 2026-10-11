@@ -18,6 +18,7 @@ import { VoucherModule } from './components/VoucherModule';
 import { PaymentApprovalForm } from './components/PaymentApprovalForm';
 import { ReportsModule } from './components/ReportsModule';
 import type { ReportTab } from './components/ReportsModule';
+import type { TfcSubTab } from './components/TfcChallanHub';
 import { AppSidebar } from './components/AppSidebar';
 import { AdminHubModule } from './components/AdminHubModule';
 import { PinLockScreen } from './components/PinLockScreen';
@@ -77,6 +78,8 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   // Report selection is owned here so the sidebar can drive it (ReportsModule runs in controlled mode).
   const [activeReportTab, setActiveReportTab] = useState<ReportTab>('DIRECTOR_RECON');
+  // TFC hub sub-view, driven by the sidebar's nested items (TfcChallanHub runs controlled).
+  const [tfcSubTab, setTfcSubTab] = useState<TfcSubTab>('DATE_WISE_RECEIPTS');
   const [data, setData] = useState<DashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -334,6 +337,8 @@ export default function App() {
         isUnlocked={isUnlocked}
         activeReportTab={activeReportTab}
         onSelectReportTab={setActiveReportTab}
+        tfcSubTab={tfcSubTab}
+        onSelectTfcSubTab={setTfcSubTab}
         collapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed((v) => !v)}
         onExpand={() => setSidebarCollapsed(false)}
@@ -437,6 +442,8 @@ export default function App() {
               onUnlock={handleUnlock}
               activeReportTab={activeReportTab}
               onSelectReportTab={setActiveReportTab}
+              tfcSubTab={tfcSubTab}
+              onTfcSubTabChange={setTfcSubTab}
             />
           </section>
         )}

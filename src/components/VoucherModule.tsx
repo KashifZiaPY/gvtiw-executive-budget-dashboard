@@ -751,7 +751,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
       {/* 2. SEARCH & ACCOUNT FILTER BAR                                 */}
       {/* ------------------------------------------------------------- */}
       <div className={`p-4 rounded-xl border flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 ${
-        darkMode ? 'bg-[#0F1D3B] border-slate-700/90 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-sm'
+        darkMode ? 'bg-[#0c2f23] border-slate-700/90 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-sm'
       }`}>
         {/* Search Input */}
         <div className="relative flex-1">
@@ -842,7 +842,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
                             ? 'bg-[#0a2b21]'
                             : 'bg-white'
                           : darkMode
-                          ? 'bg-[#070E20]'
+                          ? 'bg-[#082018]'
                           : 'bg-slate-50/70'
                       }`}
                     >

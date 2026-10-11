@@ -375,7 +375,7 @@ export const ChequeSearchInput: React.FC<ChequeSearchInputProps> = ({
         <div
           className={`absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border shadow-2xl overflow-hidden flex flex-col max-h-[380px] animate-in fade-in zoom-in-95 duration-100 ${
             darkMode
-              ? 'bg-[#0b172a] border-slate-700 text-white'
+              ? 'bg-[#0b231c] border-slate-700 text-white'
               : 'bg-white border-slate-300 text-slate-900'
           }`}
           style={{ minWidth: '300px' }}

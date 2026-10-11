@@ -199,7 +199,7 @@
   }
 
   /* Hide app navigation, headers, footer and hidden elements */
-  header, nav, footer, .print-hidden {
+  header, nav, footer, aside, .print-hidden {
     display: none !important;
   }
 
@@ -320,6 +320,120 @@
   .paf-no-page-break {
     page-break-after: avoid !important;
     break-after: avoid !important;
+  }
+
+  /* ------------------------------------------------------------------
+     INK-EFFICIENT PRINT POLICY (screen-printed reports, no portal)
+     CashBook / report-hub views printed straight from the live screen
+     render ink-light: dark theme floods become white, text goes dark.
+     Dedicated print portals (PAF, TFC, fee register, director recon)
+     keep their own designed light layouts and are unaffected
+     (they render outside #root). Text colors outside dark surfaces
+     (e.g. red negative figures) are preserved.
+     ------------------------------------------------------------------ */
+  #root {
+    background: #fff !important;
+    color: #111 !important;
+  }
+  /* Data-driven tier header bands use inline background colors (no class to match) */
+  #root tr[style*="background"] {
+    background-color: #fff !important;
+    background-image: none !important;
+  }
+  #root tr[style*="background"],
+  #root tr[style*="background"] * {
+    color: #111 !important;
+    text-shadow: none !important;
+  }
+  #root [class*="bg-slate-950"],
+  #root [class*="bg-slate-900"],
+  #root [class*="bg-slate-800"],
+  #root [class*="bg-black"],
+  #root [class*="bg-[#020617]"],
+  #root [class*="bg-[#0a2b21]"],
+  #root [class*="bg-[#0b3d2e]"],
+  #root [class*="bg-[#0c2f23]"],
+  #root [class*="bg-[#065f46]"],
+  #root [class*="bg-[#064e3b]"],
+  #root [class*="bg-[#0d3b2e]"],
+  #root [class*="bg-[#14532d]"],
+  #root [class*="bg-[#022c22]"],
+  #root [class*="bg-[#082018]"],
+  #root [class*="bg-[#0e4a34]"],
+  #root [class*="bg-blue-600"],
+  #root [class*="bg-blue-700"],
+  #root [class*="bg-emerald-600"],
+  #root [class*="bg-emerald-700"],
+  #root [class*="bg-teal-600"],
+  #root [class*="bg-amber-600"],
+#root [class*="bg-[#03091E]"],
+  #root [class*="bg-[#050C1A]"],
+  #root [class*="bg-[#0B1329]"],
+  #root [class*="bg-[#0B1528]"],
+  #root [class*="bg-[#0F172A]"],
+  #root [class*="bg-[#0f172a]"],
+  #root [class*="bg-[#0a1224]"],
+  #root [class*="bg-[#0a1526]"],
+  #root [class*="bg-[#0b1329]"],
+  #root [class*="bg-[#0f3a29]"],
+  #root [class*="bg-[#10402e]"],
+  #root [class*="bg-[#1E293B]"],
+  #root [class*="bg-[#1e293b]"],
+  #root [class*="bg-[#2a0e2b]"],
+  #root [class*="bg-[#374151]"],
+  #root [class*="bg-[#4a154b]"],
+  #root [class*="bg-[#0a211a]"],
+  #root [class*="bg-[#0b231c]"],
+  #root [class*="bg-slate-700"],
+  #root [class*="bg-gradient-to"] {
+    background-color: #fff !important;
+    background-image: none !important;
+    border-color: #bbb !important;
+    box-shadow: none !important;
+  }
+  #root [class*="bg-slate-950"] *,
+  #root [class*="bg-slate-900"] *,
+  #root [class*="bg-slate-800"] *,
+  #root [class*="bg-black"] *,
+  #root [class*="bg-[#020617]"] *,
+  #root [class*="bg-[#0a2b21]"] *,
+  #root [class*="bg-[#0b3d2e]"] *,
+  #root [class*="bg-[#0c2f23]"] *,
+  #root [class*="bg-[#065f46]"] *,
+  #root [class*="bg-[#064e3b]"] *,
+  #root [class*="bg-[#0d3b2e]"] *,
+  #root [class*="bg-[#14532d]"] *,
+  #root [class*="bg-[#022c22]"] *,
+  #root [class*="bg-[#082018]"] *,
+  #root [class*="bg-[#0e4a34]"] *,
+  #root [class*="bg-blue-600"] *,
+  #root [class*="bg-blue-700"] *,
+  #root [class*="bg-emerald-600"] *,
+  #root [class*="bg-emerald-700"] *,
+  #root [class*="bg-teal-600"] *,
+  #root [class*="bg-amber-600"] *,
+#root [class*="bg-[#03091E]"] *,
+  #root [class*="bg-[#050C1A]"] *,
+  #root [class*="bg-[#0B1329]"] *,
+  #root [class*="bg-[#0B1528]"] *,
+  #root [class*="bg-[#0F172A]"] *,
+  #root [class*="bg-[#0f172a]"] *,
+  #root [class*="bg-[#0a1224]"] *,
+  #root [class*="bg-[#0a1526]"] *,
+  #root [class*="bg-[#0b1329]"] *,
+  #root [class*="bg-[#0f3a29]"] *,
+  #root [class*="bg-[#10402e]"] *,
+  #root [class*="bg-[#1E293B]"] *,
+  #root [class*="bg-[#1e293b]"] *,
+  #root [class*="bg-[#2a0e2b]"] *,
+  #root [class*="bg-[#374151]"] *,
+  #root [class*="bg-[#4a154b]"] *,
+  #root [class*="bg-[#0a211a]"] *,
+  #root [class*="bg-[#0b231c]"] *,
+  #root [class*="bg-slate-700"] *,
+  #root [class*="bg-gradient-to"] * {
+    color: #111 !important;
+    text-shadow: none !important;
   }
 }
 
