@@ -3,8 +3,8 @@
  *
  * PRESENTATION ONLY: this component renders navigation buttons and forwards
  * clicks to the handlers owned by App.tsx. It owns no data, no fetching,
- * no business logic. The indigo/navy executive theme, emerald active pill,
- * sliding indicator and submenu animations are pure styling.
+ * no business logic. The light TEVTA executive theme (white/mint) is pure
+ * styling; darkMode only switches the sidebar's own palette.
  */
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
@@ -98,6 +98,7 @@ interface AppSidebarProps {
 }
 
 export const AppSidebar: React.FC<AppSidebarProps> = ({
+  darkMode,
   activeModule,
   onSelectModule,
   isUnlocked,
@@ -164,19 +165,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     };
   }, []);
 
-  // ---- "Dashing" activation: pop + sheen sweep whenever the active target changes ----
-  const activeKey = `${activeModule}|${activeReportTab}|${tfcSubTab}`;
-  const [animKey, setAnimKey] = useState(activeKey);
-  const [isActivating, setIsActivating] = useState(false);
-  useEffect(() => {
-    if (activeKey !== animKey) {
-      setAnimKey(activeKey);
-      setIsActivating(true);
-      const t = window.setTimeout(() => setIsActivating(false), 750);
-      return () => window.clearTimeout(t);
-    }
-  }, [activeKey, animKey]);
-
   // ---- Lock shake (visual only; the PIN flow still triggers via onSelectModule) ----
   const [voucherShake, setVoucherShake] = useState(0);
   const [adminShake, setAdminShake] = useState(0);
@@ -219,29 +207,25 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     setFlyoutOpen(false);
   };
 
-  // ---------- style helpers ----------
-  const iconTile = (isActive: boolean, amber = false) =>
-    `flex items-center justify-center w-9 h-9 shrink-0 rounded-[10px] border transition-all duration-200 group-hover:translate-x-0.5 ${
-      isActive
-        ? amber
-          ? 'bg-white/[0.18] border-white/25 text-white'
-          : 'bg-white/[0.18] border-white/25 text-white'
-        : 'bg-white/[0.07] border-white/10 text-white/80 group-hover:text-white'
+  // ---------- style helpers (light TEVTA executive theme) ----------
+  const iconTile = (isActive: boolean) =>
+    `sb-tile group-hover:translate-x-0.5 flex items-center justify-center w-9 h-9 shrink-0 rounded-[10px] border transition-all duration-200 ${
+      isActive ? 'sb-tile-active' : ''
     }`;
 
   const moduleBtn = (isActive: boolean, amber = false) =>
-    `sb-sheen group flex items-center gap-2.5 w-full px-2.5 py-2.5 my-0.5 rounded-[14px] border text-sm font-semibold text-left whitespace-nowrap cursor-pointer transition-all duration-200 ${
+    `group flex items-center gap-2.5 w-full px-2.5 py-2.5 my-0.5 rounded-[14px] border text-sm font-semibold text-left whitespace-nowrap cursor-pointer transition-all duration-200 ${
       collapsed ? 'justify-center' : ''
     } ${
       isActive
-        ? `${amber ? 'sb-active-amber' : 'sb-active-pill'} text-white border-white/25${isActivating ? ' sb-activating' : ''}`
-        : 'text-white/75 border-transparent hover:bg-white/[0.07] hover:text-white hover:-translate-y-px hover:shadow-[0_4px_14px_rgba(0,0,0,0.22)]'
+        ? `${amber ? 'sb-active-amber' : 'sb-active-pill'} sb-active-text`
+        : 'sb-idle hover:-translate-y-px'
     }`;
 
   const renderTfcNested = (small = false) => (
     <div className={`sb-submenu ${tfcOpen ? 'open' : ''}`}>
       <div className="sb-submenu-inner">
-        <div className="ml-5 mt-0.5 mb-1 pl-2 border-l-2 border-[#0b7a4b]/30">
+        <div className="sb-nest-line ml-5 mt-0.5 mb-1 pl-2 border-l-2">
           {TFC_SUB_TABS.map((sub, si) => (
             <button
               key={sub.value}
@@ -251,11 +235,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               style={{ ['--i' as string]: si } as React.CSSProperties}
               className={`sb-sub-item flex items-center gap-2.5 w-full pl-1 pr-2 py-1.5 my-px rounded-[10px] font-semibold text-left cursor-pointer ${
                 small ? 'text-[11px]' : 'text-[12px]'
-              } ${
-                isTfcActive && tfcSubTab === sub.value
-                  ? 'sb-sub-active text-white bg-[#0b7a4b]/30'
-                  : 'text-white/55 hover:text-white hover:bg-white/[0.06]'
-              }`}
+              } ${isTfcActive && tfcSubTab === sub.value ? 'sb-sub-active' : 'sb-sub-idle'}`}
             >
               <span className="truncate">{sub.label}</span>
             </button>
@@ -268,13 +248,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const sectionLabel = (key: string, text: string) =>
     collapsed ? (
       <div className="flex justify-center py-3">
-        <span className="w-6 h-px bg-white/20 rounded" />
+        <span className="sb-divider w-6 h-px rounded" />
       </div>
     ) : (
       <button
         type="button"
         onClick={() => toggleSection(key)}
-        className="flex items-center gap-2 w-full px-3 pt-3.5 pb-2 font-display text-[10.5px] font-bold uppercase tracking-[0.14em] text-white/40 hover:text-white/75 transition-colors cursor-pointer select-none"
+        className="sb-section-label flex items-center gap-2 w-full px-3 pt-3.5 pb-2 font-display text-[10.5px] font-bold uppercase tracking-[0.14em] cursor-pointer select-none"
         aria-expanded={!closedSections[key]}
       >
         <span>{text}</span>
@@ -286,27 +266,28 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
   return (
     <aside
-      className={`sb-shell relative flex flex-col shrink-0 z-30 transition-all duration-200 ${
+      className={`sb-shell sticky top-0 h-screen flex flex-col shrink-0 z-30 transition-all duration-200 ${
         collapsed ? 'w-[76px] sb-collapsed' : 'w-[280px]'
-      }`}
+      } ${darkMode ? 'sb-dark' : ''}`}
       aria-label="Primary navigation"
     >
-      {/* Brand */}
-      <div className={`flex items-center gap-3 px-[18px] pt-5 pb-4 whitespace-nowrap ${collapsed ? 'justify-center px-0' : ''}`}>
-        <div className="flex items-center justify-center w-11 h-11 shrink-0 rounded-[14px] border border-white/20 font-display text-[15px] font-extrabold text-white"
-          style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.22), rgba(255,255,255,0.06))', boxShadow: '0 4px 14px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.25)' }}>
-          GV
+      {/* Brand card */}
+      <div className={`px-3.5 pt-4 pb-3 whitespace-nowrap ${collapsed ? 'px-2.5' : ''}`}>
+        <div className={`sb-brand-card flex items-center gap-3 rounded-2xl p-3 ${collapsed ? 'justify-center px-1.5' : ''}`}>
+          <span className="sb-logo block w-[38px] h-[38px] shrink-0 rounded-full overflow-hidden">
+            <img src="/gvtiw-logo.jpg" alt="GVTIW Logo" className="w-full h-full object-cover" />
+          </span>
+          {!collapsed && (
+            <span className="min-w-0">
+              <span className="sb-brand-title block font-display font-extrabold truncate">GVTIW Samanabad FSD</span>
+              <span className="sb-brand-sub block text-[10.5px] font-medium uppercase tracking-[0.06em] mt-0.5">Accounts Section</span>
+            </span>
+          )}
         </div>
-        {!collapsed && (
-          <div className="overflow-hidden">
-            <h1 className="font-display text-sm font-extrabold text-white tracking-[0.04em] leading-tight">GVTIW Executive</h1>
-            <p className="text-[10.5px] font-medium text-white/50 tracking-[0.08em] uppercase mt-0.5">Budget Position · TEVTA</p>
-          </div>
-        )}
       </div>
 
       <div ref={navRef} className="sb-scroll relative flex-1 overflow-y-auto overflow-x-hidden px-3 pb-3.5">
-        <div ref={indicatorRef} id="sb-indicator" className={collapsed ? 'left-1' : 'left-1.5'} />
+        <div ref={indicatorRef} id="sb-indicator" className={collapsed ? 'left-[5px]' : 'left-[7px]'} />
 
         {/* ---------- Main modules ---------- */}
         {sectionLabel('main', 'Main Modules')}
@@ -359,8 +340,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                 <>
                   <span className="flex-1 truncate">Voucher Matrix</span>
                   {!isUnlocked && (
-                    <span className="flex items-center justify-center w-5 h-5 shrink-0 rounded-md bg-white/[0.08] border border-white/[0.14]">
-                      <Lock className="w-3 h-3 text-white/65" strokeWidth={2.2} />
+                    <span className="sb-lock-badge flex items-center justify-center w-5 h-5 shrink-0 rounded-md border">
+                      <Lock className="w-3 h-3" strokeWidth={2.2} />
                     </span>
                   )}
                 </>
@@ -399,12 +380,11 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               <>
                 <div className="fixed inset-0 z-40 cursor-default" onClick={() => setFlyoutOpen(false)} aria-hidden="true" />
                 <div
-                  className="absolute left-full top-28 z-50 ml-3 w-72 max-h-[72vh] overflow-y-auto rounded-2xl border border-white/15 p-3 shadow-2xl"
-                  style={{ background: 'linear-gradient(180deg, #1e1b6e 0%, #0f0d3a 100%)' }}
+                  className="sb-flyout absolute left-full top-28 z-50 ml-3 w-72 max-h-[72vh] overflow-y-auto rounded-2xl border p-3 shadow-2xl"
                   role="menu"
                   aria-label="Reports & Statements flyout"
                 >
-                  <p className="px-2 pb-2 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-[#4ade9e]/80">
+                  <p className="sb-flyout-title px-2 pb-2 font-display text-[10px] font-bold uppercase tracking-[0.14em]">
                     Reports &amp; Statements
                   </p>
                   {REPORT_GROUPS.map((group, gi) => (
@@ -413,14 +393,14 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                         type="button"
                         onClick={() => setOpenGroup(openGroup === gi ? null : gi)}
                         aria-expanded={openGroup === gi}
-                        className="flex items-center gap-2 w-full px-2.5 py-2 rounded-xl text-xs font-bold text-white/60 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer"
+                        className="sb-flyout-group flex items-center gap-2 w-full px-2.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer"
                       >
                         <ChevronRight className={`w-3.5 h-3.5 shrink-0 transition-transform ${openGroup === gi ? 'rotate-90' : ''}`} />
                         <span>{group.label}</span>
                       </button>
                       <div className={`sb-submenu ${openGroup === gi ? 'open' : ''}`}>
                         <div className="sb-submenu-inner">
-                          <div className="ml-4 mt-0.5 mb-1 pl-2 border-l border-white/10">
+                          <div className="sb-nest-line ml-4 mt-0.5 mb-1 pl-2 border-l">
                             {group.items.map((item, ii) =>
                               item.tab === 'TFC_CHALLAN_HUB' ? (
                                 <div key={item.tab}>
@@ -430,7 +410,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                                       onClick={handleFlyoutTfcClick}
                                       style={{ ['--i' as string]: ii } as React.CSSProperties}
                                       className={`sb-sub-item flex items-center flex-1 min-w-0 px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-left cursor-pointer ${
-                                        isTfcActive ? 'sb-sub-active text-white bg-[#0b7a4b]/30' : 'text-white/55 hover:text-white hover:bg-white/[0.06]'
+                                        isTfcActive ? 'sb-sub-active' : 'sb-sub-idle'
                                       }`}
                                     >
                                       <span className="truncate">{item.label}</span>
@@ -439,7 +419,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                                       type="button"
                                       onClick={(e) => { e.stopPropagation(); setTfcOpen((v) => !v); }}
                                       aria-expanded={tfcOpen}
-                                      className="p-1 rounded-md shrink-0 text-white/55 hover:text-white cursor-pointer"
+                                      className="sb-sub-idle p-1 rounded-md shrink-0 cursor-pointer"
                                     >
                                       <ChevronRight className={`w-3.5 h-3.5 transition-transform ${tfcOpen ? 'rotate-90' : ''}`} />
                                     </button>
@@ -454,8 +434,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                                   style={{ ['--i' as string]: ii } as React.CSSProperties}
                                   className={`sb-sub-item flex items-center w-full px-2.5 py-1.5 rounded-lg text-[12px] font-semibold text-left cursor-pointer ${
                                     activeModule === 'REPORTS' && activeReportTab === item.tab
-                                      ? 'sb-sub-active text-white bg-[#0b7a4b]/30'
-                                      : 'text-white/55 hover:text-white hover:bg-white/[0.06]'
+                                      ? 'sb-sub-active'
+                                      : 'sb-sub-idle'
                                   }`}
                                 >
                                   <span className="truncate">{item.label}</span>
@@ -480,16 +460,16 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                       type="button"
                       onClick={() => handleGroupClick(gi)}
                       data-tip={group.label}
-                      className="group flex items-center gap-2.5 w-full px-2.5 py-2.5 my-0.5 rounded-[14px] text-sm font-semibold text-white/75 hover:bg-white/[0.07] hover:text-white text-left cursor-pointer whitespace-nowrap transition-all duration-200"
+                      className="sb-group-btn group flex items-center gap-2.5 w-full px-2.5 py-2.5 my-0.5 rounded-[14px] text-sm font-semibold text-left cursor-pointer whitespace-nowrap transition-all duration-200"
                       aria-expanded={open}
                     >
                       <span className={iconTile(false)}>{GROUP_ICONS[group.label]}</span>
                       <span className="flex-1 truncate">{group.label}</span>
-                      <ChevronRight className={`w-4 h-4 shrink-0 text-white/50 transition-transform duration-300 ${open ? 'rotate-90' : ''}`} />
+                      <ChevronRight className={`sb-chev w-4 h-4 shrink-0 transition-transform duration-300 ${open ? 'rotate-90' : ''}`} />
                     </button>
                     <div className={`sb-submenu ${open ? 'open' : ''}`}>
                       <div className="sb-submenu-inner">
-                        <div className="ml-[29px] mt-0.5 mb-1 pl-[14px] border-l border-white/10">
+                        <div className="sb-nest-line ml-[29px] mt-0.5 mb-1 pl-[14px] border-l">
                           {group.items.map((item, ii) =>
                             item.tab === 'TFC_CHALLAN_HUB' ? (
                               <div key={item.tab}>
@@ -500,7 +480,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                                     title={item.label}
                                     style={{ ['--i' as string]: ii } as React.CSSProperties}
                                     className={`sb-sub-item flex items-center flex-1 min-w-0 pl-1 pr-2 py-2 my-px rounded-[10px] text-[13px] font-semibold text-left cursor-pointer ${
-                                      isTfcActive ? 'sb-sub-active text-white bg-[#0b7a4b]/30' : 'text-white/55 hover:text-white hover:bg-white/[0.06]'
+                                      isTfcActive ? 'sb-sub-active' : 'sb-sub-idle'
                                     }`}
                                   >
                                     <span className="truncate">{item.label}</span>
@@ -510,7 +490,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                                     onClick={(e) => { e.stopPropagation(); if (collapsed) onExpand(); setTfcOpen((v) => !v); }}
                                     title={tfcOpen ? 'Collapse sub-views' : 'Expand sub-views'}
                                     aria-expanded={tfcOpen}
-                                    className="p-1 rounded-md shrink-0 text-white/50 hover:text-white transition-colors cursor-pointer"
+                                    className="sb-sub-idle p-1 rounded-md shrink-0 cursor-pointer"
                                   >
                                     <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-300 ${tfcOpen ? 'rotate-90' : ''}`} />
                                   </button>
@@ -525,8 +505,8 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                                 style={{ ['--i' as string]: ii } as React.CSSProperties}
                                 className={`sb-sub-item flex items-center gap-2.5 w-full pl-1 pr-2 py-2 my-px rounded-[10px] text-[13px] font-semibold text-left cursor-pointer ${
                                   activeModule === 'REPORTS' && activeReportTab === item.tab
-                                    ? 'sb-sub-active text-white bg-[#0b7a4b]/30'
-                                    : 'text-white/55 hover:text-white hover:bg-white/[0.06]'
+                                    ? 'sb-sub-active'
+                                    : 'sb-sub-idle'
                                 }`}
                               >
                                 <span className="truncate">{item.label}</span>
@@ -557,15 +537,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             data-sb-active={activeModule === 'ADMIN' ? 'true' : undefined}
             className={`${moduleBtn(activeModule === 'ADMIN', true)}${!isUnlocked && adminShake > 0 ? ' sb-shake-once' : ''}`}
           >
-            <span className={iconTile(activeModule === 'ADMIN', true)}>
+            <span className={iconTile(activeModule === 'ADMIN')}>
               <ShieldCheck className="w-5 h-5" strokeWidth={1.8} />
             </span>
             {!collapsed && (
               <>
                 <span className="flex-1 truncate text-[13px]">Admin Operations (PIN)</span>
                 {!isUnlocked && (
-                  <span className="flex items-center justify-center w-5 h-5 shrink-0 rounded-md bg-white/[0.08] border border-white/[0.14]">
-                    <Lock className="w-3 h-3 text-white/65" strokeWidth={2.2} />
+                  <span className="sb-lock-badge flex items-center justify-center w-5 h-5 shrink-0 rounded-md border">
+                    <Lock className="w-3 h-3" strokeWidth={2.2} />
                   </span>
                 )}
               </>
@@ -574,20 +554,20 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
         )}
       </div>
 
-      {/* ---------- Footer: copyright + collapse ---------- */}
-      <div className="border-t border-white/10 p-3.5 space-y-2.5" style={{ background: 'rgba(0,0,0,0.14)' }}>
-        <div className={`flex items-start gap-2.5 p-3 rounded-[14px] border border-white/10 bg-white/[0.045] overflow-hidden ${collapsed ? 'justify-center' : ''}`}>
-          <span className="flex items-center justify-center w-8 h-8 shrink-0 rounded-[10px] border border-white/20 bg-white/[0.07] font-display text-[15px] font-bold text-white/90">
-            ©
+      {/* ---------- Footer: user card + collapse ---------- */}
+      <div className="sb-footer border-t p-3.5 space-y-2.5">
+        <div className={`sb-user-card flex items-center gap-3 p-2.5 rounded-[14px] border overflow-hidden ${collapsed ? 'justify-center' : ''}`}>
+          <span className="flex items-center justify-center w-[38px] h-[38px] shrink-0 rounded-xl font-display text-[13px] font-extrabold text-white"
+            style={{ background: 'linear-gradient(135deg, #12a06a, #0b7a4b)', boxShadow: '0 4px 12px rgba(11,122,75,0.35)' }}>
+            MKZ
           </span>
           {!collapsed && (
-            <span className="min-w-0">
-              <span className="block font-display text-[12.5px] font-bold text-white truncate">MKZ e-CashBook System</span>
-              <span className="block text-[10px] font-medium text-white/50 leading-relaxed mt-0.5">
-                © {new Date().getFullYear()} Developed by MKZ · All rights reserved
-              </span>
-              <span className="block text-[9.5px] font-semibold tracking-[0.08em] uppercase text-[#4ade9e]/75 mt-1">
-                GVTIW Samanabad-33028, TEVTA FSD
+            <span className="min-w-0 flex-1">
+              <span className="sb-user-name block font-display text-[13px] font-bold">MKZ</span>
+              <span className="sb-user-sub block text-[10.5px] mt-px">Institute 33028</span>
+              <span className="flex items-center gap-1.5 mt-1">
+                <span className="sb-pulse-dot" />
+                <span className="sb-live-text text-[10px] font-semibold tracking-[0.04em]">Connected &amp; Live</span>
               </span>
             </span>
           )}
@@ -596,7 +576,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           type="button"
           onClick={() => { setFlyoutOpen(false); onToggleCollapse(); }}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-white/10 bg-white/[0.05] font-display text-[11px] font-bold uppercase tracking-[0.08em] text-white/50 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
+          className="sb-collapse-btn flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border font-display text-[11px] font-bold uppercase tracking-[0.08em] transition-all cursor-pointer"
         >
           {collapsed ? (
             <ChevronsRight className="w-4 h-4" />
