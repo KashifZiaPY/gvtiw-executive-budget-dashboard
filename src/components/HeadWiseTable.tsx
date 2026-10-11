@@ -200,7 +200,7 @@ export const HeadWiseTable: React.FC<HeadWiseTableProps> = ({
     <div
       id="audit-matrix-table"
       className={`rounded-xl border overflow-hidden transition-all duration-200 shadow-xl scroll-mt-20 ${
-        darkMode ? 'bg-[#0B132B] border-slate-700/90' : 'bg-white border-slate-300'
+        darkMode ? 'bg-[#0a2b21] border-slate-700/90' : 'bg-white border-slate-300'
       }`}
     >
       {/* Active Category Filter Status Notification Bar */}
@@ -409,7 +409,7 @@ export const HeadWiseTable: React.FC<HeadWiseTableProps> = ({
       >
         <table className="w-full text-left text-xs border-collapse font-sans min-w-[1050px]">
           {/* Main Table Column Headers (Matching exact Google Sheet Table Headers) */}
-          <thead className="sticky top-0 z-20 bg-[#0F2537] text-white shadow-md select-none border-b-2 border-slate-600">
+          <thead className="sticky top-0 z-20 bg-[#0d3b2e] text-white shadow-md select-none border-b-2 border-slate-600">
             <tr>
               <th className="py-2.5 px-2 text-center w-12 font-bold uppercase text-[11px] border-r border-slate-700">
                 Sr.#
@@ -450,7 +450,7 @@ export const HeadWiseTable: React.FC<HeadWiseTableProps> = ({
               </th>
               <th
                 onClick={() => toggleSort('balance')}
-                className="py-2.5 px-3 text-right font-bold uppercase text-[11px] border-r border-slate-700 min-w-[125px] cursor-pointer hover:bg-slate-800 bg-[#1E3A8A]"
+                className="py-2.5 px-3 text-right font-bold uppercase text-[11px] border-r border-slate-700 min-w-[125px] cursor-pointer hover:bg-slate-800 bg-[#064e3b]"
               >
                 <div className="flex items-center justify-end gap-1">
                   <span className="text-amber-300">Current Net Balance</span>
@@ -521,7 +521,7 @@ export const HeadWiseTable: React.FC<HeadWiseTableProps> = ({
                             ? 'bg-amber-400/20 hover:bg-amber-400/25 border-y-2 border-amber-400 shadow-md ring-1 ring-amber-400/40'
                             : isEven
                             ? darkMode
-                              ? 'bg-[#0B132B] hover:bg-[#132247]'
+                              ? 'bg-[#0a2b21] hover:bg-[#132247]'
                               : 'bg-white hover:bg-blue-50/50'
                             : darkMode
                             ? 'bg-[#070E20] hover:bg-[#132247]'
@@ -897,7 +897,7 @@ export const HeadWiseTable: React.FC<HeadWiseTableProps> = ({
           <table className="w-full text-xs text-left font-sans border-collapse">
             <thead>
               <tr className={`text-white font-bold uppercase text-[10px] border-b ${
-                darkMode ? 'bg-[#0F2537] border-slate-700' : 'bg-[#1E3A8A] border-slate-600'
+                darkMode ? 'bg-[#0d3b2e] border-slate-700' : 'bg-[#064e3b] border-slate-600'
               }`}>
                 <th className="py-2.5 px-2 text-center w-10">Sr.#</th>
                 <th colSpan={2} className="py-2.5 px-3">Corporate Financial Category</th>
@@ -968,7 +968,7 @@ export const HeadWiseTable: React.FC<HeadWiseTableProps> = ({
               })}
 
               {/* GRAND TOTAL ROW */}
-              <tr className="bg-[#0F2537] text-white font-black text-xs sm:text-sm border-t-2 border-b-2 border-amber-500 shadow-xl">
+              <tr className="bg-[#0d3b2e] text-white font-black text-xs sm:text-sm border-t-2 border-b-2 border-amber-500 shadow-xl">
                 <td className="py-3 px-2 text-center font-mono text-amber-400 text-base">★</td>
                 <td colSpan={2} className="py-3 px-3 uppercase tracking-wider text-amber-300">
                   GRAND TOTAL — CONSOLIDATED OPERATIONAL POOL (Excl. AAA Memo)

@@ -1837,7 +1837,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         <div
           className={`p-8 rounded-3xl border shadow-xl text-center space-y-6 transition-all ${
             darkMode
-              ? 'bg-[#0B132B] border-slate-800 text-white shadow-indigo-950/40'
+              ? 'bg-[#0a2b21] border-slate-800 text-white shadow-indigo-950/40'
               : 'bg-white border-slate-200 text-slate-900 shadow-indigo-500/5'
           }`}
         >
@@ -1939,7 +1939,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       <div
         className={`p-5 sm:p-6 rounded-2xl border transition-all ${
           darkMode
-            ? 'bg-[#0B132B] border-slate-800 text-white shadow-md'
+            ? 'bg-[#0a2b21] border-slate-800 text-white shadow-md'
             : 'bg-white border-slate-200 text-slate-900 shadow-xs'
         }`}
       >
@@ -2021,7 +2021,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       {/* ------------------------------------------------------------- */}
       <div
         className={`relative ${activeDropdown ? 'z-[70]' : 'z-20'} p-2 sm:p-2.5 rounded-2xl border flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-2.5 shadow-xs transition-all ${
-          darkMode ? 'bg-[#0B132B] border-slate-800' : 'bg-white border-slate-200'
+          darkMode ? 'bg-[#0a2b21] border-slate-800' : 'bg-white border-slate-200'
         }`}
       >
         {/* Backdrop for click outside dropdown */}
@@ -2769,7 +2769,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           {/* Search & Bank Filter Controls */}
           <div
             className={`p-4 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-3 ${
-              darkMode ? 'bg-[#0B132B] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+              darkMode ? 'bg-[#0a2b21] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
             }`}
           >
             <div className="relative w-full md:w-80">
@@ -2809,7 +2809,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           {/* Live Voucher Ledger Table with Dedicated Left-Side Vertical Scroll */}
           <div
             className={`rounded-2xl border overflow-hidden ${
-              darkMode ? 'bg-[#0B132B] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+              darkMode ? 'bg-[#0a2b21] border-slate-800' : 'bg-white border-slate-200 shadow-xs'
             }`}
           >
             {/* Vertical Scroll Container with Sticky Headers */}
@@ -2983,7 +2983,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           {/* SECTION 1: FULL SYSTEM BACKUP & RESTORE SUITE (ALL 5 GOOGLE SHEETS OPTIONS) */}
           <div
             className={`p-6 rounded-2xl border ${
-              darkMode ? 'bg-[#0B132B] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
+              darkMode ? 'bg-[#0a2b21] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
             }`}
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
@@ -3199,7 +3199,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           {/* SECTION 2: STRICT LIFO VOUCHER DELETION */}
           <div
             className={`p-5 rounded-2xl border ${
-              darkMode ? 'bg-[#0B132B] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
+              darkMode ? 'bg-[#0a2b21] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
             }`}
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -3242,7 +3242,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           {/* SECTION 3: CLOUD ENDPOINT & MAINTENANCE TOOLS */}
           <div
             className={`p-5 rounded-2xl border ${
-              darkMode ? 'bg-[#0B132B] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
+              darkMode ? 'bg-[#0a2b21] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
             }`}
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
@@ -3325,7 +3325,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           {/* Master Google Apps Script v3.15 Code Vault */}
           <div
             className={`p-6 rounded-2xl border ${
-              darkMode ? 'bg-[#0B132B] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
+              darkMode ? 'bg-[#0a2b21] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
             }`}
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
@@ -3369,7 +3369,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
           {/* 6 Institutional Bank Accounts Summary */}
           <div
             className={`p-6 rounded-2xl border ${
-              darkMode ? 'bg-[#0B132B] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
+              darkMode ? 'bg-[#0a2b21] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
             }`}
           >
             <h3 className="text-xs font-bold uppercase tracking-wider font-mono text-slate-500 dark:text-slate-400 mb-3">
@@ -3407,7 +3407,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         <div className="space-y-6 animate-in fade-in duration-150">
           <div
             className={`rounded-2xl border overflow-hidden ${
-              darkMode ? 'bg-[#0B132B] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
+              darkMode ? 'bg-[#0a2b21] border-slate-800 text-white' : 'bg-white border-slate-200 shadow-xs'
             }`}
           >
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -4160,7 +4160,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         <div className="fixed inset-0 z-[120] bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div
             className={`w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 ${
-              darkMode ? 'bg-[#0B132B] border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
+              darkMode ? 'bg-[#0a2b21] border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'
             }`}
           >
             {/* Modal Header */}

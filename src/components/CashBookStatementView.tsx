@@ -97,13 +97,13 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
   return (
     <div
       className={`rounded-2xl border transition-all shadow-xl p-5 md:p-7 space-y-6 ${
-        darkMode ? 'bg-[#0B132B] border-slate-700/80 text-white' : 'bg-white border-slate-300 text-slate-900'
+        darkMode ? 'bg-[#0a2b21] border-slate-700/80 text-white' : 'bg-white border-slate-300 text-slate-900'
       }`}
     >
       {/* ------------------------------------------------------------- */}
       {/* 1. OFFICIAL INSTITUTIONAL HEADER WITH DUAL LOGOS              */}
       {/* ------------------------------------------------------------- */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-5 border-b-2 border-[#002b66] dark:border-blue-500">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-5 border-b-2 border-[#065f46] dark:border-blue-500">
         {/* Left Emblem: GVTI(W) */}
         <div className="flex items-center gap-3">
           <div className="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 p-1 flex items-center justify-center shadow-sm border border-slate-200 dark:border-slate-700">
@@ -121,7 +121,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
 
         {/* Center Title Block */}
         <div className="text-center flex-1 px-2">
-          <h1 className="text-base sm:text-lg font-black tracking-wide uppercase text-[#002b66] dark:text-blue-300">
+          <h1 className="text-base sm:text-lg font-black tracking-wide uppercase text-[#065f46] dark:text-blue-300">
             GOVERNMENT VOCATIONAL TRAINING INSTITUTE (W)
           </h1>
           <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400">
@@ -222,7 +222,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
           <span className="text-[10px] uppercase font-extrabold tracking-wider text-slate-700 dark:text-slate-300 block">
             {data.isConsolidated ? 'CONSOLIDATED CLOSING (C/D)' : 'NET CLOSING BALANCE (C/D)'}
           </span>
-          <span className="text-base sm:text-lg font-black font-mono text-[#002b66] dark:text-blue-300 block mt-1">
+          <span className="text-base sm:text-lg font-black font-mono text-[#065f46] dark:text-blue-300 block mt-1">
             Rs. {formatCurrency2Decimals(data.closingBalance)}
           </span>
         </div>
@@ -328,20 +328,20 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
       >
         <table className="w-full text-xs text-left border-collapse min-w-[1250px]">
           {/* Table Header with Sticky Pinned Positioning */}
-          <thead className="bg-[#0b2545] text-white font-extrabold text-[10px] uppercase tracking-wider sticky top-0 z-20 shadow-sm">
+          <thead className="bg-[#0b3d2e] text-white font-extrabold text-[10px] uppercase tracking-wider sticky top-0 z-20 shadow-sm">
             <tr>
-              <th className="py-2.5 px-2 text-center w-10 border-r border-slate-700 sticky top-0 bg-[#0b2545]">SR#</th>
-              <th className="py-2.5 px-3 border-r border-slate-700 w-24 sticky top-0 bg-[#0b2545]">DATE</th>
-              <th className="py-2.5 px-2 text-center border-r border-slate-700 w-16 sticky top-0 bg-[#0b2545]">ACCT</th>
-              <th className="py-2.5 px-3 border-r border-slate-700 w-32 sticky top-0 bg-[#0b2545]">VOUCHER #</th>
-              <th className="py-2.5 px-3 border-r border-slate-700 min-w-[140px] sticky top-0 bg-[#0b2545]">PAID TO / BY</th>
-              <th className="py-2.5 px-3 border-r border-slate-700 min-w-[180px] sticky top-0 bg-[#0b2545]">ACCOUNT HEAD</th>
-              <th className="py-2.5 px-3 border-r border-slate-700 min-w-[220px] sticky top-0 bg-[#0b2545]">PARTICULAR / NARRATION</th>
-              <th className="py-2.5 px-2 text-center border-r border-slate-700 w-24 sticky top-0 bg-[#0b2545]">CHEQUE #</th>
-              <th className="py-2.5 px-3 text-right border-r border-slate-700 w-28 sticky top-0 bg-[#0b2545]">RECEIPTS (RS.)</th>
-              <th className="py-2.5 px-3 text-right border-r border-slate-700 w-28 sticky top-0 bg-[#0b2545]">PAYMENTS (RS.)</th>
-              <th className="py-2.5 px-3 text-right border-r border-slate-700 w-32 sticky top-0 bg-[#0b2545]">BALANCE (RS.)</th>
-              <th className="py-2.5 px-2 text-center w-16 whitespace-nowrap sticky top-0 bg-[#0b2545]">PAF</th>
+              <th className="py-2.5 px-2 text-center w-10 border-r border-slate-700 sticky top-0 bg-[#0b3d2e]">SR#</th>
+              <th className="py-2.5 px-3 border-r border-slate-700 w-24 sticky top-0 bg-[#0b3d2e]">DATE</th>
+              <th className="py-2.5 px-2 text-center border-r border-slate-700 w-16 sticky top-0 bg-[#0b3d2e]">ACCT</th>
+              <th className="py-2.5 px-3 border-r border-slate-700 w-32 sticky top-0 bg-[#0b3d2e]">VOUCHER #</th>
+              <th className="py-2.5 px-3 border-r border-slate-700 min-w-[140px] sticky top-0 bg-[#0b3d2e]">PAID TO / BY</th>
+              <th className="py-2.5 px-3 border-r border-slate-700 min-w-[180px] sticky top-0 bg-[#0b3d2e]">ACCOUNT HEAD</th>
+              <th className="py-2.5 px-3 border-r border-slate-700 min-w-[220px] sticky top-0 bg-[#0b3d2e]">PARTICULAR / NARRATION</th>
+              <th className="py-2.5 px-2 text-center border-r border-slate-700 w-24 sticky top-0 bg-[#0b3d2e]">CHEQUE #</th>
+              <th className="py-2.5 px-3 text-right border-r border-slate-700 w-28 sticky top-0 bg-[#0b3d2e]">RECEIPTS (RS.)</th>
+              <th className="py-2.5 px-3 text-right border-r border-slate-700 w-28 sticky top-0 bg-[#0b3d2e]">PAYMENTS (RS.)</th>
+              <th className="py-2.5 px-3 text-right border-r border-slate-700 w-32 sticky top-0 bg-[#0b3d2e]">BALANCE (RS.)</th>
+              <th className="py-2.5 px-2 text-center w-16 whitespace-nowrap sticky top-0 bg-[#0b3d2e]">PAF</th>
             </tr>
           </thead>
 
@@ -517,7 +517,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
                         <td className="py-2 px-3 text-right font-mono font-bold text-rose-600 dark:text-rose-400 border-r border-slate-200 dark:border-slate-800/60">
                           {!isReceipt && r.payments > 0 ? formatCurrency2Decimals(r.payments) : '—'}
                         </td>
-                        <td className="py-2 px-3 text-right font-mono font-black text-[#0b2545] dark:text-blue-200 border-r border-slate-200 dark:border-slate-800/60">
+                        <td className="py-2 px-3 text-right font-mono font-black text-[#0b3d2e] dark:text-blue-200 border-r border-slate-200 dark:border-slate-800/60">
                           {formatCurrency2Decimals(r.balance)}
                         </td>
                         <td className="py-2 px-2 text-center whitespace-nowrap">
@@ -572,7 +572,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
 
             {/* GRAND TOTALS ROW */}
             <tr
-              className={`font-black border-t-2 border-[#0b2545] dark:border-blue-500 ${
+              className={`font-black border-t-2 border-[#0b3d2e] dark:border-blue-500 ${
                 darkMode ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-950'
               }`}
             >
@@ -598,7 +598,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
 
             {/* CLOSING BALANCE CARRIED FORWARD ROW */}
             <tr
-              className={`font-black border-t border-b-2 border-[#0b2545] dark:border-blue-500 ${
+              className={`font-black border-t border-b-2 border-[#0b3d2e] dark:border-blue-500 ${
                 darkMode ? 'bg-blue-950/60 text-white' : 'bg-blue-50 text-blue-950'
               }`}
             >
@@ -614,7 +614,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
               >
                 [Opening + Receipts - Payments]
               </td>
-              <td className="py-2.5 px-3 text-right font-mono text-sm font-black text-[#002b66] dark:text-blue-300 border-r border-slate-300 dark:border-slate-700">
+              <td className="py-2.5 px-3 text-right font-mono text-sm font-black text-[#065f46] dark:text-blue-300 border-r border-slate-300 dark:border-slate-700">
                 {formatCurrency2Decimals(data.closingBalance)}
               </td>
               <td className="py-2.5 px-2 text-center font-mono text-slate-400 text-xs">

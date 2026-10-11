@@ -1029,7 +1029,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
       } else if (isSub) {
         trStyle = 'background-color: #f1f5f9; font-weight: bold; font-size: 7.5pt;';
       } else if (isCategory) {
-        trStyle = 'background-color: #f8fafc; font-weight: bold; color: #0b2545; font-size: 7.5pt;';
+        trStyle = 'background-color: #f8fafc; font-weight: bold; color: #0b3d2e; font-size: 7.5pt;';
       } else {
         trStyle = 'font-size: 7.5pt;';
       }
@@ -1097,7 +1097,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
             font-size: 13pt;
             font-weight: 900;
             text-transform: uppercase;
-            color: #0b2545;
+            color: #0b3d2e;
             letter-spacing: 0.3px;
           }
           .sub-info {
@@ -1136,7 +1136,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
             background-color: #f8fafc;
           }
           .kpi-cell.ns { border-color: #fca5a5; background-color: #fff1f2; }
-          .kpi-cell.proj { border-color: #93c5fd; background-color: #eff6ff; }
+          .kpi-cell.proj { border-color: #6ee7b7; background-color: #ecfdf4; }
           .kpi-cell.own { border-color: #86efac; background-color: #f0fdf4; }
           .kpi-cell.tot { border-color: #c7d2fe; background-color: #eef2ff; }
           .kpi-label { font-size: 6.5pt; font-weight: 800; text-transform: uppercase; display: block; }
@@ -1148,12 +1148,12 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
             font-size: 7.5pt;
           }
           table.statement-table th {
-            background-color: #0b2545;
+            background-color: #0b3d2e;
             color: #ffffff;
             font-weight: 800;
             text-transform: uppercase;
             padding: 4px 3px;
-            border: 1px solid #0b2545;
+            border: 1px solid #0b3d2e;
             font-size: 6.5pt;
             text-align: center;
           }
@@ -1224,7 +1224,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
           </div>
           <div class="kpi-cell proj">
             <span class="kpi-label" style="color: #1e40af;">Projects &amp; Courses (Surplus)</span>
-            <span class="kpi-val" style="color: #2563eb;">Rs. ${metrics.otherNsBalance}</span>
+            <span class="kpi-val" style="color: #047857;">Rs. ${metrics.otherNsBalance}</span>
             <span style="font-size: 6.5pt; color: #64748b;">Exp: ${metrics.otherNsExp}</span>
           </div>
           <div class="kpi-cell own">
@@ -1453,7 +1453,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#0b2545] text-white shadow-xs">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#0b3d2e] text-white shadow-xs">
               TEVTA OFFICIAL
             </span>
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-500/20">
@@ -1467,7 +1467,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
             </span>
           </div>
 
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight mt-2 text-[#0b2545] dark:text-slate-100 flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight mt-2 text-[#0b3d2e] dark:text-slate-100 flex items-center gap-2">
             <span>Non-Salary &amp; Own Funds Monthly Expenditure Statement</span>
           </h2>
           <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 font-medium">
@@ -1512,7 +1512,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
           <button
             type="button"
             onClick={handlePrint}
-            className="h-9 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer bg-[#0b2545] hover:bg-[#133966] text-white"
+            className="h-9 px-4 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer bg-[#0b3d2e] hover:bg-[#133966] text-white"
             title="Print landscape report with signatories"
           >
             <Printer className="w-3.5 h-3.5 text-white" />
@@ -1633,7 +1633,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
           {/* Monthly Dropdown & Custom Range Controls */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
-              <Calendar className="w-4 h-4 text-[#0b2545] dark:text-indigo-400" />
+              <Calendar className="w-4 h-4 text-[#0b3d2e] dark:text-indigo-400" />
               <span>Period Filter:</span>
             </div>
 
@@ -1644,7 +1644,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
               className={`h-9 px-3 text-xs font-semibold rounded-lg border outline-none cursor-pointer transition-colors ${
                 darkMode
                   ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500'
-                  : 'bg-white border-slate-300 text-slate-800 focus:border-[#0b2545]'
+                  : 'bg-white border-slate-300 text-slate-800 focus:border-[#0b3d2e]'
               }`}
             >
               <option value="ALL">All Months (FY 2026-27: 01-Jul-2026 to 30-Jun-2027)</option>
@@ -1701,7 +1701,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
               onClick={() => setActiveFilter('ALL')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                 activeFilter === 'ALL'
-                  ? 'bg-[#0b2545] text-white shadow-xs'
+                  ? 'bg-[#0b3d2e] text-white shadow-xs'
                   : darkMode
                   ? 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
                   : 'bg-white text-slate-700 hover:text-slate-950 hover:bg-slate-100 border border-slate-200'
@@ -1714,7 +1714,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
               onClick={() => setActiveFilter('ACTIVE')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                 activeFilter === 'ACTIVE'
-                  ? 'bg-[#0b2545] text-white shadow-xs'
+                  ? 'bg-[#0b3d2e] text-white shadow-xs'
                   : darkMode
                   ? 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
                   : 'bg-white text-slate-700 hover:text-slate-950 hover:bg-slate-100 border border-slate-200'
@@ -1727,7 +1727,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
               onClick={() => setActiveFilter('SUBTOTALS')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                 activeFilter === 'SUBTOTALS'
-                  ? 'bg-[#0b2545] text-white shadow-xs'
+                  ? 'bg-[#0b3d2e] text-white shadow-xs'
                   : darkMode
                   ? 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700'
                   : 'bg-white text-slate-700 hover:text-slate-950 hover:bg-slate-100 border border-slate-200'
@@ -1757,7 +1757,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
                 className={`w-full pl-9 pr-8 py-2 text-xs rounded-xl border outline-none font-medium transition-colors ${
                   darkMode
                     ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500 focus:border-indigo-500'
-                    : 'bg-white border-slate-300 text-slate-800 placeholder-slate-400 focus:border-[#0b2545]'
+                    : 'bg-white border-slate-300 text-slate-800 placeholder-slate-400 focus:border-[#0b3d2e]'
                 }`}
               />
               {searchQuery && (
@@ -1783,7 +1783,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
               className={`h-9 px-3 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs ${
                 isFilterActive
                   ? 'bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700'
-                  : 'bg-white dark:bg-slate-800 text-[#0b2545] dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                  : 'bg-white dark:bg-slate-800 text-[#0b3d2e] dark:text-slate-200 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
               }`}
             >
               <Filter className={`w-3.5 h-3.5 ${isFilterActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-500'}`} />
@@ -1955,7 +1955,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowSuggestions(false)}
-                  className="px-3 py-1 rounded-lg bg-[#0b2545] hover:bg-[#133966] text-white font-bold text-xs shadow-xs cursor-pointer"
+                  className="px-3 py-1 rounded-lg bg-[#0b3d2e] hover:bg-[#133966] text-white font-bold text-xs shadow-xs cursor-pointer"
                 >
                   Apply & Close
                 </button>
@@ -2060,7 +2060,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
       </div>
 
       {/* Dynamic Period Synchronization Status Banner */}
-      <div className="flex items-center justify-between flex-wrap gap-2 px-3.5 py-2 rounded-t-xl bg-gradient-to-r from-slate-900 via-[#0b2545] to-slate-900 text-white border-t border-x border-slate-700/70 text-xs font-mono shadow-sm">
+      <div className="flex items-center justify-between flex-wrap gap-2 px-3.5 py-2 rounded-t-xl bg-gradient-to-r from-slate-900 via-[#0b3d2e] to-slate-900 text-white border-t border-x border-slate-700/70 text-xs font-mono shadow-sm">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
           <span className="font-bold text-slate-200 uppercase tracking-wider text-[10px]">
@@ -2083,7 +2083,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
       {/* 4. TOP SYNCHRONIZED HORIZONTAL SCROLLBAR */}
       <div className="bg-slate-100 dark:bg-slate-800/80 border-x border-slate-200 dark:border-slate-700 px-3 py-1.5 flex items-center gap-2">
         <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-600 dark:text-slate-300 select-none whitespace-nowrap">
-          <MoveHorizontal className="w-3.5 h-3.5 text-[#0b2545] dark:text-indigo-400 animate-pulse" />
+          <MoveHorizontal className="w-3.5 h-3.5 text-[#0b3d2e] dark:text-indigo-400 animate-pulse" />
           <span className="font-bold">Top Scroll:</span>
         </div>
         <div
@@ -2103,29 +2103,29 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
       >
         <table className="w-full border-collapse text-left text-xs min-w-[1300px]">
           {/* Official Sticky Table Header */}
-          <thead className="sticky top-0 z-20 shadow-xs bg-[#0b2545] text-white font-bold uppercase tracking-wider text-[10px]">
+          <thead className="sticky top-0 z-20 shadow-xs bg-[#0b3d2e] text-white font-bold uppercase tracking-wider text-[10px]">
             <tr className="border-b border-slate-700">
-              <th className="py-2.5 px-3 w-12 text-center border-r border-slate-700/60 sticky top-0 bg-[#0b2545]">
+              <th className="py-2.5 px-3 w-12 text-center border-r border-slate-700/60 sticky top-0 bg-[#0b3d2e]">
                 Sr #
               </th>
-              <th className="py-2.5 px-3 w-28 border-r border-slate-700/60 sticky top-0 bg-[#0b2545]">
+              <th className="py-2.5 px-3 w-28 border-r border-slate-700/60 sticky top-0 bg-[#0b3d2e]">
                 Head Code
               </th>
-              <th className="py-2.5 px-3 min-w-[260px] border-r border-slate-700/60 sticky top-0 bg-[#0b2545]">
+              <th className="py-2.5 px-3 min-w-[260px] border-r border-slate-700/60 sticky top-0 bg-[#0b3d2e]">
                 Particulars / Account Description
               </th>
-              <th className="py-2.5 px-3 w-28 text-right border-r border-slate-700/60 sticky top-0 bg-[#0b2545]">
+              <th className="py-2.5 px-3 w-28 text-right border-r border-slate-700/60 sticky top-0 bg-[#0b3d2e]">
                 Opening Budget
               </th>
-              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isJulActive ? 'bg-[#0f3460] text-cyan-200' : 'bg-[#0b2545] text-slate-400 opacity-60'}`}>
+              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isJulActive ? 'bg-[#0f3460] text-cyan-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
                 Rec (Jul)
                 {isJulActive && <span className="block text-[8px] font-normal text-cyan-300">[Active]</span>}
               </th>
-              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isAugActive ? 'bg-[#0f3460] text-cyan-200' : 'bg-[#0b2545] text-slate-400 opacity-60'}`}>
+              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isAugActive ? 'bg-[#0f3460] text-cyan-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
                 Rec (Aug)
                 {isAugActive && <span className="block text-[8px] font-normal text-cyan-300">[Active]</span>}
               </th>
-              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isSepActive ? 'bg-[#0f3460] text-cyan-200' : 'bg-[#0b2545] text-slate-400 opacity-60'}`}>
+              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isSepActive ? 'bg-[#0f3460] text-cyan-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
                 Rec (Sep)
                 {isSepActive && <span className="block text-[8px] font-normal text-cyan-300">[Active]</span>}
               </th>
@@ -2137,15 +2137,15 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
                 Net Budget
                 <div className="text-[8px] font-normal normal-case text-indigo-200">Alloc + Rec</div>
               </th>
-              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isJulActive ? 'bg-[#0f3460] text-amber-200' : 'bg-[#0b2545] text-slate-400 opacity-60'}`}>
+              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isJulActive ? 'bg-[#0f3460] text-amber-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
                 Exp (Jul)
                 {isJulActive && <span className="block text-[8px] font-normal text-amber-300">[Active]</span>}
               </th>
-              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isAugActive ? 'bg-[#0f3460] text-amber-200' : 'bg-[#0b2545] text-slate-400 opacity-60'}`}>
+              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isAugActive ? 'bg-[#0f3460] text-amber-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
                 Exp (Aug)
                 {isAugActive && <span className="block text-[8px] font-normal text-amber-300">[Active]</span>}
               </th>
-              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isSepActive ? 'bg-[#0f3460] text-amber-200' : 'bg-[#0b2545] text-slate-400 opacity-60'}`}>
+              <th className={`py-2.5 px-3 w-24 text-right border-r border-slate-700/60 sticky top-0 ${isSepActive ? 'bg-[#0f3460] text-amber-200' : 'bg-[#0b3d2e] text-slate-400 opacity-60'}`}>
                 Exp (Sep)
                 {isSepActive && <span className="block text-[8px] font-normal text-amber-300">[Active]</span>}
               </th>
@@ -2179,7 +2179,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
               } else if (isCategory) {
                 rowClass = darkMode
                   ? 'bg-slate-800/60 font-bold text-indigo-300'
-                  : 'bg-slate-50 font-bold text-[#0b2545] border-y border-slate-200';
+                  : 'bg-slate-50 font-bold text-[#0b3d2e] border-y border-slate-200';
               }
 
               const balNum = parseNumber(r.balance);
@@ -2201,7 +2201,7 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
                     </td>
                     <td
                       colSpan={12}
-                      className="py-2.5 px-3 font-bold font-sans text-xs tracking-wide uppercase text-[#0b2545] dark:text-indigo-300"
+                      className="py-2.5 px-3 font-bold font-sans text-xs tracking-wide uppercase text-[#0b3d2e] dark:text-indigo-300"
                     >
                       {r.particulars}
                     </td>

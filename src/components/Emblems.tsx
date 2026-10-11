@@ -21,8 +21,8 @@ export const InstituteEmblem: React.FC<{ className?: string; src?: string }> = (
   return (
     <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
       {/* Outer circular gold ring */}
-      <circle cx="50" cy="50" r="46" fill="#0F2537" stroke="#D4AF37" strokeWidth="4" />
-      <circle cx="50" cy="50" r="41" fill="#1E3A8A" stroke="#93C5FD" strokeWidth="1.5" strokeDasharray="3 2" />
+      <circle cx="50" cy="50" r="46" fill="#0d3b2e" stroke="#D4AF37" strokeWidth="4" />
+      <circle cx="50" cy="50" r="41" fill="#064e3b" stroke="#6ee7b7" strokeWidth="1.5" strokeDasharray="3 2" />
 
       {/* Inner institutional shield */}
       <path
@@ -33,7 +33,7 @@ export const InstituteEmblem: React.FC<{ className?: string; src?: string }> = (
       />
 
       {/* Book / Knowledge rays */}
-      <path d="M38 46 Q50 40 62 46 V60 Q50 54 38 60 Z" fill="#3B82F6" stroke="#93C5FD" strokeWidth="1.2" />
+      <path d="M38 46 Q50 40 62 46 V60 Q50 54 38 60 Z" fill="#3B82F6" stroke="#6ee7b7" strokeWidth="1.2" />
       <line x1="50" y1="42" x2="50" y2="58" stroke="#FFFFFF" strokeWidth="1.5" />
 
       {/* Vocational gear / cog wheel */}
