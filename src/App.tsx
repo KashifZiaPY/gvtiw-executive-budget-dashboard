@@ -148,10 +148,10 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  // Corporate Theme Mode (Default: Dark Mode for executive monitoring)
+  // Corporate Theme Mode (Default: Light Mode on first open; saved preference wins afterwards)
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('gvtiw_theme');
-    return saved !== null ? saved === 'dark' : true;
+    return saved !== null ? saved === 'dark' : false;
   });
 
   // Selected Category Filter
