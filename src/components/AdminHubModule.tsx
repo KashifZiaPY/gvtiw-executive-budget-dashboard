@@ -2017,107 +2017,6 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 20.2 EXECUTIVE ACTION STRIP (Shifted to Top, Fully Justified) */}
-      {/* ------------------------------------------------------------- */}
-      <div
-        className={`p-2.5 sm:p-3 rounded-2xl border shadow-xs transition-all ${
-          darkMode ? 'bg-[#0B132B] border-slate-800' : 'bg-white border-slate-200'
-        }`}
-      >
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
-          {/* Primary Colorful Corporate Action Buttons - All in One Clean Justified Strip */}
-          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap overflow-x-auto pb-0.5 sm:pb-0">
-            {/* Button 1: + New Voucher Entry */}
-            <button
-              type="button"
-              onClick={() => {
-                setVoucherToAmend(null);
-                setIsNewVoucherModalOpen(true);
-              }}
-              className="py-2.5 px-3.5 sm:px-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:via-indigo-700 hover:to-indigo-800 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md shadow-indigo-500/20 border border-indigo-400/30 cursor-pointer active:scale-[0.98] transition-all whitespace-nowrap shrink-0"
-            >
-              <PlusCircle className="w-4 h-4 text-white shrink-0" />
-              <span>+ New Voucher Entry</span>
-            </button>
-
-            {/* Button 2: Record Bank Charge */}
-            <button
-              type="button"
-              onClick={() => {
-                setBcVoucherToAmend(null);
-                setIsBankChargeModalOpen(true);
-              }}
-              className="py-2.5 px-3.5 sm:px-4 bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-600 hover:via-amber-700 hover:to-orange-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-md shadow-amber-500/20 border border-amber-400/30 cursor-pointer active:scale-[0.98] transition-all whitespace-nowrap shrink-0"
-            >
-              <Landmark className="w-4 h-4 text-white shrink-0" />
-              <span>Record Bank Charge</span>
-            </button>
-
-            {/* Button 3: Strict LIFO Reversal */}
-            {latestVoucher && (
-              <button
-                type="button"
-                onClick={() => handlePromptDeleteVoucher(latestVoucher)}
-                className="py-2.5 px-3.5 sm:px-4 bg-gradient-to-r from-rose-600 via-rose-700 to-red-700 hover:from-rose-700 hover:via-rose-800 hover:to-red-800 text-white font-bold text-xs rounded-xl border border-rose-400/30 shadow-md shadow-rose-500/20 flex items-center gap-1.5 cursor-pointer active:scale-[0.98] transition-all whitespace-nowrap shrink-0"
-                title={`Strict LIFO Reversal for Voucher #${maxExistingSrNo}`}
-              >
-                <Trash2 className="w-4 h-4 text-white shrink-0" />
-                <span>LIFO Reversal (#{maxExistingSrNo})</span>
-              </button>
-            )}
-
-            {/* Button 4: Recalculate 38 Heads */}
-            <button
-              type="button"
-              onClick={handleRecalculateHeads}
-              className="py-2.5 px-3.5 sm:px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-teal-700 hover:from-emerald-700 hover:via-teal-700 hover:to-teal-800 text-white font-bold text-xs rounded-xl border border-emerald-400/30 shadow-md shadow-emerald-500/20 flex items-center gap-1.5 cursor-pointer active:scale-[0.98] transition-all whitespace-nowrap shrink-0"
-            >
-              <RefreshCw className="w-4 h-4 text-white shrink-0" />
-              <span>Recalculate 38 Heads</span>
-            </button>
-
-            {/* Button 5: Sort Cashbooks */}
-            <button
-              type="button"
-              onClick={handleSortCashbooksByDate}
-              className="py-2.5 px-3.5 sm:px-4 bg-gradient-to-r from-sky-600 via-cyan-700 to-blue-700 hover:from-sky-700 hover:via-cyan-800 hover:to-blue-800 text-white font-bold text-xs rounded-xl border border-cyan-400/30 shadow-md shadow-cyan-500/20 flex items-center gap-1.5 cursor-pointer active:scale-[0.98] transition-all whitespace-nowrap shrink-0"
-            >
-              <ArrowUpDown className="w-4 h-4 text-white shrink-0" />
-              <span>Sort Cashbooks</span>
-            </button>
-          </div>
-
-          {/* Quick Amend by Sr# Box */}
-          <div className="flex items-center gap-1.5 shrink-0 justify-end">
-            <div
-              className={`p-1 rounded-xl border flex items-center gap-1 shadow-2xs ${
-                darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-100/90 border-slate-300'
-              }`}
-            >
-              <input
-                type="number"
-                min="1"
-                value={actionParamSr}
-                onChange={(e) => setActionParamSr(e.target.value)}
-                placeholder="Sr.#"
-                className={`w-16 sm:w-20 py-1.5 px-2 text-center text-xs font-mono font-bold bg-transparent outline-none ${
-                  darkMode ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'
-                }`}
-              />
-              <button
-                type="button"
-                onClick={handleOpenAmendBySr}
-                className="py-2 px-3 text-xs font-bold rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-sm border border-purple-400/30 flex items-center gap-1 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
-              >
-                <Edit className="w-3.5 h-3.5 text-purple-100 shrink-0" />
-                <span>Amend by Sr.#</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ------------------------------------------------------------- */}
       {/* 20.25 CORPORATE DROPDOWN MENU BAR (Enterprise Accounting Suite) */}
       {/* ------------------------------------------------------------- */}
       <div
@@ -2256,6 +2155,40 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                     <div className="text-[10px] text-slate-400">{vouchers.length} Total Registered Vouchers</div>
                   </div>
                 </button>
+
+                {/* Quick Amend by Sr.# (relocated here from the removed action strip; same handler) */}
+                <div className="px-3 pt-1 pb-2">
+                  <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-500 mb-1.5">
+                    Quick Amend
+                  </div>
+                  <div
+                    className={`p-1 rounded-xl border flex items-center gap-1 ${
+                      darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-100/90 border-slate-300'
+                    }`}
+                  >
+                    <input
+                      type="number"
+                      min="1"
+                      value={actionParamSr}
+                      onChange={(e) => setActionParamSr(e.target.value)}
+                      placeholder="Sr.#"
+                      className={`w-16 py-1.5 px-2 text-center text-xs font-mono font-bold bg-transparent outline-none ${
+                        darkMode ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveDropdown(null);
+                        handleOpenAmendBySr();
+                      }}
+                      className="py-1.5 px-3 text-xs font-bold rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-sm border border-purple-400/30 flex items-center gap-1 cursor-pointer active:scale-95 transition-all whitespace-nowrap"
+                    >
+                      <Edit className="w-3.5 h-3.5 text-purple-100 shrink-0" />
+                      <span>Amend by Sr.#</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
