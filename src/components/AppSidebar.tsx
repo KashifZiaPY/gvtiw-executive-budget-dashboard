@@ -570,6 +570,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               <span className="flex items-center gap-1.5 mt-1">
                 <span className="sb-pulse-dot" />
                 <span className="sb-live-text text-[10px] font-semibold tracking-[0.04em]">Connected &amp; Live</span>
+                <span className="sb-commit-sha text-[10px] font-medium">({__APP_COMMIT_SHA__})</span>
               </span>
             </span>
           )}
