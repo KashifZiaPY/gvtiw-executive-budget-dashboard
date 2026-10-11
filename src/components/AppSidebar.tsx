@@ -454,13 +454,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             {!collapsed &&
               REPORT_GROUPS.map((group, gi) => {
                 const open = openGroup === gi;
+                const groupHasActive =
+                  activeModule === 'REPORTS' && group.items.some((i) => i.tab === activeReportTab);
                 return (
                   <div key={group.label}>
                     <button
                       type="button"
                       onClick={() => handleGroupClick(gi)}
                       data-tip={group.label}
-                      className="sb-group-btn group flex items-center gap-2.5 w-full px-2.5 py-2.5 my-0.5 rounded-[14px] text-sm font-semibold text-left cursor-pointer whitespace-nowrap transition-all duration-200"
+                      className={`sb-group-btn group flex items-center gap-2.5 w-full px-2.5 py-2.5 my-0.5 rounded-[14px] text-sm font-semibold text-left cursor-pointer whitespace-nowrap transition-all duration-200 ${groupHasActive ? 'sb-group-active' : ''}`}
                       aria-expanded={open}
                     >
                       <span className={iconTile(false)}>{GROUP_ICONS[group.label]}</span>

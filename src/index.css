@@ -509,8 +509,20 @@
 .sb-tile { background: var(--sb-tile-bg); border-color: var(--sb-tile-border); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5); color: var(--sb-tile-icon); }
 .sb-tile svg { stroke: currentColor; }
 .sb-tile-active { background: rgba(255, 255, 255, 0.2) !important; border-color: rgba(255, 255, 255, 0.3) !important; color: #fff !important; }
-.sb-group-btn { color: var(--sb-text); }
+.sb-group-btn { color: var(--sb-text); border: 1px solid transparent; }
 .sb-group-btn:hover { background: var(--sb-hover-bg); color: var(--sb-hover-text); }
+/* Parent group stays highlighted while one of its children is active */
+.sb-group-btn.sb-group-active {
+  background: #dff0e5;
+  border-color: #c4e2d0;
+  color: #0b7a4b;
+}
+.sb-group-btn.sb-group-active .sb-tile { background: #c9e8d4; border-color: #aedbbd; color: #0b7a4b; }
+.sb-shell.sb-dark .sb-group-btn.sb-group-active {
+  background: rgba(11, 122, 75, 0.25);
+  border-color: rgba(74, 222, 158, 0.3);
+  color: #4ade9e;
+}
 .sb-chev { color: var(--sb-text-dim); }
 
 /* Active pills */
