@@ -2020,7 +2020,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       {/* 20.25 CORPORATE DROPDOWN MENU BAR (Enterprise Accounting Suite) */}
       {/* ------------------------------------------------------------- */}
       <div
-        className={`relative ${activeDropdown ? 'z-[70]' : 'z-20'} p-2 sm:p-2.5 rounded-2xl border flex flex-col flex-wrap xl:flex-row items-stretch xl:items-center justify-between gap-2.5 shadow-xs transition-all ${
+        className={`relative ${activeDropdown ? 'z-[70]' : 'z-20'} p-2 sm:p-2.5 rounded-2xl border flex flex-row flex-wrap items-center gap-2.5 shadow-xs transition-all ${
           darkMode ? 'bg-[#0a2b21] border-slate-800' : 'bg-white border-slate-200'
         }`}
       >
@@ -2572,7 +2572,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
         </div>
 
         {/* Right Side: Instant Status Pill & Controls */}
-        <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 flex-wrap w-full xl:w-auto pt-2 xl:pt-0 border-t border-slate-100 dark:border-slate-800/80 xl:border-0">
+        <div className="flex items-center justify-end gap-1.5 sm:gap-2 flex-wrap ml-auto">
           {/* Prominent Backup Status Pill Button */}
           <button
             type="button"
