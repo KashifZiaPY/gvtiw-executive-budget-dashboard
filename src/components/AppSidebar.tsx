@@ -366,10 +366,10 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
               title="Reports & Statements"
               data-tip="Reports Hub"
               aria-expanded={collapsed ? flyoutOpen : undefined}
-              data-sb-active={activeModule === 'REPORTS' && groupOfTab(activeReportTab) === -1 ? 'true' : undefined}
-              className={moduleBtn(activeModule === 'REPORTS' && groupOfTab(activeReportTab) === -1)}
+              data-sb-active={activeModule === 'REPORTS' ? 'true' : undefined}
+              className={moduleBtn(activeModule === 'REPORTS')}
             >
-              <span className={iconTile(activeModule === 'REPORTS' && groupOfTab(activeReportTab) === -1)}>
+              <span className={iconTile(activeModule === 'REPORTS')}>
                 <FileSpreadsheet className="w-5 h-5" strokeWidth={1.8} />
               </span>
               {!collapsed && <span className="flex-1 truncate">Reports Hub</span>}
