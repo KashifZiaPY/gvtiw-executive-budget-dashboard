@@ -1,3 +1,10 @@
+/**
+ * Header — top banner of the Executive Budget Dashboard.
+ *
+ * PRESENTATION ONLY refactor: the TEVTA light green/white theme is pure
+ * styling. Every prop, handler, conditional, timestamp formatter and the
+ * auto-sync timer contract is unchanged from the previous version.
+ */
 import React from 'react';
 import {
   RefreshCw,
@@ -11,7 +18,6 @@ import {
 } from 'lucide-react';
 import { DashboardResponse } from '../types';
 import { format12HourDate } from '../lib/formatters';
-import { InstituteEmblem, TevtaEmblem } from './Emblems';
 import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO } from '../data/initialData';
 
 interface HeaderProps {
@@ -48,147 +54,147 @@ export const Header: React.FC<HeaderProps> = ({
   syncStatus = 'connected',
 }) => {
   return (
-    <header className="w-full transition-colors duration-200 border-b border-indigo-900 bg-indigo-950 text-white">
+    <header id="app-header" className={`hdr-shell w-full ${darkMode ? 'hdr-dark' : ''}`}>
       {/* ------------------------------------------------------------- */}
       {/* ROW 1: INSTITUTIONAL CREST & MAIN TITLE BANNER                 */}
       {/* ------------------------------------------------------------- */}
-      <div className="w-full px-4 sm:px-8 py-3.5 bg-gradient-to-r from-indigo-950 via-indigo-600 to-indigo-950 border-b border-indigo-400/40 shadow-md">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      <div className="hdr-hero">
+        <div className="hdr-accent" aria-hidden="true" />
+        <div className="hdr-watermark" aria-hidden="true" />
+        <div className="hdr-hero-inner">
           {/* Left Institutional Emblem */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="relative w-11 h-11 sm:w-13 sm:h-13 flex items-center justify-center rounded-xl bg-white p-1 border border-amber-500/30 shadow-md">
+          <div className="hdr-side">
+            <span className="hdr-logo-circle">
               <img
                 src={customGvtiwLogo && customGvtiwLogo.startsWith('data:') ? customGvtiwLogo : DEFAULT_GVTIW_LOGO}
                 alt="GVTIW Logo"
-                className="w-full h-full object-contain rounded-lg"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = DEFAULT_GVTIW_LOGO;
                 }}
               />
-            </div>
-            <div className="hidden sm:block">
-              <span className="text-[11px] font-medium text-slate-200">
-                <span className="font-mono text-amber-400 font-bold">Institute Code: 33028</span>
-              </span>
-            </div>
+            </span>
+            <span className="hdr-pill">
+              Institute Code:&nbsp;<span className="font-mono">33028</span>
+            </span>
           </div>
 
           {/* Center Main Institution Title */}
-          <div className="text-center flex-1 px-2">
-            <h1 className="text-sm sm:text-lg md:text-xl lg:text-2xl font-extrabold tracking-wide text-white uppercase drop-shadow-sm font-sans">
-              {data.instituteName}
-            </h1>
-            <p className="text-[11px] sm:text-xs text-blue-200/90 font-medium tracking-wide mt-0.5">
-              Technical Education & Vocational Training Authority (TEVTA), Govt of Punjab
-            </p>
+          <div className="hdr-center">
+            <h1 className="font-display">{data.instituteName}</h1>
+            <p>Technical Education &amp; Vocational Training Authority (TEVTA), Govt of Punjab</p>
           </div>
 
           {/* Right TEVTA Emblem */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="hidden sm:block text-right">
-              <span className="text-[11px] font-medium text-slate-200">
-                <span className="font-mono text-emerald-400 font-bold">Financial Year</span>, 2026-2027
-              </span>
-            </div>
-            <div className="relative w-11 h-11 sm:w-13 sm:h-13 flex items-center justify-center rounded-xl bg-white p-1 border border-emerald-500/30 shadow-md">
+          <div className="hdr-side">
+            <span className="hdr-pill">
+              Financial Year,&nbsp;<span className="font-mono">2026-2027</span>
+            </span>
+            <span className="hdr-logo-rounded">
               <img
                 src={customTevtaLogo && customTevtaLogo.startsWith('data:') ? customTevtaLogo : DEFAULT_TEVTA_LOGO}
                 alt="TEVTA Logo"
-                className="w-full h-full object-contain rounded-lg"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).src = DEFAULT_TEVTA_LOGO;
                 }}
               />
-            </div>
+            </span>
           </div>
         </div>
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* ROW 2: EXECUTIVE DASHBOARD BLUE RIBBON                         */}
+      {/* ROW 2: EXECUTIVE DASHBOARD TITLE BAR                           */}
       {/* ------------------------------------------------------------- */}
-      <div className="w-full bg-[#064e3b] text-white py-2 px-4 shadow-inner border-b border-blue-900">
-        <div className="max-w-7xl mx-auto flex items-center justify-center text-center">
-          <h2 className="text-xs sm:text-sm md:text-base font-black tracking-widest uppercase text-white font-sans drop-shadow-xs">
+      <div className="hdr-titlebar">
+        <div className="hdr-titlebar-inner">
+          <span className="hdr-dot" aria-hidden="true" />
+          <h2 className="font-display">
             {data.reportTitle} — {data.financialYear}
           </h2>
+          <span className="hdr-dot" aria-hidden="true" />
         </div>
       </div>
 
       {/* ------------------------------------------------------------- */}
       {/* ROW 3: SYSTEM STATUS, TELEMETRY & CORPORATE CONTROLS          */}
       {/* ------------------------------------------------------------- */}
-      <div className="w-full bg-indigo-950 border-b border-indigo-900 px-4 sm:px-8 py-2.5">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+      <div className="hdr-statusbar">
+        <div className="hdr-status-inner">
           {/* Left: System Status, Live Auto-Sync, Sync Now & Latest Activity */}
-          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 font-mono text-[11px] text-slate-300 justify-center md:justify-start">
+          <div className="hdr-chips">
             {/* Live Indicator */}
             {syncStatus === 'failed' ? (
-              <div className="flex items-center gap-2 bg-rose-950/90 text-rose-300 px-2.5 py-1 rounded-lg border border-rose-500/50 shadow-xs">
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-                <span className="font-bold text-rose-200">Sync Failed</span>
-              </div>
+              <span className="hdr-chip hdr-failed">
+                <span className="hdr-pulse-dot" aria-hidden="true" />
+                <strong>Sync Failed</strong>
+              </span>
             ) : (
-              <div className="flex items-center gap-2 bg-emerald-950/80 text-emerald-300 px-2.5 py-1 rounded-lg border border-emerald-500/30">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                <span className="font-bold">System Status: Connected & Live</span>
-              </div>
+              <span className="hdr-chip" id="chip-sync-status">
+                <span className="hdr-pulse-dot" aria-hidden="true" />
+                <strong>System Status: Connected &amp; Live</strong>
+              </span>
             )}
 
             {/* Auto-Sync timestamp */}
-            <div className="flex items-center gap-1.5 bg-slate-900/90 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-800">
-              <Clock className="w-3.5 h-3.5 text-blue-400" />
-              <span>Auto-Synced:</span>
-              <span className="text-white font-semibold">{format12HourDate(data.lastSyncedAt, true)}</span>
-            </div>
+            <span className="hdr-chip">
+              <Clock />
+              <span className="hdr-lbl">Auto-Synced:</span>
+              <span className="font-mono">{format12HourDate(data.lastSyncedAt, true)}</span>
+            </span>
 
-            {/* Sync Now Button (Shifted to Left Side, Just After Auto-Synced) */}
+            {/* Sync Now Button */}
             <button
+              id="btn-sync-now"
+              type="button"
               onClick={onRefresh}
               disabled={isRefreshing}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+              className="hdr-btn hdr-btn-solid"
               title="Instantly poll Google Sheet for real-time live data"
             >
-              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={isRefreshing ? 'hdr-spin' : ''} />
               <span>{isRefreshing ? 'Syncing...' : 'Sync Now'}</span>
             </button>
 
-            {/* Latest Activity (Scenario A Spotlight indicator) */}
-            <div className="flex items-center gap-1.5 bg-slate-900/90 text-amber-300 px-2.5 py-1 rounded-lg border border-amber-500/30">
-              <Radio className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-              <span>Latest Activity:</span>
-              <span className="text-amber-200 font-bold">{format12HourDate(data.latestFinancialActivityTs, false)}</span>
-            </div>
+            {/* Latest Activity */}
+            <span className="hdr-chip">
+              <Radio />
+              <span className="hdr-lbl">Latest Activity:</span>
+              <span className="font-mono">{format12HourDate(data.latestFinancialActivityTs, false)}</span>
+            </span>
           </div>
 
           {/* Right: Quick Corporate Actions */}
-          <div className="flex flex-wrap items-center gap-2 justify-center md:justify-end">
+          <div className="hdr-chips">
             {/* Developer Watermark */}
-            <div className="hidden lg:flex items-center gap-1.5 text-amber-400/90 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 text-[11px] font-mono">
-              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hdr-chip hdr-mkz">
+              <ShieldCheck />
               <span>{data.developerWatermark}</span>
-            </div>
+            </span>
 
-            {/* Export CSV & Print Report (Contextual for Dashboard) */}
+            {/* Export Excel & Print Report (Contextual for Dashboard) */}
             {activeModule === 'DASHBOARD' && (
               <>
                 <button
+                  id="btn-export"
+                  type="button"
                   onClick={onExportCSV}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
+                  className="hdr-btn hdr-btn-outline"
                   title="Download full 38-head budget position matrix as styled Excel (.xlsx)"
                 >
-                  <Download className="w-3 h-3 text-emerald-400" />
+                  <Download />
                   <span>Export Excel</span>
                 </button>
 
                 <button
+                  id="btn-print"
+                  type="button"
                   onClick={onPrintReport}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
+                  className="hdr-btn hdr-btn-solid"
                   title="Open print-ready Executive Board report"
                 >
-                  <Printer className="w-3 h-3 text-slate-400" />
+                  <Printer />
                   <span>Print Report</span>
                 </button>
               </>
@@ -196,11 +202,13 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Dark / Light Mode Toggle */}
             <button
+              id="btn-theme-toggle"
+              type="button"
               onClick={() => setDarkMode(!darkMode)}
-              className="p-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              className="hdr-toggle"
               title={`Switch to ${darkMode ? 'Light' : 'Dark'} Mode`}
             >
-              {darkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-blue-400" />}
+              {darkMode ? <Sun /> : <Moon />}
             </button>
           </div>
         </div>
