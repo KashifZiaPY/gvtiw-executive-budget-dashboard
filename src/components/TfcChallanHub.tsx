@@ -1670,7 +1670,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         }`}
       >
         {/* Navigation Sub-Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+        <div className="flex items-center gap-2 flex-wrap pb-1 md:pb-0">
           <button
             onClick={() => setActiveSubTab('DATE_WISE_RECEIPTS')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
