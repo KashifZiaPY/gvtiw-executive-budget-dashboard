@@ -28,10 +28,10 @@ export function generateReceiptsRegisterPdf(options: ReceiptsPdfOptions): void {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   // Header Banner
-  doc.setFillColor(15, 76, 60); // Official Dark Emerald
+  doc.setFillColor(209, 250, 229); // Ink-efficient light emerald
   doc.rect(0, 0, pageWidth, 22, 'F');
 
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(6, 78, 59); // dark emerald on light banner
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
   doc.text(
@@ -161,8 +161,8 @@ export function generateReceiptsRegisterPdf(options: ReceiptsPdfOptions): void {
       font: 'helvetica',
     },
     headStyles: {
-      fillColor: [16, 85, 68], // Emerald Header
-      textColor: [255, 255, 255],
+      fillColor: [209, 250, 229], // Ink-efficient light emerald
+      textColor: [6, 78, 59],
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
@@ -312,10 +312,10 @@ export function generateHardCashBookPdf(options: HardCashBookPdfOptions): void {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   // Header Banner - Warm Amber / Terracotta
-  doc.setFillColor(198, 89, 17); // Orange #C65911
+  doc.setFillColor(254, 243, 199); // Ink-efficient light amber
   doc.rect(0, 0, pageWidth, 22, 'F');
 
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(120, 53, 15); // dark amber on light banner
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
   doc.text(
@@ -472,8 +472,8 @@ export function generateHardCashBookPdf(options: HardCashBookPdfOptions): void {
       font: 'helvetica',
     },
     headStyles: {
-      fillColor: [237, 125, 49], // Amber-Orange #ED7D31
-      textColor: [255, 255, 255],
+      fillColor: [254, 243, 199], // Ink-efficient light amber
+      textColor: [120, 53, 15],
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
@@ -663,10 +663,10 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   // 1. Official Header Banner
-  doc.setFillColor(15, 76, 60); // TEVTA Dark Emerald
+  doc.setFillColor(209, 250, 229); // Ink-efficient light emerald
   doc.rect(0, 0, pageWidth, 22, 'F');
 
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(6, 78, 59); // dark emerald on light banner
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
   doc.text(
@@ -741,12 +741,12 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
   const tableHeaders: any[] = isInstallmentAligned
     ? [
         [
-          { content: 'TRAINEE PARTICULARS (COLS A TO D)', colSpan: 4, styles: { halign: 'center', fillColor: [15, 76, 60] } },
-          { content: 'INSTALLMENT SUBMISSIONS (COLS E TO G)', colSpan: 3, styles: { halign: 'center', fillColor: [180, 83, 9] } },
-          { content: 'TEVTA DUES (HO)', colSpan: 3, styles: { halign: 'center', fillColor: [30, 64, 175] } },
-          { content: 'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION', colSpan: 4, styles: { halign: 'center', fillColor: [13, 148, 136] } },
-          { content: 'TOTAL', colSpan: 1, styles: { halign: 'center', fillColor: [15, 76, 60] } },
-          { content: 'STATUS', colSpan: 1, styles: { halign: 'center', fillColor: [71, 85, 105] } },
+          { content: 'TRAINEE PARTICULARS (COLS A TO D)', colSpan: 4, styles: { halign: 'center', fillColor: [209, 250, 229] } },
+          { content: 'INSTALLMENT SUBMISSIONS (COLS E TO G)', colSpan: 3, styles: { halign: 'center', fillColor: [254, 243, 199] } },
+          { content: 'TEVTA DUES (HO)', colSpan: 3, styles: { halign: 'center', fillColor: [219, 234, 254] } },
+          { content: 'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION', colSpan: 4, styles: { halign: 'center', fillColor: [204, 251, 241] } },
+          { content: 'TOTAL', colSpan: 1, styles: { halign: 'center', fillColor: [209, 250, 229] } },
+          { content: 'STATUS', colSpan: 1, styles: { halign: 'center', fillColor: [226, 232, 240] } },
         ],
         [
           'Sr #\n(A)',
@@ -769,11 +769,11 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
       ]
     : [
         [
-          { content: 'TRAINEE PARTICULARS (COLS A TO F)', colSpan: 6, styles: { halign: 'center', fillColor: [15, 76, 60] } },
-          { content: 'TEVTA DUES (HO)', colSpan: 3, styles: { halign: 'center', fillColor: [30, 64, 175] } },
-          { content: 'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION', colSpan: 4, styles: { halign: 'center', fillColor: [13, 148, 136] } },
-          { content: 'TOTAL', colSpan: 1, styles: { halign: 'center', fillColor: [15, 76, 60] } },
-          { content: 'STATUS', colSpan: 1, styles: { halign: 'center', fillColor: [71, 85, 105] } },
+          { content: 'TRAINEE PARTICULARS (COLS A TO F)', colSpan: 6, styles: { halign: 'center', fillColor: [209, 250, 229] } },
+          { content: 'TEVTA DUES (HO)', colSpan: 3, styles: { halign: 'center', fillColor: [219, 234, 254] } },
+          { content: 'PUPIL WELFARE (75% PF) & INSTITUTIONAL ALLOCATION', colSpan: 4, styles: { halign: 'center', fillColor: [204, 251, 241] } },
+          { content: 'TOTAL', colSpan: 1, styles: { halign: 'center', fillColor: [209, 250, 229] } },
+          { content: 'STATUS', colSpan: 1, styles: { halign: 'center', fillColor: [226, 232, 240] } },
         ],
         [
           'Sr #\n(A)',
@@ -808,8 +808,8 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
         content: bannerLabel,
         colSpan: isInstallmentAligned ? 16 : 15,
         styles: {
-          fillColor: [22, 101, 52] as [number, number, number],
-          textColor: [255, 255, 255] as [number, number, number],
+          fillColor: [220, 252, 231] as [number, number, number],
+          textColor: [20, 83, 45] as [number, number, number],
           fontStyle: 'bold',
           halign: 'left',
           fontSize: 7.5,
@@ -1270,8 +1270,8 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
       font: 'helvetica',
     },
     headStyles: {
-      fillColor: [15, 76, 60],
-      textColor: [255, 255, 255],
+      fillColor: [209, 250, 229],
+      textColor: [6, 78, 59],
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
