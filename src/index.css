@@ -802,18 +802,18 @@
   transition: background 0.25s ease;
 }
 .hdr-status-inner {
-  max-width: 1360px; margin: 0 auto; padding: 9px 20px;
+  max-width: 1360px; margin: 0 auto; padding: 9px 12px;
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
 }
-.hdr-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.hdr-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .hdr-chip {
-  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
   background: var(--hdr-chip-bg); color: var(--hdr-chip-text);
   border: 1px solid var(--hdr-chip-border);
-  font-size: 10px; font-weight: 600; letter-spacing: 0.01em;
-  padding: 5px 9px; border-radius: 999px;
+  font-size: 9.5px; font-weight: 600; letter-spacing: 0.01em;
+  padding: 5px 8px; border-radius: 999px;
 }
-.hdr-chip svg { width: 14px; height: 14px; flex-shrink: 0; }
+.hdr-chip svg { width: 13px; height: 13px; flex-shrink: 0; }
 .hdr-chip .hdr-lbl { color: var(--hdr-chip-dim); font-weight: 500; }
 .hdr-chip.hdr-mkz { background: var(--hdr-mkz-bg); border-color: var(--hdr-mkz-border); color: var(--hdr-mkz-text); }
 .hdr-chip.hdr-failed { background: rgba(244, 63, 94, 0.1); border-color: rgba(244, 63, 94, 0.4); color: #e11d48; }
@@ -827,12 +827,12 @@
 @keyframes hdrPulse { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.35); opacity: 0; } }
 
 .hdr-btn {
-  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
-  font-size: 10px; font-weight: 700; letter-spacing: 0.01em;
-  padding: 6px 10px; border-radius: 999px; cursor: pointer; border: 1px solid transparent;
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.01em;
+  padding: 6px 9px; border-radius: 999px; cursor: pointer; border: 1px solid transparent;
   transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
-.hdr-btn svg { width: 14px; height: 14px; }
+.hdr-btn svg { width: 13px; height: 13px; }
 .hdr-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(11, 122, 75, 0.35); }
 .hdr-btn:active { transform: translateY(0); }
 .hdr-btn:disabled { opacity: 0.55; cursor: default; transform: none; box-shadow: none; }
@@ -851,6 +851,11 @@
 }
 .hdr-toggle:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(11, 122, 75, 0.35); }
 .hdr-toggle svg { width: 16px; height: 16px; }
+
+@media (max-width: 1500px) {
+  /* Watermark chip hides on narrower screens (as before) to keep one row */
+  .hdr-chip.hdr-mkz { display: none; }
+}
 
 @media (max-width: 900px) {
   .hdr-hero-inner { grid-template-columns: 1fr; gap: 12px; padding: 14px 20px 16px; text-align: center; }
