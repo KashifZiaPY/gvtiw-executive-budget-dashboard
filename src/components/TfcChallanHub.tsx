@@ -15,6 +15,7 @@ import {
 } from '../data/tfcChallanData';
 import { TfcReceiptsReportView } from './TfcReceiptsReportView';
 import { TfcFeeRegisterView } from './TfcFeeRegisterView';
+import { TfcTransferStatement } from './TfcTransferStatement';
 import { TfcCourseMultiSelect } from './TfcCourseMultiSelect';
 import { formatPKR, formatCNIC, formatPakistaniDate } from '../lib/formatters';
 import { generateReceiptsRegisterPdf, generateHardCashBookPdf } from '../lib/tfcPdfGenerator';
@@ -64,6 +65,7 @@ export type TfcSubTab =
   | 'DATE_WISE_RECEIPTS'
   | 'MONTH_WISE_RECEIPTS'
   | 'OVERVIEW'
+  | 'TRANSFER_STATEMENT'
   | 'CASHBOOK_GEN'
   | 'HARD_CASHBOOK'
   | 'FEE_REGISTER'
@@ -74,6 +76,7 @@ export const TFC_SUB_TABS: { value: TfcSubTab; label: string }[] = [
   { value: 'DATE_WISE_RECEIPTS', label: 'Date Wise Receipts' },
   { value: 'MONTH_WISE_RECEIPTS', label: 'Month Wise Receipts' },
   { value: 'OVERVIEW', label: 'Distribution Overview' },
+  { value: 'TRANSFER_STATEMENT', label: 'Transfer Statement' },
   { value: 'CASHBOOK_GEN', label: 'Soft CashBook Entry' },
   { value: 'HARD_CASHBOOK', label: 'Hard CashBook Entry' },
   { value: 'FEE_REGISTER', label: 'Fee Register' },
@@ -215,6 +218,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   const [monthDisplayMode, setMonthDisplayMode] = useState<'FORMULA' | 'TEXT'>('FORMULA');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showHardCashBookPrintPortal, setShowHardCashBookPrintPortal] = useState<boolean>(false);
+  const [transferPrintSignal, setTransferPrintSignal] = useState<number>(0);
 
   // Live fetch from Google Sheet backend (tab: BOP_TFC_RAW)
   const fetchGoogleSheetData = useCallback(async (isManualRefresh = false) => {
@@ -373,6 +377,23 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       return true;
     });
   }, [challans, dateFilterMode, customStartDate, customEndDate, selectedMonth, isCourseSelected, selectedDate, searchQuery]);
+
+  // Transfer Statement data: same period (date) filter as the other reports, but the
+  // course / single-date / search filters are intentionally NOT applied — a transfer
+  // statement must account for every trade in the period so it reconciles to the gross.
+  const statementChallans = useMemo(() => {
+    return challans.filter((c) => {
+      if (dateFilterMode === 'CUSTOM_RANGE') {
+        const d = parseChallanDate(c.challanPaymentDate);
+        if (customStartDate && d.iso < customStartDate) return false;
+        if (customEndDate && d.iso > customEndDate) return false;
+      } else if (selectedMonth !== 'ALL') {
+        const d = parseChallanDate(c.challanPaymentDate);
+        if (`${d.monthName} ${d.year}` !== selectedMonth) return false;
+      }
+      return true;
+    });
+  }, [challans, dateFilterMode, customStartDate, customEndDate, selectedMonth]);
 
   // Financial Totals with exact head breakdown
   const totals = useMemo(() => {
@@ -991,6 +1012,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         return 'CashBook Posting';
       case 'COURSE_MATRIX':
         return 'Course Matrix';
+      case 'TRANSFER_STATEMENT':
+        return 'Transfer Statement';
       case 'DIRECTORY':
         return 'Challan Directory';
       default:
@@ -1000,6 +1023,11 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
 
   // Universal PDF export for whichever report is active in Fee Hub
   const handleExportActivePdf = () => {
+    if (activeSubTab === 'TRANSFER_STATEMENT') {
+      // The statement prints through its own official portal (browser Save-as-PDF).
+      setTransferPrintSignal((s) => s + 1);
+      return;
+    }
     if (activeSubTab === 'HARD_CASHBOOK') {
       handleExportHardCashBookPdf();
       return;
@@ -2052,6 +2080,18 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
               </div>
             </div>
           </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* SUB-TAB: FEE SHARE TRANSFER STATEMENT                          */}
+        {/* ============================================================= */}
+        {activeSubTab === 'TRANSFER_STATEMENT' && (
+          <TfcTransferStatement
+            challans={statementChallans}
+            darkMode={darkMode}
+            periodLabel={activePeriodLabel}
+            printSignal={transferPrintSignal}
+          />
         )}
 
         {/* ============================================================= */}
