@@ -14,8 +14,10 @@ import { Printer, Landmark, ArrowRightLeft, ShieldCheck, Info } from 'lucide-rea
  * Rules (per institute direction):
  *  - TEVTA share (Admission/Tuition 100% + 25% Pupil Fund) is auto-transferred by
  *    the BOP portal to TEVTA HQ for EVERY deposited trainee, with no cap.
- *  - Short-course self-finance fee: 25% auto to TEVTA, 75% manual cheque to the
- *    BOP Short Course A/C (6580027832200033).
+ *  - BTE self-finance fee (Rs. 10,012/trainee): Rs. 12 is the TEVTA share (auto,
+ *    already counted in the TEVTA share above), Rs. 1,500 is board dues (inside
+ *    Board Charges), and the net course fee of Rs. 8,500/trainee is transferred
+ *    in full by cheque to the BOP Short Course A/C (6580027832200033).
  *  - Board dues are payable to the board only for up to 25 registered trainees
  *    per trade. Board dues collected from trainees above the 25 cap are NOT
  *    payable to the board; they are transferred to the Pupil Funds Account
@@ -92,8 +94,6 @@ interface TradeRow {
   excessBoard: number;
   excessStudents: number;
   scGross: number;
-  scAuto25: number;
-  scManual75: number;
   tuv: number;
 }
 
@@ -129,8 +129,6 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
           excessBoard: 0,
           excessStudents: 0,
           scGross: 0,
-          scAuto25: 0,
-          scManual75: 0,
           tuv: 0,
           studentBoard: new Map(),
         };
@@ -167,7 +165,6 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
         );
         const payableStudents = students.slice(0, BOARD_CAP_PER_TRADE);
         const boardPayable = payableStudents.reduce((s, x) => s + x.board, 0);
-        const scAuto25 = Math.round(row.scGross * 0.25);
         return {
           code: row.code,
           name: row.name,
@@ -182,8 +179,6 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
           excessBoard: row.boardCollected - boardPayable,
           excessStudents: Math.max(0, row.studentBoard.size - BOARD_CAP_PER_TRADE),
           scGross: row.scGross,
-          scAuto25,
-          scManual75: row.scGross - scAuto25,
           tuv: row.tuv,
         };
       })
@@ -203,8 +198,6 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
       excessBoard: tradeRows.reduce((s, r) => s + r.excessBoard, 0),
       excessStudents: tradeRows.reduce((s, r) => s + r.excessStudents, 0),
       scGross: tradeRows.reduce((s, r) => s + r.scGross, 0),
-      scAuto25: tradeRows.reduce((s, r) => s + r.scAuto25, 0),
-      scManual75: tradeRows.reduce((s, r) => s + r.scManual75, 0),
       tuv: tradeRows.reduce((s, r) => s + r.tuv, 0),
     };
 
@@ -212,10 +205,10 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
   }, [challans]);
 
   // Transfer summary figures
-  const autoTotal = totals.tevtaAuto + totals.scAuto25;
+  const autoTotal = totals.tevtaAuto;
   const pupilFundsTransfer = totals.pupil75 + totals.excessBoard;
   const manualTotal =
-    pupilFundsTransfer + totals.security + totals.scManual75 + totals.boardPayable + totals.tuv;
+    pupilFundsTransfer + totals.security + totals.scGross + totals.boardPayable + totals.tuv;
   const reconciles = autoTotal + manualTotal === totals.gross;
 
   const doPrint = useCallback(() => {
@@ -361,13 +354,6 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
       amount: totals.tevtaAuto,
     },
     {
-      group: 'AUTO',
-      title: 'TEVTA Share — Short Course',
-      basis: '25% of short-course self-finance fee',
-      destination: 'TEVTA Centralized Account (HQ Lahore)',
-      amount: totals.scAuto25,
-    },
-    {
       group: 'MANUAL',
       title: 'Pupil Funds Transfer',
       basis: `Pupil Fund 75% (${formatPKR(totals.pupil75, false)}) + Excess board dues above 25/trade (${formatPKR(totals.excessBoard, false)})`,
@@ -384,9 +370,9 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
     {
       group: 'MANUAL',
       title: 'Short Course Transfer',
-      basis: '75% of short-course self-finance fee',
+      basis: 'Net BTE self-finance course fee (Rs. 8,500/trainee) — transferred in full',
       destination: `BOP Short Course A/C (${AC_SHORT_COURSE})`,
-      amount: totals.scManual75,
+      amount: totals.scGross,
     },
     {
       group: 'MANUAL',
@@ -403,6 +389,8 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
       amount: totals.tuv,
     },
   ];
+
+  const autoRowCount = transferRows.filter((t) => t.group === 'AUTO').length;
 
   const renderSectionC = (print: boolean) => (
     <table className={`w-full text-left border-collapse ${print ? 'text-[10px]' : 'text-xs'}`}>
@@ -445,7 +433,7 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
           .filter((t) => t.group === 'MANUAL')
           .map((t, i) => (
             <tr key={t.title} className={print ? 'border-b border-slate-200' : ''}>
-              <td className="py-2 px-3 font-mono">{i + 3}</td>
+              <td className="py-2 px-3 font-mono">{i + autoRowCount + 1}</td>
               <td className="py-2 px-3 font-bold">{t.title}</td>
               <td className="py-2 px-3 opacity-80">{t.basis}</td>
               <td className="py-2 px-3 font-semibold">{t.destination}</td>
@@ -507,8 +495,9 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
         <div className="space-y-1 font-medium">
           <p>
             <strong>TEVTA share</strong> (Admission/Tuition + 25% Pupil Fund) auto-transfers to TEVTA HQ for{' '}
-            <strong>every</strong> deposited trainee — no cap. Short-course fee: <strong>25% auto to TEVTA</strong>,{' '}
-            75% by cheque to the Short Course A/C.
+            <strong>every</strong> deposited trainee — no cap. BTE self-finance (Rs. 10,012/trainee):{' '}
+            <strong>Rs. 12 to TEVTA (auto)</strong>, Rs. 1,500 board fee inside board dues, and the net{' '}
+            <strong>Rs. 8,500 in full</strong> by cheque to the Short Course A/C.
           </p>
           <p>
             <strong>Board dues</strong> are payable only for up to <strong>25 registered trainees per trade</strong>.
@@ -618,8 +607,11 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
             {renderSectionC(true)}
 
             <p className="text-[9px] text-slate-600 mt-3 leading-relaxed">
-              Notes: (1) TEVTA share (Admission/Tuition + 25% Pupil Fund) and 25% of the short-course self-finance fee
-              are auto-transferred by the BOP portal to TEVTA HQ for every deposited trainee, without any cap.
+              Notes: (1) TEVTA share (Admission/Tuition + 25% Pupil Fund) is auto-transferred by the BOP portal to
+              TEVTA HQ for every deposited trainee, without any cap. For BTE self-finance (Rs. 10,012/trainee) the
+              TEVTA share is Rs. 12 per trainee (included in this share), the Rs. 1,500 board fee is included in
+              board dues, and the net course fee of Rs. 8,500 per trainee is transferred in full to the Short
+              Course Account.
               (2) Board dues are payable to PBTE/TTB only for up to 25 registered trainees per trade; dues collected
               from trainees above 25 are transferred to the Pupil Funds Account with the 75% Pupil Fund share.
               (3) TUV Rheinland fee (100%) is transferred manually to the TEVTA share. (4) Manual transfers are made by
