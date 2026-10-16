@@ -378,9 +378,11 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
     });
   }, [challans, dateFilterMode, customStartDate, customEndDate, selectedMonth, isCourseSelected, selectedDate, searchQuery]);
 
-  // Transfer Statement data: same period (date) filter as the other reports, but the
-  // course / single-date / search filters are intentionally NOT applied — a transfer
-  // statement must account for every trade in the period so it reconciles to the gross.
+  // Transfer Statement data: same period (date) filter as the other reports.
+  // statementChallans = the full period (all trades); statementViewChallans also
+  // applies the course selection, because transfers are executed trade-by-trade —
+  // a partial statement is labeled PARTIAL and reconciles to the selected trades.
+  // The single-date and search filters never apply to the statement.
   const statementChallans = useMemo(() => {
     return challans.filter((c) => {
       if (dateFilterMode === 'CUSTOM_RANGE') {
@@ -394,6 +396,11 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       return true;
     });
   }, [challans, dateFilterMode, customStartDate, customEndDate, selectedMonth]);
+
+  const statementViewChallans = useMemo(
+    () => statementChallans.filter((c) => isCourseSelected(c.courseAbbreviation)),
+    [statementChallans, isCourseSelected]
+  );
 
   // Financial Totals with exact head breakdown
   const totals = useMemo(() => {
@@ -2087,7 +2094,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         {/* ============================================================= */}
         {activeSubTab === 'TRANSFER_STATEMENT' && (
           <TfcTransferStatement
-            challans={statementChallans}
+            challans={statementViewChallans}
+            fullPeriodChallans={statementChallans}
             darkMode={darkMode}
             periodLabel={activePeriodLabel}
             printSignal={transferPrintSignal}

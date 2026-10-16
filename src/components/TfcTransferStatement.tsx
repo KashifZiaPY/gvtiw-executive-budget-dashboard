@@ -26,6 +26,10 @@ import { Printer, Landmark, ArrowRightLeft, ShieldCheck, Info } from 'lucide-rea
  *    (6580027832200044). Pupil Funds go to BOP Pupil Funds A/C (6580027832200022).
  *  - TUV Rheinland fee (100%) is transferred manually to the TEVTA share.
  *
+ * Scope: the hub's course selection applies (transfers are executed trade-by-trade).
+ * A selection short of every trade in the period yields a PARTIAL statement, labeled
+ * as such on screen and in print, reconciling to the selected trades' gross.
+ *
  * Read-only report: it only aggregates the challans it is given.
  */
 
@@ -37,8 +41,10 @@ const AC_SHORT_COURSE = '6580027832200033';
 const AC_SECURITIES = '6580027832200044';
 
 interface TfcTransferStatementProps {
-  /** Challans for the selected period (date-filtered; course filter intentionally NOT applied — a transfer statement must cover all trades). */
+  /** Challans in scope: period (date) filter + the hub course selection applied. */
   challans: TfcChallanRecord[];
+  /** All challans of the period before the course selection — used to detect and label a partial statement. */
+  fullPeriodChallans: TfcChallanRecord[];
   darkMode: boolean;
   periodLabel: string;
   /** Increment from the parent (hub PDF button) to trigger this statement's print. */
@@ -99,6 +105,7 @@ interface TradeRow {
 
 export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
   challans,
+  fullPeriodChallans,
   darkMode,
   periodLabel,
   printSignal = 0,
@@ -203,6 +210,33 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
 
     return { rows: tradeRows, totals };
   }, [challans]);
+
+  // Scope of this statement: transfers are executed trade-by-trade, so the hub's
+  // course selection applies. Anything short of every trade in the period is a
+  // PARTIAL statement and is labeled as such on screen and in print.
+  const scope = useMemo(() => {
+    const all = new Map<string, string>();
+    fullPeriodChallans.forEach((c) => {
+      if (c.courseAbbreviation && !all.has(c.courseAbbreviation)) {
+        all.set(c.courseAbbreviation, c.courseName || c.courseAbbreviation);
+      }
+    });
+    const selectedCodes = new Set(challans.map((c) => c.courseAbbreviation));
+    const excludedNames = Array.from(all.entries())
+      .filter(([code]) => !selectedCodes.has(code))
+      .map(([, name]) => name);
+    const includedNames = Array.from(all.entries())
+      .filter(([code]) => selectedCodes.has(code))
+      .map(([, name]) => name);
+    return {
+      totalTrades: all.size,
+      selectedTrades: selectedCodes.size,
+      excludedNames,
+      includedNames,
+      fullGross: fullPeriodChallans.reduce((s, c) => s + (c.totalAmount || 0), 0),
+      isPartial: selectedCodes.size !== all.size,
+    };
+  }, [challans, fullPeriodChallans]);
 
   // Transfer summary figures
   const autoTotal = totals.tevtaAuto;
@@ -446,7 +480,9 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
         </tr>
         <tr className={print ? 'bg-slate-200 font-black border-t-2 border-slate-500' : `font-black ${darkMode ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-900'}`}>
           <td colSpan={4} className="py-2.5 px-3 text-right uppercase tracking-wider">
-            Total Accounted (Auto + Manual) = Gross TFC Inflow
+            {scope.isPartial
+              ? 'Total Accounted (Auto + Manual) = Gross of Selected Trades'
+              : 'Total Accounted (Auto + Manual) = Gross TFC Inflow'}
           </td>
           <td className="py-2.5 px-3 text-right font-mono">{formatPKR(totals.gross, false)}</td>
         </tr>
@@ -470,7 +506,10 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
             </h3>
             <p className={`text-xs font-medium ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
               Complete distribution of fee deposited in BOP TFC A/C ({AC_TFC}) — Period: {periodLabel} •{' '}
-              {totals.challans} challans • {totals.students} trainees • All trades (course filter not applied to this statement)
+              {totals.challans} challans • {totals.students} trainees •{' '}
+              {scope.isPartial
+                ? `Partial — ${scope.selectedTrades} of ${scope.totalTrades} trades selected`
+                : `All ${scope.totalTrades} trades`}
             </p>
           </div>
         </div>
@@ -482,6 +521,32 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
           <span>Print / PDF Statement</span>
         </button>
       </div>
+
+      {/* Partial-scope banner: a partial statement must never be mistaken for the complete one */}
+      {scope.isPartial && (
+        <div
+          className={`p-4 rounded-xl border-2 text-xs flex items-start gap-3 ${
+            darkMode
+              ? 'bg-amber-950/40 border-amber-500/60 text-amber-200'
+              : 'bg-amber-50 border-amber-500 text-amber-950'
+          }`}
+        >
+          <Info className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="font-medium">
+            <strong className="text-sm font-black block mb-0.5">
+              ⚠ PARTIAL STATEMENT — {scope.selectedTrades} of {scope.totalTrades} trades selected
+            </strong>
+            Transfer figures below cover <strong>only the selected trades</strong> (gross{' '}
+            {formatPKR(totals.gross, false)} of the full-period gross {formatPKR(scope.fullGross, false)}).
+            {scope.excludedNames.length > 0 && (
+              <>
+                {' '}Not included: <strong>{scope.excludedNames.join(' • ')}</strong>.
+              </>
+            )}{' '}
+            Use Select All in the course filter for the complete statement.
+          </div>
+        </div>
+      )}
 
       {/* Rules strip */}
       <div
@@ -511,6 +576,20 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
         </div>
       </div>
 
+      {rows.length === 0 ? (
+        <div className={cardCls}>
+          <div className="p-8 text-center">
+            <p className={`text-sm font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+              No trades selected
+            </p>
+            <p className={`text-xs font-medium mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+              The course selection is empty, so there is nothing to state. Tick at least one trade — or Select
+              All — in the course filter above.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Section A */}
       <div className={cardCls}>
         <div className={cardHeadCls}>
@@ -548,16 +627,24 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
           </span>
           <span
             className={`text-xs font-black px-2 py-0.5 rounded-md ${
-              reconciles
-                ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200'
-                : 'bg-rose-100 dark:bg-rose-900/40 text-rose-900 dark:text-rose-200'
+              !reconciles
+                ? 'bg-rose-100 dark:bg-rose-900/40 text-rose-900 dark:text-rose-200'
+                : scope.isPartial
+                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200'
+                  : 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200'
             }`}
           >
-            {reconciles ? '✓ Reconciled with Gross TFC Inflow' : '⚠ Does not reconcile'}
+            {!reconciles
+              ? '⚠ Does not reconcile'
+              : scope.isPartial
+                ? '✓ Reconciled for Selected Trades (Partial)'
+                : '✓ Reconciled with Gross TFC Inflow'}
           </span>
         </div>
         <div className="overflow-x-auto">{renderSectionC(false)}</div>
       </div>
+        </>
+      )}
 
       {/* Print Portal */}
       {showPrintPortal &&
@@ -589,6 +676,12 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
                   <strong>Generated:</strong> {generatedOn}
                 </span>
               </div>
+              {scope.isPartial && (
+                <p className="text-[11px] font-black text-slate-900 mt-2 uppercase text-left">
+                  ⚠ Partial Statement — Selected Trades Only ({scope.selectedTrades} of {scope.totalTrades}):{' '}
+                  {scope.includedNames.join(' • ')} | Full-Period Gross: Rs. {formatPKR(scope.fullGross, false)}
+                </p>
+              )}
             </div>
 
             <h2 className="text-xs font-black uppercase tracking-wider text-teal-900 mt-2 mb-1">
@@ -615,7 +708,8 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
               (2) Board dues are payable to PBTE/TTB only for up to 25 registered trainees per trade; dues collected
               from trainees above 25 are transferred to the Pupil Funds Account with the 75% Pupil Fund share.
               (3) TUV Rheinland fee (100%) is transferred manually to the TEVTA share. (4) Manual transfers are made by
-              cheque from the BOP TFC Account # {AC_TFC}.
+              cheque from the BOP TFC Account # {AC_TFC}. (5) Where this statement is partial, its figures cover
+              only the trades named in the scope line above and reconcile to those trades' gross.
             </p>
 
             <div className="flex items-end justify-between mt-10 px-2 text-[10px] font-bold text-slate-700">
