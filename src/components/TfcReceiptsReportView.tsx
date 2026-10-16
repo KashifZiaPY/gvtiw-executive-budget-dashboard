@@ -173,7 +173,7 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
 
   const isCourseSelected = useCallback(
     (abbr: string) => {
-      if (!activeCourses || activeCourses.length === 0 || activeCourses.includes('ALL')) return true;
+      if (!activeCourses || activeCourses.includes('ALL')) return true;
       return activeCourses.includes(abbr);
     },
     [activeCourses]

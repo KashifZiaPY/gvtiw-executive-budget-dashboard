@@ -203,7 +203,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   const [customEndDate, setCustomEndDate] = useState<string>('');
 
   const isCourseSelected = useCallback((courseAbbr: string) => {
-    if (!selectedCourses || selectedCourses.length === 0 || selectedCourses.includes('ALL')) return true;
+    if (!selectedCourses || selectedCourses.includes('ALL')) return true;
     return selectedCourses.includes(courseAbbr);
   }, [selectedCourses]);
   const [internalSubTab, setInternalSubTab] = useState<TfcSubTab>('DATE_WISE_RECEIPTS');
@@ -1079,9 +1079,10 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
     generateReceiptsRegisterPdf({
       mode,
       periodLabel: selectedMonth === 'ALL' ? 'All Months' : selectedMonth,
-      courseFilter:
-        selectedCourses.length === 0 || selectedCourses.includes('ALL')
-          ? 'All Courses'
+      courseFilter: selectedCourses.includes('ALL')
+        ? 'All Courses'
+        : selectedCourses.length === 0
+          ? 'No Courses Selected'
           : selectedCourses.length === 1
           ? (COURSE_TITLE_MAP[selectedCourses[0]] || selectedCourses[0])
           : `${selectedCourses.length} Courses (${selectedCourses.join(', ')})`,
@@ -1374,6 +1375,11 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       }
     > = {};
 
+    // Unique trainees per trade: a student paying in installments deposits
+    // multiple challans but is ONE trainee. Identity mirrors the Fee Register:
+    // cleaned CNIC first, then Name + Father Name, then Roll #, then Challan ID.
+    const seenByCourse: Record<string, Set<string>> = {};
+
     for (const c of filteredChallans) {
       const code = c.courseAbbreviation;
       if (!map[code]) {
@@ -1390,8 +1396,22 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
           tuvFee: 0,
           total: 0,
         };
+        seenByCourse[code] = new Set<string>();
       }
-      map[code].count += 1;
+      const cnicClean = c.cnic ? c.cnic.replace(/\D/g, '') : '';
+      const nameClean = (c.traineeName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const fatherClean = (c.guardianName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const rollClean = c.rollOrCode && c.rollOrCode !== '—' ? c.rollOrCode.toUpperCase().trim() : '';
+      const studentKey =
+        cnicClean.length >= 8
+          ? `CNIC::${cnicClean}`
+          : nameClean && fatherClean
+            ? `NAME::${nameClean}::${fatherClean}`
+            : rollClean
+              ? `ROLL::${rollClean}`
+              : `CHALLAN::${c.challanId}`;
+      seenByCourse[code].add(studentKey);
+      map[code].count = seenByCourse[code].size;
       map[code].admission += c.admissionTuitionRegFee;
       map[code].pupil25 += c.pupilFee25Percent;
       map[code].pupil75 += c.pupilFee75Percent;
@@ -1406,6 +1426,35 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
 
     return Object.values(map).sort((a, b) => b.total - a.total);
   }, [filteredChallans]);
+
+  // Footer totals for the Course-Wise Matrix ONLY, summed from the matrix rows
+  // above so every column foots separately (Tuition excludes the 25% Pupil share,
+  // which has its own total). The shared hub `totals` object is untouched.
+  const matrixTotals = useMemo(() => {
+    const t = {
+      count: 0,
+      admission: 0,
+      pupil25: 0,
+      pupil75: 0,
+      security: 0,
+      bteSelfFinance: 0,
+      boardCharges: 0,
+      tuvFee: 0,
+      total: 0,
+    };
+    for (const r of courseMatrix) {
+      t.count += r.count;
+      t.admission += r.admission;
+      t.pupil25 += r.pupil25;
+      t.pupil75 += r.pupil75;
+      t.security += r.security;
+      t.bteSelfFinance += r.bteSelfFinance;
+      t.boardCharges += r.boardCharges;
+      t.tuvFee += r.tuvFee;
+      t.total += r.total;
+    }
+    return t;
+  }, [courseMatrix]);
 
   // Export to CSV
   const handleExportCSV = () => {
@@ -2835,28 +2884,30 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                       <td colSpan={2} className="py-3.5 px-3 text-right uppercase tracking-wider text-teal-900 dark:text-teal-300">
                         Consolidated Course Matrix Total:
                       </td>
-                      <td className="py-3.5 px-3 text-center font-bold">{totals.count}</td>
+                      <td className="py-3.5 px-3 text-center font-bold">{matrixTotals.count}</td>
                       <td className="py-3.5 px-3 text-right font-mono">
-                        {formatPKR(totals.tevtaShare, false)}
+                        {formatPKR(matrixTotals.admission, false)}
                       </td>
-                      <td className="py-3.5 px-3 text-right font-mono">—</td>
+                      <td className="py-3.5 px-3 text-right font-mono text-blue-800 dark:text-blue-300">
+                        {formatPKR(matrixTotals.pupil25, false)}
+                      </td>
                       <td className="py-3.5 px-3 text-right font-mono text-emerald-800 dark:text-emerald-400">
-                        {formatPKR(totals.pupil75Share, false)}
+                        {formatPKR(matrixTotals.pupil75, false)}
                       </td>
                       <td className="py-3.5 px-3 text-right font-mono text-amber-900 dark:text-amber-400">
-                        {formatPKR(totals.securityShare, false)}
+                        {formatPKR(matrixTotals.security, false)}
                       </td>
                       <td className="py-3.5 px-3 text-right font-mono text-indigo-900 dark:text-indigo-400">
-                        {formatPKR(totals.bteSelfFinanceShare, false)}
+                        {formatPKR(matrixTotals.bteSelfFinance, false)}
                       </td>
                       <td className="py-3.5 px-3 text-right font-mono text-cyan-900 dark:text-cyan-400">
-                        {formatPKR(totals.boardChargesShare, false)}
+                        {formatPKR(matrixTotals.boardCharges, false)}
                       </td>
                       <td className="py-3.5 px-3 text-right font-mono text-purple-900 dark:text-purple-400">
-                        {formatPKR(totals.tuvCertificationShare, false)}
+                        {formatPKR(matrixTotals.tuvFee, false)}
                       </td>
                       <td className="py-3.5 px-3 text-right font-mono font-black text-teal-950 dark:text-teal-400 text-sm">
-                        {formatPKR(totals.grossTotal, false)}
+                        {formatPKR(matrixTotals.total, false)}
                       </td>
                     </tr>
                   </tbody>

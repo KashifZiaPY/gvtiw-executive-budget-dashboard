@@ -44,7 +44,7 @@ export const TfcCourseMultiSelect: React.FC<TfcCourseMultiSelectProps> = ({
 
   // Is all courses currently selected
   const isAllSelected = useMemo(() => {
-    if (selectedCourses.length === 0 || selectedCourses.includes('ALL')) return true;
+    if (selectedCourses.includes('ALL')) return true;
     return availableCourses.length > 0 && availableCourses.every((c) => selectedCourses.includes(c));
   }, [selectedCourses, availableCourses]);
 
@@ -74,8 +74,15 @@ export const TfcCourseMultiSelect: React.FC<TfcCourseMultiSelectProps> = ({
     onChange(['ALL']);
   };
 
-  // Clear all (or revert to ALL)
+  // Clear all: empty selection (no courses) so individual trades can be picked.
+  // An empty selection is a distinct state from 'ALL' across all consumers.
   const handleClear = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    onChange([]);
+  };
+
+  // Reset to ALL courses (trigger-bar X button)
+  const handleResetAll = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     onChange(['ALL']);
   };
@@ -91,12 +98,8 @@ export const TfcCourseMultiSelect: React.FC<TfcCourseMultiSelectProps> = ({
 
     if (effectiveSelected.includes(course)) {
       const remaining = effectiveSelected.filter((c) => c !== course);
-      if (remaining.length === 0) {
-        // If user deselects last one, revert to ALL
-        onChange(['ALL']);
-      } else {
-        onChange(remaining);
-      }
+      // Deselecting the last one leaves an empty selection (same as Clear)
+      onChange(remaining);
     } else {
       const next = [...effectiveSelected, course];
       if (next.length === availableCourses.length) {
@@ -125,6 +128,9 @@ export const TfcCourseMultiSelect: React.FC<TfcCourseMultiSelectProps> = ({
 
   // Trigger label text
   const triggerLabel = useMemo(() => {
+    if (selectedCourses.length === 0) {
+      return 'No Course Selected';
+    }
     if (isAllSelected) {
       return `All Courses (${availableCourses.length} Trades)`;
     }
@@ -178,14 +184,14 @@ export const TfcCourseMultiSelect: React.FC<TfcCourseMultiSelectProps> = ({
         <div className="flex items-center gap-1 shrink-0 ml-1">
           {!isAllSelected && (
             <span
-              onClick={handleClear}
+              onClick={handleResetAll}
               className="p-0.5 rounded-full hover:bg-teal-200 dark:hover:bg-teal-800/60 text-teal-700 dark:text-teal-300 transition-colors"
               title="Reset to All Courses"
             >
               <X className="w-3 h-3" />
             </span>
           )}
-          {!isAllSelected && (
+          {!isAllSelected && effectiveSelected.length > 0 && (
             <span className="px-1.5 py-0.2 rounded-full text-[10px] font-black bg-teal-600 text-white">
               {effectiveSelected.length}
             </span>
