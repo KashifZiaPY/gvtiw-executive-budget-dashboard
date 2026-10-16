@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   TfcChallanRecord,
   computeChallanFeeBreakdown,
+  COURSE_TITLE_MAP,
 } from '../data/tfcChallanData';
 import { formatPKR } from '../lib/formatters';
 import { Printer, Landmark, ArrowRightLeft, ShieldCheck, Info } from 'lucide-react';
@@ -124,7 +125,7 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
       if (!row) {
         row = {
           code,
-          name: c.courseName || code,
+          name: COURSE_TITLE_MAP[code] || c.courseName || code,
           students: 0,
           challans: 0,
           gross: 0,
@@ -218,7 +219,10 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
     const all = new Map<string, string>();
     fullPeriodChallans.forEach((c) => {
       if (c.courseAbbreviation && !all.has(c.courseAbbreviation)) {
-        all.set(c.courseAbbreviation, c.courseName || c.courseAbbreviation);
+        all.set(
+          c.courseAbbreviation,
+          COURSE_TITLE_MAP[c.courseAbbreviation] || c.courseName || c.courseAbbreviation
+        );
       }
     });
     const selectedCodes = new Set(challans.map((c) => c.courseAbbreviation));
@@ -712,15 +716,22 @@ export const TfcTransferStatement: React.FC<TfcTransferStatementProps> = ({
               only the trades named in the scope line above and reconcile to those trades' gross.
             </p>
 
-            <div className="flex items-end justify-between mt-10 px-2 text-[10px] font-bold text-slate-700">
-              <div className="text-center">
-                <div className="border-t border-slate-500 pt-1 px-6">Prepared By</div>
+            {/* Official 3-Signatory Block (same as Fee Register and other official reports) */}
+            <div className="mt-8 pt-4 border-t border-slate-300 grid grid-cols-3 text-center text-[10px]">
+              <div className="space-y-1">
+                <div className="h-8"></div>
+                <div className="font-bold text-slate-900 uppercase">KASHIF ZIA</div>
+                <div className="text-[9px] text-slate-500 italic">Accountant / Prepared by:</div>
               </div>
-              <div className="text-center">
-                <div className="border-t border-slate-500 pt-1 px-6">Accountant</div>
+              <div className="space-y-1">
+                <div className="h-8"></div>
+                <div className="font-bold text-slate-900 uppercase">ANEEBA JAMIL</div>
+                <div className="text-[9px] text-slate-500 italic">CO-Signatory / Checked by:</div>
               </div>
-              <div className="text-center">
-                <div className="border-t border-slate-500 pt-1 px-6">Principal / DDO</div>
+              <div className="space-y-1">
+                <div className="h-8"></div>
+                <div className="font-bold text-slate-900 uppercase">SHAZIA KHADIM</div>
+                <div className="text-[9px] text-slate-500 italic">Acting Principal / DDO / Approved by:</div>
               </div>
             </div>
           </div>,
