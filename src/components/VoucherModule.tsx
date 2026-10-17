@@ -601,10 +601,20 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
           const matchesHead = v.accountHead.toLowerCase().includes(t);
           const matchesDesc = v.description.toLowerCase().includes(t);
           const matchesCheque = v.chequeNoNet.toLowerCase().includes(t);
+          const matchesChequePra = (v.chequeNoPra || '').toLowerCase().includes(t);
+          const matchesChequeWht = (v.chequeNoIncomeTax || '').toLowerCase().includes(t);
           const matchesNtn = v.ntnCnic.toLowerCase().includes(t);
           const matchesBill = (v.billNo || '').toLowerCase().includes(t);
           const matchesBillDate = (v.billDate || '').toLowerCase().includes(t);
-          if (!matchesNo && !matchesPayee && !matchesHead && !matchesDesc && !matchesCheque && !matchesNtn && !matchesBill && !matchesBillDate) {
+          // Amount search: the query's digits (commas/spaces ignored) must equal an
+          // amount on the voucher — gross, net paid, PRA, income tax (WHT) or GST.
+          const queryDigits = searchTerm.replace(/[\s,]/g, '');
+          const matchesAmount =
+            /^\d+$/.test(queryDigits) &&
+            [v.billAmountGross, v.chequeAmountNet, v.praAmount, v.incomeTaxAmount, v.gstAmount].some(
+              (amt) => Number(amt) > 0 && String(Math.round(Number(amt))) === queryDigits
+            );
+          if (!matchesNo && !matchesPayee && !matchesHead && !matchesDesc && !matchesCheque && !matchesChequePra && !matchesChequeWht && !matchesNtn && !matchesBill && !matchesBillDate && !matchesAmount) {
             return false;
           }
         }
@@ -760,7 +770,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by Voucher# (NS-JUL26-001), Payee, Head, Cheque#, or Narration..."
+            placeholder="Search by Voucher# (NS-JUL26-001), Payee, Head, Cheque#, Amount, or Narration..."
             className={`w-full pl-9 pr-3 py-2 text-xs rounded-lg border outline-none transition-all ${
               darkMode
                 ? 'bg-slate-900/90 border-slate-700 text-white placeholder-slate-500 focus:border-blue-400'
