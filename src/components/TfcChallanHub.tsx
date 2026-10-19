@@ -450,6 +450,67 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
     };
   }, [filteredChallans]);
 
+  // Distribution Overview scope flag: mirrors the Transfer Statement's PARTIAL
+  // logic — the overview figures follow the course selection, so any selection
+  // short of every trade in the period must be flagged, on screen and in print.
+  const overviewScope = useMemo(() => {
+    const all = new Map<string, string>();
+    let fullGross = 0;
+    statementChallans.forEach((c) => {
+      fullGross += c.totalAmount;
+      if (c.courseAbbreviation && !all.has(c.courseAbbreviation)) {
+        all.set(
+          c.courseAbbreviation,
+          COURSE_TITLE_MAP[c.courseAbbreviation] || c.courseName || c.courseAbbreviation
+        );
+      }
+    });
+    const includedCount = [...all.keys()].filter((code) => isCourseSelected(code)).length;
+    const excludedNames = [...all.entries()]
+      .filter(([code]) => !isCourseSelected(code))
+      .map(([, name]) => name);
+    return {
+      totalTrades: all.size,
+      includedCount,
+      excludedNames,
+      fullGross,
+      isEmptySelection: selectedCourses.length === 0,
+      isPartial: all.size > 0 && includedCount < all.size,
+    };
+  }, [statementChallans, isCourseSelected, selectedCourses]);
+
+  const overviewPartialNote = !overviewScope.isPartial
+    ? null
+    : overviewScope.isEmptySelection
+      ? `NO TRADES SELECTED — figures cover no trades. Full-period gross ${formatPKR(overviewScope.fullGross, false)} across ${overviewScope.totalTrades} trades. Use Select All in the course filter for the complete overview.`
+      : `PARTIAL VIEW — ${overviewScope.includedCount} of ${overviewScope.totalTrades} trades selected. Figures cover only the selected trades (gross ${formatPKR(totals.grossTotal, false)} of the full-period gross ${formatPKR(overviewScope.fullGross, false)}). Not included: ${overviewScope.excludedNames.join(' • ')}. Use Select All in the course filter for the complete overview.`;
+
+  const renderOverviewPartialBanner = () => {
+    if (!overviewScope.isPartial) return null;
+    return (
+      <div className="rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 text-amber-900 shadow-sm">
+        {overviewScope.isEmptySelection ? (
+          <p className="text-xs leading-relaxed">
+            <strong className="font-black">⚠ NO TRADES SELECTED</strong> — figures below cover no trades
+            (full-period gross {formatPKR(overviewScope.fullGross, false)} across {overviewScope.totalTrades} trades).
+            Use <strong>Select All</strong> in the course filter for the complete overview.
+          </p>
+        ) : (
+          <p className="text-xs leading-relaxed">
+            <strong className="font-black">
+              ⚠ PARTIAL VIEW — {overviewScope.includedCount} of {overviewScope.totalTrades} trades selected
+            </strong>
+            <br />
+            Figures below cover only the selected trades (gross {formatPKR(totals.grossTotal, false)} of the
+            full-period gross {formatPKR(overviewScope.fullGross, false)}). Not included:{' '}
+            <strong>{overviewScope.excludedNames.join(' • ')}</strong>. Use <strong>Select All</strong> in the
+            course filter for the complete overview.
+          </p>
+        )}
+      </div>
+    );
+  };
+
   // CashBook Posting Batches Generator matching the exact Google Sheet format (Columns B to I)
   // Posting amount = Gross Amount less Central TEVTA Share (100% admission/tuition + 25% Pupil Fund)
   const cashBookRows = useMemo(() => {
@@ -1054,6 +1115,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
               : `${selectedCourses.length} Courses (${selectedCourses.join(', ')})`,
         totalChallans: totals.count,
         totals,
+        partialNote: overviewPartialNote,
       });
       return;
     }
@@ -1898,6 +1960,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         {/* ============================================================= */}
         {activeSubTab === 'OVERVIEW' && (
           <div className="space-y-6">
+            {renderOverviewPartialBanner()}
             <div
               className={`p-4 rounded-xl border text-xs flex items-start gap-3 ${
                 darkMode
@@ -3136,6 +3199,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
               <span><strong>Generated:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString()}</span>
             </div>
           </div>
+
+          {overviewScope.isPartial && <div className="mb-3">{renderOverviewPartialBanner()}</div>}
 
           {/* KPI strip mirroring the on-screen cards */}
           <table className="w-full text-[9px] border-collapse border border-slate-400 mb-3">

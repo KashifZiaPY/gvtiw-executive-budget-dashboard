@@ -256,6 +256,7 @@ interface DistributionOverviewPdfOptions {
   periodLabel: string;
   courseFilter: string;
   totalChallans: number;
+  partialNote?: string | null;
   totals: {
     grossTotal: number;
     tevtaShare: number;
@@ -325,9 +326,24 @@ export function generateDistributionOverviewPdf(options: DistributionOverviewPdf
     { align: 'right' }
   );
 
+  // Partial-scope flag (same wording as the on-screen banner) — printed loudly
+  // whenever the course selection covers less than every trade in the period.
+  let kpiY = 36;
+  if (options.partialNote) {
+    const noteLines = doc.splitTextToSize(options.partialNote, pageWidth - 26);
+    const noteH = noteLines.length * 3.6 + 4;
+    doc.setFillColor(254, 243, 199); // light amber
+    doc.roundedRect(10, 35, pageWidth - 20, noteH, 2, 2, 'F');
+    doc.setTextColor(146, 64, 14); // dark amber
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(noteLines, 13, 39.5);
+    kpiY = 35 + noteH + 3;
+  }
+
   // Summary KPI block (mirrors the on-screen KPI cards)
   doc.setFillColor(245, 247, 250);
-  doc.roundedRect(10, 36, pageWidth - 20, 11, 2, 2, 'F');
+  doc.roundedRect(10, kpiY, pageWidth - 20, 11, 2, 2, 'F');
   doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
 
@@ -348,9 +364,9 @@ export function generateDistributionOverviewPdf(options: DistributionOverviewPdf
     const x = 12 + idx * colWidth;
     doc.setTextColor(100, 116, 139);
     doc.setFont('helvetica', 'bold');
-    doc.text(kpi.label, x, 40, { maxWidth: colWidth - 2 });
+    doc.text(kpi.label, x, kpiY + 4, { maxWidth: colWidth - 2 });
     doc.setTextColor(15, 23, 42);
-    doc.text(kpi.value, x, 45);
+    doc.text(kpi.value, x, kpiY + 9);
   });
 
   // Transfer breakdown table (same rows as the on-screen overview)
@@ -411,7 +427,7 @@ export function generateDistributionOverviewPdf(options: DistributionOverviewPdf
   ];
 
   autoTable(doc, {
-    startY: 50,
+    startY: kpiY + 14,
     head: [['Financial Component', 'Portal Breakdown', 'Institutional Action', 'Target Bank Account & Number', 'Amount (PKR)']],
     body: tableBody,
     foot: tableFoot as any,
