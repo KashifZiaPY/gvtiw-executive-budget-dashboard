@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import ExcelJS from 'exceljs';
 import {
@@ -48,6 +48,7 @@ interface TfcFeeRegisterViewProps {
   customGvtiwLogo?: string | null;
   customTevtaLogo?: string | null;
   customGopLogo?: string | null;
+  printSignal?: number;
 }
 
 // Canonical trade sorting priority
@@ -266,6 +267,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
   customGvtiwLogo,
   customTevtaLogo,
   customGopLogo,
+  printSignal,
 }) => {
   // Report View Format:
   // 1. INSTALLMENT_ALIGNED (Default): Single row per unique student with 1st & 2nd installment columns (headcount does NOT increase)
@@ -2184,6 +2186,16 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
       setTimeout(() => setIsPrinting(false), 1500);
     }
   };
+
+  // Hub "Print Schedule" button: run this report's own official print flow
+  // (same as the view's Print button) instead of printing the whole app page.
+  const lastPrintSignalRef = useRef(0);
+  useEffect(() => {
+    if (printSignal && printSignal !== lastPrintSignalRef.current) {
+      lastPrintSignalRef.current = printSignal;
+      handlePrint();
+    }
+  }, [printSignal]);
 
   return (
     <div className="space-y-4">

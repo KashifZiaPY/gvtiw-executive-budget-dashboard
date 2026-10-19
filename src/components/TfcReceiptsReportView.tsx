@@ -48,6 +48,7 @@ interface TfcReceiptsReportViewProps {
   customGopLogo?: string | null;
   selectedCourses?: string[];
   onSelectedCoursesChange?: (courses: string[]) => void;
+  printSignal?: number;
 }
 
 // Date parsing helper
@@ -149,6 +150,7 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
   customGopLogo,
   selectedCourses: selectedCoursesProp,
   onSelectedCoursesChange,
+  printSignal,
 }) => {
   const [reportMode, setReportMode] = useState<'DATE_WISE' | 'MONTH_WISE'>(initialMode);
   const [dateFilterMode, setDateFilterMode] = useState<'MONTH' | 'CUSTOM_RANGE'>('MONTH');
@@ -1118,6 +1120,16 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
       }, 1000);
     }, 200);
   };
+
+  // Hub "Print Schedule" button: print this report through its official portal
+  // flow (same as the view's own Print button) instead of the whole app page.
+  const lastPrintSignalRef = useRef(0);
+  useEffect(() => {
+    if (printSignal && printSignal !== lastPrintSignalRef.current) {
+      lastPrintSignalRef.current = printSignal;
+      handlePrintOfficial();
+    }
+  }, [printSignal]);
 
   // Unified Row Renderer for both Grouped and Flat Modes
   const renderReceiptRow = (row: AggregatedReceiptRow, idx: number, prefix?: string) => {

@@ -220,6 +220,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   const [showHardCashBookPrintPortal, setShowHardCashBookPrintPortal] = useState<boolean>(false);
   const [transferPrintSignal, setTransferPrintSignal] = useState<number>(0);
   const [showOverviewPrintPortal, setShowOverviewPrintPortal] = useState<boolean>(false);
+  const [receiptsPrintSignal, setReceiptsPrintSignal] = useState<number>(0);
+  const [feeRegisterPrintSignal, setFeeRegisterPrintSignal] = useState<number>(0);
 
   // Live fetch from Google Sheet backend (tab: BOP_TFC_RAW)
   const fetchGoogleSheetData = useCallback(async (isManualRefresh = false) => {
@@ -1651,6 +1653,20 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       handlePrintOverview();
       return;
     }
+    if (activeSubTab === 'HARD_CASHBOOK') {
+      handlePrintHardCashBook();
+      return;
+    }
+    if (activeSubTab === 'DATE_WISE_RECEIPTS' || activeSubTab === 'MONTH_WISE_RECEIPTS') {
+      // The receipts view prints through its own official portal flow.
+      setReceiptsPrintSignal((s) => s + 1);
+      return;
+    }
+    if (activeSubTab === 'FEE_REGISTER') {
+      // The fee register runs its own official print flow (vector PDF spooler).
+      setFeeRegisterPrintSignal((s) => s + 1);
+      return;
+    }
     window.print();
   };
 
@@ -1940,6 +1956,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
             onSelectedCoursesChange={setSelectedCourses}
             darkMode={darkMode}
             initialMode="DATE_WISE"
+            printSignal={receiptsPrintSignal}
             customGvtiwLogo={customGvtiwLogo}
             customTevtaLogo={customTevtaLogo}
             customGopLogo={customGopLogo}
@@ -1956,6 +1973,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
             onSelectedCoursesChange={setSelectedCourses}
             darkMode={darkMode}
             initialMode="MONTH_WISE"
+            printSignal={receiptsPrintSignal}
             customGvtiwLogo={customGvtiwLogo}
             customTevtaLogo={customTevtaLogo}
             customGopLogo={customGopLogo}
@@ -2944,6 +2962,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
           <TfcFeeRegisterView
             challans={challans}
             darkMode={darkMode}
+            printSignal={feeRegisterPrintSignal}
             customGvtiwLogo={customGvtiwLogo}
             customTevtaLogo={customTevtaLogo}
             customGopLogo={customGopLogo}
