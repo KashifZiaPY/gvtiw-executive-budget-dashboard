@@ -1640,6 +1640,13 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   };
 
   const handlePrint = () => {
+    if (activeSubTab === 'TRANSFER_STATEMENT') {
+      // The statement prints through its own official portal (the same flow as
+      // its Print / PDF Statement button); a plain window.print() here would
+      // print the whole app page instead of the report.
+      setTransferPrintSignal((s) => s + 1);
+      return;
+    }
     if (activeSubTab === 'OVERVIEW') {
       handlePrintOverview();
       return;
