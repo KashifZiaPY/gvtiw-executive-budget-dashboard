@@ -10,6 +10,7 @@ import {
 } from '../data/tfcChallanData';
 import { formatPKR } from '../lib/formatters';
 import { generateFeeRegisterPdf } from '../lib/tfcPdfGenerator';
+import { TfcCourseMultiSelect } from './TfcCourseMultiSelect';
 import {
   Building2,
   FileSpreadsheet,
@@ -280,7 +281,16 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
   const [dateFilterMode, setDateFilterMode] = useState<'MONTH' | 'CUSTOM_RANGE'>('MONTH');
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
-  const [selectedTrade, setSelectedTrade] = useState<string>('ALL');
+  const [selectedTrades, setSelectedTrades] = useState<string[]>(['ALL']);
+  const isTradeSelected = (code: string) =>
+    selectedTrades.includes('ALL') || selectedTrades.includes(code);
+  const tradeFilterLabel = selectedTrades.includes('ALL')
+    ? 'All Trades'
+    : selectedTrades.length === 0
+      ? 'No Trades Selected'
+      : selectedTrades.length === 1
+        ? (COURSE_TITLE_MAP[selectedTrades[0]] || selectedTrades[0])
+        : `${selectedTrades.length} Trades (${selectedTrades.join(', ')})`;
   const [installmentFilter, setInstallmentFilter] = useState<'ALL' | 'FULL_ONLY' | 'INSTALLMENTS_ONLY'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [collapsedTrades, setCollapsedTrades] = useState<Record<string, boolean>>({});
@@ -438,7 +448,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
       const instInfo = resolveInstallment(c, info);
 
       // Trade filtering
-      if (selectedTrade !== 'ALL' && info.tradeCode !== selectedTrade) {
+      if (!isTradeSelected(info.tradeCode)) {
         return false;
       }
 
@@ -572,7 +582,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
     customStartDate,
     customEndDate,
     selectedMonth,
-    selectedTrade,
+    selectedTrades,
     installmentFilter,
     searchQuery,
   ]);
@@ -596,7 +606,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
       const info = parseFeeRegisterStudentInfo(c.name, c.courseName, c.paymentType, c.courseAbbreviation, c.totalAmount);
 
       // Trade filtering
-      if (selectedTrade !== 'ALL' && info.tradeCode !== selectedTrade) {
+      if (!isTradeSelected(info.tradeCode)) {
         return false;
       }
 
@@ -866,7 +876,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
     customStartDate,
     customEndDate,
     selectedMonth,
-    selectedTrade,
+    selectedTrades,
     installmentFilter,
     searchQuery,
     reportViewMode,
@@ -1213,7 +1223,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             : 'OFFICIAL FEE REGISTER & TRAINEE ALLOCATION (STUDENT-ALIGNED REGISTER WITH INSTALLMENT COLUMNS)'
         ),
         escapeCsv(
-          `Period: ${activePeriodLabel} | Trade Filter: ${selectedTrade === 'ALL' ? 'All Trades' : selectedTrade} | Total Unique Enrolled Students: ${studentGrandTotal.totalTrainees} (${studentGrandTotal.totalChallans} Challan Receipts, ${studentGrandTotal.totalInstallmentCases} Installment Cases)`
+          `Period: ${activePeriodLabel} | Trade Filter: ${tradeFilterLabel} | Total Unique Enrolled Students: ${studentGrandTotal.totalTrainees} (${studentGrandTotal.totalChallans} Challan Receipts, ${studentGrandTotal.totalInstallmentCases} Installment Cases)`
         ),
         escapeCsv('Note: Student submission quantity does not increase for installment cases as multiple payments are aligned into 1 row'),
         '',
@@ -1330,7 +1340,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
     const lines: string[] = [
       escapeCsv('GOVT. VOCATIONAL TRAINING INSTITUTE FOR WOMEN, SAMANABAD FAISALABAD'),
       escapeCsv('OFFICIAL FEE REGISTER & TRAINEE ALLOCATION — ACADEMIC YEAR 2026–2027 (A/C: 6580027832200011)'),
-      escapeCsv(`Period: ${activePeriodLabel} | Trade Filter: ${selectedTrade === 'ALL' ? 'All Trades' : selectedTrade} | Total Trainees: ${grandTotal.totalTrainees}`),
+      escapeCsv(`Period: ${activePeriodLabel} | Trade Filter: ${tradeFilterLabel} | Total Trainees: ${grandTotal.totalTrainees}`),
       escapeCsv('Note: 100% of 75% Pupil Fund is treated under Welfare Fund (Col I)'),
       '',
       [
@@ -1465,7 +1475,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
       subRow1.alignment = { vertical: 'middle', horizontal: 'center' };
 
       const subRow2 = sheet.addRow([
-        `Filter / Period: ${activePeriodLabel} | Trade Filter: ${selectedTrade === 'ALL' ? 'All Trades' : selectedTrade} | Total Trainees: ${grandTotal.totalTrainees} | Note: Cols J:M reserved as 100% of 75% Pupil Fund is treated under Welfare Fund (Col I)`,
+        `Filter / Period: ${activePeriodLabel} | Trade Filter: ${tradeFilterLabel} | Total Trainees: ${grandTotal.totalTrainees} | Note: Cols J:M reserved as 100% of 75% Pupil Fund is treated under Welfare Fund (Col I)`,
       ]);
       subRow2.font = { italic: true, size: 9, color: { argb: 'FFFFFFFF' } };
       subRow2.fill = {
@@ -2029,7 +2039,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
   const handleExportPdf = () => {
     generateFeeRegisterPdf({
       periodLabel: activePeriodLabel,
-      tradeFilterLabel: selectedTrade === 'ALL' ? 'All Trades' : (COURSE_TITLE_MAP[selectedTrade] || selectedTrade),
+      tradeFilterLabel: tradeFilterLabel,
       totalTrainees: activeGrandTotal.totalTrainees,
       isInstallmentAligned: isInstallmentAlignedMode,
       reportTitle:
@@ -2108,7 +2118,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
     try {
       generateFeeRegisterPdf({
         periodLabel: activePeriodLabel,
-        tradeFilterLabel: selectedTrade === 'ALL' ? 'All Trades' : (COURSE_TITLE_MAP[selectedTrade] || selectedTrade),
+        tradeFilterLabel: tradeFilterLabel,
         totalTrainees: activeGrandTotal.totalTrainees,
         isInstallmentAligned: isInstallmentAlignedMode,
         reportTitle:
@@ -2410,22 +2420,14 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             {/* Trade / Course Filter Dropdown */}
             <div className="flex items-center gap-1.5">
               <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <select
-                value={selectedTrade}
-                onChange={(e) => setSelectedTrade(e.target.value)}
-                className={`text-xs font-bold px-3 py-1.5 rounded-xl border cursor-pointer max-w-[210px] truncate ${
-                  darkMode
-                    ? 'bg-slate-800 border-slate-700 text-white'
-                    : 'bg-slate-50 border-slate-300 text-slate-800'
-                }`}
-              >
-                <option value="ALL">All Trades ({availableTrades.length} Trades)</option>
-                {availableTrades.map((t) => (
-                  <option key={t} value={t}>
-                    {t}: {COURSE_TITLE_MAP[t] || t}
-                  </option>
-                ))}
-              </select>
+              <TfcCourseMultiSelect
+                availableCourses={availableTrades}
+                selectedCourses={selectedTrades}
+                onChange={setSelectedTrades}
+                challans={challans}
+                darkMode={darkMode}
+                size="sm"
+              />
             </div>
 
             {/* Installment Filter */}
@@ -3621,7 +3623,7 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             </p>
             <div className="flex items-center justify-between text-[10px] text-slate-600 mt-2 px-2 border-t border-slate-300 pt-1 font-medium">
               <span><strong>Period:</strong> {activePeriodLabel}</span>
-              <span><strong>Trade Filter:</strong> {selectedTrade === 'ALL' ? 'All Trades' : (COURSE_TITLE_MAP[selectedTrade] || selectedTrade)}</span>
+              <span><strong>Trade Filter:</strong> {tradeFilterLabel}</span>
               <span><strong>Enrolled Students:</strong> {activeGrandTotal.totalTrainees} across {activeTradeSections.length} Trades</span>
               <span><strong>Grand Total:</strong> Rs. {formatPKR(activeGrandTotal.totalAmount, false)} (100% Reconciled)</span>
               <span><strong>Printed:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString()}</span>
