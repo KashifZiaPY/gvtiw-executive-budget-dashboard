@@ -18,7 +18,7 @@ import { TfcFeeRegisterView } from './TfcFeeRegisterView';
 import { TfcTransferStatement } from './TfcTransferStatement';
 import { TfcCourseMultiSelect } from './TfcCourseMultiSelect';
 import { formatPKR, formatCNIC, formatPakistaniDate } from '../lib/formatters';
-import { generateReceiptsRegisterPdf, generateHardCashBookPdf } from '../lib/tfcPdfGenerator';
+import { generateReceiptsRegisterPdf, generateHardCashBookPdf, generateDistributionOverviewPdf } from '../lib/tfcPdfGenerator';
 import {
   Building2,
   FileSpreadsheet,
@@ -219,6 +219,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showHardCashBookPrintPortal, setShowHardCashBookPrintPortal] = useState<boolean>(false);
   const [transferPrintSignal, setTransferPrintSignal] = useState<number>(0);
+  const [showOverviewPrintPortal, setShowOverviewPrintPortal] = useState<boolean>(false);
 
   // Live fetch from Google Sheet backend (tab: BOP_TFC_RAW)
   const fetchGoogleSheetData = useCallback(async (isManualRefresh = false) => {
@@ -1021,6 +1022,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         return 'Course Matrix';
       case 'TRANSFER_STATEMENT':
         return 'Transfer Statement';
+      case 'OVERVIEW':
+        return 'Distribution Overview';
       case 'DIRECTORY':
         return 'Challan Directory';
       default:
@@ -1037,6 +1040,21 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
     }
     if (activeSubTab === 'HARD_CASHBOOK') {
       handleExportHardCashBookPdf();
+      return;
+    }
+    if (activeSubTab === 'OVERVIEW') {
+      generateDistributionOverviewPdf({
+        periodLabel: activePeriodLabel,
+        courseFilter: selectedCourses.includes('ALL')
+          ? 'All Courses'
+          : selectedCourses.length === 0
+            ? 'No Courses Selected'
+            : selectedCourses.length === 1
+              ? (COURSE_TITLE_MAP[selectedCourses[0]] || selectedCourses[0])
+              : `${selectedCourses.length} Courses (${selectedCourses.join(', ')})`,
+        totalChallans: totals.count,
+        totals,
+      });
       return;
     }
 
@@ -1550,7 +1568,20 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
     document.body.removeChild(link);
   };
 
+  // Print Isolated Distribution Overview (its own portal, like the other reports)
+  const handlePrintOverview = () => {
+    setShowOverviewPrintPortal(true);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => setShowOverviewPrintPortal(false), 1000);
+    }, 200);
+  };
+
   const handlePrint = () => {
+    if (activeSubTab === 'OVERVIEW') {
+      handlePrintOverview();
+      return;
+    }
     window.print();
   };
 
@@ -3071,6 +3102,156 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
           </div>
         )}
       </div>
+
+      {/* Official Distribution Overview Print Portal (Targeted by window.print in Portrait A4) */}
+      {showOverviewPrintPortal && typeof document !== 'undefined' && createPortal(
+        <div
+          id="print-overview-portal"
+          className="p-4 bg-white text-slate-900 font-sans"
+          style={{ display: 'none' }}
+        >
+          <div className="border-b-2 border-teal-800 pb-3 mb-3 text-center">
+            <h1 className="text-base font-black uppercase text-teal-950 tracking-wide">
+              Govt. Vocational Training Institute for Women, Samanabad Faisalabad
+            </h1>
+            <p className="text-xs font-bold text-slate-700">
+              Distribution Overview — Institutional Multi-Account Transfer Breakdown
+            </p>
+            <p className="text-xs font-black text-teal-900 uppercase mt-0.5">
+              TEVTA Fee Collection (TFC) Bank Account # 6580027832200011 (Bank of Punjab)
+            </p>
+            <div className="flex items-center justify-between text-[10px] text-slate-600 mt-2 px-2 border-t pt-1">
+              <span><strong>Period:</strong> {activePeriodLabel}</span>
+              <span>
+                <strong>Course:</strong>{' '}
+                {selectedCourses.includes('ALL')
+                  ? 'All Courses'
+                  : selectedCourses.length === 0
+                    ? 'No Courses Selected'
+                    : selectedCourses.length === 1
+                      ? (COURSE_TITLE_MAP[selectedCourses[0]] || selectedCourses[0])
+                      : `${selectedCourses.length} Courses (${selectedCourses.join(', ')})`}
+              </span>
+              <span><strong>Total Paid Challans:</strong> {totals.count}</span>
+              <span><strong>Generated:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString()}</span>
+            </div>
+          </div>
+
+          {/* KPI strip mirroring the on-screen cards */}
+          <table className="w-full text-[9px] border-collapse border border-slate-400 mb-3">
+            <tbody>
+              <tr className="bg-slate-100 font-black text-slate-600 text-center">
+                <td className="border border-slate-300 p-1">GROSS BOP DEPOSIT</td>
+                <td className="border border-slate-300 p-1">AUTO TEVTA SHARE</td>
+                <td className="border border-slate-300 p-1">NET CASH BOOK POSTING</td>
+                <td className="border border-slate-300 p-1">PUPIL FUNDS (MANUAL)</td>
+                <td className="border border-slate-300 p-1">SECURITIES (MANUAL)</td>
+                <td className="border border-slate-300 p-1">SHORT COURSE & BOARD</td>
+              </tr>
+              <tr className="font-black text-center text-[11px]">
+                <td className="border border-slate-300 p-1">{formatPKR(totals.grossTotal, false)}</td>
+                <td className="border border-slate-300 p-1">{formatPKR(totals.tevtaShare, false)}</td>
+                <td className="border border-slate-300 p-1">{formatPKR(totals.netPostingReceipts, false)}</td>
+                <td className="border border-slate-300 p-1">{formatPKR(totals.pupil75Share, false)}</td>
+                <td className="border border-slate-300 p-1">{formatPKR(totals.securityShare, false)}</td>
+                <td className="border border-slate-300 p-1">{formatPKR(totals.bteSelfFinanceShare + totals.boardChargesShare, false)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          {/* Transfer breakdown table — same rows as the on-screen overview */}
+          <table className="w-full text-[10px] border-collapse border border-slate-400">
+            <thead>
+              <tr className="bg-[#D1FAE5] text-[#064E3B] font-black text-left">
+                <th className="border border-slate-400 p-1.5">Financial Component</th>
+                <th className="border border-slate-400 p-1.5">Portal Breakdown</th>
+                <th className="border border-slate-400 p-1.5">Institutional Action</th>
+                <th className="border border-slate-400 p-1.5">Target Bank Account & Number</th>
+                <th className="border border-slate-400 p-1.5 text-right">Amount (PKR)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border border-slate-300 p-1.5 font-bold">1. TEVTA Centralized Share</td>
+                <td className="border border-slate-300 p-1.5">Admission Fee (100%) + 25% Pupil Fund</td>
+                <td className="border border-slate-300 p-1.5">Automated by BOP Portal</td>
+                <td className="border border-slate-300 p-1.5">TEVTA Centralized Account (HQ Lahore)</td>
+                <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">{formatPKR(totals.tevtaShare, false)}</td>
+              </tr>
+              <tr>
+                <td className="border border-slate-300 p-1.5 font-bold">2. Pupil Funds Share (75%)</td>
+                <td className="border border-slate-300 p-1.5">75% of Pupil Fund Fee Collected</td>
+                <td className="border border-slate-300 p-1.5">Issue Cheque from TFC</td>
+                <td className="border border-slate-300 p-1.5 font-mono font-bold">BOP Pupil Funds A/C (6580027832200022)</td>
+                <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">{formatPKR(totals.pupil75Share, false)}</td>
+              </tr>
+              <tr>
+                <td className="border border-slate-300 p-1.5 font-bold">3. Student Caution Deposits</td>
+                <td className="border border-slate-300 p-1.5">Refundable Trainee Institute Security</td>
+                <td className="border border-slate-300 p-1.5">Issue Cheque from TFC</td>
+                <td className="border border-slate-300 p-1.5 font-mono font-bold">BOP Student Securities A/C (6580027832200044)</td>
+                <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">{formatPKR(totals.securityShare, false)}</td>
+              </tr>
+              <tr>
+                <td className="border border-slate-300 p-1.5 font-bold">4. Self-Finance Fees (BTE)</td>
+                <td className="border border-slate-300 p-1.5">Net Course Fee (Rs. 8,500/trainee for BTE)</td>
+                <td className="border border-slate-300 p-1.5">Issue Cheque from TFC</td>
+                <td className="border border-slate-300 p-1.5 font-mono font-bold">BOP Short Course A/C (6580027832200033)</td>
+                <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">{formatPKR(totals.bteSelfFinanceShare, false)}</td>
+              </tr>
+              <tr>
+                <td className="border border-slate-300 p-1.5 font-bold">5. Board Registration & Exam Fee</td>
+                <td className="border border-slate-300 p-1.5">PBTE / TTB Board charges (including Rs. 1,500/trainee single board fee for BTE)</td>
+                <td className="border border-slate-300 p-1.5">Retained in TFC for PBTE/TTB</td>
+                <td className="border border-slate-300 p-1.5">Punjab Board of Technical Education (PBTE) / TTB Board</td>
+                <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">{formatPKR(totals.boardChargesShare, false)}</td>
+              </tr>
+              <tr>
+                <td className="border border-slate-300 p-1.5 font-bold">6. TUV Rheinland Certification</td>
+                <td className="border border-slate-300 p-1.5">One-time certification fee from trainees</td>
+                <td className="border border-slate-300 p-1.5">Earmarked in TFC</td>
+                <td className="border border-slate-300 p-1.5">Pending TEVTA Directive (Likely Centralized Share)</td>
+                <td className="border border-slate-300 p-1.5 text-right font-mono font-bold">{formatPKR(totals.tuvCertificationShare, false)}</td>
+              </tr>
+              <tr className="bg-slate-200 font-black">
+                <td colSpan={4} className="border border-slate-400 p-1.5 text-right uppercase">
+                  Total Gross Inflow Deposited in BOP TFC Account (A/C: 6580027832200011):
+                </td>
+                <td className="border border-slate-400 p-1.5 text-right font-mono">{formatPKR(totals.grossTotal, false)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <p className="text-[9px] text-slate-600 mt-3 leading-relaxed">
+            Institutional Banking & Multi-Head Allocation Rules (BOP Samanabad): Trainee fees are deposited into the
+            Bank of Punjab (BOP) Fee Collection A/C (6580027832200011). The BOP portal automatically diverts the TEVTA
+            Centralized Share to Head Office Lahore. The remaining retainable balances must be transferred by the
+            institute via manual cross cheques to their respective official bank accounts shown above. Board charges
+            (PBTE / TTB), including the Rs. 1,500/trainee single board fee from Beautician Self-Finance, are retained
+            in TFC to pay the boards.
+          </p>
+
+          {/* Official 3-Signatory Block */}
+          <div className="mt-8 pt-4 border-t border-slate-300 grid grid-cols-3 text-center text-[10px]">
+            <div className="space-y-1">
+              <div className="h-8"></div>
+              <div className="font-bold text-slate-900 uppercase">KASHIF ZIA</div>
+              <div className="text-[9px] text-slate-500 italic">Accountant / Prepared by:</div>
+            </div>
+            <div className="space-y-1">
+              <div className="h-8"></div>
+              <div className="font-bold text-slate-900 uppercase">ANEEBA JAMIL</div>
+              <div className="text-[9px] text-slate-500 italic">CO-Signatory / Checked by:</div>
+            </div>
+            <div className="space-y-1">
+              <div className="h-8"></div>
+              <div className="font-bold text-slate-900 uppercase">SHAZIA KHADIM</div>
+              <div className="text-[9px] text-slate-500 italic">Acting Principal / DDO / Approved by:</div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Official Hard CashBook Print Portal (Targeted by window.print in Landscape A4) */}
       {showHardCashBookPrintPortal && typeof document !== 'undefined' && createPortal(

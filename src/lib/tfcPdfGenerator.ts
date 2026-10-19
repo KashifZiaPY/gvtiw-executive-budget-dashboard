@@ -252,6 +252,258 @@ export function generateReceiptsRegisterPdf(options: ReceiptsPdfOptions): void {
   doc.save(cleanFilename);
 }
 
+interface DistributionOverviewPdfOptions {
+  periodLabel: string;
+  courseFilter: string;
+  totalChallans: number;
+  totals: {
+    grossTotal: number;
+    tevtaShare: number;
+    netPostingReceipts: number;
+    pupil75Share: number;
+    securityShare: number;
+    bteSelfFinanceShare: number;
+    boardChargesShare: number;
+    tuvCertificationShare: number;
+  };
+}
+
+export function generateDistributionOverviewPdf(options: DistributionOverviewPdfOptions): void {
+  const { periodLabel, courseFilter, totalChallans, totals } = options;
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // Header Banner (same house style as the receipts register)
+  doc.setFillColor(209, 250, 229); // Ink-efficient light emerald
+  doc.rect(0, 0, pageWidth, 22, 'F');
+
+  doc.setTextColor(6, 78, 59); // dark emerald on light banner
+  doc.setFontSize(11.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text(
+    'GOVT. VOCATIONAL TRAINING INSTITUTE FOR WOMEN, SAMANABAD FAISALABAD',
+    pageWidth / 2,
+    8,
+    { align: 'center' }
+  );
+
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'normal');
+  doc.text(
+    'TEVTA FEE COLLECTION (TFC) BANK ACCOUNT # 6580027832200011 (BANK OF PUNJAB)',
+    pageWidth / 2,
+    14,
+    { align: 'center' }
+  );
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text(
+    'DISTRIBUTION OVERVIEW — INSTITUTIONAL MULTI-ACCOUNT TRANSFER BREAKDOWN',
+    pageWidth / 2,
+    19,
+    { align: 'center' }
+  );
+
+  // Metadata ribbon
+  doc.setTextColor(50, 50, 50);
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Filter / Period: ${periodLabel}`, 10, 27);
+  doc.text(`Course: ${courseFilter}`, 10, 32.5);
+  doc.text(`Total Paid Challans: ${totalChallans}`, pageWidth - 10, 27, { align: 'right' });
+  doc.text(
+    `Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString()}`,
+    pageWidth - 10,
+    32.5,
+    { align: 'right' }
+  );
+
+  // Summary KPI block (mirrors the on-screen KPI cards)
+  doc.setFillColor(245, 247, 250);
+  doc.roundedRect(10, 36, pageWidth - 20, 11, 2, 2, 'F');
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+
+  const kpis = [
+    { label: 'GROSS BOP DEPOSIT', value: `Rs. ${formatPKR(totals.grossTotal, false)}` },
+    { label: 'AUTO TEVTA SHARE', value: `Rs. ${formatPKR(totals.tevtaShare, false)}` },
+    { label: 'NET CASH BOOK POSTING', value: `Rs. ${formatPKR(totals.netPostingReceipts, false)}` },
+    { label: 'PUPIL FUNDS (MANUAL)', value: `Rs. ${formatPKR(totals.pupil75Share, false)}` },
+    { label: 'SECURITIES (MANUAL)', value: `Rs. ${formatPKR(totals.securityShare, false)}` },
+    {
+      label: 'SHORT COURSE & BOARD',
+      value: `Rs. ${formatPKR(totals.bteSelfFinanceShare + totals.boardChargesShare, false)}`,
+    },
+  ];
+
+  const colWidth = (pageWidth - 24) / kpis.length;
+  kpis.forEach((kpi, idx) => {
+    const x = 12 + idx * colWidth;
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('helvetica', 'bold');
+    doc.text(kpi.label, x, 40, { maxWidth: colWidth - 2 });
+    doc.setTextColor(15, 23, 42);
+    doc.text(kpi.value, x, 45);
+  });
+
+  // Transfer breakdown table (same rows as the on-screen overview)
+  const tableBody = [
+    [
+      '1. TEVTA Centralized Share',
+      'Admission Fee (100%) + 25% Pupil Fund',
+      'Automated by BOP Portal',
+      'TEVTA Centralized Account (HQ Lahore)',
+      formatPKR(totals.tevtaShare, false),
+    ],
+    [
+      '2. Pupil Funds Share (75%)',
+      '75% of Pupil Fund Fee Collected',
+      'Issue Cheque from TFC',
+      'BOP Pupil Funds A/C (6580027832200022)',
+      formatPKR(totals.pupil75Share, false),
+    ],
+    [
+      '3. Student Caution Deposits',
+      'Refundable Trainee Institute Security',
+      'Issue Cheque from TFC',
+      'BOP Student Securities A/C (6580027832200044)',
+      formatPKR(totals.securityShare, false),
+    ],
+    [
+      '4. Self-Finance Fees (BTE)',
+      'Net Course Fee (Rs. 8,500/trainee for BTE)',
+      'Issue Cheque from TFC',
+      'BOP Short Course A/C (6580027832200033)',
+      formatPKR(totals.bteSelfFinanceShare, false),
+    ],
+    [
+      '5. Board Registration & Exam Fee',
+      'PBTE / TTB Board charges (including Rs. 1,500/trainee single board fee for BTE)',
+      'Retained in TFC for PBTE/TTB',
+      'Punjab Board of Technical Education (PBTE) / TTB Board',
+      formatPKR(totals.boardChargesShare, false),
+    ],
+    [
+      '6. TUV Rheinland Certification',
+      'One-time certification fee from trainees',
+      'Earmarked in TFC',
+      'Pending TEVTA Directive (Likely Centralized Share)',
+      formatPKR(totals.tuvCertificationShare, false),
+    ],
+  ];
+
+  const tableFoot = [
+    [
+      {
+        content: 'Total Gross Inflow Deposited in BOP TFC Account (A/C: 6580027832200011):',
+        colSpan: 4,
+        styles: { halign: 'right' as const },
+      },
+      formatPKR(totals.grossTotal, false),
+    ],
+  ];
+
+  autoTable(doc, {
+    startY: 50,
+    head: [['Financial Component', 'Portal Breakdown', 'Institutional Action', 'Target Bank Account & Number', 'Amount (PKR)']],
+    body: tableBody,
+    foot: tableFoot as any,
+    theme: 'grid',
+    styles: {
+      fontSize: 8,
+      cellPadding: 2,
+      lineColor: [203, 213, 225],
+      lineWidth: 0.15,
+      textColor: [15, 23, 42],
+      font: 'helvetica',
+    },
+    headStyles: {
+      fillColor: [209, 250, 229],
+      textColor: [6, 78, 59],
+      fontStyle: 'bold',
+      fontSize: 8,
+    },
+    footStyles: {
+      fillColor: [226, 232, 240],
+      textColor: [15, 23, 42],
+      fontStyle: 'bold',
+      fontSize: 8.5,
+      halign: 'right',
+    },
+    columnStyles: {
+      0: { cellWidth: 38, fontStyle: 'bold' },
+      1: { cellWidth: 52 },
+      2: { cellWidth: 30 },
+      3: { cellWidth: 42 },
+      4: { cellWidth: 28, halign: 'right', fontStyle: 'bold' },
+    },
+    margin: { left: 10, right: 10, bottom: 20 },
+  });
+
+  // Allocation rules note
+  const finalY = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY : 120;
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+  const rulesText =
+    'Institutional Banking & Multi-Head Allocation Rules (BOP Samanabad): Trainee fees are deposited into the Bank of Punjab (BOP) Fee Collection A/C (6580027832200011). The BOP portal automatically diverts the TEVTA Centralized Share to Head Office Lahore. The remaining retainable balances must be transferred by the institute via manual cross cheques to their respective official bank accounts shown above. Board charges (PBTE / TTB), including the Rs. 1,500/trainee single board fee from Beautician Self-Finance, are retained in TFC to pay the boards.';
+  const rulesLines = doc.splitTextToSize(rulesText, pageWidth - 20);
+  doc.text(rulesLines, 10, finalY + 8);
+
+  // Signature section (same official 3-signatory block as the other TFC reports)
+  const signY = Math.min(finalY + 16 + rulesLines.length * 3.5, pageHeight - 16);
+  doc.setTextColor(30, 41, 59);
+  const sig1X = 35;
+  const sig2X = pageWidth / 2;
+  const sig3X = pageWidth - 35;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('KASHIF ZIA', sig1X, signY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text('Accountant / Prepared by:', sig1X, signY + 4, { align: 'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('ANEEBA JAMIL', sig2X, signY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text('CO-Signatory / Checked by:', sig2X, signY + 4, { align: 'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('SHAZIA KHADIM', sig3X, signY, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text('Acting Principal / DDO / Approved by:', sig3X, signY + 4, { align: 'center' });
+
+  // Two-pass Footer
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      'Govt. Vocational Training Institute for Women, Samanabad Faisalabad — Official TFC Portal',
+      10,
+      pageHeight - 6
+    );
+    doc.text(`Page ${i} of ${totalPages}`, pageWidth - 10, pageHeight - 6, { align: 'right' });
+  }
+
+  const cleanFilename = `GVTIW_TFC_Distribution_Overview_${new Date().toISOString().slice(0, 10)}.pdf`;
+  doc.save(cleanFilename);
+}
+
 interface HardCashBookPdfOptions {
   periodLabel: string;
   totalChallans: number;
