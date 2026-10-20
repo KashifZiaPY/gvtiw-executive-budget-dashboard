@@ -7,7 +7,8 @@ import {
   MasterVoucher,
   CashBookAccountState,
 } from '../data/cashBookData';
-import { MASTER_PAYEE_LIST, MASTER_ACCOUNT_HEADS } from '../data/voucherMasterLists';
+import { MASTER_ACCOUNT_HEADS } from '../data/voucherMasterLists';
+import { usePayeeList } from '../lib/payeeList';
 import { AccountHead, OFFICIAL_SIGNATORIES } from '../types';
 import { INITIAL_ACCOUNTS } from '../data/initialData';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
@@ -423,6 +424,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     return [allOpt, ...headOpts];
   }, [accountsStore]);
 
+  const payees = usePayeeList();
+
   // Payee Combobox Options
   const payeeComboboxOptions: ComboboxOption[] = useMemo(() => {
     const allOpt: ComboboxOption = {
@@ -435,7 +438,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       badgeColor: 'bg-blue-600 text-white',
     };
 
-    const opts: ComboboxOption[] = MASTER_PAYEE_LIST.map((p, idx) => ({
+    const opts: ComboboxOption[] = payees.map((p, idx) => ({
       value: p.name,
       label: p.name,
       code: `V-${String(idx + 1).padStart(3, '0')}`,
@@ -446,7 +449,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     }));
 
     return [allOpt, ...opts];
-  }, []);
+  }, [payees]);
 
   // Base Date & Bank Filter for General Vouchers (PAYEE, CHEQUE, AMOUNT)
   const filteredVouchers = useMemo(() => {

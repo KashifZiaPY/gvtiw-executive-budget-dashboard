@@ -7,7 +7,8 @@ import {
   INITIAL_CASHBOOK_STATES,
 } from '../data/cashBookData';
 import { getStoredUserReceipts } from '../lib/apiEngine';
-import { MASTER_PAYEE_LIST, MASTER_ACCOUNT_HEADS, PayeeRecord, filterAccountHeads } from '../data/voucherMasterLists';
+import { MASTER_ACCOUNT_HEADS, PayeeRecord, filterAccountHeads } from '../data/voucherMasterLists';
+import { usePayeeList } from '../lib/payeeList';
 import { INITIAL_ACCOUNTS } from '../data/initialData';
 import { MiniCalculatorPopover } from './MiniCalculatorPopover';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
@@ -155,6 +156,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const isLatestVoucher = voucherToAmend ? voucherToAmend.srNo === maxExistingSrNo : false;
 
   // Form State
+  const payees = usePayeeList();
   const [payeeName, setPayeeName] = useState('');
   const [payeeSearch, setPayeeSearch] = useState('');
   const [isPayeeDropdownOpen, setIsPayeeDropdownOpen] = useState(false);
@@ -407,15 +409,15 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
 
   // Filter Payees: when typing, filter by Name, NTN, or CNIC
   const filteredPayees = useMemo(() => {
-    if (!payeeSearch || payeeSearch.trim() === '') return MASTER_PAYEE_LIST;
+    if (!payeeSearch || payeeSearch.trim() === '') return payees;
     const s = payeeSearch.toLowerCase().trim();
-    return MASTER_PAYEE_LIST.filter(
+    return payees.filter(
       (p) =>
         p.name.toLowerCase().includes(s) ||
         (p.ntn && p.ntn.toLowerCase().includes(s)) ||
         (p.cnic && p.cnic.toLowerCase().includes(s))
     );
-  }, [payeeSearch]);
+  }, [payeeSearch, payees]);
 
   // Filter Heads: Multi-token search across Head Code, Description and Categories with relevance ranking
   const filteredHeads = useMemo(() => {
@@ -647,7 +649,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
       return;
     }
 
-    const matchedPayee = MASTER_PAYEE_LIST.find(
+    const matchedPayee = payees.find(
       (p) => p.name.trim().toLowerCase() === trimmed.toLowerCase()
     );
 
@@ -1178,7 +1180,7 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                         setPayeeName(val);
                         setIsPayeeDropdownOpen(true);
                         setPayeeHighlightedIndex(0);
-                        const match = MASTER_PAYEE_LIST.find((p) => p.name.trim().toLowerCase() === val.trim().toLowerCase());
+                        const match = payees.find((p) => p.name.trim().toLowerCase() === val.trim().toLowerCase());
                         if (!match) {
                           selectedPayeeRef.current = '';
                           setNtnCnic('');

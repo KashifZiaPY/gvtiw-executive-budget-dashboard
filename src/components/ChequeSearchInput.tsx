@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, X, CreditCard, Users, Check, ArrowRight } from 'lucide-react';
 import { MasterVoucher } from '../data/cashBookData';
-import { MASTER_PAYEE_LIST } from '../data/voucherMasterLists';
+import { usePayeeList } from '../lib/payeeList';
 import { formatPKR } from '../lib/formatters';
 
 export interface ChequeSearchSuggestion {
@@ -47,6 +47,7 @@ export const ChequeSearchInput: React.FC<ChequeSearchInputProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<'ALL' | 'PAYEE' | 'CHEQUE'>('ALL');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const payees = usePayeeList();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -90,8 +91,8 @@ export const ChequeSearchInput: React.FC<ChequeSearchInputProps> = ({
       }
     });
 
-    // Also include registered payees from MASTER_PAYEE_LIST
-    MASTER_PAYEE_LIST.forEach((p) => {
+    // Also include registered payees from the live payee list
+    payees.forEach((p) => {
       const name = p.name.trim();
       if (!payeeStats[name]) {
         payeeStats[name] = { count: 0, totalAmt: 0 };
@@ -200,7 +201,7 @@ export const ChequeSearchInput: React.FC<ChequeSearchInputProps> = ({
     });
 
     return suggestions;
-  }, [bankScopedVouchers]);
+  }, [bankScopedVouchers, payees]);
 
   // Filter suggestions by search query and category
   const filteredSuggestions = useMemo(() => {

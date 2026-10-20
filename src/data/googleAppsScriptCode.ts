@@ -298,6 +298,36 @@ function lookupPayeeNtnCnic_(ss, payeeName) {
 }
 
 // ============================================================
+// FULL PAYEE LIST (Head-Approval Suppliers F:H) — feeds the app's
+// live Payee dropdown via the read-only "getPayeeList" action.
+// Mirrors the exact range lookupPayeeNtnCnic_ already reads
+// (row 3 down, columns F=Suppliers, G=NTN Nos., H=CNIC), skips
+// blank names and de-duplicates by name (first entry wins).
+// ============================================================
+function getPayeeList_(ss) {
+  var out = [];
+  var seen = {};
+  var headSheet = ss.getSheetByName('Head-Approval');
+  if (!headSheet) return out;
+  var lastRow = headSheet.getLastRow();
+  if (lastRow < 3) return out;
+  var data = headSheet.getRange(3, 6, lastRow - 2, 3).getValues();
+  for (var i = 0; i < data.length; i++) {
+    var name = String(data[i][0] || '').trim();
+    if (!name) continue;
+    var key = name.toLowerCase();
+    if (seen[key]) continue;
+    seen[key] = true;
+    var ntn = String(data[i][1] || '').trim();
+    var cnic = String(data[i][2] || '').trim();
+    if (ntn === '0' || ntn === '—' || ntn === 'N/A') ntn = '';
+    if (cnic === '0' || cnic === '—' || cnic === 'N/A') cnic = '';
+    out.push({ name: name, ntn: ntn, cnic: cnic });
+  }
+  return out;
+}
+
+// ============================================================
 // MASTER FORM SYNCHRONIZER
 // ============================================================
 function writeMasterFormSafe_(formSheet, d) {
@@ -895,6 +925,24 @@ function handleApiRequest_(pin, action, data) {
         success: false,
         ntnCnic: 'N/A',
         error: lookupErr.message
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  if (action === "getPayeeList") {
+    try {
+      var payeeSs = SpreadsheetApp.getActiveSpreadsheet();
+      var payees = getPayeeList_(payeeSs);
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        payees: payees,
+        count: payees.length
+      })).setMimeType(ContentService.MimeType.JSON);
+    } catch (listErr) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        payees: [],
+        error: listErr.message
       })).setMimeType(ContentService.MimeType.JSON);
     }
   }
