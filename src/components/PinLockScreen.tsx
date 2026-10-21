@@ -96,16 +96,16 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
   };
 
   return (
-    <div className={`${large ? 'max-w-xl py-3' : 'max-w-md py-12'} mx-auto px-4 animate-in fade-in duration-200`}>
+    <div className={`${large ? 'max-w-xl py-1' : 'max-w-md py-12'} mx-auto px-4 animate-in fade-in duration-200`}>
       <div
-        className={`${large ? 'p-10 gate-card' : 'p-8'} rounded-3xl border shadow-xl text-center space-y-6 transition-all ${
+        className={`${large ? 'p-8 gate-card' : 'p-8'} rounded-3xl border shadow-xl text-center space-y-6 transition-all ${
           darkMode
             ? 'bg-[#0a2b21] border-slate-800 text-white shadow-indigo-950/40'
             : 'bg-white border-slate-200 text-slate-900 shadow-indigo-500/5'
         }`}
       >
         {/* Institutional Crest / Lock Avatar */}
-        <div className={`relative mx-auto ${large ? 'w-24 h-24 gate-crest' : 'w-20 h-20'} rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/80 flex items-center justify-center p-2 shadow-xs`}>
+        <div className={`relative mx-auto ${large ? 'w-[5.25rem] h-[5.25rem] gate-crest' : 'w-20 h-20'} rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/80 flex items-center justify-center p-2 shadow-xs`}>
           <img
             src={customGvtiwLogo || '/gvtiw-logo.jpg'}
             alt="GVTIW Logo"
