@@ -24,7 +24,7 @@ import { AdminHubModule } from './components/AdminHubModule';
 import { PinLockScreen } from './components/PinLockScreen';
 import { AnimatedSplashLogos } from './components/AnimatedSplashLogos';
 import { INITIAL_MASTER_VOUCHERS } from './data/cashBookData';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Mail } from 'lucide-react';
 import { fetchDashboardPayload } from './lib/apiEngine';
 
 export type ActiveModuleTab = 'DASHBOARD' | 'CASHBOOK' | 'VOUCHERS' | 'REPORTS' | 'ADMIN';
@@ -361,8 +361,11 @@ export default function App() {
           />
         </div>
         <footer className="gate-footer">
-          e-CashBook System developed by MKZ for Institute 33028
-          <span className="gate-devline">For System Development: kashifzia.excel@gmail.com</span>
+          <span>For System Development:</span>
+          <a className="gate-maillink" href="mailto:kashifzia.excel@gmail.com">
+            <Mail className="w-4 h-4" />
+            <span>kashifzia.excel@gmail.com</span>
+          </a>
         </footer>
       </div>
     );
