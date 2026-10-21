@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Moon,
   Sun,
+  Lock,
   Download,
   Printer,
   ShieldCheck,
@@ -25,6 +26,7 @@ interface HeaderProps {
   darkMode: boolean;
   setDarkMode: (val: boolean) => void;
   onRefresh: () => void;
+  onLock?: () => void;
   isRefreshing: boolean;
   autoSyncInterval: number; // in seconds, 0 = paused
   setAutoSyncInterval: (val: number) => void;
@@ -42,6 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   darkMode,
   setDarkMode,
   onRefresh,
+  onLock,
   isRefreshing,
   autoSyncInterval,
   setAutoSyncInterval,
@@ -198,6 +201,19 @@ export const Header: React.FC<HeaderProps> = ({
                   <span>Print Report</span>
                 </button>
               </>
+            )}
+
+            {/* Lock Session (front-door PIN gate) */}
+            {onLock && (
+              <button
+                id="btn-lock-session"
+                type="button"
+                onClick={onLock}
+                className="hdr-toggle"
+                title="Lock — PIN required to re-enter"
+              >
+                <Lock />
+              </button>
             )}
 
             {/* Dark / Light Mode Toggle */}

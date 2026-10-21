@@ -164,7 +164,13 @@ export default function App() {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Shared Admin & Voucher PIN Authentication State (pure in-memory state, resets on page reload)
-  const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
+    try {
+      return !!sessionStorage.getItem('gvtiw_active_session_pin');
+    } catch {
+      return false;
+    }
+  });
   const [storedPin, setStoredPin] = useState<string>(() => {
     try {
       return sessionStorage.getItem('gvtiw_active_session_pin') || '';
@@ -177,7 +183,6 @@ export default function App() {
   useEffect(() => {
     try {
       sessionStorage.removeItem('gvtiw_admin_session');
-      sessionStorage.removeItem('gvtiw_active_session_pin');
       localStorage.removeItem('gvtiw_admin_custom_pin');
     } catch {
       // Safe fallback in restricted environments
@@ -236,10 +241,11 @@ export default function App() {
     }
   }, []);
 
-  // Initial Load
+  // Initial Load (front-door gate: no data loads until the session is unlocked)
   useEffect(() => {
+    if (!isUnlocked) return;
     fetchDashboardData(false);
-  }, [fetchDashboardData]);
+  }, [fetchDashboardData, isUnlocked]);
 
   // Save theme preference
   useEffect(() => {
@@ -253,14 +259,14 @@ export default function App() {
 
   // Scheduled Auto-Sync Loop
   useEffect(() => {
-    if (autoSyncInterval <= 0) return;
+    if (!isUnlocked || autoSyncInterval <= 0) return;
 
     const timer = setInterval(() => {
       fetchDashboardData(true);
     }, autoSyncInterval * 1000);
 
     return () => clearInterval(timer);
-  }, [autoSyncInterval, fetchDashboardData]);
+  }, [autoSyncInterval, fetchDashboardData, isUnlocked]);
 
   // Export Excel / CSV Handler
   const handleExportCSV = async () => {
@@ -289,6 +295,25 @@ export default function App() {
       exportToCSV(`GVTIW_Budget_Position_${new Date().toISOString().split('T')[0]}.csv`, csvRows);
     }
   };
+
+  // FRONT-DOOR PIN GATE — the whole app stays behind the PIN until the
+  // browser session is unlocked (same server-verified PIN as Voucher/Admin).
+  if (!isUnlocked) {
+    return (
+      <div
+        className={`min-h-screen transition-colors duration-200 ${
+          darkMode ? 'bg-[#03091E]' : 'bg-slate-100'
+        }`}
+      >
+        <PinLockScreen
+          darkMode={darkMode}
+          customGvtiwLogo={customGvtiwLogo}
+          onUnlock={handleUnlock}
+          title="GVTIW Accounts — Secure Access"
+        />
+      </div>
+    );
+  }
 
   if (loading && !data) {
     return (
@@ -354,6 +379,7 @@ export default function App() {
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         onRefresh={() => fetchDashboardData(false)}
+        onLock={handleLock}
         isRefreshing={isRefreshing}
         autoSyncInterval={autoSyncInterval}
         setAutoSyncInterval={setAutoSyncInterval}
