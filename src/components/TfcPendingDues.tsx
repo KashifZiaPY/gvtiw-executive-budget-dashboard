@@ -437,7 +437,7 @@ export const TfcPendingDues: React.FC<TfcPendingDuesProps> = ({
           </div>
           <button
             onClick={doPrint}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs cursor-pointer transition-all hover:shadow-md active:scale-[0.98]"
           >
             <Printer className="w-4 h-4" /> Print / PDF
           </button>
@@ -479,7 +479,7 @@ export const TfcPendingDues: React.FC<TfcPendingDuesProps> = ({
           {(dateFrom || dateTo) && (
             <button
               onClick={() => { setDateFrom(''); setDateTo(''); }}
-              className="px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
             >
               Clear Dates (All)
             </button>
@@ -562,14 +562,14 @@ export const TfcPendingDues: React.FC<TfcPendingDuesProps> = ({
                 }
               }
               .pd-table { width: 100%; border-collapse: collapse; }
-              .pd-table th { background: #065f46; color: #fff; font-size: 10.5px; padding: 5px 6px; text-align: left; }
+              .pd-table th { background: #fff; color: #0f172a; border-bottom: 2px solid #0f172a; font-size: 10.5px; padding: 5px 6px; text-align: left; }
               .pd-table td { border: 1px solid #cbd5e1; padding: 3px 6px; font-size: 10.8px; vertical-align: middle; }
               .pd-table td.r, .pd-table th.r { text-align: right; }
               .pd-table td.c, .pd-table th.c { text-align: center; }
               .pd-table td.mono { font-family: Consolas, monospace; font-size: 10.2px; white-space: nowrap; }
               .pd-table td.ch { font-size: 10.2px; line-height: 1.5; white-space: nowrap; }
-              .pd-table tr.pending td { background: #fff7ed; }
-              .pd-table tr.total td { background: #ecfdf5; border-top: 2px solid #065f46; font-weight: 700; }
+              .pd-table tr.pending td { background: #fff; }
+              .pd-table tr.total td { background: #fff; border-top: 2px solid #0f172a; font-weight: 700; }
               .pd-h3 { font-size: 12.5px; color: #065f46; margin: 12px 0 5px; border-left: 4px solid #0d9488; padding-left: 7px; }
               .pd-h3 .fee { color: #475569; font-weight: 600; font-size: 11px; }
             `}</style>
@@ -609,7 +609,7 @@ export const TfcPendingDues: React.FC<TfcPendingDuesProps> = ({
               <>
                 <h3 className="pd-h3">A — TRADE-WISE SUMMARY</h3>
                 {renderSummary(true)}
-                <div style={{ marginTop: 9, background: '#065f46', color: '#fff', borderRadius: 8, padding: '9px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ marginTop: 9, background: '#fff', border: '2.5px solid #065f46', color: '#065f46', borderRadius: 8, padding: '9px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Total Pending Dues — {isPartial ? 'selected trades' : 'all trades'}</span>
                   <span style={{ fontSize: 18, fontWeight: 800 }}>Rs. {fmt(totals.pending)}</span>
                 </div>
