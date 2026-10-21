@@ -16,6 +16,7 @@ import {
 import { TfcReceiptsReportView } from './TfcReceiptsReportView';
 import { TfcFeeRegisterView } from './TfcFeeRegisterView';
 import { TfcTransferStatement } from './TfcTransferStatement';
+import { TfcPendingDues } from './TfcPendingDues';
 import { TfcCourseMultiSelect } from './TfcCourseMultiSelect';
 import { formatPKR, formatCNIC, formatPakistaniDate } from '../lib/formatters';
 import { generateReceiptsRegisterPdf, generateHardCashBookPdf, generateDistributionOverviewPdf } from '../lib/tfcPdfGenerator';
@@ -66,6 +67,7 @@ export type TfcSubTab =
   | 'MONTH_WISE_RECEIPTS'
   | 'OVERVIEW'
   | 'TRANSFER_STATEMENT'
+  | 'PENDING_DUES'
   | 'CASHBOOK_GEN'
   | 'HARD_CASHBOOK'
   | 'FEE_REGISTER'
@@ -77,6 +79,7 @@ export const TFC_SUB_TABS: { value: TfcSubTab; label: string }[] = [
   { value: 'MONTH_WISE_RECEIPTS', label: 'Month Wise Receipts' },
   { value: 'OVERVIEW', label: 'Distribution Overview' },
   { value: 'TRANSFER_STATEMENT', label: 'Transfer Statement' },
+  { value: 'PENDING_DUES', label: 'Pending Dues' },
   { value: 'CASHBOOK_GEN', label: 'Soft CashBook Entry' },
   { value: 'HARD_CASHBOOK', label: 'Hard CashBook Entry' },
   { value: 'FEE_REGISTER', label: 'Fee Register' },
@@ -219,6 +222,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showHardCashBookPrintPortal, setShowHardCashBookPrintPortal] = useState<boolean>(false);
   const [transferPrintSignal, setTransferPrintSignal] = useState<number>(0);
+  const [pendingDuesPrintSignal, setPendingDuesPrintSignal] = useState<number>(0);
   const [showOverviewPrintPortal, setShowOverviewPrintPortal] = useState<boolean>(false);
   const [receiptsPrintSignal, setReceiptsPrintSignal] = useState<number>(0);
   const [feeRegisterPrintSignal, setFeeRegisterPrintSignal] = useState<number>(0);
@@ -1085,6 +1089,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         return 'Course Matrix';
       case 'TRANSFER_STATEMENT':
         return 'Transfer Statement';
+      case 'PENDING_DUES':
+        return 'Pending Dues';
       case 'OVERVIEW':
         return 'Distribution Overview';
       case 'DIRECTORY':
@@ -1099,6 +1105,11 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
     if (activeSubTab === 'TRANSFER_STATEMENT') {
       // The statement prints through its own official portal (browser Save-as-PDF).
       setTransferPrintSignal((s) => s + 1);
+      return;
+    }
+    if (activeSubTab === 'PENDING_DUES') {
+      // Pending Dues prints through its own official portal (browser Save-as-PDF).
+      setPendingDuesPrintSignal((s) => s + 1);
       return;
     }
     if (activeSubTab === 'HARD_CASHBOOK') {
@@ -1647,6 +1658,11 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
       // its Print / PDF Statement button); a plain window.print() here would
       // print the whole app page instead of the report.
       setTransferPrintSignal((s) => s + 1);
+      return;
+    }
+    if (activeSubTab === 'PENDING_DUES') {
+      // Pending Dues prints through its own official portal (same reasoning).
+      setPendingDuesPrintSignal((s) => s + 1);
       return;
     }
     if (activeSubTab === 'OVERVIEW') {
@@ -2218,6 +2234,18 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
             darkMode={darkMode}
             periodLabel={activePeriodLabel}
             printSignal={transferPrintSignal}
+          />
+        )}
+
+        {/* ============================================================= */}
+        {/* SUB-TAB: PENDING DUES / FEE REPORT                             */}
+        {/* ============================================================= */}
+        {activeSubTab === 'PENDING_DUES' && (
+          <TfcPendingDues
+            challans={statementChallans}
+            darkMode={darkMode}
+            periodLabel={activePeriodLabel}
+            printSignal={pendingDuesPrintSignal}
           />
         )}
 

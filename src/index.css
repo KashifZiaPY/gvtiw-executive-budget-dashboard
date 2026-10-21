@@ -214,6 +214,7 @@
   body:has(#print-fee-register-portal) #root,
   body.fee-register-print-active #root,
   body:has(#print-transfer-portal) #root,
+  body:has(#print-pending-dues-portal) #root,
   body:has(#print-overview-portal) #root {
     display: none !important;
   }
@@ -278,6 +279,23 @@
 
   /* Official Fee Share Transfer Statement Print Portal */
   #print-transfer-portal {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    background: white !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Official Pending Dues / Fee Report Print Portal */
+  #print-pending-dues-portal {
     display: block !important;
     position: static !important;
     inset: auto !important;
