@@ -1731,6 +1731,12 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       }
 
       const json = await response.json();
+      if (json && json.success && json.role === 'guest') {
+        setIsVerifyingPin(false);
+        setPinError('Guest PIN is view-only. Admin Operations requires the Master PIN.');
+        addAuditLog('ADMIN_AUTH', 'failed', 'Guest PIN attempt on Admin Operations recorded.');
+        return;
+      }
       if (json && json.success) {
         setIsVerifyingPin(false);
         if (onUnlockProp) onUnlockProp(cleanInput);
@@ -1798,6 +1804,84 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
       setIsPinSettingsOpen(false);
       setPinChangeMsg(null);
     }, 1200);
+  };
+
+  // -------------------------------------------------------------
+  // GUEST PIN (VIEW-ONLY) MANAGEMENT — master-gated backend actions
+  // -------------------------------------------------------------
+  const [guestPinSet, setGuestPinSet] = useState<boolean | null>(null);
+  const [guestPinInput, setGuestPinInput] = useState('');
+  const [guestPinMsg, setGuestPinMsg] = useState<string | null>(null);
+  const [guestPinBusy, setGuestPinBusy] = useState(false);
+
+  const callGuestPinAction = async (action: string, extra: Record<string, string> = {}) => {
+    const response = await fetch(webAppUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ pin: storedPin, action, command: action, ...extra }),
+    });
+    return response.json().catch(() => null);
+  };
+
+  const refreshGuestPinStatus = async () => {
+    try {
+      const json = await callGuestPinAction('getGuestPinStatus');
+      if (json && json.success) setGuestPinSet(!!json.guestPinSet);
+    } catch {
+      // Status stays unknown; the badge shows the last known state.
+    }
+  };
+
+  useEffect(() => {
+    if (isPinSettingsOpen) void refreshGuestPinStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPinSettingsOpen]);
+
+  const handleSaveGuestPin = async () => {
+    const clean = guestPinInput.trim();
+    if (clean.length < 4) {
+      setGuestPinMsg('Guest PIN must be at least 4 characters.');
+      return;
+    }
+    if (clean === (storedPin || '').trim()) {
+      setGuestPinMsg('Guest PIN must be different from the Master PIN.');
+      return;
+    }
+    setGuestPinBusy(true);
+    setGuestPinMsg(null);
+    try {
+      const json = await callGuestPinAction('setGuestPin', { newPin: clean });
+      if (json && json.success) {
+        setGuestPinMsg('✅ ' + (json.message || 'Guest PIN updated.'));
+        setGuestPinInput('');
+        setGuestPinSet(true);
+        addAuditLog('GUEST_PIN_UPDATE', 'success', 'Guest (view-only) PIN updated from Admin Operations.');
+      } else {
+        setGuestPinMsg((json && json.message) || 'Could not save the Guest PIN.');
+      }
+    } catch {
+      setGuestPinMsg('Network error while saving the Guest PIN.');
+    }
+    setGuestPinBusy(false);
+  };
+
+  const handleRemoveGuestPin = async () => {
+    setGuestPinBusy(true);
+    setGuestPinMsg(null);
+    try {
+      const json = await callGuestPinAction('removeGuestPin');
+      if (json && json.success) {
+        setGuestPinMsg('✅ ' + (json.message || 'Guest PIN removed.'));
+        setGuestPinSet(false);
+        setGuestPinInput('');
+        addAuditLog('GUEST_PIN_REMOVE', 'success', 'Guest (view-only) PIN removed from Admin Operations.');
+      } else {
+        setGuestPinMsg((json && json.message) || 'Could not remove the Guest PIN.');
+      }
+    } catch {
+      setGuestPinMsg('Network error while removing the Guest PIN.');
+    }
+    setGuestPinBusy(false);
   };
 
   const handleCopyScript = () => {
@@ -3573,6 +3657,68 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                 </div>
               </div>
             </form>
+
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold uppercase tracking-wide">Guest PIN — View-Only Access</span>
+                <span
+                  className={`px-2 py-0.5 rounded-full font-bold ${
+                    guestPinSet
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+                      : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                  }`}
+                >
+                  {guestPinSet === null ? 'CHECKING…' : guestPinSet ? 'ACTIVE' : 'DISABLED'}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                A guest signs in at the front door with this PIN and can only VIEW (Dashboard, CashBooks,
+                Reports). Voucher Matrix and Admin Operations stay locked for the Master PIN, and the
+                server rejects every guest write attempt.
+              </p>
+              <div>
+                <label className="block text-slate-500 dark:text-slate-400 mb-1 font-semibold">Set / Change Guest PIN</label>
+                <input
+                  type="password"
+                  maxLength={12}
+                  value={guestPinInput}
+                  onChange={(e) => setGuestPinInput(e.target.value)}
+                  placeholder="New Guest PIN (min 4 characters)"
+                  className={`w-full p-2.5 rounded-xl border font-mono text-center outline-none ${
+                    darkMode
+                      ? 'bg-slate-800 border-slate-700 text-white'
+                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-600'
+                  }`}
+                />
+              </div>
+              {guestPinMsg && (
+                <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-800 dark:text-indigo-200 text-xs font-semibold text-center">
+                  {guestPinMsg}
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                {guestPinSet ? (
+                  <button
+                    type="button"
+                    onClick={handleRemoveGuestPin}
+                    disabled={guestPinBusy}
+                    className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-slate-300 dark:border-slate-700 hover:border-rose-300 text-slate-700 dark:text-slate-300 hover:text-rose-600 rounded-xl text-xs font-bold cursor-pointer transition-colors disabled:opacity-50"
+                  >
+                    Remove Guest PIN
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveGuestPin}
+                  disabled={guestPinBusy}
+                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer active:translate-y-px disabled:opacity-50"
+                >
+                  Save Guest PIN
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

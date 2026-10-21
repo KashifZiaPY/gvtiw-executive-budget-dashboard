@@ -171,6 +171,14 @@ export default function App() {
       return false;
     }
   });
+  // Session role: 'admin' (Master PIN) or 'guest' (view-only PIN), restored per session
+  const [sessionRole, setSessionRole] = useState<'admin' | 'guest'>(() => {
+    try {
+      return sessionStorage.getItem('gvtiw_session_role') === 'guest' ? 'guest' : 'admin';
+    } catch {
+      return 'admin';
+    }
+  });
   const [storedPin, setStoredPin] = useState<string>(() => {
     try {
       return sessionStorage.getItem('gvtiw_active_session_pin') || '';
@@ -203,12 +211,14 @@ export default function App() {
     return () => window.removeEventListener('gvtiw_sync_status_changed', handleSyncStatus);
   }, []);
 
-  const handleUnlock = useCallback((typedPin?: string) => {
+  const handleUnlock = useCallback((typedPin?: string, role: 'admin' | 'guest' = 'admin') => {
     setIsUnlocked(true);
+    setSessionRole(role);
     if (typedPin) {
       setStoredPin(typedPin);
       try {
         sessionStorage.setItem('gvtiw_active_session_pin', typedPin);
+        sessionStorage.setItem('gvtiw_session_role', role);
       } catch {
         // Safe fallback
       }
@@ -218,12 +228,18 @@ export default function App() {
   const handleLock = useCallback(() => {
     setIsUnlocked(false);
     setStoredPin('');
+    setSessionRole('admin');
     try {
       sessionStorage.removeItem('gvtiw_active_session_pin');
+      sessionStorage.removeItem('gvtiw_session_role');
     } catch {
       // Safe fallback
     }
   }, []);
+
+  // Admin sections (Voucher Matrix, Admin Operations) need the Master PIN role;
+  // a guest session stays view-only even though the front door is unlocked.
+  const isAdmin = isUnlocked && sessionRole === 'admin';
 
   // Fetch Dashboard State from High-Performance Backend or Autonomous Engine
   const fetchDashboardData = useCallback(async (isSilent = false) => {
@@ -380,6 +396,7 @@ export default function App() {
         setDarkMode={setDarkMode}
         onRefresh={() => fetchDashboardData(false)}
         onLock={handleLock}
+        sessionRole={isUnlocked ? sessionRole : null}
         isRefreshing={isRefreshing}
         autoSyncInterval={autoSyncInterval}
         setAutoSyncInterval={setAutoSyncInterval}
@@ -438,11 +455,12 @@ export default function App() {
 
         {activeModule === 'VOUCHERS' && (
           <section aria-label="Master Voucher Matrix">
-            {!isUnlocked ? (
+            {!isAdmin ? (
               <PinLockScreen
                 darkMode={darkMode}
                 customGvtiwLogo={customGvtiwLogo}
                 onUnlock={handleUnlock}
+                adminOnly
                 title="Voucher Matrix Authentication"
               />
             ) : (
@@ -482,8 +500,8 @@ export default function App() {
                 customGvtiwLogo={customGvtiwLogo}
                 customTevtaLogo={customTevtaLogo}
                 customGopLogo={customGopLogo}
-                isUnlocked={isUnlocked}
-                onUnlock={handleUnlock}
+                isUnlocked={isAdmin}
+                onUnlock={(pin: string) => handleUnlock(pin, 'admin')}
                 onLock={handleLock}
                 storedPin={storedPin}
                 setStoredPin={setStoredPin}

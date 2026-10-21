@@ -13,8 +13,10 @@ import {
 interface PinLockScreenProps {
   darkMode: boolean;
   customGvtiwLogo?: string | null;
-  onUnlock: (typedPin: string) => void;
+  onUnlock: (typedPin: string, role: 'admin' | 'guest') => void;
   title?: string;
+  /** When true, a Guest (view-only) PIN is rejected here — Master PIN only. */
+  adminOnly?: boolean;
 }
 
 export const PinLockScreen: React.FC<PinLockScreenProps> = ({
@@ -22,6 +24,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
   customGvtiwLogo,
   onUnlock,
   title = 'Admin & Operations Authentication',
+  adminOnly = false,
 }) => {
   const [pinInput, setPinInput] = useState('');
   const [showPin, setShowPin] = useState(false);
@@ -64,6 +67,12 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
 
       const json = await response.json();
       if (json && json.success) {
+        const role: 'admin' | 'guest' = json.role === 'guest' ? 'guest' : 'admin';
+        if (adminOnly && role !== 'admin') {
+          setIsVerifying(false);
+          setPinError('Guest PIN is view-only. The Master PIN is required for this section.');
+          return;
+        }
         setIsVerifying(false);
         setPinError(null);
         try {
@@ -71,7 +80,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
         } catch {
           // Safe fallback in restricted environments
         }
-        onUnlock(cleanInput);
+        onUnlock(cleanInput, role);
       } else {
         setIsVerifying(false);
         setPinError('Invalid Security PIN. Access denied.');

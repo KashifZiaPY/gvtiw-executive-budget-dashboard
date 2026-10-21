@@ -3236,6 +3236,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             <PinLockScreen
               darkMode={darkMode}
               customGvtiwLogo={customGvtiwLogo}
+              adminOnly
               title="Accounting Data Entry Authentication"
               onUnlock={(pin) => {
                 setShowPinModal(false);

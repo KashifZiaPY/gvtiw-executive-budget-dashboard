@@ -27,6 +27,7 @@ interface HeaderProps {
   setDarkMode: (val: boolean) => void;
   onRefresh: () => void;
   onLock?: () => void;
+  sessionRole?: 'admin' | 'guest' | null;
   isRefreshing: boolean;
   autoSyncInterval: number; // in seconds, 0 = paused
   setAutoSyncInterval: (val: number) => void;
@@ -45,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
   setDarkMode,
   onRefresh,
   onLock,
+  sessionRole,
   isRefreshing,
   autoSyncInterval,
   setAutoSyncInterval,
@@ -201,6 +203,20 @@ export const Header: React.FC<HeaderProps> = ({
                   <span>Print Report</span>
                 </button>
               </>
+            )}
+
+            {/* Session Role Badge */}
+            {sessionRole && (
+              <span
+                className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-widest uppercase border ${
+                  sessionRole === 'admin'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800'
+                    : 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800'
+                }`}
+                title={sessionRole === 'admin' ? 'Signed in with the Master PIN' : 'View-only guest session — Voucher & Admin stay locked'}
+              >
+                {sessionRole === 'admin' ? 'Admin' : 'Guest · View Only'}
+              </span>
             )}
 
             {/* Lock Session (front-door PIN gate) */}
