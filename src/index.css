@@ -918,3 +918,83 @@
   .hdr-btn, .hdr-toggle { transition: none; }
   .hdr-btn:hover, .hdr-toggle:hover { transform: none; }
 }
+
+/* Session role badge row (Header ROW 4) */
+.hdr-badgerow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 4px 14px 6px;
+  border-top: 1px solid var(--hdr-strip-border);
+}
+.hdr-badgerow-actions {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Front-door PIN gate — branded light frame */
+.gate-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, #ffffff 0%, #eafaf1 55%, #d7f3e3 100%);
+}
+.gate-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 24px 0;
+}
+.gate-logo-wrap { position: relative; width: 76px; height: 76px; flex: none; }
+.gate-logo {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 9999px;
+  background: #ffffff;
+  padding: 4px;
+  box-shadow: 0 4px 14px rgba(11, 122, 75, 0.20);
+}
+.gate-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  border: 2px dashed rgba(13, 148, 91, 0.45);
+  animation: gateRingSpin 16s linear infinite;
+  pointer-events: none;
+}
+.gate-halo {
+  position: absolute;
+  inset: -14px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.30) 0%, rgba(16, 185, 129, 0) 70%);
+  animation: gateHalo 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes gateRingSpin { to { transform: rotate(360deg); } }
+@keyframes gateHalo { 0%, 100% { transform: scale(0.92); opacity: 0.7; } 50% { transform: scale(1.08); opacity: 1; } }
+.gate-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.gate-fade-up { animation: gateFadeUp 0.55s ease both; }
+@keyframes gateFadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.gate-footer {
+  text-align: center;
+  padding: 14px 12px 20px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #065f46;
+  font-weight: 600;
+}

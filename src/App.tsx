@@ -316,17 +316,44 @@ export default function App() {
   // browser session is unlocked (same server-verified PIN as Voucher/Admin).
   if (!isUnlocked) {
     return (
-      <div
-        className={`min-h-screen transition-colors duration-200 ${
-          darkMode ? 'bg-[#03091E]' : 'bg-slate-100'
-        }`}
-      >
-        <PinLockScreen
-          darkMode={darkMode}
-          customGvtiwLogo={customGvtiwLogo}
-          onUnlock={handleUnlock}
-          title="GVTIW Accounts — Secure Access"
-        />
+      <div className="gate-screen">
+        <div className="gate-topbar">
+          <div className="gate-logo-wrap">
+            <span className="gate-halo" aria-hidden="true" />
+            <span className="gate-ring" aria-hidden="true" />
+            <img
+              src={customGvtiwLogo || '/gvtiw-logo.jpg'}
+              alt="GVTIW Logo"
+              className="gate-logo"
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
+          </div>
+          <div className="gate-logo-wrap">
+            <span className="gate-halo" aria-hidden="true" />
+            <span className="gate-ring" aria-hidden="true" />
+            <img
+              src={customTevtaLogo || '/tevta-logo.png'}
+              alt="TEVTA Logo"
+              className="gate-logo"
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
+          </div>
+        </div>
+        <div className="gate-center gate-fade-up">
+          <PinLockScreen
+            darkMode={false}
+            customGvtiwLogo={customGvtiwLogo}
+            onUnlock={handleUnlock}
+            title="GVTIW Accounts — Secure Access"
+          />
+        </div>
+        <footer className="gate-footer">
+          e-CashBook System developed by MKZ for Institute 33028
+        </footer>
       </div>
     );
   }
