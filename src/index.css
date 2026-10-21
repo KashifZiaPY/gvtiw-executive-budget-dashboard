@@ -941,7 +941,8 @@
 
 /* Front-door PIN gate — branded light frame */
 .gate-screen {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: linear-gradient(160deg, #ffffff 0%, #eafaf1 55%, #d7f3e3 100%);
@@ -950,7 +951,7 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 20px 24px 0;
+  padding: 12px 24px 0;
 }
 .gate-logo-wrap { position: relative; width: 76px; height: 76px; flex: none; }
 .gate-logo {
@@ -992,11 +993,12 @@
 @keyframes gateFadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .gate-footer {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 7px;
   text-align: center;
-  padding: 14px 12px 20px;
+  padding: 8px 12px 12px;
   font-size: 12px;
   letter-spacing: 0.04em;
   color: rgba(6, 95, 70, 0.55);
@@ -1056,4 +1058,44 @@
 @keyframes gateDriftB {
   from { transform: translate(0, 0) rotate(3deg); }
   to { transform: translate(-90px, 30px) rotate(-3deg); }
+}
+
+.gate-devrow { display: flex; align-items: center; justify-content: center; gap: 7px; }
+.gate-mailicon { flex: none; filter: drop-shadow(0 1px 1px rgba(15, 23, 42, 0.18)); }
+.gate-qrblock { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.gate-qr {
+  width: 66px;
+  height: 66px;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid rgba(6, 95, 70, 0.20);
+  border-radius: 10px;
+  padding: 3px;
+}
+.gate-qrcaption {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(6, 95, 70, 0.50);
+}
+@media (max-height: 820px) {
+  .gate-logo-wrap { width: 56px; height: 56px; }
+  .gate-institute { font-size: 16px; }
+  .gate-hubline { margin-top: 3px; font-size: 10px; }
+  .gate-qr { width: 50px; height: 50px; }
+  .gate-topbar { padding-top: 8px; }
+  .gate-card { padding: 1.2rem 1.5rem; }
+  .gate-card > * { margin-block-start: 0.7rem !important; }
+  .gate-card > *:first-child { margin-block-start: 0 !important; }
+  .gate-crest { width: 4.3rem !important; height: 4.3rem !important; }
+  .gate-cardtitle { font-size: 1.18rem !important; }
+}
+@media (max-height: 690px) {
+  .gate-card { padding: 0.85rem 1.3rem; }
+  .gate-card > * { margin-block-start: 0.5rem !important; }
+  .gate-crest { width: 3.5rem !important; height: 3.5rem !important; }
+  .gate-qr { width: 42px; height: 42px; }
+  .gate-qrcaption { display: none; }
+  .gate-footer { gap: 4px; padding-bottom: 8px; }
 }

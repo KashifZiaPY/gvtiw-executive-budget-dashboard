@@ -24,7 +24,7 @@ import { AdminHubModule } from './components/AdminHubModule';
 import { PinLockScreen } from './components/PinLockScreen';
 import { AnimatedSplashLogos } from './components/AnimatedSplashLogos';
 import { INITIAL_MASTER_VOUCHERS } from './data/cashBookData';
-import { AlertTriangle, Mail } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { fetchDashboardPayload } from './lib/apiEngine';
 
 export type ActiveModuleTab = 'DASHBOARD' | 'CASHBOOK' | 'VOUCHERS' | 'REPORTS' | 'ADMIN';
@@ -361,11 +361,23 @@ export default function App() {
           />
         </div>
         <footer className="gate-footer">
-          <span>For System Development:</span>
-          <a className="gate-maillink" href="mailto:kashifzia.excel@gmail.com">
-            <Mail className="w-4 h-4" />
-            <span>kashifzia.excel@gmail.com</span>
-          </a>
+          <div className="gate-devrow">
+            <span>For System Development:</span>
+            <a className="gate-maillink" href="mailto:kashifzia.excel@gmail.com">
+              <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" className="gate-mailicon">
+                <rect x="1.6" y="4.6" width="20.8" height="14.8" rx="2" fill="#ffffff" stroke="#cbd5e1" strokeWidth="0.8" />
+                <path fill="#4285F4" d="M3.4 6.2h3.2v11.4H3.4a1 1 0 0 1-1-1V7.2a1 1 0 0 1 1-1Z" />
+                <path fill="#34A853" d="M20.6 6.2h-3.2v11.4h3.2a1 1 0 0 0 1-1V7.2a1 1 0 0 0-1-1Z" />
+                <path fill="#EA4335" d="M12 13.1 3.9 6.6a1.4 1.4 0 0 1 .6-.4h15a1.4 1.4 0 0 1 .6.4Z" />
+                <path fill="#FBBC04" d="M17.4 12.2v5.4h-2.6v-3.5Z" opacity="0.9" />
+              </svg>
+              <span>kashifzia.excel@gmail.com</span>
+            </a>
+          </div>
+          <div className="gate-qrblock">
+            <img src="/whatsapp-qr.png" alt="WhatsApp QR code — scan to chat" className="gate-qr" />
+            <span className="gate-qrcaption">Scan to chat on WhatsApp</span>
+          </div>
         </footer>
       </div>
     );
