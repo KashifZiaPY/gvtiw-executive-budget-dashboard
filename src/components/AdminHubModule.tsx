@@ -1818,7 +1818,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
     const response = await fetch(webAppUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ pin: storedPin, action, command: action, ...extra }),
+      body: JSON.stringify({ pin: storedPin, action, command: action, ...extra, data: { ...extra } }),
     });
     return response.json().catch(() => null);
   };
