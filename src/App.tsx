@@ -362,6 +362,7 @@ export default function App() {
         </div>
         <footer className="gate-footer">
           e-CashBook System developed by MKZ for Institute 33028
+          <span className="gate-devline">For System Development: kashifzia.excel@gmail.com</span>
         </footer>
       </div>
     );

@@ -995,8 +995,15 @@
   padding: 14px 12px 20px;
   font-size: 12px;
   letter-spacing: 0.04em;
-  color: #065f46;
-  font-weight: 600;
+  color: rgba(6, 95, 70, 0.55);
+  font-weight: 500;
+}
+.gate-devline {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: rgba(6, 95, 70, 0.45);
 }
 
 /* Gate: center title block */
@@ -1008,7 +1015,8 @@
 .gate-institute {
   font-size: clamp(17px, 2.3vw, 27px);
   font-weight: 800;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   color: #065f46;
   line-height: 1.25;
 }
@@ -1033,8 +1041,8 @@
   z-index: 0;
   user-select: none;
 }
-.gate-bg-logo-a { left: -130px; top: 15%; animation: gateDriftA 46s ease-in-out infinite alternate; }
-.gate-bg-logo-b { right: -130px; bottom: 6%; animation: gateDriftB 54s ease-in-out infinite alternate; }
+.gate-bg-logo-a { left: -130px; top: 15%; animation: gateDriftA 27s ease-in-out infinite alternate; }
+.gate-bg-logo-b { right: -130px; bottom: 6%; animation: gateDriftB 31s ease-in-out infinite alternate; }
 @keyframes gateDriftA {
   from { transform: translate(0, 0) rotate(-4deg); }
   to { transform: translate(90px, -34px) rotate(3deg); }

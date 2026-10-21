@@ -186,6 +186,12 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
           <span>Encrypted Session • Strict LIFO Safety Enforced</span>
         </div>
+
+        {large && (
+          <div className="text-[11px] font-semibold tracking-wide text-slate-400 dark:text-slate-500">
+            e-CashBook System developed by MKZ for Institute 33028
+          </div>
+        )}
       </div>
     </div>
   );
