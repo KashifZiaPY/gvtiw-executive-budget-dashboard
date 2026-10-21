@@ -23,7 +23,7 @@ import { TfcCourseMultiSelect } from './TfcCourseMultiSelect';
  * period and the selected / excluded trades printed on the report's face.
  */
 
-const TRADE_ORDER = ['MVi', 'MVii', 'FD', 'ADDM', 'CO', 'DM', 'BT', 'CK', 'BTE'];
+const TRADE_ORDER = ['MVi', 'MVii', 'FD', 'ADDM', 'CO', 'DM', 'BT', 'CK', 'BTE', 'TUV'];
 const BENCHMARK_STRENGTH = 25;
 
 const fmt = (n: number) => Math.round(n).toLocaleString('en-US');
@@ -96,6 +96,7 @@ interface TradeDue {
   code: string;
   title: string;
   fee: number;
+  noFee?: boolean;
   benchmark: number;
   collected: number;
   pending: number;
@@ -106,10 +107,9 @@ interface TradeDue {
 }
 
 interface TfcPendingDuesProps {
-  /** Challans of the hub period (date filter applied, all trades). */
+  /** ALL challans (unfiltered) — this report applies its own From/To dates and trade selection. */
   challans: TfcChallanRecord[];
   darkMode: boolean;
-  periodLabel: string;
   /** Increment from the parent (hub Print / PDF buttons) to trigger print. */
   printSignal?: number;
 }
@@ -117,19 +117,67 @@ interface TfcPendingDuesProps {
 export const TfcPendingDues: React.FC<TfcPendingDuesProps> = ({
   challans,
   darkMode,
-  periodLabel,
   printSignal = 0,
 }) => {
   const [selectedTrades, setSelectedTrades] = useState<string[]>(['ALL']);
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
   const [showPrintPortal, setShowPrintPortal] = useState(false);
   const [generatedOn, setGeneratedOn] = useState(
     () => `${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString()}`
   );
 
-  // Trades covered by the prescribed-fee schedule that appear in this period
+  // This report's own period: From/To dates over the full challan set.
+  const periodChallans = useMemo(() => {
+    const fromTs = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
+    const toTs = dateTo ? new Date(`${dateTo}T23:59:59`).getTime() : null;
+    return challans.filter((c) => {
+      const ts = parseTs(c.challanPaymentDate);
+      if (fromTs !== null && ts < fromTs) return false;
+      if (toTs !== null && ts > toTs) return false;
+      return true;
+    });
+  }, [challans, dateFrom, dateTo]);
+
+  const dataRange = useMemo(() => {
+    let min = Infinity;
+    let max = 0;
+    challans.forEach((c) => {
+      const ts = parseTs(c.challanPaymentDate);
+      if (ts) {
+        if (ts < min) min = ts;
+        if (ts > max) max = ts;
+      }
+    });
+    const iso = (ts: number) => {
+      const d = new Date(ts);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    return {
+      minIso: min === Infinity ? '' : iso(min),
+      maxIso: max ? iso(max) : '',
+      minText: min === Infinity ? '' : `${String(new Date(min).getDate()).padStart(2, '0')} ${MON_NAMES[new Date(min).getMonth()]} ${new Date(min).getFullYear()}`,
+      maxText: max ? `${String(new Date(max).getDate()).padStart(2, '0')} ${MON_NAMES[new Date(max).getMonth()]} ${new Date(max).getFullYear()}` : '',
+    };
+  }, [challans]);
+
+  const fmtIsoLabel = (isoStr: string) => {
+    const d = new Date(`${isoStr}T00:00:00`);
+    return `${String(d.getDate()).padStart(2, '0')} ${MON_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  const periodLabel = useMemo(() => {
+    if (dateFrom && dateTo) return dateFrom === dateTo ? fmtIsoLabel(dateFrom) : `${fmtIsoLabel(dateFrom)} to ${fmtIsoLabel(dateTo)}`;
+    if (dateFrom) return `From ${fmtIsoLabel(dateFrom)}`;
+    if (dateTo) return `Up to ${fmtIsoLabel(dateTo)}`;
+    return dataRange.minText ? `All Dates (${dataRange.minText} – ${dataRange.maxText})` : 'All Dates';
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateFrom, dateTo, dataRange]);
+
+  // All course categories present in the data (incl. TUV), hub-consistent count
   const availableTrades = useMemo(() => {
     const present = new Set(challans.map((c) => c.courseAbbreviation));
-    return TRADE_ORDER.filter((code) => present.has(code) && PRESCRIBED_COURSE_FEE_MAP[code]);
+    return TRADE_ORDER.filter((code) => present.has(code));
   }, [challans]);
 
   const effectiveTrades = useMemo(() => {
@@ -143,8 +191,9 @@ export const TfcPendingDues: React.FC<TfcPendingDuesProps> = ({
 
   const tradeDues: TradeDue[] = useMemo(() => {
     return effectiveTrades.map((code) => {
-      const fee = PRESCRIBED_COURSE_FEE_MAP[code].fullFee;
-      const rows = challans.filter((c) => c.courseAbbreviation === code);
+      const feeEntry = PRESCRIBED_COURSE_FEE_MAP[code];
+      const fee = feeEntry ? feeEntry.fullFee : 0;
+      const rows = periodChallans.filter((c) => c.courseAbbreviation === code);
       const byTrainee = new Map<string, TraineeDue>();
       rows.forEach((c) => {
         const cnicDigits = cleanCnic(c.cnic);
@@ -177,6 +226,22 @@ export const TfcPendingDues: React.FC<TfcPendingDuesProps> = ({
         t.balance = Math.max(0, fee - t.deposited);
       });
       const collected = rows.reduce((s, c) => s + (c.totalAmount || 0), 0);
+      if (!feeEntry) {
+        // No prescribed fee (e.g. TUV certification): collected shown, no dues logic.
+        return {
+          code,
+          title: COURSE_TITLE_MAP[code] || code,
+          fee: 0,
+          noFee: true,
+          benchmark: 0,
+          collected,
+          pending: 0,
+          payerCount: trainees.length,
+          fullCount: 0,
+          partials: [],
+          completePendingCount: 0,
+        };
+      }
       const counted = trainees.reduce((s, t) => s + Math.min(t.deposited, fee), 0);
       const benchmark = fee * BENCHMARK_STRENGTH;
       const partials = trainees
@@ -195,47 +260,18 @@ export const TfcPendingDues: React.FC<TfcPendingDuesProps> = ({
         completePendingCount: Math.max(0, BENCHMARK_STRENGTH - trainees.length),
       };
     });
-  }, [challans, effectiveTrades]);
+  }, [periodChallans, effectiveTrades]);
 
   const totals = useMemo(
     () => ({
       benchmark: tradeDues.reduce((s, t) => s + t.benchmark, 0),
       collected: tradeDues.reduce((s, t) => s + t.collected, 0),
       pending: tradeDues.reduce((s, t) => s + t.pending, 0),
-      challans: challans.filter((c) => effectiveTrades.includes(c.courseAbbreviation)).length,
-      grossPeriod: challans.reduce((s, c) => s + (c.totalAmount || 0), 0),
-      periodChallans: challans.length,
+      grossPeriod: periodChallans.reduce((s, c) => s + (c.totalAmount || 0), 0),
+      periodChallans: periodChallans.length,
     }),
-    [tradeDues, challans, effectiveTrades]
+    [tradeDues, periodChallans]
   );
-
-  // Duplicate roll numbers inside one trade (distinct trainees) — register typos
-  const dupRollNotes = useMemo(() => {
-    const notes: string[] = [];
-    tradeDues.forEach((td) => {
-      const rows = challans.filter((c) => c.courseAbbreviation === td.code);
-      const byRoll = new Map<string, Set<string>>();
-      rows.forEach((c) => {
-        const cnicDigits = cleanCnic(c.cnic);
-        const key = cnicDigits.length >= 8 ? cnicDigits : `ROLL:${c.rollOrCode}`;
-        if (!byRoll.has(c.rollOrCode)) byRoll.set(c.rollOrCode, new Set());
-        byRoll.get(c.rollOrCode)!.add(key);
-      });
-      byRoll.forEach((set, roll) => {
-        if (roll && set.size > 1) {
-          const names = Array.from(
-            new Set(
-              rows
-                .filter((c) => c.rollOrCode === roll)
-                .map((c) => properCase(c.traineeName || ''))
-            )
-          ).join(', ');
-          notes.push(`Roll No. ${roll} (${td.code}) appears against ${set.size} trainees (${names}) in the fee record — possibly a typo in the register.`);
-        }
-      });
-    });
-    return notes;
-  }, [tradeDues, challans]);
 
   const includedNames = effectiveTrades.map((c) => `${c} — ${COURSE_TITLE_MAP[c] || c}`);
   const excludedNames = availableTrades
@@ -257,6 +293,7 @@ export const TfcPendingDues: React.FC<TfcPendingDuesProps> = ({
   }, [printSignal]);
 
   const positionText = (t: TradeDue): string => {
+    if (t.noFee) return t.payerCount > 0 ? 'Certification — no prescribed fee' : 'No deposits in period';
     if (t.pending === 0) return `Complete — ${t.payerCount} trainees paid`;
     const bits: string[] = [];
     if (t.fullCount > 0) bits.push(`${t.fullCount} full`);
@@ -285,10 +322,10 @@ export const TfcPendingDues: React.FC<TfcPendingDuesProps> = ({
           <tr key={t.code} className={pr ? (t.pending > 0 ? 'pending' : '') : t.pending > 0 ? (darkMode ? 'bg-orange-950/30' : 'bg-orange-50') : ''}>
             <td className={pr ? 'c' : 'border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-center align-middle'}>{i + 1}</td>
             <td className={pr ? '' : 'border border-slate-300 dark:border-slate-700 px-2 py-1.5 align-middle'}>{t.code} — {t.title}</td>
-            <td className={pr ? 'r' : 'border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-right align-middle'}>{fmt(t.fee)}</td>
-            <td className={pr ? 'r' : 'border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-right align-middle'}>{fmt(t.benchmark)}</td>
+            <td className={pr ? 'r' : 'border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-right align-middle'}>{t.noFee ? '—' : fmt(t.fee)}</td>
+            <td className={pr ? 'r' : 'border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-right align-middle'}>{t.noFee ? '—' : fmt(t.benchmark)}</td>
             <td className={pr ? 'r' : 'border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-right align-middle'}>{fmt(t.collected)}</td>
-            <td className={pr ? 'r' : 'border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-right align-middle font-bold'}>{fmt(t.pending)}</td>
+            <td className={pr ? 'r' : 'border border-slate-300 dark:border-slate-700 px-2 py-1.5 text-right align-middle font-bold'}>{t.noFee ? '—' : fmt(t.pending)}</td>
             <td className={pr ? '' : 'border border-slate-300 dark:border-slate-700 px-2 py-1.5 align-middle'}>{positionText(t)}</td>
           </tr>
         ))}
@@ -379,7 +416,6 @@ export const TfcPendingDues: React.FC<TfcPendingDuesProps> = ({
 
   const notesList = [
     'Trades with more than 25 trainees are shown complete; excess collections are ignored per the benchmark rule — pending dues are never negative.',
-    ...dupRollNotes,
     `Total deposits verified against the BOP TFC record for this period: ${fmt(totals.periodChallans)} challans, gross Rs. ${fmt(totals.grossPeriod)}.`,
   ];
 
@@ -396,10 +432,19 @@ export const TfcPendingDues: React.FC<TfcPendingDuesProps> = ({
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
               Basis: <strong className="text-slate-900 dark:text-slate-200">Prescribed Fee × 25 trainees</strong> per trade (system fee schedule).
-              Excess trainees never create negative pending. Period follows the hub date filter (month or custom range).
+              Excess trainees never create negative pending. Set the period with the From / To dates — leave both empty for all dates.
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={doPrint}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs"
+          >
+            <Printer className="w-4 h-4" /> Print / PDF
+          </button>
+        </div>
+        <div className="flex items-end gap-3 flex-wrap mt-3">
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">Trade Selection</div>
             <TfcCourseMultiSelect
               availableCourses={availableTrades}
               selectedCourses={selectedTrades}
@@ -408,13 +453,37 @@ export const TfcPendingDues: React.FC<TfcPendingDuesProps> = ({
               darkMode={darkMode}
               size="sm"
             />
-            <button
-              onClick={doPrint}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs"
-            >
-              <Printer className="w-4 h-4" /> Print / PDF
-            </button>
           </div>
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">From Date</div>
+            <input
+              type="date"
+              value={dateFrom}
+              min={dataRange.minIso}
+              max={dataRange.maxIso}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs px-2 py-2"
+            />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1">To Date</div>
+            <input
+              type="date"
+              value={dateTo}
+              min={dataRange.minIso}
+              max={dataRange.maxIso}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs px-2 py-2"
+            />
+          </div>
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => { setDateFrom(''); setDateTo(''); }}
+              className="px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Clear Dates (All)
+            </button>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs text-slate-600 dark:text-slate-300">
           <span><strong>Period:</strong> {periodLabel}</span>

@@ -2242,9 +2242,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
         {/* ============================================================= */}
         {activeSubTab === 'PENDING_DUES' && (
           <TfcPendingDues
-            challans={statementChallans}
+            challans={challans}
             darkMode={darkMode}
-            periodLabel={activePeriodLabel}
             printSignal={pendingDuesPrintSignal}
           />
         )}
