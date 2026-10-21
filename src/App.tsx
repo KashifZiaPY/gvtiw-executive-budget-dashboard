@@ -317,6 +317,8 @@ export default function App() {
   if (!isUnlocked) {
     return (
       <div className="gate-screen">
+        <img src="/gvtiw-logo.jpg" alt="" aria-hidden="true" className="gate-bg-logo gate-bg-logo-a" />
+        <img src="/tevta-logo.png" alt="" aria-hidden="true" className="gate-bg-logo gate-bg-logo-b" />
         <div className="gate-topbar">
           <div className="gate-logo-wrap">
             <span className="gate-halo" aria-hidden="true" />
@@ -329,6 +331,12 @@ export default function App() {
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
+          </div>
+          <div className="gate-titleblock">
+            <h1 className="gate-institute">
+              Govt. Vocational Training Institute (W) Samanabad, Faisalabad
+            </h1>
+            <p className="gate-hubline">Accounts &amp; Finance Hub</p>
           </div>
           <div className="gate-logo-wrap">
             <span className="gate-halo" aria-hidden="true" />
@@ -349,6 +357,7 @@ export default function App() {
             customGvtiwLogo={customGvtiwLogo}
             onUnlock={handleUnlock}
             title="GVTIW Accounts — Secure Access"
+            size="large"
           />
         </div>
         <footer className="gate-footer">

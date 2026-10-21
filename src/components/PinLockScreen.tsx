@@ -17,6 +17,8 @@ interface PinLockScreenProps {
   title?: string;
   /** When true, a Guest (view-only) PIN is rejected here — Master PIN only. */
   adminOnly?: boolean;
+  /** 'large' renders the bigger card used on the front-door gate screen. */
+  size?: 'normal' | 'large';
 }
 
 export const PinLockScreen: React.FC<PinLockScreenProps> = ({
@@ -25,7 +27,9 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
   onUnlock,
   title = 'Admin & Operations Authentication',
   adminOnly = false,
+  size = 'normal',
 }) => {
+  const large = size === 'large';
   const [pinInput, setPinInput] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
@@ -92,16 +96,16 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
   };
 
   return (
-    <div className="max-w-md mx-auto py-12 px-4 animate-in fade-in duration-200">
+    <div className={`${large ? 'max-w-xl' : 'max-w-md'} mx-auto py-12 px-4 animate-in fade-in duration-200`}>
       <div
-        className={`p-8 rounded-3xl border shadow-xl text-center space-y-6 transition-all ${
+        className={`${large ? 'p-10' : 'p-8'} rounded-3xl border shadow-xl text-center space-y-6 transition-all ${
           darkMode
             ? 'bg-[#0a2b21] border-slate-800 text-white shadow-indigo-950/40'
             : 'bg-white border-slate-200 text-slate-900 shadow-indigo-500/5'
         }`}
       >
         {/* Institutional Crest / Lock Avatar */}
-        <div className="relative mx-auto w-20 h-20 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/80 flex items-center justify-center p-2 shadow-xs">
+        <div className={`relative mx-auto ${large ? 'w-24 h-24' : 'w-20 h-20'} rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/80 flex items-center justify-center p-2 shadow-xs`}>
           <img
             src={customGvtiwLogo || '/gvtiw-logo.jpg'}
             alt="GVTIW Logo"
@@ -120,7 +124,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
             <Landmark className="w-3 h-3" />
             <span>Institutional Financial Gateway</span>
           </div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white mt-3">
+          <h2 className={`${large ? 'text-2xl' : 'text-xl'} font-bold tracking-tight text-slate-900 dark:text-white mt-3`}>
             {title}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">

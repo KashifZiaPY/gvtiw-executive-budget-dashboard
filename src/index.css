@@ -998,3 +998,48 @@
   color: #065f46;
   font-weight: 600;
 }
+
+/* Gate: center title block */
+.gate-titleblock {
+  flex: 1;
+  text-align: center;
+  padding: 10px 16px 0;
+}
+.gate-institute {
+  font-size: clamp(17px, 2.3vw, 27px);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #065f46;
+  line-height: 1.25;
+}
+.gate-hubline {
+  margin-top: 6px;
+  font-size: clamp(11px, 1.3vw, 14px);
+  font-weight: 700;
+  letter-spacing: 0.38em;
+  text-transform: uppercase;
+  color: #0d9488;
+}
+
+/* Gate: slow-drifting watermark logos + stacking */
+.gate-screen { position: relative; overflow: hidden; }
+.gate-topbar, .gate-center, .gate-footer { position: relative; z-index: 1; }
+.gate-bg-logo {
+  position: absolute;
+  width: 540px;
+  max-width: 60vw;
+  opacity: 0.055;
+  pointer-events: none;
+  z-index: 0;
+  user-select: none;
+}
+.gate-bg-logo-a { left: -130px; top: 15%; animation: gateDriftA 46s ease-in-out infinite alternate; }
+.gate-bg-logo-b { right: -130px; bottom: 6%; animation: gateDriftB 54s ease-in-out infinite alternate; }
+@keyframes gateDriftA {
+  from { transform: translate(0, 0) rotate(-4deg); }
+  to { transform: translate(90px, -34px) rotate(3deg); }
+}
+@keyframes gateDriftB {
+  from { transform: translate(0, 0) rotate(3deg); }
+  to { transform: translate(-90px, 30px) rotate(-3deg); }
+}
