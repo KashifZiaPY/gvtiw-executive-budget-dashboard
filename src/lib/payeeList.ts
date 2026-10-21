@@ -50,6 +50,13 @@ export function refreshPayeeList(): Promise<void> {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
+          pin: (() => {
+            try {
+              return sessionStorage.getItem('gvtiw_active_session_pin') || '';
+            } catch {
+              return '';
+            }
+          })(),
           action: 'getPayeeList',
           command: 'getPayeeList',
           data: {},
