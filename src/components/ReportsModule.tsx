@@ -81,6 +81,7 @@ interface ReportsModuleProps {
   customTevtaLogo?: string | null;
   customGopLogo?: string | null;
   isUnlocked?: boolean;
+  isAdminUnlocked?: boolean;
   onUnlock?: (typedPin: string) => void;
   /** Controlled report selection (driven by the app sidebar). Omit both to let the module manage its own tab. */
   activeReportTab?: ReportTab;
@@ -109,6 +110,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   customTevtaLogo,
   customGopLogo,
   isUnlocked = false,
+  isAdminUnlocked = false,
   onUnlock,
   activeReportTab: controlledReportTab,
   onSelectReportTab,
@@ -116,7 +118,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   onTfcSubTabChange,
 }) => {
   const [internalUnlocked, setInternalUnlocked] = useState(false);
-  const isAuthUnlocked = Boolean(isUnlocked || internalUnlocked);
+  const isAuthUnlocked = Boolean(isAdminUnlocked || internalUnlocked);
   const [showPinModal, setShowPinModal] = useState(false);
   const [internalReportTab, setInternalReportTab] = useState<ReportTab>('DIRECTOR_RECON');
   // Sidebar-driven (controlled) mode when the parent passes a selection; otherwise the module manages its own tab.

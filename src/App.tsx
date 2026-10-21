@@ -483,6 +483,7 @@ export default function App() {
               customTevtaLogo={customTevtaLogo}
               customGopLogo={customGopLogo}
               isUnlocked={isUnlocked}
+              isAdminUnlocked={isAdmin}
               onUnlock={handleUnlock}
               activeReportTab={activeReportTab}
               onSelectReportTab={setActiveReportTab}
