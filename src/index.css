@@ -215,7 +215,8 @@
   body.fee-register-print-active #root,
   body:has(#print-transfer-portal) #root,
   body:has(#print-pending-dues-portal) #root,
-  body:has(#print-overview-portal) #root {
+  body:has(#print-overview-portal) #root,
+  body:has(#print-executive-portal) #root {
     display: none !important;
   }
 
@@ -292,6 +293,29 @@
     overflow: visible !important;
     box-shadow: none !important;
     border: none !important;
+  }
+
+  /* Executive Board Report Print Portal (modal portalled to <body>) */
+  #print-executive-portal {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    background: white !important;
+    color: #0f172a !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  #print-executive-portal > div {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
   }
 
   /* Official Pending Dues / Fee Report Print Portal */
