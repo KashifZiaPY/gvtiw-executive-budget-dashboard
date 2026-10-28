@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { DashboardResponse, CategoryType } from '../types';
 import { formatPKR, formatPercent, format12HourDate } from '../lib/formatters';
 import { Printer, X } from 'lucide-react';
@@ -47,9 +48,14 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
     ? data.accounts.filter((a) => a.category === selectedCategory)
     : [];
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
-      <div className="w-full max-w-4xl bg-white text-slate-900 rounded-xl shadow-2xl overflow-hidden font-sans my-8">
+  // Portalled to <body> so print CSS can isolate it (same pattern as the TFC
+  // print portals): in print the portal goes static and #root is hidden, so the
+  // report prints exactly once instead of repeating per page like a fixed overlay.
+  // m-auto (not flex centering) keeps the modal top reachable when the document
+  // is taller than the viewport — flex centering clips the top in that case.
+  return createPortal(
+    <div id="print-executive-portal" className="fixed inset-0 z-50 flex p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
+      <div className="m-auto w-full max-w-4xl bg-white text-slate-900 rounded-xl shadow-2xl overflow-hidden font-sans">
         {/* Action bar (hidden on print) */}
         <div className="p-3 bg-slate-900 text-white flex items-center justify-between print:hidden">
           <span className="font-bold text-xs">{isFilteredPrint ? `Filtered Category Report — ${filteredCat!.shortName} (Print Ready)` : 'Executive Board Financial Summary (Print Ready)'} — Press Esc to Exit</span>
@@ -296,6 +302,7 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
