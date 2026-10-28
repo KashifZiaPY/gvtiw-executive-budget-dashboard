@@ -57,7 +57,7 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
     <div id="print-executive-portal" className="fixed inset-0 z-50 flex p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
       {/* Print page setup for this report only: narrower side margins so the
           document fills the sheet instead of leaving wide empty sides. */}
-      <style>{`@page { size: A4; margin: 12mm 10mm; }`}</style>
+      <style>{`@page { size: A4; margin: 12mm 8mm; }`}</style>
       <div className="m-auto w-full max-w-4xl bg-white text-slate-900 rounded-xl shadow-2xl overflow-hidden font-sans">
         {/* Action bar (hidden on print) */}
         <div className="p-3 bg-slate-900 text-white flex items-center justify-between print:hidden">
@@ -188,10 +188,11 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
               {filteredHeads.length === 0 ? (
                 <p className="text-[11px] text-slate-600">No account heads listed for this category.</p>
               ) : (
-                <table className="w-full border-collapse border border-slate-300 text-left text-[11px] print:text-xs">
+                <table className="w-full table-fixed border-collapse border border-slate-400 text-left text-[11px] print:text-[11px]">
+                  <colgroup><col style={{ width: "11.5%" }} /><col style={{ width: "25%" }} /><col style={{ width: "9.5%" }} /><col style={{ width: "9.5%" }} /><col style={{ width: "9.5%" }} /><col style={{ width: "9.5%" }} /><col style={{ width: "7%" }} /><col style={{ width: "18.5%" }} /></colgroup>
                   <thead>
                     <tr className="bg-slate-800 text-white print:bg-slate-200 print:text-slate-900 font-bold">
-                      <th className="p-2 border border-slate-400 text-center w-24">Head Code</th>
+                      <th className="p-2 border border-slate-400 text-center">Head Code</th>
                       <th className="p-2 border border-slate-400">Account Description</th>
                       <th className="p-2 text-right border border-slate-400">Opening (PKR)</th>
                       <th className="p-2 text-right border border-slate-400">Inflow / Receipts</th>
@@ -204,14 +205,14 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
                   <tbody>
                     {filteredHeads.map((head, idx) => (
                       <tr key={head.code} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                        <td className="p-1.5 border border-slate-300 text-center font-mono font-bold">{head.code}</td>
-                        <td className="p-1.5 border border-slate-300 font-semibold">{head.head}</td>
-                        <td className="p-1.5 border border-slate-300 text-right font-mono">{formatPKR(head.opening, false)}</td>
-                        <td className="p-1.5 border border-slate-300 text-right font-mono text-emerald-700">{head.receipts > 0 ? formatPKR(head.receipts, false) : '-'}</td>
-                        <td className="p-1.5 border border-slate-300 text-right font-mono text-rose-700">{head.payments > 0 ? formatPKR(head.payments, false) : '-'}</td>
-                        <td className="p-1.5 border border-slate-300 text-right font-mono font-bold text-slate-900">{formatPKR(head.balance, false)}</td>
-                        <td className="p-1.5 border border-slate-300 text-center font-mono">{formatPercent(head.burnRate)}</td>
-                        <td className="p-1.5 border border-slate-300 text-center font-mono text-slate-500 whitespace-nowrap">{format12HourDate(head.lastActivity, false)}</td>
+                        <td className="p-1.5 border border-slate-400 text-center font-mono font-bold whitespace-nowrap print:px-1">{head.code}</td>
+                        <td className="p-1.5 border border-slate-400 font-semibold print:text-[10.5px]">{head.head}</td>
+                        <td className="p-1.5 border border-slate-400 text-right font-mono whitespace-nowrap print:px-1">{formatPKR(head.opening, false)}</td>
+                        <td className="p-1.5 border border-slate-400 text-right font-mono text-emerald-700 whitespace-nowrap print:px-1">{head.receipts > 0 ? formatPKR(head.receipts, false) : '-'}</td>
+                        <td className="p-1.5 border border-slate-400 text-right font-mono text-rose-700 whitespace-nowrap print:px-1">{head.payments > 0 ? formatPKR(head.payments, false) : '-'}</td>
+                        <td className="p-1.5 border border-slate-400 text-right font-mono font-bold text-slate-900 whitespace-nowrap print:px-1">{formatPKR(head.balance, false)}</td>
+                        <td className="p-1.5 border border-slate-400 text-center font-mono whitespace-nowrap print:px-1">{formatPercent(head.burnRate)}</td>
+                        <td className="p-1.5 border border-slate-400 text-center font-mono text-slate-500 whitespace-nowrap print:text-[10px] print:px-1">{format12HourDate(head.lastActivity, false)}</td>
                       </tr>
                     ))}
                     <tr className="bg-slate-900 text-white print:bg-slate-200 print:text-slate-900 font-extrabold">
