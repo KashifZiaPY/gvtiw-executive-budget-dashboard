@@ -77,7 +77,7 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
         </div>
 
         {/* Printable Document Body */}
-        <div className="p-8 print:p-3 print:border-2 print:border-slate-900 space-y-6 text-xs bg-white text-slate-900">
+        <div className="p-8 print:p-3 space-y-6 text-xs bg-white text-slate-900">
           {/* Header Banner with Both Institutional Emblems */}
           <div className="flex items-center justify-between border-b-2 border-slate-900 pb-4 gap-4">
             {/* Left Logo */}
