@@ -849,19 +849,19 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
       <div className={`rounded-xl border overflow-hidden shadow-xl ${
         darkMode ? 'bg-[#0a2b21] border-slate-700' : 'bg-white border-slate-300'
       }`}>
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[70dvh]">
           <table className="w-full text-xs text-left border-collapse min-w-[1050px]">
             <thead className="bg-slate-900 text-white font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-800">
               <tr>
-                <th className="py-3 px-2 text-center w-14 border-r border-slate-800">Sr.#</th>
-                <th className="py-3 px-3 border-r border-slate-800">Voucher No.</th>
-                <th className="py-3 px-3 border-r border-slate-800">Payee & Bill Particulars</th>
-                <th className="py-3 px-3 border-r border-slate-800">Budget Account Head</th>
-                <th className="py-3 px-3 text-right border-r border-slate-800">Gross (PKR)</th>
-                <th className="py-3 px-3 text-center border-r border-slate-800">Net Cheque #</th>
-                <th className="py-3 px-3 text-right border-r border-slate-800">Net Paid (PKR)</th>
-                <th className="py-3 px-3 text-center border-r border-slate-800">Tax Deductions</th>
-                <th className="py-3 px-3 text-center">Action / Sanction</th>
+                <th className="sticky top-0 z-10 bg-slate-900 py-3 px-2 text-center w-14 border-r border-slate-800 border-b border-slate-800">Sr.#</th>
+                <th className="sticky top-0 z-10 bg-slate-900 py-3 px-3 border-r border-slate-800 border-b border-slate-800">Voucher No.</th>
+                <th className="sticky top-0 z-10 bg-slate-900 py-3 px-3 border-r border-slate-800 border-b border-slate-800">Payee & Bill Particulars</th>
+                <th className="sticky top-0 z-10 bg-slate-900 py-3 px-3 border-r border-slate-800 border-b border-slate-800">Budget Account Head</th>
+                <th className="sticky top-0 z-10 bg-slate-900 py-3 px-3 text-right border-r border-slate-800 border-b border-slate-800">Gross (PKR)</th>
+                <th className="sticky top-0 z-10 bg-slate-900 py-3 px-3 text-center border-r border-slate-800 border-b border-slate-800">Net Cheque #</th>
+                <th className="sticky top-0 z-10 bg-slate-900 py-3 px-3 text-right border-r border-slate-800 border-b border-slate-800">Net Paid (PKR)</th>
+                <th className="sticky top-0 z-10 bg-slate-900 py-3 px-3 text-center border-r border-slate-800 border-b border-slate-800">Tax Deductions</th>
+                <th className="sticky top-0 z-10 bg-slate-900 py-3 px-3 text-center border-b border-slate-800">Action / Sanction</th>
               </tr>
             </thead>
             <tbody className={`divide-y font-sans ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
