@@ -77,7 +77,7 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
         </div>
 
         {/* Printable Document Body */}
-        <div className="p-8 print:p-3 space-y-6 text-xs bg-white text-slate-900">
+        <div className="p-8 print:p-3 print:border-2 print:border-slate-900 space-y-6 text-xs bg-white text-slate-900">
           {/* Header Banner with Both Institutional Emblems */}
           <div className="flex items-center justify-between border-b-2 border-slate-900 pb-4 gap-4">
             {/* Left Logo */}
@@ -211,7 +211,7 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
                         <td className="p-1.5 border border-slate-300 text-right font-mono text-rose-700">{head.payments > 0 ? formatPKR(head.payments, false) : '-'}</td>
                         <td className="p-1.5 border border-slate-300 text-right font-mono font-bold text-slate-900">{formatPKR(head.balance, false)}</td>
                         <td className="p-1.5 border border-slate-300 text-center font-mono">{formatPercent(head.burnRate)}</td>
-                        <td className="p-1.5 border border-slate-300 text-center font-mono text-slate-500">{format12HourDate(head.lastActivity, false)}</td>
+                        <td className="p-1.5 border border-slate-300 text-center font-mono text-slate-500 whitespace-nowrap">{format12HourDate(head.lastActivity, false)}</td>
                       </tr>
                     ))}
                     <tr className="bg-slate-900 text-white print:bg-slate-200 print:text-slate-900 font-extrabold">
