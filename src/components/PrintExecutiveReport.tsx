@@ -95,7 +95,6 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
 
             {/* Center Text */}
             <div className="text-center flex-1 space-y-0.5">
-              <div style={{ fontSize: '9px', fontFamily: 'monospace', color: '#475569', fontWeight: 'bold' }}>Source: Dashboard → Executive Report</div>
               <h1 className="text-lg font-black tracking-wide uppercase">{data.instituteName}</h1>
               <p className="text-xs font-bold text-slate-700">Technical Education & Vocational Training Authority (TEVTA), Govt of Punjab</p>
               <h2 className="text-sm font-bold text-blue-900 uppercase pt-0.5">{data.reportTitle}</h2>
@@ -104,6 +103,7 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
                 <span className="text-slate-400">•</span>
                 <span className="whitespace-nowrap">Generated: {format12HourDate(new Date(), true)}</span>
               </div>
+              <div style={{ fontSize: '9px', fontFamily: 'monospace', color: '#475569', fontWeight: 'bold' }}>Source: Dashboard → Executive Report</div>
             </div>
 
             {/* Right Logo */}
