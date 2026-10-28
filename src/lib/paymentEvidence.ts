@@ -248,6 +248,77 @@ function readFileAsBase64(file: File): Promise<string> {
   });
 }
 
+// ------------------------------------------------------------
+// Auto-compression for cheque photos.
+// A phone photo of a cheque is often several MB; asking Kashif to
+// resize it by hand is exactly the friction this feature removes.
+// So large photos are shrunk in the browser before upload: max
+// 1920px on the long edge, JPEG quality 0.85, white background
+// (JPEG has no transparency). Small photos, PDFs, and anything the
+// browser cannot decode pass through untouched, and a compression
+// failure never blocks an upload that would otherwise succeed.
+// ------------------------------------------------------------
+
+const COMPRESS_SIZE_THRESHOLD = 2 * 1024 * 1024;
+const COMPRESS_MAX_EDGE = 1920;
+const COMPRESS_STEPS = [
+  { maxEdge: 1920, quality: 0.85 },
+  { maxEdge: 1600, quality: 0.8 },
+  { maxEdge: 1280, quality: 0.75 },
+];
+
+export interface PreparedEvidenceFile {
+  file: File;
+  compressed: boolean;
+  originalBytes: number;
+  finalBytes: number;
+}
+
+function canvasToJpeg(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    if (typeof canvas.toBlob === 'function') canvas.toBlob((b) => resolve(b), 'image/jpeg', quality);
+    else resolve(null);
+  });
+}
+
+export async function prepareEvidenceFile(file: File): Promise<PreparedEvidenceFile> {
+  const passthrough: PreparedEvidenceFile = { file, compressed: false, originalBytes: file.size, finalBytes: file.size };
+  if (file.type.indexOf('image/') !== 0) return passthrough; // PDFs untouched
+  let bitmap: ImageBitmap | null = null;
+  try {
+    if (typeof createImageBitmap !== 'function') return passthrough;
+    bitmap = await createImageBitmap(file);
+    const maxDim = Math.max(bitmap.width, bitmap.height);
+    if (maxDim <= COMPRESS_MAX_EDGE && file.size <= COMPRESS_SIZE_THRESHOLD) return passthrough;
+    let smallest: Blob | null = null;
+    for (const step of COMPRESS_STEPS) {
+      const scale = Math.min(1, step.maxEdge / maxDim);
+      const w = Math.max(1, Math.round(bitmap.width * scale));
+      const h = Math.max(1, Math.round(bitmap.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return passthrough;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(bitmap, 0, 0, w, h);
+      const blob = await canvasToJpeg(canvas, step.quality);
+      if (!blob) continue;
+      if (!smallest || blob.size < smallest.size) smallest = blob;
+      if (blob.size <= EVIDENCE_MAX_BYTES) break;
+    }
+    if (!smallest) return passthrough;
+    const base = file.name.replace(/\.[A-Za-z0-9]+$/, '');
+    const out = new File([smallest], (base || 'cheque') + '.jpg', { type: 'image/jpeg' });
+    return { file: out, compressed: true, originalBytes: file.size, finalBytes: out.size };
+  } catch {
+    return passthrough; // never let compression break an upload
+  } finally {
+    if (bitmap) bitmap.close();
+  }
+}
+
 export function validateEvidenceFile(file: File): string | null {
   const isImage = file.type.indexOf('image/') === 0;
   const isPdf = file.type === 'application/pdf';
@@ -262,16 +333,17 @@ export async function uploadEvidenceFile(
   slot: EvidenceSlot,
   chequeNo: string,
   file: File
-): Promise<EvidenceRecord> {
-  const problem = validateEvidenceFile(file);
+): Promise<EvidenceRecord & { compression: { compressed: boolean; originalBytes: number; finalBytes: number } }> {
+  const prepared = await prepareEvidenceFile(file);
+  const problem = validateEvidenceFile(prepared.file);
   if (problem) throw new Error(problem);
-  const base64 = await readFileAsBase64(file);
+  const base64 = await readFileAsBase64(prepared.file);
   const json = await callEvidenceAction('uploadPaymentEvidence', {
     voucherNo,
     slot,
     chequeNo,
-    fileName: file.name,
-    mimeType: file.type,
+    fileName: prepared.file.name,
+    mimeType: prepared.file.type,
     base64,
   });
   await refreshPaymentEvidence();
@@ -280,10 +352,11 @@ export async function uploadEvidenceFile(
     voucherNo,
     slot,
     chequeNo,
-    fileName: String(json.fileName ?? file.name),
+    fileName: String(json.fileName ?? prepared.file.name),
     fileId: String(json.fileId ?? ''),
     fileUrl: String(json.fileUrl ?? ''),
     previewUrl: String(json.previewUrl ?? ''),
+    compression: { compressed: prepared.compressed, originalBytes: prepared.originalBytes, finalBytes: prepared.finalBytes },
   };
 }
 

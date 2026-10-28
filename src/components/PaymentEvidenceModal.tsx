@@ -7,7 +7,6 @@ import {
   getVoucherEvidenceState,
   uploadEvidenceFile,
   deleteEvidenceFile,
-  validateEvidenceFile,
   type EvidenceRecord,
   type EvidenceSlot,
 } from '../lib/paymentEvidence';
@@ -31,6 +30,7 @@ export const PaymentEvidenceModal: React.FC<PaymentEvidenceModalProps> = ({ vouc
   const [confirmDeleteSlot, setConfirmDeleteSlot] = useState<EvidenceSlot | null>(null);
   const [previewFile, setPreviewFile] = useState<EvidenceRecord | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resizeNote, setResizeNote] = useState<string | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -44,15 +44,18 @@ export const PaymentEvidenceModal: React.FC<PaymentEvidenceModalProps> = ({ vouc
 
   const handleFile = async (slot: EvidenceSlot, chequeNo: string, file: File | undefined) => {
     if (!file) return;
-    const problem = validateEvidenceFile(file);
-    if (problem) {
-      setError(problem);
-      return;
-    }
     setError(null);
+    setResizeNote(null);
     setUploadingSlot(slot);
     try {
-      await uploadEvidenceFile(voucher.voucherNo, slot, chequeNo, file);
+      // uploadEvidenceFile auto-compresses large photos first, then
+      // validates the prepared file — so a big photo is shrunk,
+      // not rejected. PDFs pass through untouched.
+      const rec = await uploadEvidenceFile(voucher.voucherNo, slot, chequeNo, file);
+      if (rec.compression.compressed) {
+        const mb = (b: number) => (b / (1024 * 1024)).toFixed(1) + ' MB';
+        setResizeNote(`Photo resized from ${mb(rec.compression.originalBytes)} to ${mb(rec.compression.finalBytes)} for faster upload.`);
+      }
       setPreviewFile(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
@@ -235,9 +238,14 @@ export const PaymentEvidenceModal: React.FC<PaymentEvidenceModalProps> = ({ vouc
             </div>
           )}
 
+          {resizeNote && (
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-300 pt-1">{resizeNote}</p>
+          )}
+
           <p className="text-[11px] text-slate-500 pt-1">
             Only signed cheque copies are filed here. The unsigned copy shown when the voucher is presented
-            for signature is not evidence and has no slot. Photos and scanned PDFs up to 10 MB.
+            for signature is not evidence and has no slot. Large photos are resized automatically;
+            scanned PDFs up to 10 MB.
           </p>
         </div>
       </div>
