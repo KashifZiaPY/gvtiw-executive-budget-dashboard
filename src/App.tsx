@@ -591,6 +591,7 @@ export default function App() {
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
         data={data}
+        selectedCategory={selectedCategory}
         customGvtiwLogo={customGvtiwLogo}
         customTevtaLogo={customTevtaLogo}
       />

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { DashboardResponse } from '../types';
+import { DashboardResponse, CategoryType } from '../types';
 import { formatPKR, formatPercent, format12HourDate } from '../lib/formatters';
 import { Printer, X } from 'lucide-react';
 import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO } from '../data/initialData';
@@ -8,6 +8,8 @@ interface PrintExecutiveReportProps {
   isOpen: boolean;
   onClose: () => void;
   data: DashboardResponse;
+  /** Dashboard card filter — when a category is selected, the print follows it. */
+  selectedCategory?: CategoryType | 'ALL';
   customGvtiwLogo?: string | null;
   customTevtaLogo?: string | null;
 }
@@ -16,6 +18,7 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
   isOpen,
   onClose,
   data,
+  selectedCategory = 'ALL',
   customGvtiwLogo,
   customTevtaLogo,
 }) => {
@@ -33,12 +36,23 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
 
   if (!isOpen) return null;
 
+  // Filtered print: when a dashboard card is selected, the print follows that
+  // card instead of the full report. An unknown category falls back to full.
+  const filteredCat =
+    selectedCategory && selectedCategory !== 'ALL'
+      ? data.categories.find((c) => c.category === selectedCategory)
+      : undefined;
+  const isFilteredPrint = !!filteredCat;
+  const filteredHeads = isFilteredPrint
+    ? data.accounts.filter((a) => a.category === selectedCategory)
+    : [];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
       <div className="w-full max-w-4xl bg-white text-slate-900 rounded-xl shadow-2xl overflow-hidden font-sans my-8">
         {/* Action bar (hidden on print) */}
         <div className="p-3 bg-slate-900 text-white flex items-center justify-between print:hidden">
-          <span className="font-bold text-xs">Executive Board Financial Summary (Print Ready) — Press Esc to Exit</span>
+          <span className="font-bold text-xs">{isFilteredPrint ? `Filtered Category Report — ${filteredCat!.shortName} (Print Ready)` : 'Executive Board Financial Summary (Print Ready)'} — Press Esc to Exit</span>
           <div className="flex items-center gap-2">
             <button
               onClick={() => window.print()}
@@ -97,7 +111,42 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
             </div>
           </div>
 
-          {/* Key Executive Metrics Cards (Including Inflow) */}
+          {isFilteredPrint && (
+            <div className="border-2 border-amber-600 bg-amber-50 text-amber-900 rounded px-3 py-2 text-center">
+              <span className="font-black text-xs tracking-wide uppercase">Filtered Report — {filteredCat!.title}</span>
+              <span className="block text-[11px] font-semibold mt-0.5">
+                Category: {filteredCat!.shortName} · {filteredHeads.length} account head{filteredHeads.length === 1 ? '' : 's'} · Full-report totals do not apply to this print
+              </span>
+            </div>
+          )}
+
+          {/* Key Executive Metrics Cards (Including Inflow) — category strip when filtered */}
+          {isFilteredPrint ? (
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3.5 bg-slate-100 border border-slate-300 rounded text-center">
+              <div>
+                <p className="text-[10px] uppercase font-bold text-slate-600">Category Opening</p>
+                <p className="text-sm font-black text-slate-900 font-mono mt-0.5">{formatPKR(filteredCat!.opening)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-emerald-700">Inflow (Receipts)</p>
+                <p className="text-sm font-black text-emerald-700 font-mono mt-0.5">{formatPKR(filteredCat!.receipts)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-rose-700">Outflow (Payments)</p>
+                <p className="text-sm font-black text-rose-700 font-mono mt-0.5">{formatPKR(filteredCat!.payments)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase font-bold text-blue-950">Net Balance</p>
+                <p className="text-sm font-black text-blue-950 font-mono mt-0.5">{formatPKR(filteredCat!.balance)}</p>
+                <span className="text-[9px] font-bold text-amber-700 font-mono">Burn: {formatPercent(filteredCat!.burnRate)}</span>
+              </div>
+              <div className="col-span-2 sm:col-span-1">
+                <p className="text-[10px] uppercase font-bold text-slate-600">Account Heads</p>
+                <p className="text-sm font-bold text-slate-700 font-mono mt-0.5">{filteredHeads.length}</p>
+                <span className="text-[9px] text-slate-500 italic">{filteredCat!.shortName}</span>
+              </div>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 p-3.5 bg-slate-100 border border-slate-300 rounded text-center">
             <div>
               <p className="text-[10px] uppercase font-bold text-slate-600">Total Opening Pool</p>
@@ -122,8 +171,57 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
               <span className="text-[9px] text-slate-500 italic">Segregated</span>
             </div>
           </div>
+          )}
 
           {/* Consolidated Category Table */}
+          {isFilteredPrint ? (
+            <div className="space-y-2">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800">
+                Account Heads under {filteredCat!.shortName} ({filteredHeads.length})
+              </h3>
+              {filteredHeads.length === 0 ? (
+                <p className="text-[11px] text-slate-600">No account heads listed for this category.</p>
+              ) : (
+                <table className="w-full border-collapse border border-slate-300 text-left text-[11px]">
+                  <thead>
+                    <tr className="bg-slate-800 text-white font-bold">
+                      <th className="p-2 border border-slate-400 text-center w-24">Head Code</th>
+                      <th className="p-2 border border-slate-400">Account Description</th>
+                      <th className="p-2 text-right border border-slate-400">Opening (PKR)</th>
+                      <th className="p-2 text-right border border-slate-400">Inflow / Receipts</th>
+                      <th className="p-2 text-right border border-slate-400">Outflow / Payments</th>
+                      <th className="p-2 text-right border border-slate-400">Net Balance (PKR)</th>
+                      <th className="p-2 text-center border border-slate-400">Burn %</th>
+                      <th className="p-2 text-center border border-slate-400">Last Activity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredHeads.map((head, idx) => (
+                      <tr key={head.code} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                        <td className="p-1.5 border border-slate-300 text-center font-mono font-bold">{head.code}</td>
+                        <td className="p-1.5 border border-slate-300 font-semibold">{head.head}</td>
+                        <td className="p-1.5 border border-slate-300 text-right font-mono">{formatPKR(head.opening, false)}</td>
+                        <td className="p-1.5 border border-slate-300 text-right font-mono text-emerald-700">{head.receipts > 0 ? formatPKR(head.receipts, false) : '-'}</td>
+                        <td className="p-1.5 border border-slate-300 text-right font-mono text-rose-700">{head.payments > 0 ? formatPKR(head.payments, false) : '-'}</td>
+                        <td className="p-1.5 border border-slate-300 text-right font-mono font-bold text-slate-900">{formatPKR(head.balance, false)}</td>
+                        <td className="p-1.5 border border-slate-300 text-center font-mono">{formatPercent(head.burnRate)}</td>
+                        <td className="p-1.5 border border-slate-300 text-center font-mono">{format12HourDate(head.lastActivity, false)}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-slate-900 text-white font-extrabold">
+                      <td colSpan={2} className="p-2 border border-slate-900 uppercase">Category Total — {filteredCat!.shortName}</td>
+                      <td className="p-2 border border-slate-900 text-right font-mono">{formatPKR(filteredCat!.opening, false)}</td>
+                      <td className="p-2 border border-slate-900 text-right font-mono text-emerald-300">{formatPKR(filteredCat!.receipts, false)}</td>
+                      <td className="p-2 border border-slate-900 text-right font-mono text-rose-300">{formatPKR(filteredCat!.payments, false)}</td>
+                      <td className="p-2 border border-slate-900 text-right font-mono font-black text-amber-300">{formatPKR(filteredCat!.balance, false)}</td>
+                      <td className="p-2 border border-slate-900 text-center font-mono">{formatPercent(filteredCat!.burnRate)}</td>
+                      <td className="p-2 border border-slate-900 text-center font-mono">—</td>
+                    </tr>
+                  </tbody>
+                </table>
+              )}
+            </div>
+          ) : (
           <div className="space-y-2">
             <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800">
               Consolidated Category Breakdown
@@ -175,6 +273,7 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
               </tbody>
             </table>
           </div>
+          )}
 
           {/* Signatures Section */}
           <div className="pt-14 grid grid-cols-3 gap-8 text-center text-xs text-slate-800">
