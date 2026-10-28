@@ -58,7 +58,7 @@ const SLOT_LABELS: Record<EvidenceSlot, string> = {
 const DEFAULT_WEB_APP_URL =
   'https://script.google.com/macros/s/AKfycbzUIXvBBY_rGOiDLLz5cR11mxpgVtdq8Wf4bYcUZ6e1R4VhyeUfN2t_EtGDsPd5jrcP/exec';
 
-function isRealChequeNo(value: string | undefined | null): boolean {
+export function isRealChequeNo(value: string | undefined | null): boolean {
   if (!value) return false;
   const v = value.trim().toUpperCase();
   return v !== '' && v !== '0' && v !== 'DIRECT DEBIT';

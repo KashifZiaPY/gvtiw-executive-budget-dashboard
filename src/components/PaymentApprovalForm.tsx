@@ -4,6 +4,7 @@ import { MasterVoucher, INITIAL_MASTER_VOUCHERS, INSTITUTIONAL_BANK_ACCOUNTS } f
 import { Printer, X, FileText, Layers } from 'lucide-react';
 import { DEFAULT_GVTIW_LOGO, DEFAULT_TEVTA_LOGO, DEFAULT_GOP_LOGO, INITIAL_ACCOUNTS } from '../data/initialData';
 import { formatPakistaniDate } from '../lib/formatters';
+import { isRealChequeNo } from '../lib/paymentEvidence';
 import { OFFICIAL_SIGNATORIES } from '../types';
 import { AccountHeadDisplay } from './AccountHeadTag';
 import {
@@ -538,8 +539,8 @@ export const PaymentApprovalForm: React.FC<PaymentApprovalFormProps> = ({
               <td className="border-r border-slate-900 p-0.5 text-right">{voucher.gstAmount > 0 ? Number(voucher.gstAmount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
               <td className="border-r border-slate-900 p-0.5 text-right">{voucher.praTaxOnBill > 0 ? Number(voucher.praTaxOnBill).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
               <td className="border-r border-slate-900 p-0.5 text-right font-bold">{Number(voucher.billAmountGross).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-              <td className="border-r border-slate-900 p-0.5 text-right text-rose-700">{voucher.incomeTaxAmount > 0 ? Number(voucher.incomeTaxAmount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
-              <td className="border-r border-slate-900 p-0.5 text-right text-rose-700">{voucher.praAmount > 0 ? Number(voucher.praAmount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}</td>
+              <td className="border-r border-slate-900 p-0.5 text-right text-rose-700">{voucher.incomeTaxAmount > 0 ? Number(voucher.incomeTaxAmount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}{isRealChequeNo(voucher.chequeNoIncomeTax) && (<span className="block font-normal text-slate-500 text-[8px] print:text-[7.5px]">Chq {voucher.chequeNoIncomeTax.trim()}</span>)}</td>
+              <td className="border-r border-slate-900 p-0.5 text-right text-rose-700">{voucher.praAmount > 0 ? Number(voucher.praAmount).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '-'}{isRealChequeNo(voucher.chequeNoPra) && (<span className="block font-normal text-slate-500 text-[8px] print:text-[7.5px]">Chq {voucher.chequeNoPra.trim()}</span>)}</td>
               <td className="border-r border-slate-900 p-0.5 text-right">-</td>
               <td className="p-0.5 text-right font-black text-slate-950 bg-slate-100 text-[10.5px]">{Number(voucher.chequeAmountNet).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
             </tr>
