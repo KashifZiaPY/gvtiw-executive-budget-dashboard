@@ -55,6 +55,9 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
   // is taller than the viewport — flex centering clips the top in that case.
   return createPortal(
     <div id="print-executive-portal" className="fixed inset-0 z-50 flex p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
+      {/* Print page setup for this report only: narrower side margins so the
+          document fills the sheet instead of leaving wide empty sides. */}
+      <style>{`@page { size: A4; margin: 12mm 10mm; }`}</style>
       <div className="m-auto w-full max-w-4xl bg-white text-slate-900 rounded-xl shadow-2xl overflow-hidden font-sans">
         {/* Action bar (hidden on print) */}
         <div className="p-3 bg-slate-900 text-white flex items-center justify-between print:hidden">
@@ -74,7 +77,7 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
         </div>
 
         {/* Printable Document Body */}
-        <div className="p-8 space-y-6 text-xs bg-white text-slate-900">
+        <div className="p-8 print:p-3 space-y-6 text-xs bg-white text-slate-900">
           {/* Header Banner with Both Institutional Emblems */}
           <div className="flex items-center justify-between border-b-2 border-slate-900 pb-4 gap-4">
             {/* Left Logo */}
@@ -188,9 +191,9 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
               {filteredHeads.length === 0 ? (
                 <p className="text-[11px] text-slate-600">No account heads listed for this category.</p>
               ) : (
-                <table className="w-full border-collapse border border-slate-300 text-left text-[11px]">
+                <table className="w-full border-collapse border border-slate-300 text-left text-[11px] print:text-xs">
                   <thead>
-                    <tr className="bg-slate-800 text-white font-bold">
+                    <tr className="bg-slate-800 text-white print:bg-slate-200 print:text-slate-900 font-bold">
                       <th className="p-2 border border-slate-400 text-center w-24">Head Code</th>
                       <th className="p-2 border border-slate-400">Account Description</th>
                       <th className="p-2 text-right border border-slate-400">Opening (PKR)</th>
@@ -214,12 +217,12 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
                         <td className="p-1.5 border border-slate-300 text-center font-mono">{format12HourDate(head.lastActivity, false)}</td>
                       </tr>
                     ))}
-                    <tr className="bg-slate-900 text-white font-extrabold">
+                    <tr className="bg-slate-900 text-white print:bg-slate-200 print:text-slate-900 font-extrabold">
                       <td colSpan={2} className="p-2 border border-slate-900 uppercase">Category Total — {filteredCat!.shortName}</td>
                       <td className="p-2 border border-slate-900 text-right font-mono">{formatPKR(filteredCat!.opening, false)}</td>
-                      <td className="p-2 border border-slate-900 text-right font-mono text-emerald-300">{formatPKR(filteredCat!.receipts, false)}</td>
-                      <td className="p-2 border border-slate-900 text-right font-mono text-rose-300">{formatPKR(filteredCat!.payments, false)}</td>
-                      <td className="p-2 border border-slate-900 text-right font-mono font-black text-amber-300">{formatPKR(filteredCat!.balance, false)}</td>
+                      <td className="p-2 border border-slate-900 text-right font-mono text-emerald-300 print:text-emerald-700">{formatPKR(filteredCat!.receipts, false)}</td>
+                      <td className="p-2 border border-slate-900 text-right font-mono text-rose-300 print:text-rose-700">{formatPKR(filteredCat!.payments, false)}</td>
+                      <td className="p-2 border border-slate-900 text-right font-mono font-black text-amber-300 print:text-amber-700">{formatPKR(filteredCat!.balance, false)}</td>
                       <td className="p-2 border border-slate-900 text-center font-mono">{formatPercent(filteredCat!.burnRate)}</td>
                       <td className="p-2 border border-slate-900 text-center font-mono">—</td>
                     </tr>
@@ -232,9 +235,9 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
             <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800">
               Consolidated Category Breakdown
             </h3>
-            <table className="w-full border-collapse border border-slate-300 text-left text-[11px]">
+            <table className="w-full border-collapse border border-slate-300 text-left text-[11px] print:text-xs">
               <thead>
-                <tr className="bg-slate-800 text-white font-bold">
+                <tr className="bg-slate-800 text-white print:bg-slate-200 print:text-slate-900 font-bold">
                   <th className="p-2 border border-slate-400 text-center w-10">Sr.#</th>
                   <th className="p-2 border border-slate-400">Category</th>
                   <th className="p-2 text-right border border-slate-400">Opening (PKR)</th>
@@ -265,15 +268,15 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
                     </tr>
                   );
                 })}
-                <tr className="bg-slate-900 text-white font-extrabold">
+                <tr className="bg-slate-900 text-white print:bg-slate-200 print:text-slate-900 font-extrabold">
                   <td colSpan={2} className="p-2 border border-slate-900 uppercase">
                     GRAND TOTAL OPERATING POOL (Excl. AAA Memo)
                   </td>
                   <td className="p-2 border border-slate-900 text-right font-mono">{formatPKR(data.grandTotal.opening, false)}</td>
                   <td className="p-2 border border-slate-900 text-right font-mono">{data.grandTotal.reappr !== 0 ? formatPKR(data.grandTotal.reappr, false) : '-'}</td>
-                  <td className="p-2 border border-slate-900 text-right font-mono text-emerald-300">{formatPKR(data.grandTotal.receipts, false)}</td>
-                  <td className="p-2 border border-slate-900 text-right font-mono text-rose-300">{formatPKR(data.grandTotal.payments, false)}</td>
-                  <td className="p-2 border border-slate-900 text-right font-mono font-black text-amber-300">{formatPKR(data.grandTotal.balance, false)}</td>
+                  <td className="p-2 border border-slate-900 text-right font-mono text-emerald-300 print:text-emerald-700">{formatPKR(data.grandTotal.receipts, false)}</td>
+                  <td className="p-2 border border-slate-900 text-right font-mono text-rose-300 print:text-rose-700">{formatPKR(data.grandTotal.payments, false)}</td>
+                  <td className="p-2 border border-slate-900 text-right font-mono font-black text-amber-300 print:text-amber-700">{formatPKR(data.grandTotal.balance, false)}</td>
                   <td className="p-2 border border-slate-900 text-center font-mono">{formatPercent(data.grandTotal.burnRate)}</td>
                 </tr>
               </tbody>
@@ -282,7 +285,7 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
           )}
 
           {/* Signatures Section */}
-          <div className="pt-14 grid grid-cols-3 gap-8 text-center text-xs text-slate-800">
+          <div className="pt-14 print:pt-4 grid grid-cols-3 gap-8 text-center text-xs text-slate-800">
             <div className="border-t-2 border-slate-700 pt-2 font-bold">
               <div>KASHIF ZIA</div>
               <div className="text-[10px] font-normal text-slate-600">Accountant / Prepared by:</div>
