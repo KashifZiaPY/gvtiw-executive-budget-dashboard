@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { PaymentEvidenceButton } from './PaymentEvidenceButton';
 import {
   Lock,
   Unlock,
@@ -2869,6 +2870,7 @@ export const AdminHubModule: React.FC<AdminHubModuleProps> = ({
                                 <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                                 <span>PAF</span>
                               </button>
+                              <PaymentEvidenceButton voucher={v} />
                             </div>
                           </td>
                         </tr>

@@ -23,8 +23,11 @@ import {
   Edit3,
   Trash2,
   Landmark,
+  AlertTriangle,
 } from 'lucide-react';
 import { AccountHeadDisplay } from './AccountHeadTag';
+import { PaymentEvidenceButton } from './PaymentEvidenceButton';
+import { usePaymentEvidenceIndex, getVoucherEvidenceState } from '../lib/paymentEvidence';
 
 interface VoucherModuleProps {
   darkMode: boolean;
@@ -76,6 +79,8 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('ALL');
   const [selectedVoucherForPAF, setSelectedVoucherForPAF] = useState<MasterVoucher | null>(null);
+  const [showMissingEvidenceOnly, setShowMissingEvidenceOnly] = useState(false);
+  const evidenceIndex = usePaymentEvidenceIndex();
 
   // New & Amend Voucher Modal States
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
@@ -594,6 +599,12 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
         if (selectedAccountFilter !== 'ALL' && !v.bankAccount.includes(selectedAccountFilter)) {
           return false;
         }
+        if (showMissingEvidenceOnly && evidenceIndex.records) {
+          const evState = getVoucherEvidenceState(v, evidenceIndex.records);
+          if (evState.state === 'complete' || evState.state === 'none') {
+            return false;
+          }
+        }
         if (searchTerm) {
           const t = searchTerm.toLowerCase();
           const matchesNo = v.voucherNo.toLowerCase().includes(t);
@@ -627,7 +638,17 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
         else if (sortBy === 'date') diff = new Date(a.chequeDate).getTime() - new Date(b.chequeDate).getTime();
         return sortOrder === 'asc' ? diff : -diff;
       });
-  }, [vouchers, searchTerm, selectedAccountFilter, sortBy, sortOrder]);
+  }, [vouchers, searchTerm, selectedAccountFilter, sortBy, sortOrder, showMissingEvidenceOnly, evidenceIndex.records]);
+
+  // Vouchers with at least one real cheque slot still missing its signed copy.
+  const missingEvidenceCount = useMemo(() => {
+    const recs = evidenceIndex.records;
+    if (!recs) return null;
+    return vouchers.filter((v) => {
+      const st = getVoucherEvidenceState(v, recs);
+      return st.state === 'missing' || st.state === 'partial';
+    }).length;
+  }, [vouchers, evidenceIndex.records]);
 
   // Aggregate Metrics
   const totalGrossClaimed = useMemo(() => vouchers.reduce((sum, v) => sum + v.billAmountGross, 0), [vouchers]);
@@ -806,6 +827,19 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
             <Download className="w-3.5 h-3.5 text-blue-400" />
             <span className="hidden sm:inline">Export CSV</span>
           </button>
+
+          <button
+            onClick={() => setShowMissingEvidenceOnly((x) => !x)}
+            title="Show only vouchers with a signed cheque copy still missing"
+            className={`px-3.5 py-2 font-bold text-xs rounded-lg flex items-center gap-1.5 border shadow-xs transition-all cursor-pointer ${
+              showMissingEvidenceOnly
+                ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-600'
+                : 'bg-white dark:bg-slate-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+            }`}
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Missing evidence{missingEvidenceCount !== null ? ` (${missingEvidenceCount})` : ''}</span>
+          </button>
         </div>
       </div>
 
@@ -939,6 +973,7 @@ export const VoucherModule: React.FC<VoucherModuleProps> = ({
                             <FileText className="w-3 h-3 text-amber-300" />
                             <span>PAF</span>
                           </button>
+                          <PaymentEvidenceButton voucher={v} />
                           <button
                             onClick={() => handleInitiateAmend(v)}
                             className={`px-2.5 py-1.5 text-white font-bold text-[10px] rounded-lg shadow-xs flex items-center gap-1 transition-all cursor-pointer ${
