@@ -362,14 +362,28 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
 
   // Filter and process records
   const tradeSections = useMemo(() => {
+    // Sequence key for installment numbering — the SAME student identity the
+    // register's own grouping uses below: CNIC is the unique primary key for
+    // every student (roll numbers repeat between different students, and a
+    // roll-keyed sequence merges two girls' payments into one false series).
+    // Fallbacks mirror the grouping: Name + Father, then Roll, then Challan.
+    const paymentSeqKey = (c: TfcChallanRecord, info: ReturnType<typeof parseFeeRegisterStudentInfo>): string => {
+      const cnicClean = c.cnic ? c.cnic.replace(/\D/g, '') : '';
+      if (cnicClean && cnicClean.length >= 8) return `${info.tradeCode}::CNIC::${cnicClean}`;
+      const nameClean = info.traineeName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const fatherClean = info.fatherName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (nameClean && fatherClean) return `${info.tradeCode}::NAME::${nameClean}::${fatherClean}`;
+      const rollClean = info.rollNo && info.rollNo !== '—' ? info.rollNo.toUpperCase().trim() : '';
+      if (rollClean) return `${info.tradeCode}::ROLL::${rollClean}`;
+      return `${info.tradeCode}::CHALLAN::${c.challanId}`;
+    };
+
     // 1. Pre-calculate trainee payments within each trade to chronologically number installments (1st Inst, 2nd Inst, etc.)
     const traineePaymentsMap = new Map<string, { challanId: string; timestamp: number }[]>();
     challans.forEach((c) => {
       const dateInfo = parseFeeDate(c.challanPaymentDate);
       const info = parseFeeRegisterStudentInfo(c.name, c.courseName, c.paymentType, c.courseAbbreviation, c.totalAmount);
-      const rollClean = info.rollNo && info.rollNo !== '—' ? info.rollNo.toUpperCase().trim() : '';
-      const nameClean = info.traineeName.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const traineeKey = `${info.tradeCode}::${rollClean || nameClean}`;
+      const traineeKey = paymentSeqKey(c, info);
       const list = traineePaymentsMap.get(traineeKey) || [];
       list.push({ challanId: c.challanId, timestamp: dateInfo.timestamp });
       traineePaymentsMap.set(traineeKey, list);
@@ -387,8 +401,23 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         return { isInstallment: false, label: 'Full Challan' };
       }
 
+      // This trainee's payments in this trade, in chronological order — the
+      // sequence that decides 1st / 2nd / 3rd when she paid more than once.
+      const paymentList = traineePaymentsMap.get(paymentSeqKey(c, info)) || [];
+      const sequenceLabel = () => {
+        const orderIdx = paymentList.findIndex((item) => item.challanId === c.challanId);
+        const instNum = orderIdx >= 0 ? orderIdx + 1 : 1;
+        const suffix = instNum === 1 ? '1st' : instNum === 2 ? '2nd' : instNum === 3 ? '3rd' : `${instNum}th`;
+        return { isInstallment: true, label: `${suffix} Installment (Inst-${instNum})` };
+      };
+
       // For Matric Vocational 9th (MVi):
       if (info.tradeCode === 'MVi') {
+        // The amount alone cannot tell the 2nd installment from the 3rd —
+        // both are Rs. 2,244 — so when the trainee really paid more than
+        // once, her chronological sequence wins. Single payments keep the
+        // amount-schedule labels below, exactly as before.
+        if (paymentList.length > 1) return sequenceLabel();
         if (c.totalAmount === 5234) {
           return { isInstallment: true, label: '1st Installment (Inst-1)' };
         }
@@ -408,16 +437,8 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
       }
 
       // Check if student in Matric Vocational has multiple payments in this trade
-      const rollClean = info.rollNo && info.rollNo !== '—' ? info.rollNo.toUpperCase().trim() : '';
-      const nameClean = info.traineeName.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const traineeKey = `${info.tradeCode}::${rollClean || nameClean}`;
-      const list = traineePaymentsMap.get(traineeKey) || [];
-
-      if (list.length > 1) {
-        const orderIdx = list.findIndex((item) => item.challanId === c.challanId);
-        const instNum = orderIdx >= 0 ? orderIdx + 1 : 1;
-        const suffix = instNum === 1 ? '1st' : instNum === 2 ? '2nd' : instNum === 3 ? '3rd' : `${instNum}th`;
-        return { isInstallment: true, label: `${suffix} Installment (Inst-${instNum})` };
+      if (paymentList.length > 1) {
+        return sequenceLabel();
       }
 
       if (info.installmentNotice) {
