@@ -16,7 +16,6 @@ import {
 export interface BalanceEngineOptions {
   vouchers?: MasterVoucher[];
   cashBookStates?: Record<BankAccountKey, CashBookAccountState>;
-  selectedFY?: string;
 }
 
 export interface PeriodFinancials {
@@ -97,7 +96,7 @@ export function normalizeDateToEndTimestamp(targetDate?: string | Date | null): 
  *
  * @param account - BankAccountKey ('NS', 'PF', 'FC', 'SEC', 'SC', 'AA') or account string name
  * @param targetDate - Start date or month of the period (e.g. '2026-08-01', '01-Aug-2026', '2026-08')
- * @param options - Optional custom vouchers, cashBookStates, or selectedFY overrides
+ * @param options - Optional custom vouchers or cashBookStates overrides
  * @returns Rolling running balance as of the day before targetDate
  */
 export function getOpeningBalance(
@@ -151,10 +150,7 @@ export function getOpeningBalance(
     },
   };
 
-  const baselineOpening =
-    options?.selectedFY === '2025-26'
-      ? (key === 'NS' ? 2387207.0 : meta.openingBalance || 0)
-      : (cashBookStates[key]?.openingBalance ?? meta.openingBalance ?? 0);
+  const baselineOpening = cashBookStates[key]?.openingBalance ?? meta.openingBalance ?? 0;
 
   // If no period cutoff or before FY start, return baseline opening balance
   if (fromTs <= 0) {
@@ -219,7 +215,6 @@ export function getPeriodFinancials(
   const openingBal = getOpeningBalance(key, fromDate, {
     vouchers,
     cashBookStates,
-    selectedFY: options?.selectedFY,
   });
 
   const rawItems = buildRawCashBookItems(vouchers, cashBookStates);

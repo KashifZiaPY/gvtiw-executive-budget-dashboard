@@ -52,11 +52,6 @@ import {
   normalizeDateToEndTimestamp,
 } from '../lib/balanceEngine';
 import { AccountHead, OFFICIAL_SIGNATORIES } from '../types';
-import {
-  INITIAL_DIRECTOR_RECEIPTS,
-  INITIAL_DIRECTOR_PAYMENTS,
-  INITIAL_DIRECTOR_MONTHLY_GRID,
-} from '../data/directorReconData';
 import { PaymentApprovalForm } from './PaymentApprovalForm';
 import { PinLockScreen } from './PinLockScreen';
 import { AiReconciliationDifferenceModal } from './AiReconciliationDifferenceModal';
@@ -124,7 +119,7 @@ export const BANK_ACCOUNT_LABELS: Record<
   },
 };
 
-// Standard month options for FY 2026-27 and FY 2025-26
+// Standard month options for FY 2026-27
 export const MONTH_OPTIONS_2627 = [
   { key: '2026-07', label: 'July 2026 (Jul-26)', shortLabel: 'Jul-26', monthName: 'July', year: '2026' },
   { key: '2026-08', label: 'August 2026 (Aug-26)', shortLabel: 'Aug-26', monthName: 'August', year: '2026' },
@@ -140,20 +135,6 @@ export const MONTH_OPTIONS_2627 = [
   { key: '2027-06', label: 'June 2027 (Jun-27)', shortLabel: 'Jun-27', monthName: 'June', year: '2027' },
 ];
 
-export const MONTH_OPTIONS_2526 = [
-  { key: '2025-07', label: 'July 2025 (Jul-25)', shortLabel: 'Jul-25', monthName: 'July', year: '2025' },
-  { key: '2025-08', label: 'August 2025 (Aug-25)', shortLabel: 'Aug-25', monthName: 'August', year: '2025' },
-  { key: '2025-09', label: 'September 2025 (Sep-25)', shortLabel: 'Sep-25', monthName: 'September', year: '2025' },
-  { key: '2025-10', label: 'October 2025 (Oct-25)', shortLabel: 'Oct-25', monthName: 'October', year: '2025' },
-  { key: '2025-11', label: 'November 2025 (Nov-25)', shortLabel: 'Nov-25', monthName: 'November', year: '2025' },
-  { key: '2025-12', label: 'December 2025 (Dec-25)', shortLabel: 'Dec-25', monthName: 'December', year: '2025' },
-  { key: '2026-01', label: 'January 2026 (Jan-26)', shortLabel: 'Jan-26', monthName: 'January', year: '2026' },
-  { key: '2026-02', label: 'February 2026 (Feb-26)', shortLabel: 'Feb-26', monthName: 'February', year: '2026' },
-  { key: '2026-03', label: 'March 2026 (Mar-26)', shortLabel: 'Mar-26', monthName: 'March', year: '2026' },
-  { key: '2026-04', label: 'April 2026 (Apr-26)', shortLabel: 'Apr-26', monthName: 'April', year: '2026' },
-  { key: '2026-05', label: 'May 2026 (May-26)', shortLabel: 'May-26', monthName: 'May', year: '2026' },
-  { key: '2026-06', label: 'June 2026 (Jun-26)', shortLabel: 'Jun-26', monthName: 'June', year: '2026' },
-];
 
 // Helper: Format Number with commas
 export function formatAmount(
@@ -791,7 +772,7 @@ export function DirectorReconciliationReport({
   const [selectedAccountKey, setSelectedAccountKey] = useState<BankAccountKey>(initialAccountKey);
 
   // Financial Year and Period Controls
-  const [selectedFY, setSelectedFY] = useState<'2026-27' | '2025-26' | 'ALL'>('2026-27');
+  const selectedFY = '2026-27';
   const [fromDate, setFromDate] = useState<string>('2026-07-01');
   const [toDate, setToDate] = useState<string>('2026-08-31');
 
@@ -812,7 +793,7 @@ export function DirectorReconciliationReport({
         return;
       }
     } catch {}
-    const def = selectedFY === '2025-26' ? '30-06-2026' : '31-08-2026';
+    const def = '31-08-2026';
     setAsOnDate(def);
   }, [selectedAccountKey, selectedFY]);
 
@@ -893,7 +874,7 @@ export function DirectorReconciliationReport({
   const activeAccountConfig = BANK_ACCOUNT_LABELS[selectedAccountKey] || BANK_ACCOUNT_LABELS.NS;
   const activeAccountName = customAccountName || activeAccountConfig.name;
 
-  const activeMonthOptions = selectedFY === '2025-26' ? MONTH_OPTIONS_2526 : MONTH_OPTIONS_2627;
+  const activeMonthOptions = MONTH_OPTIONS_2627;
 
   // Handler for As On Date change with automatic period synchronization
   const handleAsOnDateChange = (newVal: string) => {
@@ -918,27 +899,6 @@ export function DirectorReconciliationReport({
     }
   };
 
-  // Switch FY preset
-  const handleFYChange = (fy: '2026-27' | '2025-26' | 'ALL') => {
-    setSelectedFY(fy);
-    setSelectedSingleMonth('ALL');
-    let defaultAsOn = '31-08-2026';
-    if (fy === '2026-27') {
-      setFromDate('2026-07-01');
-      setToDate('2026-08-31');
-      defaultAsOn = '31-08-2026';
-    } else if (fy === '2025-26') {
-      setFromDate('2025-07-01');
-      setToDate('2026-06-30');
-      defaultAsOn = '30-06-2026';
-    } else {
-      setFromDate('2025-07-01');
-      setToDate('2027-06-30');
-      defaultAsOn = '31-08-2026';
-    }
-    const saved = localStorage.getItem(`gvtiw_recon_as_on_${selectedAccountKey}_${fy}`);
-    setAsOnDate(saved || defaultAsOn);
-  };
 
   // Handler to open Payment Approval Form (PAF) for a specific payment voucher
   const handleOpenPAF = (p: LivePaymentRow) => {
@@ -1006,9 +966,6 @@ export function DirectorReconciliationReport({
 
   // Live Opening Balance rolled forward to start of selected period (reference implementation from balanceEngine)
   const openingBalance = useMemo(() => {
-    if (selectedFY === '2025-26' && fromDate === '2025-07-01') {
-      return 2387207.0; // Official baseline 2025-26
-    }
     return getOpeningBalance(selectedAccountKey, fromDate, {
       vouchers: liveVouchers,
       cashBookStates: liveCashBookStates,
@@ -1016,7 +973,7 @@ export function DirectorReconciliationReport({
   }, [selectedAccountKey, fromDate, selectedFY, liveVouchers, liveCashBookStates]);
 
   const periodOpeningLabel = useMemo(() => {
-    if (fromDate === '2026-07-01' || fromDate === '2025-07-01') {
+    if (fromDate === '2026-07-01') {
       return `Opening Balance as per Cash Book at the Start of Year ${selectedFY}`;
     }
     return `Opening Balance as per Cash Book (as on ${formatDateDDMMYY(fromDate)})`;
@@ -1050,24 +1007,6 @@ export function DirectorReconciliationReport({
       });
     }
 
-    // Fallback baseline for FY 2025-26 if no 2025 entries in live sheet
-    if (list.length === 0 && selectedFY === '2025-26' && selectedAccountKey === 'NS') {
-      INITIAL_DIRECTOR_RECEIPTS.forEach((r, idx) => {
-        const ts = parseDateToTimestamp(r.date);
-        list.push({
-          id: `BASE-REC-${idx}`,
-          srNo: r.srNo || idx + 1,
-          date: r.date,
-          dateTs: ts,
-          monthKey: extractMonthKey(r.date),
-          challanChequeNo: r.challanChequeNo || '—',
-          headOfAccount: r.headOfAccount,
-          amount: r.amount,
-          remarks: r.remarks,
-          paidToBy: 'Govt. of Punjab / TEVTA',
-        });
-      });
-    }
 
     // Sort by Date of Receipt ascending
     list.sort((a, b) => a.dateTs - b.dateTs);
@@ -1182,31 +1121,6 @@ export function DirectorReconciliationReport({
       });
     }
 
-    // Fallback baseline for FY 2025-26 if no live vouchers
-    if (list.length === 0 && selectedFY === '2025-26' && selectedAccountKey === 'NS') {
-      INITIAL_DIRECTOR_PAYMENTS.forEach((p, idx) => {
-        const ts = parseDateToTimestamp(p.chequeDate);
-        list.push({
-          id: `BASE-PAY-${idx}`,
-          srNo: p.srNo || idx + 1,
-          headOfAccount: p.headOfAccount,
-          chequeDate: p.chequeDate,
-          dateTs: ts,
-          monthKey: extractMonthKey(p.chequeDate),
-          chequeNo: p.chequeNo,
-          totalBillAmount: p.totalBillAmount,
-          incomeTax: p.incomeTax,
-          praAmount: p.salesTaxPRA,
-          security: p.security,
-          netAmountPaid: p.netAmountPaid,
-          remarks: p.remarks,
-          paidTo: p.paidTo,
-          voucherNo: `V# ${p.srNo || idx + 1}`,
-          billNo: '',
-          billDate: '',
-        });
-      });
-    }
 
     // Sort by Cheque Date ascending
     list.sort((a, b) => a.dateTs - b.dateTs);
@@ -1354,22 +1268,6 @@ export function DirectorReconciliationReport({
         }
       });
 
-      // If viewing 2025-26 and no live data exists, fallback to baseline monthly grid
-      if (mReceipts.length === 0 && mPayments.length === 0 && selectedFY === '2025-26') {
-        const gridMatch = INITIAL_DIRECTOR_MONTHLY_GRID.find((g) => g.monthKey.startsWith(mKey));
-        if (gridMatch) {
-          directR = gridMatch.directReceipts;
-          shortCourseR = gridMatch.shortCourseReceipts;
-          profitR = gridMatch.otherReceiptsProfit;
-          otherBankR = gridMatch.fromOtherBankAccount;
-          rHeads.push(gridMatch.receiptDesc);
-
-          directP = gridMatch.directPayments;
-          chargesP = gridMatch.otherPaymentsBankCharges;
-          cmsdiP = gridMatch.cmsdiNavttcPayments;
-          pHeads.push(gridMatch.paymentDesc);
-        }
-      }
 
       const totR = directR + shortCourseR + profitR + otherBankR;
       const totP = directP + chargesP + cmsdiP;
@@ -1457,7 +1355,6 @@ export function DirectorReconciliationReport({
         if (!isNaN(val)) return val;
       }
     } catch {}
-    if (selectedAccountKey === 'NS' && selectedFY === '2025-26') return 3044164.95;
     if (selectedAccountKey === 'NS' && selectedFY === '2026-27') return 1743235.0;
     return liveCashBookStates[selectedAccountKey]?.closingBalance ?? calculatedCashBookBalance;
   });
@@ -1479,8 +1376,7 @@ export function DirectorReconciliationReport({
       }
     } catch {}
     let def = calculatedCashBookBalance;
-    if (selectedAccountKey === 'NS' && selectedFY === '2025-26') def = 3044164.95;
-    else if (selectedAccountKey === 'NS' && selectedFY === '2026-27') def = 1743235.0;
+    if (selectedAccountKey === 'NS' && selectedFY === '2026-27') def = 1743235.0;
     else if (liveCashBookStates[selectedAccountKey]?.closingBalance !== undefined) {
       def = liveCashBookStates[selectedAccountKey].closingBalance;
     }
@@ -2665,29 +2561,6 @@ export function DirectorReconciliationReport({
           </select>
         </div>
 
-        {/* Financial Year Selection */}
-        <div>
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-            Financial Year
-          </label>
-          <div className="flex gap-1.5">
-            {(['2026-27', '2025-26'] as const).map((fy) => (
-              <button
-                key={fy}
-                onClick={() => handleFYChange(fy)}
-                className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold border cursor-pointer transition-all ${
-                  selectedFY === fy
-                    ? 'bg-cyan-600 border-cyan-500 text-white'
-                    : darkMode
-                    ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-750'
-                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                {fy}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Day-Level Period (From → To) */}
         <div>
