@@ -2112,6 +2112,13 @@ export function DirectorReconciliationReport({
             font-size: 8pt;
             color: #444;
           }
+          .sig-label {
+            font-size: 7pt;
+            color: #64748b;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          }
           .official-credit-footer {
             margin-top: 25px;
             padding-top: 6px;
@@ -2163,7 +2170,8 @@ export function DirectorReconciliationReport({
           <div style="height: 35px;"></div>
           <div class="sig-line"></div>
           <div class="sig-name">${sig.name}</div>
-          <div class="sig-title">${sig.role} / ${sig.label}</div>
+          <div class="sig-title">${sig.role}</div>
+          <div class="sig-label">${sig.label}</div>
         </div>
       `
       ).join('')}

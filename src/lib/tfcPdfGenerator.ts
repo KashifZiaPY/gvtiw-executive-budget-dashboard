@@ -212,21 +212,36 @@ export function generateReceiptsRegisterPdf(options: ReceiptsPdfOptions): void {
   doc.text('KASHIF ZIA', sig1X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('Accountant / Prepared by:', sig1X, signY + 4, { align: 'center' });
+  doc.text('Accountant', sig1X, signY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('PREPARED BY:', sig1X, signY + 7.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text('ANEEBA JAMIL', sig2X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('CO-Signatory / Checked by:', sig2X, signY + 4, { align: 'center' });
+  doc.text('CO-Signatory', sig2X, signY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('CHECKED BY:', sig2X, signY + 7.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text('SHAZIA KHADIM', sig3X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('Acting Principal / DDO / Approved by:', sig3X, signY + 4, { align: 'center' });
+  doc.text('Acting Principal / DDO', sig3X, signY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('APPROVED BY:', sig3X, signY + 7.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
 
   // Two-pass Footer
   const totalPages = doc.getNumberOfPages();
@@ -485,21 +500,36 @@ export function generateDistributionOverviewPdf(options: DistributionOverviewPdf
   doc.text('KASHIF ZIA', sig1X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('Accountant / Prepared by:', sig1X, signY + 4, { align: 'center' });
+  doc.text('Accountant', sig1X, signY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('PREPARED BY:', sig1X, signY + 7.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text('ANEEBA JAMIL', sig2X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('CO-Signatory / Checked by:', sig2X, signY + 4, { align: 'center' });
+  doc.text('CO-Signatory', sig2X, signY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('CHECKED BY:', sig2X, signY + 7.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text('SHAZIA KHADIM', sig3X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('Acting Principal / DDO / Approved by:', sig3X, signY + 4, { align: 'center' });
+  doc.text('Acting Principal / DDO', sig3X, signY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('APPROVED BY:', sig3X, signY + 7.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
 
   // Two-pass Footer
   const totalPages = doc.getNumberOfPages();
@@ -785,21 +815,36 @@ export function generateHardCashBookPdf(options: HardCashBookPdfOptions): void {
   doc.text('KASHIF ZIA', sig1X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('Accountant / Prepared by:', sig1X, signY + 4, { align: 'center' });
+  doc.text('Accountant', sig1X, signY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('PREPARED BY:', sig1X, signY + 7.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text('ANEEBA JAMIL', sig2X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('CO-Signatory / Checked by:', sig2X, signY + 4, { align: 'center' });
+  doc.text('CO-Signatory', sig2X, signY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('CHECKED BY:', sig2X, signY + 7.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text('SHAZIA KHADIM', sig3X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('Acting Principal / DDO / Approved by:', sig3X, signY + 4, { align: 'center' });
+  doc.text('Acting Principal / DDO', sig3X, signY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('APPROVED BY:', sig3X, signY + 7.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
 
   // Two-pass Footer
   const totalPages = doc.getNumberOfPages();
@@ -1627,21 +1672,36 @@ export function generateFeeRegisterPdf(options: FeeRegisterPdfOptions): void {
   doc.text('KASHIF ZIA', sig1X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('Accountant / Prepared by:', sig1X, signY + 4, { align: 'center' });
+  doc.text('Accountant', sig1X, signY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('PREPARED BY:', sig1X, signY + 7.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text('ANEEBA JAMIL', sig2X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('CO-Signatory / Checked by:', sig2X, signY + 4, { align: 'center' });
+  doc.text('CO-Signatory', sig2X, signY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('CHECKED BY:', sig2X, signY + 7.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text('SHAZIA KHADIM', sig3X, signY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.text('Acting Principal / DDO / Approved by:', sig3X, signY + 4, { align: 'center' });
+  doc.text('Acting Principal / DDO', sig3X, signY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('APPROVED BY:', sig3X, signY + 7.5, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
 
   // Two-pass Footer: Accurate "Page X of TotalPages" on every single page
   const totalPages = doc.getNumberOfPages();

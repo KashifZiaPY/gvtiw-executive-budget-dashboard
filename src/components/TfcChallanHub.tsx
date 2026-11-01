@@ -3354,17 +3354,20 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
             <div className="space-y-1">
               <div className="h-8"></div>
               <div className="font-bold text-slate-900 uppercase">KASHIF ZIA</div>
-              <div className="text-[9px] text-slate-500 italic">Accountant / Prepared by:</div>
+              <div className="text-[9px] text-slate-500 italic">Accountant</div>
+              <div className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wider">Prepared by:</div>
             </div>
             <div className="space-y-1">
               <div className="h-8"></div>
               <div className="font-bold text-slate-900 uppercase">ANEEBA JAMIL</div>
-              <div className="text-[9px] text-slate-500 italic">CO-Signatory / Checked by:</div>
+              <div className="text-[9px] text-slate-500 italic">CO-Signatory</div>
+              <div className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wider">Checked by:</div>
             </div>
             <div className="space-y-1">
               <div className="h-8"></div>
               <div className="font-bold text-slate-900 uppercase">SHAZIA KHADIM</div>
-              <div className="text-[9px] text-slate-500 italic">Acting Principal / DDO / Approved by:</div>
+              <div className="text-[9px] text-slate-500 italic">Acting Principal / DDO</div>
+              <div className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wider">Approved by:</div>
             </div>
           </div>
         </div>,
@@ -3474,15 +3477,18 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
           <div className="mt-8 pt-4 grid grid-cols-3 gap-6 text-center text-xs text-slate-800">
             <div>
               <div className="font-bold border-t border-slate-400 pt-1 uppercase">KASHIF ZIA</div>
-              <div className="text-[10px] text-slate-600 font-medium">Accountant / Prepared by:</div>
+              <div className="text-[10px] text-slate-600 font-medium">Accountant</div>
+              <div className="text-[8.5px] text-slate-500 font-extrabold uppercase tracking-wider">Prepared by:</div>
             </div>
             <div>
               <div className="font-bold border-t border-slate-400 pt-1 uppercase">ANEEBA JAMIL</div>
-              <div className="text-[10px] text-slate-600 font-medium">CO-Signatory / Checked by:</div>
+              <div className="text-[10px] text-slate-600 font-medium">CO-Signatory</div>
+              <div className="text-[8.5px] text-slate-500 font-extrabold uppercase tracking-wider">Checked by:</div>
             </div>
             <div>
               <div className="font-bold border-t border-slate-400 pt-1 uppercase">SHAZIA KHADIM</div>
-              <div className="text-[10px] text-slate-600 font-medium">Acting Principal / DDO / Approved by:</div>
+              <div className="text-[10px] text-slate-600 font-medium">Acting Principal / DDO</div>
+              <div className="text-[8.5px] text-slate-500 font-extrabold uppercase tracking-wider">Approved by:</div>
             </div>
           </div>
         </div>,

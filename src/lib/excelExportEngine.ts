@@ -1606,21 +1606,40 @@ export async function exportNsOwnWorkingExcel(p: NsOwnWorkingExcelParams): Promi
   currRow++;
   ws.mergeCells(`B${currRow}:D${currRow}`);
   const st1 = ws.getCell(`B${currRow}`);
-  st1.value = 'Accountant / Prepared by:';
+  st1.value = 'Accountant';
   st1.font = { name: 'Arial', size: 8.5, color: { argb: '475569' } };
   st1.alignment = { horizontal: 'center' };
 
   ws.mergeCells(`F${currRow}:H${currRow}`);
   const st2 = ws.getCell(`F${currRow}`);
-  st2.value = 'CO-Signatory / Checked by:';
+  st2.value = 'CO-Signatory';
   st2.font = { name: 'Arial', size: 8.5, color: { argb: '475569' } };
   st2.alignment = { horizontal: 'center' };
 
   ws.mergeCells(`K${currRow}:M${currRow}`);
   const st3 = ws.getCell(`K${currRow}`);
-  st3.value = 'Acting Principal / DDO / Approved by:';
+  st3.value = 'Acting Principal / DDO';
   st3.font = { name: 'Arial', size: 8.5, color: { argb: '475569' } };
   st3.alignment = { horizontal: 'center' };
+
+  currRow++;
+  ws.mergeCells(`B${currRow}:D${currRow}`);
+  const lt1 = ws.getCell(`B${currRow}`);
+  lt1.value = 'Prepared by:';
+  lt1.font = { name: 'Arial', size: 8, bold: true, color: { argb: '475569' } };
+  lt1.alignment = { horizontal: 'center' };
+
+  ws.mergeCells(`F${currRow}:H${currRow}`);
+  const lt2 = ws.getCell(`F${currRow}`);
+  lt2.value = 'Checked by:';
+  lt2.font = { name: 'Arial', size: 8, bold: true, color: { argb: '475569' } };
+  lt2.alignment = { horizontal: 'center' };
+
+  ws.mergeCells(`K${currRow}:M${currRow}`);
+  const lt3 = ws.getCell(`K${currRow}`);
+  lt3.value = 'Approved by:';
+  lt3.font = { name: 'Arial', size: 8, bold: true, color: { argb: '475569' } };
+  lt3.alignment = { horizontal: 'center' };
 
   currRow += 2;
   ws.mergeCells(`A${currRow}:N${currRow}`);

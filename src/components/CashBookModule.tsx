@@ -608,6 +608,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
             .sig-col { text-align: center; width: 28%; border-top: 1px solid #475569; padding-top: 6px; }
             .sig-col strong { display: block; font-size: 11px; }
             .sig-col span { font-size: 10px; color: #475569; }
+            .sig-col .sig-label { display: block; font-size: 8.5px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 1px; }
           </style>
         </head>
         <body>
@@ -678,15 +679,18 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           <div class="sig-box">
             <div class="sig-col">
               <strong>KASHIF ZIA</strong>
-              <span>Accountant / Prepared by:</span>
+              <span>Accountant</span>
+              <span class="sig-label">Prepared by:</span>
             </div>
             <div class="sig-col">
               <strong>ANEEBA JAMIL</strong>
-              <span>CO-Signatory / Checked by:</span>
+              <span>CO-Signatory</span>
+              <span class="sig-label">Checked by:</span>
             </div>
             <div class="sig-col">
               <strong>SHAZIA KHADIM</strong>
-              <span>Acting Principal / DDO / Approved by:</span>
+              <span>Acting Principal / DDO</span>
+              <span class="sig-label">Approved by:</span>
             </div>
           </div>
 

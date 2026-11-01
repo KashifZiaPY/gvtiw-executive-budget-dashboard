@@ -1182,6 +1182,13 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
             font-size: 7.5pt;
             color: #334155;
           }
+          .sig-label {
+            font-size: 7pt;
+            color: #64748b;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+          }
           .official-credit-footer {
             margin-top: 14px;
             padding-top: 4px;
@@ -1270,19 +1277,22 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
             <div style="height: 35px;"></div>
             <div class="sig-line"></div>
             <div class="sig-name">KASHIF ZIA</div>
-            <div class="sig-title">Accountant / Prepared by:</div>
+            <div class="sig-title">Accountant</div>
+            <div class="sig-label">Prepared by:</div>
           </div>
           <div class="signatory-cell">
             <div style="height: 35px;"></div>
             <div class="sig-line"></div>
             <div class="sig-name">ANEEBA JAMIL</div>
-            <div class="sig-title">CO-Signatory / Checked by:</div>
+            <div class="sig-title">CO-Signatory</div>
+            <div class="sig-label">Checked by:</div>
           </div>
           <div class="signatory-cell">
             <div style="height: 35px;"></div>
             <div class="sig-line"></div>
             <div class="sig-name">SHAZIA KHADIM</div>
-            <div class="sig-title">Acting Principal / DDO / Approved by:</div>
+            <div class="sig-title">Acting Principal / DDO</div>
+            <div class="sig-label">Approved by:</div>
           </div>
         </div>
 
@@ -2295,7 +2305,10 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
             KASHIF ZIA
           </div>
           <div className="text-[11px] text-slate-600 dark:text-slate-400 font-medium mt-0.5">
-            Accountant / Prepared by:
+            Accountant
+          </div>
+          <div className="text-[9px] text-slate-500 dark:text-slate-500 font-extrabold uppercase tracking-wider mt-0.5">
+            Prepared by:
           </div>
         </div>
 
@@ -2305,7 +2318,10 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
             ANEEBA JAMIL
           </div>
           <div className="text-[11px] text-slate-600 dark:text-slate-400 font-medium mt-0.5">
-            CO-Signatory / Checked by:
+            CO-Signatory
+          </div>
+          <div className="text-[9px] text-slate-500 dark:text-slate-500 font-extrabold uppercase tracking-wider mt-0.5">
+            Checked by:
           </div>
         </div>
 
@@ -2315,7 +2331,10 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
             SHAZIA KHADIM
           </div>
           <div className="text-[11px] text-slate-600 dark:text-slate-400 font-medium mt-0.5">
-            Acting Principal / DDO / Approved by:
+            Acting Principal / DDO
+          </div>
+          <div className="text-[9px] text-slate-500 dark:text-slate-500 font-extrabold uppercase tracking-wider mt-0.5">
+            Approved by:
           </div>
         </div>
       </div>

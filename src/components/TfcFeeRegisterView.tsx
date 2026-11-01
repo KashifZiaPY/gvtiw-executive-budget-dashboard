@@ -1743,17 +1743,29 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
         ]);
         sigRow1.font = { bold: true, size: 10 };
         const sigRow2 = sheet.addRow([
-          'Accountant / Prepared by',
+          'Accountant',
           '',
           '',
           '',
-          'CO-Signatory / Checked by',
+          'CO-Signatory',
           '',
           '',
           '',
-          'Acting Principal / DDO / Approved by',
+          'Acting Principal / DDO',
         ]);
         sigRow2.font = { italic: true, size: 9, color: { argb: 'FF64748B' } };
+        const sigRow3 = sheet.addRow([
+          'Prepared by',
+          '',
+          '',
+          '',
+          'Checked by',
+          '',
+          '',
+          '',
+          'Approved by',
+        ]);
+        sigRow3.font = { bold: true, size: 8, color: { argb: 'FF64748B' } };
 
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], {
@@ -2027,17 +2039,29 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
       ]);
       sigRow1.font = { bold: true, size: 10 };
       const sigRow2 = sheet.addRow([
-        'Accountant / Prepared by',
+        'Accountant',
         '',
         '',
         '',
-        'CO-Signatory / Checked by',
+        'CO-Signatory',
         '',
         '',
         '',
-        'Acting Principal / DDO / Approved by',
+        'Acting Principal / DDO',
       ]);
       sigRow2.font = { italic: true, size: 9, color: { argb: 'FF64748B' } };
+      const sigRow3 = sheet.addRow([
+        'Prepared by',
+        '',
+        '',
+        '',
+        'Checked by',
+        '',
+        '',
+        '',
+        'Approved by',
+      ]);
+      sigRow3.font = { bold: true, size: 8, color: { argb: 'FF64748B' } };
 
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], {
@@ -3936,17 +3960,20 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
             <div className="space-y-1">
               <div className="h-8"></div>
               <div className="font-bold text-slate-900 uppercase">KASHIF ZIA</div>
-              <div className="text-[9px] text-slate-500 italic">Accountant / Prepared by:</div>
+              <div className="text-[9px] text-slate-500 italic">Accountant</div>
+              <div className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wider">Prepared by:</div>
             </div>
             <div className="space-y-1">
               <div className="h-8"></div>
               <div className="font-bold text-slate-900 uppercase">ANEEBA JAMIL</div>
-              <div className="text-[9px] text-slate-500 italic">CO-Signatory / Checked by:</div>
+              <div className="text-[9px] text-slate-500 italic">CO-Signatory</div>
+              <div className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wider">Checked by:</div>
             </div>
             <div className="space-y-1">
               <div className="h-8"></div>
               <div className="font-bold text-slate-900 uppercase">SHAZIA KHADIM</div>
-              <div className="text-[9px] text-slate-500 italic">Acting Principal / DDO / Approved by:</div>
+              <div className="text-[9px] text-slate-500 italic">Acting Principal / DDO</div>
+              <div className="text-[8px] text-slate-400 font-extrabold uppercase tracking-wider">Approved by:</div>
             </div>
           </div>
 

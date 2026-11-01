@@ -286,15 +286,18 @@ export const PrintExecutiveReport: React.FC<PrintExecutiveReportProps> = ({
           <div className="pt-14 print:pt-4 grid grid-cols-3 gap-8 text-center text-xs text-slate-800">
             <div className="border-t-2 border-slate-700 pt-2 font-bold">
               <div>KASHIF ZIA</div>
-              <div className="text-[10px] font-normal text-slate-600">Accountant / Prepared by:</div>
+              <div className="text-[10px] font-normal text-slate-600">Accountant</div>
+              <div className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-500">Prepared by:</div>
             </div>
             <div className="border-t-2 border-slate-700 pt-2 font-bold">
               <div>ANEEBA JAMIL</div>
-              <div className="text-[10px] font-normal text-slate-600">CO-Signatory / Checked by:</div>
+              <div className="text-[10px] font-normal text-slate-600">CO-Signatory</div>
+              <div className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-500">Checked by:</div>
             </div>
             <div className="border-t-2 border-slate-700 pt-2 font-bold">
               <div>SHAZIA KHADIM</div>
-              <div className="text-[10px] font-normal text-slate-600">Acting Principal / DDO / Approved by:</div>
+              <div className="text-[10px] font-normal text-slate-600">Acting Principal / DDO</div>
+              <div className="text-[8.5px] font-extrabold uppercase tracking-wider text-slate-500">Approved by:</div>
             </div>
           </div>
 
