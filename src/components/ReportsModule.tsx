@@ -2150,7 +2150,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             <span>•</span>
             <span>PF: <strong className="text-emerald-600 dark:text-emerald-400">Rs. {formatCurrency2Decimals(cashBookStates.PF?.openingBalance ?? 408588)}</strong></span>
             <span>•</span>
-            <span className="bg-purple-100 dark:bg-purple-950/80 px-1.5 py-0.5 rounded border border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-200">
+            <span>
               FC: <strong className="font-bold">Rs. {formatCurrency2Decimals(cashBookStates.FC?.openingBalance ?? 77717)}</strong>
             </span>
             <span>•</span>
