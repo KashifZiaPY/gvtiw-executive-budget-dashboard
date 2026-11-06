@@ -552,6 +552,42 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
     () => filteredVouchers.reduce((s, v) => s + (Number(v.praTaxOnBill) || 0), 0),
     [filteredVouchers]
   );
+
+  // Derived goods/services split of the combined Bill Amt Excl. Tax (DISPLAY ONLY — stored
+  // voucher data is never changed). PST on the bill is stored separately (praTaxOnBill); at
+  // the standard 16% rate, Services (excl. PST) = praTaxOnBill / 0.16. The split is used ONLY
+  // when that division is exact to the rupee; otherwise the row keeps its combined figure
+  // under Goods (services = null) — an inferred figure is never shown as an entered one.
+  const deriveServicesExcl = (exclTax: number, praOnBill: number): number | null => {
+    const pra = Number(praOnBill) || 0;
+    if (pra <= 0) return null;
+    const services = pra / 0.16;
+    const rounded = Math.round(services);
+    if (Math.abs(services - rounded) > 0.01) return null;
+    if (Math.abs(rounded * 0.16 - pra) > 0.01) return null;
+    if (rounded > exclTax) return null;
+    return rounded;
+  };
+  const exclSplitOf = (v: MasterVoucher) => {
+    const excl = Number(v.billAmtExclTax || v.billAmountGross) || 0;
+    const services = deriveServicesExcl(excl, Number(v.praTaxOnBill) || 0);
+    return { excl, services, goods: services === null ? excl : excl - services };
+  };
+  const totalServicesExcl = useMemo(
+    () => filteredVouchers.reduce((sum, v) => sum + (exclSplitOf(v).services ?? 0), 0),
+    [filteredVouchers]
+  );
+  const totalGoodsExcl = useMemo(
+    () => filteredVouchers.reduce((sum, v) => sum + exclSplitOf(v).goods, 0),
+    [filteredVouchers]
+  );
+  const unsplitPraCount = useMemo(
+    () =>
+      filteredVouchers.filter(
+        (v) => (Number(v.praTaxOnBill) || 0) > 0 && exclSplitOf(v).services === null
+      ).length,
+    [filteredVouchers]
+  );
   const totalGross = useMemo(() => filteredVouchers.reduce((s, v) => s + (v.billAmountGross || 0), 0), [filteredVouchers]);
   const totalGst = useMemo(() => filteredVouchers.reduce((s, v) => s + (v.gstAmount || 0), 0), [filteredVouchers]);
   const totalNet = useMemo(() => filteredVouchers.reduce((s, v) => s + (v.chequeAmountNet || 0), 0), [filteredVouchers]);
@@ -964,16 +1000,18 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           <thead>
             <tr>
               <th style="width: 3%;" class="text-center">SR#</th>
-              <th style="width: 7%;">DATE</th>
-              <th style="width: 7%;" class="text-center">CHEQUE#</th>
-              <th style="width: 20%;">PAYEE / VENDOR</th>
-              <th style="width: 8%;">NTN / CNIC</th>
-              <th style="width: 9%;">BILL/INV # & DATE</th>
-              <th style="width: 9.5%;" class="text-right">GROSS BILL (RS.)</th>
-              <th style="width: 9.5%;" class="text-right">AMOUNT EXCL. TAX (RS.)</th>
-              <th style="width: 9%;" class="text-right">GST / SALES TAX (RS.)</th>
-              <th style="width: 10%;" class="text-right">NET PAID (RS.)</th>
-              <th style="width: 7%;" class="text-center">VOUCHER#</th>
+              <th style="width: 6.5%;">DATE</th>
+              <th style="width: 6%;" class="text-center">CHEQUE#</th>
+              <th style="width: 14%;">PAYEE / VENDOR</th>
+              <th style="width: 7.5%;">NTN / CNIC</th>
+              <th style="width: 8%;">BILL/INV # & DATE</th>
+              <th style="width: 8%;" class="text-right">GROSS BILL (RS.)</th>
+              <th style="width: 8%;" class="text-right">GOODS EXCL. GST (RS.)</th>
+              <th style="width: 8%;" class="text-right">SERVICES EXCL. PST (RS.)</th>
+              <th style="width: 8%;" class="text-right">GST / SALES TAX (RS.)</th>
+              <th style="width: 7.5%;" class="text-right">PST / PRA ON BILL (RS.)</th>
+              <th style="width: 9%;" class="text-right">NET PAID (RS.)</th>
+              <th style="width: 6.5%;" class="text-center">VOUCHER#</th>
             </tr>
           </thead>
           <tbody>
@@ -992,8 +1030,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                   ${v.billDate ? `<div class="font-mono" style="font-size: 8px; color: #334155; font-weight: normal; line-height: 1.2; margin-top: 1.5px; white-space: nowrap;">${formatPakistaniDate(v.billDate)}</div>` : ''}
                 </td>
                 <td class="text-right font-mono font-bold" style="color: #0f172a; white-space: nowrap;">${formatCurrency2Decimals(v.billAmountGross)}</td>
-                <td class="text-right font-mono font-bold" style="color: #0f172a; white-space: nowrap;">${formatCurrency2Decimals(Number(v.billAmtExclTax || v.billAmountGross))}</td>
+                <td class="text-right font-mono font-bold" style="color: #0f172a; white-space: nowrap;">${formatCurrency2Decimals(exclSplitOf(v).goods)}</td>
+                <td class="text-right font-mono font-bold" style="color: #0f172a; white-space: nowrap;">${exclSplitOf(v).services !== null ? formatCurrency2Decimals(Number(exclSplitOf(v).services)) : '—'}</td>
                 <td class="text-right font-mono font-bold" style="color: #6b21a8; white-space: nowrap;">${v.gstAmount > 0 ? formatCurrency2Decimals(v.gstAmount) : '—'}</td>
+                <td class="text-right font-mono font-bold" style="color: #92400e; white-space: nowrap;">${Number(v.praTaxOnBill) > 0 ? formatCurrency2Decimals(v.praTaxOnBill) : '—'}</td>
                 <td class="text-right font-mono font-black" style="color: #047857; white-space: nowrap;">${formatCurrency2Decimals(v.chequeAmountNet)}</td>
                 <td class="font-mono font-bold text-center" style="color: #047857; white-space: nowrap;">${v.voucherNo}</td>
               </tr>
@@ -1008,10 +1048,16 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 ${formatCurrency2Decimals(totalGross)}
               </td>
               <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9.5px; white-space: nowrap;">
-                ${formatCurrency2Decimals(totalBillExclTax)}
+                ${formatCurrency2Decimals(totalGoodsExcl)}
+              </td>
+              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9.5px; white-space: nowrap;">
+                ${formatCurrency2Decimals(totalServicesExcl)}
               </td>
               <td class="text-right font-mono font-black" style="color: #6b21a8; font-size: 9.5px; white-space: nowrap;">
                 ${formatCurrency2Decimals(totalGst)}
+              </td>
+              <td class="text-right font-mono font-black" style="color: #92400e; font-size: 9.5px; white-space: nowrap;">
+                ${formatCurrency2Decimals(totalPraOnBill)}
               </td>
               <td class="text-right font-mono font-black" style="color: #047857; font-size: 10px; white-space: nowrap;">
                 ${formatCurrency2Decimals(totalNet)}
@@ -1020,6 +1066,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             </tr>
           </tfoot>
         </table>
+        <div style="font-size: 8px; color: #475569; margin-top: 5px;">Note: Services (excl. PST) is derived from the PST charged on each bill @ 16% (PRA Tax on Bill / 16%) where it divides exactly to the rupee; Goods (excl. GST) is the remainder of the Amount Excl. Tax. Voucher records themselves are unchanged.${unsplitPraCount > 0 ? ` ${unsplitPraCount} record(s) with PST could not be split exactly and are shown combined under Goods.` : ''}</div>
         ` : isPraTab ? `
         <div class="kpi-grid">
           <div class="kpi-card" style="border-color: #cbd5e1; background-color: #f8fafc;">
@@ -1044,17 +1091,18 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           <thead>
             <tr>
               <th style="width: 3%;" class="text-center">SR#</th>
-              <th style="width: 7%;">DATE</th>
-              <th style="width: 7%;" class="text-center">PRA CHEQUE#</th>
-              <th style="width: 19%;">PAYEE / VENDOR</th>
-              <th style="width: 7.5%;">NTN / CNIC</th>
-              <th style="width: 8.5%;">BILL/INV # & DATE</th>
-              <th style="width: 8.5%;" class="text-right">BILL AMOUNT (RS.)</th>
-              <th style="width: 8.5%;" class="text-right">AMOUNT EXCL. TAX (RS.)</th>
-              <th style="width: 7.5%;" class="text-right">PRA (BILL) (RS.)</th>
-              <th style="width: 8%;" class="text-right">PRA WITHHELD (RS.)</th>
-              <th style="width: 9.5%;" class="text-right">NET PAID (RS.)</th>
-              <th style="width: 6.5%;" class="text-center">VOUCHER#</th>
+              <th style="width: 6.5%;">DATE</th>
+              <th style="width: 6.5%;" class="text-center">PRA CHEQUE#</th>
+              <th style="width: 16%;">PAYEE / VENDOR</th>
+              <th style="width: 7%;">NTN / CNIC</th>
+              <th style="width: 8%;">BILL/INV # & DATE</th>
+              <th style="width: 8%;" class="text-right">BILL AMOUNT (RS.)</th>
+              <th style="width: 8%;" class="text-right">AMOUNT EXCL. TAX (RS.)</th>
+              <th style="width: 8%;" class="text-right">SERVICES EXCL. PST (RS.)</th>
+              <th style="width: 7%;" class="text-right">PRA (BILL) (RS.)</th>
+              <th style="width: 7.5%;" class="text-right">PRA WITHHELD (RS.)</th>
+              <th style="width: 8.5%;" class="text-right">NET PAID (RS.)</th>
+              <th style="width: 6%;" class="text-center">VOUCHER#</th>
             </tr>
           </thead>
           <tbody>
@@ -1074,6 +1122,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 </td>
                 <td class="text-right font-mono font-bold" style="color: #0f172a; white-space: nowrap;">${formatCurrency2Decimals(v.billAmountGross)}</td>
                 <td class="text-right font-mono font-bold" style="color: #0f172a; white-space: nowrap;">${formatCurrency2Decimals(Number(v.billAmtExclTax || v.billAmountGross))}</td>
+                <td class="text-right font-mono font-bold" style="color: #0f172a; white-space: nowrap;">${exclSplitOf(v).services !== null ? formatCurrency2Decimals(Number(exclSplitOf(v).services)) : '—'}</td>
                 <td class="text-right font-mono font-bold" style="color: #92400e; white-space: nowrap;">${Number(v.praTaxOnBill) > 0 ? formatCurrency2Decimals(v.praTaxOnBill) : '—'}</td>
                 <td class="text-right font-mono font-bold" style="color: #92400e; white-space: nowrap;">${v.praAmount > 0 ? formatCurrency2Decimals(v.praAmount) : '—'}</td>
                 <td class="text-right font-mono font-black" style="color: #047857; white-space: nowrap;">${formatCurrency2Decimals(v.chequeAmountNet)}</td>
@@ -1092,6 +1141,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9.5px; white-space: nowrap;">
                 ${formatCurrency2Decimals(totalBillExclTax)}
               </td>
+              <td class="text-right font-mono font-black" style="color: #0f172a; font-size: 9.5px; white-space: nowrap;">
+                ${formatCurrency2Decimals(totalServicesExcl)}
+              </td>
               <td class="text-right font-mono font-black" style="color: #92400e; font-size: 9.5px; white-space: nowrap;">
                 ${formatCurrency2Decimals(totalPraOnBill)}
               </td>
@@ -1105,6 +1157,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
             </tr>
           </tfoot>
         </table>
+        <div style="font-size: 8px; color: #475569; margin-top: 5px;">Note: Services (excl. PST) is derived from the PST charged on each bill @ 16% (PRA Tax on Bill / 16%) where it divides exactly to the rupee. Voucher records themselves are unchanged.${unsplitPraCount > 0 ? ` ${unsplitPraCount} record(s) with PST could not be split exactly; their Services figure is shown as —.` : ''}</div>
         ` : `
         <div class="kpi-grid">
           <div class="kpi-card" style="border-color: #cbd5e1; background-color: #f8fafc;">
@@ -1777,8 +1830,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         'NTN / CNIC',
         'Bill / Inv # & Date',
         'Gross Bill (Rs.)',
-        'Amount Excl. Tax (Rs.)',
+        'Goods Excl. GST (Rs.)',
+        'Services Excl. PST (Rs.)',
         'GST / Sales Tax Withheld (Rs.)',
+        'PST / PRA on Bill (Rs.)',
         'Net Paid (Rs.)',
         'Voucher No',
       ];
@@ -1792,8 +1847,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         `"${(v.ntnCnic || '').replace(/"/g, '""')}"`,
         `"${(v.billNo || '')}${v.billDate ? (v.billNo ? ' (' + v.billDate + ')' : v.billDate) : ''}"`,
         v.billAmountGross,
-        Number(v.billAmtExclTax || v.billAmountGross),
+        exclSplitOf(v).goods,
+        exclSplitOf(v).services ?? '',
         v.gstAmount || 0,
+        v.praTaxOnBill || 0,
         v.chequeAmountNet,
         `"${v.voucherNo}"`,
       ]);
@@ -1807,8 +1864,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         '—',
         '—',
         totalGross,
-        totalBillExclTax,
+        totalGoodsExcl,
+        totalServicesExcl,
         totalGst,
+        totalPraOnBill,
         totalNet,
         '—',
       ]);
@@ -1844,6 +1903,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         'Bill / Inv # & Date',
         'Bill Amount (Rs.)',
         'Amount Excl. Tax (Rs.)',
+        'Services Excl. PST (Rs.)',
         'PRA (Bill) (Rs.)',
         'PRA Withheld (Rs.)',
         'Net Paid (Rs.)',
@@ -1860,6 +1920,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         `"${(v.billNo || '')}${v.billDate ? (v.billNo ? ' (' + v.billDate + ')' : v.billDate) : ''}"`,
         v.billAmountGross,
         Number(v.billAmtExclTax || v.billAmountGross),
+        exclSplitOf(v).services ?? '',
         v.praTaxOnBill || 0,
         v.praAmount || 0,
         v.chequeAmountNet,
@@ -1876,6 +1937,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
         '—',
         totalGross,
         totalBillExclTax,
+        totalServicesExcl,
         totalPraOnBill,
         totalPra,
         totalNet,
@@ -1997,8 +2059,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           'NTN / CNIC',
           'Bill / Inv # & Date',
           'Gross Bill (Rs.)',
-          'Amount Excl. Tax (Rs.)',
+          'Goods Excl. GST (Rs.)',
+          'Services Excl. PST (Rs.)',
           'GST / Sales Tax Withheld (Rs.)',
+          'PST / PRA on Bill (Rs.)',
           'Net Paid (Rs.)',
           'Voucher No',
         ];
@@ -2012,8 +2076,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           v.ntnCnic || '',
           `${v.billNo || ''}${v.billDate ? (v.billNo ? ' (' + v.billDate + ')' : v.billDate) : ''}`,
           v.billAmountGross,
-          Number(v.billAmtExclTax || v.billAmountGross),
+          exclSplitOf(v).goods,
+          exclSplitOf(v).services ?? '',
           v.gstAmount || 0,
+          v.praTaxOnBill || 0,
           v.chequeAmountNet,
           v.voucherNo,
         ]);
@@ -2023,7 +2089,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           subtitle: `PERIOD: ${fromDate || 'Start'} to ${toDate || 'End'}`,
           headers,
           rows,
-          numericColIndices: [8, 9, 10, 11],
+          numericColIndices: [8, 9, 10, 11, 12, 13],
           filename: `GVTIW_FBR_Monthly_Withholding_Statement_${new Date().toISOString().slice(0, 10)}.xlsx`,
         });
         return;
@@ -2040,6 +2106,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           'Bill / Inv # & Date',
           'Bill Amount (Rs.)',
           'Amount Excl. Tax (Rs.)',
+          'Services Excl. PST (Rs.)',
           'PRA (Bill) (Rs.)',
           'PRA Withheld (Rs.)',
           'Net Paid (Rs.)',
@@ -2056,6 +2123,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           `${v.billNo || ''}${v.billDate ? (v.billNo ? ' (' + v.billDate + ')' : v.billDate) : ''}`,
           v.billAmountGross,
           Number(v.billAmtExclTax || v.billAmountGross),
+          exclSplitOf(v).services ?? '',
           v.praTaxOnBill || 0,
           v.praAmount || 0,
           v.chequeAmountNet,
@@ -2067,7 +2135,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           subtitle: `PERIOD: ${fromDate || 'Start'} to ${toDate || 'End'}`,
           headers,
           rows,
-          numericColIndices: [8, 9, 10, 11, 12],
+          numericColIndices: [8, 9, 10, 11, 12, 13],
           filename: `GVTIW_PRA_Monthly_Sales_Tax_Statement_${new Date().toISOString().slice(0, 10)}.xlsx`,
         });
         return;
@@ -2798,8 +2866,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                     <th className="py-2.5 px-3 whitespace-nowrap min-w-[95px] sticky top-0">NTN / CNIC</th>
                     <th className="py-2.5 px-3 whitespace-nowrap min-w-[110px] sticky top-0">BILL/INV # & DATE</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">GROSS BILL (RS.)</th>
-                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[110px] sticky top-0">AMOUNT EXCL. TAX (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">GOODS EXCL. GST (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">SERVICES EXCL. PST (RS.)</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">GST / SALES TAX (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">PST / PRA ON BILL (RS.)</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">NET PAID (RS.)</th>
                     <th className="py-2.5 px-2 text-center w-14 whitespace-nowrap sticky top-0">PAF</th>
                     <th className="py-2.5 px-3 text-center whitespace-nowrap min-w-[85px] sticky top-0">VOUCHER#</th>
@@ -2808,7 +2878,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {filteredVouchers.length === 0 ? (
                     <tr>
-                      <td colSpan={12} className="text-center py-10 text-slate-500 dark:text-slate-400">
+                      <td colSpan={14} className="text-center py-10 text-slate-500 dark:text-slate-400">
                         No transactions found with GST deductions for the selected criteria.
                       </td>
                     </tr>
@@ -2854,10 +2924,16 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                           {formatPKR(v.billAmountGross, false)}
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                          {formatPKR(Number(v.billAmtExclTax || v.billAmountGross), false)}
+                          {formatPKR(exclSplitOf(v).goods, false)}
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                          {exclSplitOf(v).services !== null ? formatPKR(Number(exclSplitOf(v).services), false) : '—'}
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-purple-700 dark:text-purple-400 whitespace-nowrap">
                           {v.gstAmount > 0 ? formatPKR(v.gstAmount, false) : '—'}
+                        </td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">
+                          {Number(v.praTaxOnBill) > 0 ? formatPKR(Number(v.praTaxOnBill), false) : '—'}
                         </td>
                         <td className="py-2 px-3 text-right font-mono font-black text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
                           {formatPKR(v.chequeAmountNet, false)}
@@ -2889,10 +2965,16 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                         {formatPKR(totalGross, false)}
                       </td>
                       <td className="py-3 px-3 text-right font-mono font-black text-sm text-slate-900 dark:text-white whitespace-nowrap">
-                        {formatPKR(totalBillExclTax, false)}
+                        {formatPKR(totalGoodsExcl, false)}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-slate-900 dark:text-white whitespace-nowrap">
+                        {formatPKR(totalServicesExcl, false)}
                       </td>
                       <td className="py-3 px-3 text-right font-mono font-black text-sm text-purple-700 dark:text-purple-400 whitespace-nowrap">
                         {formatPKR(totalGst, false)}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-amber-700 dark:text-amber-400 whitespace-nowrap">
+                        {formatPKR(totalPraOnBill, false)}
                       </td>
                       <td className="py-3 px-3 text-right font-mono font-black text-sm text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
                         {formatPKR(totalNet, false)}
@@ -2922,6 +3004,12 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               </div>
             ))}
           </div>
+          <p className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-relaxed px-1">
+            Note: Services (excl. PST) is derived from the PST charged on each bill @ 16% (PRA Tax on Bill ÷ 16%) where it divides exactly to the rupee; Goods (excl. GST) is the remainder of the Amount Excl. Tax. Voucher records themselves are unchanged.
+            {unsplitPraCount > 0 && (
+              <span className="font-bold text-amber-600 dark:text-amber-400"> {unsplitPraCount} record(s) with PST could not be split exactly and are shown combined under Goods.</span>
+            )}
+          </p>
         </div>
       )}
 
@@ -3026,6 +3114,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                     <th className="py-2.5 px-3 whitespace-nowrap min-w-[110px] sticky top-0">BILL/INV # & DATE</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">BILL AMOUNT (RS.)</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[110px] sticky top-0">AMOUNT EXCL. TAX (RS.)</th>
+                    <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">SERVICES EXCL. PST (RS.)</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">PRA (BILL) (RS.)</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">PRA WITHHELD (RS.)</th>
                     <th className="py-2.5 px-3 text-right whitespace-nowrap min-w-[105px] sticky top-0">NET PAID (RS.)</th>
@@ -3036,7 +3125,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                   {filteredVouchers.length === 0 ? (
                     <tr>
-                      <td colSpan={13} className="text-center py-10 text-slate-500 dark:text-slate-400">
+                      <td colSpan={14} className="text-center py-10 text-slate-500 dark:text-slate-400">
                         No transactions found with PRA service tax for the selected criteria.
                       </td>
                     </tr>
@@ -3084,6 +3173,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                         <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
                           {formatPKR(Number(v.billAmtExclTax || v.billAmountGross), false)}
                         </td>
+                        <td className="py-2 px-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                          {exclSplitOf(v).services !== null ? formatPKR(Number(exclSplitOf(v).services), false) : '—'}
+                        </td>
                         <td className="py-2 px-3 text-right font-mono font-bold text-amber-700 dark:text-amber-400 whitespace-nowrap">
                           {Number(v.praTaxOnBill) > 0 ? formatPKR(Number(v.praTaxOnBill), false) : '—'}
                         </td>
@@ -3122,6 +3214,9 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                       <td className="py-3 px-3 text-right font-mono font-black text-sm text-slate-900 dark:text-white whitespace-nowrap">
                         {formatPKR(totalBillExclTax, false)}
                       </td>
+                      <td className="py-3 px-3 text-right font-mono font-black text-sm text-slate-900 dark:text-white whitespace-nowrap">
+                        {formatPKR(totalServicesExcl, false)}
+                      </td>
                       <td className="py-3 px-3 text-right font-mono font-black text-sm text-amber-700 dark:text-amber-400 whitespace-nowrap">
                         {formatPKR(totalPraOnBill, false)}
                       </td>
@@ -3139,6 +3234,13 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               </table>
             </div>
           </div>
+
+          <p className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-relaxed px-1">
+            Note: Services (excl. PST) is derived from the PST charged on each bill @ 16% (PRA Tax on Bill ÷ 16%) where it divides exactly to the rupee. Voucher records themselves are unchanged.
+            {unsplitPraCount > 0 && (
+              <span className="font-bold text-amber-600 dark:text-amber-400"> {unsplitPraCount} record(s) with PST could not be split exactly; their Services figure is shown as —.</span>
+            )}
+          </p>
 
           {/* Official Signatures Block matching PAF Report */}
           <div className="pt-6 pb-2 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
