@@ -24,7 +24,7 @@ import { AdminHubModule } from './components/AdminHubModule';
 import { PinLockScreen } from './components/PinLockScreen';
 import { AnimatedSplashLogos } from './components/AnimatedSplashLogos';
 import { INITIAL_MASTER_VOUCHERS } from './data/cashBookData';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Calculator, Landmark } from 'lucide-react';
 import { fetchDashboardPayload } from './lib/apiEngine';
 
 export type ActiveModuleTab = 'DASHBOARD' | 'CASHBOOK' | 'VOUCHERS' | 'REPORTS' | 'ADMIN';
@@ -336,7 +336,15 @@ export default function App() {
             <h1 className="gate-institute">
               Govt. Vocational Training Institute (W) Samanabad, Faisalabad
             </h1>
-            <p className="gate-hubline">Accounts &amp; Finance Hub</p>
+            <div className="gate-hubstrip">
+              <span className="gate-hubstrip-badge" aria-hidden="true">
+                <Landmark size={13} strokeWidth={2.2} />
+              </span>
+              <p className="gate-hubline">Accounts &amp; Finance Hub</p>
+              <span className="gate-hubstrip-badge" aria-hidden="true">
+                <Calculator size={13} strokeWidth={2.2} />
+              </span>
+            </div>
           </div>
           <div className="gate-logo-wrap">
             <span className="gate-halo" aria-hidden="true" />

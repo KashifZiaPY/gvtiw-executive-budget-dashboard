@@ -1079,6 +1079,36 @@
   color: #0d9488;
 }
 
+.gate-hubstrip {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 13px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #065f46 0%, #0b3d2e 55%, #065f46 100%);
+  border: 1px solid rgba(180, 138, 47, 0.55);
+  box-shadow: 0 5px 16px rgba(6, 95, 70, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.gate-hubstrip .gate-hubline {
+  margin-top: 0;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transform: translateX(0.19em);
+}
+.gate-hubstrip-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 23px;
+  height: 23px;
+  flex: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  color: #fbbf24;
+}
+
 /* Gate: slow-drifting watermark logos + stacking */
 .gate-screen { position: relative; overflow: hidden; }
 .gate-topbar, .gate-center, .gate-footer { position: relative; z-index: 1; }
@@ -1126,6 +1156,8 @@
   .gate-logo-wrap { width: 56px; height: 56px; }
   .gate-institute { font-size: 16px; }
   .gate-hubline { margin-top: 3px; font-size: 10px; }
+  .gate-hubstrip { margin-top: 5px; padding: 3px 7px; gap: 10px; }
+  .gate-hubstrip-badge { width: 19px; height: 19px; }
   .gate-qr { width: 104px; height: 104px; }
   .gate-topbar { padding-top: 8px; }
   .gate-card { padding: 1.2rem 1.5rem; }
@@ -1140,5 +1172,6 @@
   .gate-crest { width: 3.5rem !important; height: 3.5rem !important; }
   .gate-qr { width: 88px; height: 88px; }
   .gate-qrcaption { display: none; }
+  .gate-hubstrip { margin-top: 4px; padding-top: 2px; padding-bottom: 2px; }
   .gate-footer { gap: 4px; padding-bottom: 8px; }
 }
