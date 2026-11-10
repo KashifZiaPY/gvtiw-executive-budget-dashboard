@@ -10,6 +10,7 @@ import {
   HeaderFilterButton,
   HeaderFilterPanel,
   ValuesChecklist,
+  describeSelection,
   DateRangeFilter,
   TextFilter,
   AmountRangeFilter,
@@ -68,6 +69,10 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
   const [fltMonths, setFltMonths] = useState<Set<string> | null>(null);
   const [fltHeads, setFltHeads] = useState<Set<string> | null>(null);
   const [fltPayees, setFltPayees] = useState<Set<string> | null>(null);
+  // Panel search text lives here (not inside the panel) so it survives
+  // the panel closing — reopening still shows what was typed.
+  const [headQuery, setHeadQuery] = useState('');
+  const [payeeQuery, setPayeeQuery] = useState('');
   const [fltCheque, setFltCheque] = useState('');
   const [fltFrom, setFltFrom] = useState('');
   const [fltTo, setFltTo] = useState('');
@@ -90,6 +95,8 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
     setFltFrom('');
     setFltTo('');
     setFltType('ALL');
+    setHeadQuery('');
+    setPayeeQuery('');
     setFltAccts(null);
     setFltVoucher('');
     setFltParticulars('');
@@ -141,6 +148,8 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
     fltMonths !== null ||
     fltHeads !== null ||
     fltPayees !== null ||
+    headQuery.trim() !== '' ||
+    payeeQuery.trim() !== '' ||
     fltCheque !== '' ||
     fltFrom !== '' ||
     fltTo !== '' ||
@@ -236,6 +245,18 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
       return false;
     if (fltPayeesKeys !== null && !fltPayeesKeys.has((r.paidToBy || '').trim().toLowerCase()))
       return false;
+    // Text typed in a checklist panel filters the statement instantly,
+    // exactly as typed (contains, case-insensitive), ANDed with the ticks.
+    if (
+      headQuery.trim() &&
+      !(r.accountHead || '').toLowerCase().includes(headQuery.trim().toLowerCase())
+    )
+      return false;
+    if (
+      payeeQuery.trim() &&
+      !(r.paidToBy || '').toLowerCase().includes(payeeQuery.trim().toLowerCase())
+    )
+      return false;
     if (fltCheque && !(r.chequeNo || '').toLowerCase().includes(fltCheque.toLowerCase()))
       return false;
     if (fltFrom || fltTo) {
@@ -312,6 +333,8 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
         : `Paid To / By: ${arr.slice(0, 3).join(', ')}${arr.length > 3 ? ` +${arr.length - 3} more` : ''}`
     );
   }
+  if (headQuery.trim()) criteriaParts.push(`Account Head contains "${headQuery.trim()}"`);
+  if (payeeQuery.trim()) criteriaParts.push(`Paid To / By contains "${payeeQuery.trim()}"`);
   if (fltCheque) criteriaParts.push(`Cheque # contains "${fltCheque}"`);
   if (fltAccts !== null)
     criteriaParts.push(
@@ -720,11 +743,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
               {fltMonths !== null && (
                 <FilterChip
                   darkMode={darkMode}
-                  label={
-                    fltMonths.size === 0
-                      ? 'Month: (none)'
-                      : `Month: ${[...fltMonths].join(', ')}`
-                  }
+                  label={`Month: ${describeSelection(filterOptions.months, fltMonths)}`}
                   onClear={() => setFltMonths(null)}
                 />
               )}
@@ -741,27 +760,29 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
               {fltHeads !== null && (
                 <FilterChip
                   darkMode={darkMode}
-                  label={
-                    fltHeads.size === 0
-                      ? 'Head: (none)'
-                      : fltHeads.size === 1
-                        ? `Head: ${[...fltHeads][0]}`
-                        : `Head: ${fltHeads.size} selected`
-                  }
+                  label={`Head: ${describeSelection(filterOptions.heads, fltHeads)}`}
                   onClear={() => setFltHeads(null)}
                 />
               )}
               {fltPayees !== null && (
                 <FilterChip
                   darkMode={darkMode}
-                  label={
-                    fltPayees.size === 0
-                      ? 'Payee: (none)'
-                      : fltPayees.size === 1
-                        ? `Payee: ${[...fltPayees][0]}`
-                        : `Payee: ${fltPayees.size} selected`
-                  }
+                  label={`Payee: ${describeSelection(filterOptions.payees, fltPayees)}`}
                   onClear={() => setFltPayees(null)}
+                />
+              )}
+              {headQuery.trim() && (
+                <FilterChip
+                  darkMode={darkMode}
+                  label={`Head contains "${headQuery.trim()}"`}
+                  onClear={() => setHeadQuery('')}
+                />
+              )}
+              {payeeQuery.trim() && (
+                <FilterChip
+                  darkMode={darkMode}
+                  label={`Payee contains "${payeeQuery.trim()}"`}
+                  onClear={() => setPayeeQuery('')}
                 />
               )}
               {fltCheque && (
@@ -774,13 +795,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
               {fltAccts !== null && (
                 <FilterChip
                   darkMode={darkMode}
-                  label={
-                    fltAccts.size === 0
-                      ? 'Account: (none)'
-                      : fltAccts.size === 1
-                        ? `Account: ${[...fltAccts][0]}`
-                        : `Account: ${fltAccts.size} selected`
-                  }
+                  label={`Account: ${describeSelection(filterOptions.accts, fltAccts)}`}
                   onClear={() => setFltAccts(null)}
                 />
               )}
@@ -998,6 +1013,8 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
                     included={fltPayees}
                     onChange={setFltPayees}
                     searchable
+                    query={payeeQuery}
+                    onQueryChange={setPayeeQuery}
                     darkMode={darkMode}
                   />
                 </HeaderFilterPanel>
@@ -1023,6 +1040,8 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
                     included={fltHeads}
                     onChange={setFltHeads}
                     searchable
+                    query={headQuery}
+                    onQueryChange={setHeadQuery}
                     darkMode={darkMode}
                   />
                 </HeaderFilterPanel>

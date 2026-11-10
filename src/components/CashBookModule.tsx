@@ -54,6 +54,7 @@ import {
   HeaderFilterButton,
   HeaderFilterPanel,
   ValuesChecklist,
+  describeSelection,
   DateRangeFilter,
   TextFilter,
   AmountRangeFilter,
@@ -106,6 +107,10 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
   const [fltMonths, setFltMonths] = useState<Set<string> | null>(null);
   const [fltHeads, setFltHeads] = useState<Set<string> | null>(null);
   const [fltPayees, setFltPayees] = useState<Set<string> | null>(null);
+  // Panel search text lives here (not inside the panel) so it survives
+  // the panel closing — reopening still shows what was typed.
+  const [headQuery, setHeadQuery] = useState('');
+  const [payeeQuery, setPayeeQuery] = useState('');
   const [fltCheque, setFltCheque] = useState('');
   const [fltFrom, setFltFrom] = useState('');
   const [fltTo, setFltTo] = useState('');
@@ -127,6 +132,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     setFltFrom('');
     setFltTo('');
     setFltType('ALL');
+    setHeadQuery('');
+    setPayeeQuery('');
     setFltVoucher('');
     setFltParticulars('');
     setFltRecMin('');
@@ -142,6 +149,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     fltMonths !== null ||
     fltHeads !== null ||
     fltPayees !== null ||
+    headQuery.trim() !== '' ||
+    payeeQuery.trim() !== '' ||
     fltCheque !== '' ||
     fltFrom !== '' ||
     fltTo !== '' ||
@@ -595,6 +604,10 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         if (fltMonths !== null && !fltMonths.has(entry.month)) return false;
         if (fltHeadsKeys !== null && !fltHeadsKeys.has((entry.accountHead || '').trim().toLowerCase())) return false;
         if (fltPayeesKeys !== null && !fltPayeesKeys.has((entry.paidToBy || '').trim().toLowerCase())) return false;
+        // Text typed in a checklist panel filters instantly (contains,
+        // case-insensitive), ANDed with the tick selection.
+        if (headQuery.trim() && !(entry.accountHead || '').toLowerCase().includes(headQuery.trim().toLowerCase())) return false;
+        if (payeeQuery.trim() && !(entry.paidToBy || '').toLowerCase().includes(payeeQuery.trim().toLowerCase())) return false;
         if (fltCheque && !(entry.chequeNo || '').toLowerCase().includes(fltCheque.toLowerCase()))
           return false;
         if (fltVoucher && !(entry.voucherSerial || '').toLowerCase().includes(fltVoucher.toLowerCase()))
@@ -619,7 +632,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     }
 
     return list;
-  }, [mappedEntries, searchTerm, anyHeaderFilterActive, fltMonths, fltHeads, fltPayees, fltHeadsKeys, fltPayeesKeys, fltCheque, fltFrom, fltTo, fltType, fltVoucher, fltParticulars, fltRecMin, fltRecMax, fltPayMin, fltPayMax, fltBalMin, fltBalMax]);
+  }, [mappedEntries, searchTerm, anyHeaderFilterActive, fltMonths, fltHeads, fltPayees, fltHeadsKeys, fltPayeesKeys, fltCheque, fltFrom, fltTo, fltType, fltVoucher, fltParticulars, fltRecMin, fltRecMax, fltPayMin, fltPayMax, fltBalMin, fltBalMax, headQuery, payeeQuery]);
 
   // Human-readable filter criteria — printed on the folio when filtered.
   const rangeCriteria = (label: string, minS: string, maxS: string) =>
@@ -650,6 +663,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         : `Paid To / By: ${arr.slice(0, 3).join(', ')}${arr.length > 3 ? ` +${arr.length - 3} more` : ''}`
     );
   }
+  if (headQuery.trim()) filterCriteriaParts.push(`Budget Account Head contains "${headQuery.trim()}"`);
+  if (payeeQuery.trim()) filterCriteriaParts.push(`Paid To / By contains "${payeeQuery.trim()}"`);
   if (fltCheque) filterCriteriaParts.push(`Cheque # contains "${fltCheque}"`);
   if (fltVoucher) filterCriteriaParts.push(`Voucher # contains "${fltVoucher}"`);
   if (fltParticulars) filterCriteriaParts.push(`Particulars contain "${fltParticulars}"`);
@@ -1384,7 +1399,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           {fltMonths !== null && (
             <FilterChip
               darkMode={darkMode}
-              label={fltMonths.size === 0 ? 'Month: (none)' : `Month: ${[...fltMonths].join(', ')}`}
+              label={`Month: ${describeSelection(headerFilterOptions.months, fltMonths)}`}
               onClear={() => setFltMonths(null)}
             />
           )}
@@ -1401,27 +1416,29 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           {fltHeads !== null && (
             <FilterChip
               darkMode={darkMode}
-              label={
-                fltHeads.size === 0
-                  ? 'Head: (none)'
-                  : fltHeads.size === 1
-                    ? `Head: ${[...fltHeads][0]}`
-                    : `Head: ${fltHeads.size} selected`
-              }
+              label={`Head: ${describeSelection(headerFilterOptions.heads, fltHeads)}`}
               onClear={() => setFltHeads(null)}
             />
           )}
           {fltPayees !== null && (
             <FilterChip
               darkMode={darkMode}
-              label={
-                fltPayees.size === 0
-                  ? 'Payee: (none)'
-                  : fltPayees.size === 1
-                    ? `Payee: ${[...fltPayees][0]}`
-                    : `Payee: ${fltPayees.size} selected`
-              }
+              label={`Payee: ${describeSelection(headerFilterOptions.payees, fltPayees)}`}
               onClear={() => setFltPayees(null)}
+            />
+          )}
+          {headQuery.trim() && (
+            <FilterChip
+              darkMode={darkMode}
+              label={`Head contains "${headQuery.trim()}"`}
+              onClear={() => setHeadQuery('')}
+            />
+          )}
+          {payeeQuery.trim() && (
+            <FilterChip
+              darkMode={darkMode}
+              label={`Payee contains "${payeeQuery.trim()}"`}
+              onClear={() => setPayeeQuery('')}
             />
           )}
           {fltCheque && (
@@ -1623,6 +1640,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                       included={fltPayees}
                       onChange={setFltPayees}
                       searchable
+                      query={payeeQuery}
+                      onQueryChange={setPayeeQuery}
                       darkMode={darkMode}
                     />
                   </HeaderFilterPanel>
@@ -1648,6 +1667,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                       included={fltHeads}
                       onChange={setFltHeads}
                       searchable
+                      query={headQuery}
+                      onQueryChange={setHeadQuery}
                       darkMode={darkMode}
                     />
                   </HeaderFilterPanel>

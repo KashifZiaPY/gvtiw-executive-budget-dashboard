@@ -78,6 +78,24 @@ export const HeaderFilterPanel: React.FC<{
   );
 };
 
+/* Human-readable summary of a checklist selection, for filter chips:
+   names the values when only a few are included, names the EXCLUSIONS
+   when nearly everything is included (that untick is the meaningful
+   action), and falls back to a count otherwise. */
+export const describeSelection = (
+  options: { value: string }[],
+  included: Set<string> | null
+): string => {
+  if (included === null) return 'All';
+  const incl = options.filter((o) => included.has(o.value)).map((o) => o.value);
+  const excl = options.filter((o) => !included.has(o.value)).map((o) => o.value);
+  if (incl.length === 0) return '(none)';
+  if (excl.length === 0) return 'All';
+  if (excl.length <= 2) return `all except ${excl.join(', ')}`;
+  if (incl.length <= 3) return incl.join(', ');
+  return `${incl.length} of ${options.length} selected`;
+};
+
 /* ------------------------------------------------------------------ */
 /* Checkbox list of the distinct values present, with row counts.      */
 /* included === null means "no filter" (everything passes).            */
@@ -89,9 +107,24 @@ export const ValuesChecklist: React.FC<{
   included: Set<string> | null;
   onChange: (next: Set<string> | null) => void;
   searchable?: boolean;
+  /* Controlled search text: when the caller owns the query it survives
+     the panel closing and reopening — the panel unmounts on close, so
+     panel-local state would wipe text the user typed to find a value. */
+  query?: string;
+  onQueryChange?: (q: string) => void;
   darkMode: boolean;
-}> = ({ options, included, onChange, searchable = false, darkMode }) => {
-  const [query, setQuery] = useState('');
+}> = ({
+  options,
+  included,
+  onChange,
+  searchable = false,
+  query: queryProp,
+  onQueryChange,
+  darkMode,
+}) => {
+  const [internalQuery, setInternalQuery] = useState('');
+  const query = queryProp !== undefined ? queryProp : internalQuery;
+  const setQuery = onQueryChange ?? setInternalQuery;
   const q = query.trim().toLowerCase();
   const shown = q ? options.filter((o) => o.value.toLowerCase().includes(q)) : options;
 
