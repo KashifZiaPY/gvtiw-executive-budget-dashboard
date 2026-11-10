@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, Filter, Minus, Search } from 'lucide-react';
+import { Check, Filter, Minus, Search, X } from 'lucide-react';
 
 /**
  * Shared Excel-style column header filters.
@@ -269,8 +269,22 @@ export const ValuesChecklist: React.FC<{
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search values..."
-            className={`w-full pl-7 pr-2 py-1.5 text-[11px] rounded-md border outline-none ${inputCls}`}
+            className={`w-full pl-7 pr-6 py-1.5 text-[11px] rounded-md border outline-none ${inputCls}`}
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              title="Clear search — show all values"
+              className={`absolute right-1 top-1/2 -translate-y-1/2 w-4.5 h-4.5 p-0.5 rounded-full flex items-center justify-center cursor-pointer ${
+                darkMode
+                  ? 'text-slate-300 hover:bg-slate-700'
+                  : 'text-slate-500 hover:bg-slate-200'
+              }`}
+            >
+              <X className="w-3 h-3" strokeWidth={3} />
+            </button>
+          )}
         </div>
       )}
 

@@ -153,8 +153,6 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
     fltMonths !== null ||
     fltHeads !== null ||
     fltPayees !== null ||
-    (headQuery.trim() !== '' && fltHeads === null) ||
-    (payeeQuery.trim() !== '' && fltPayees === null) ||
     fltCheque !== '' ||
     fltFrom !== '' ||
     fltTo !== '' ||
@@ -250,23 +248,10 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
       return false;
     if (fltPayeesKeys !== null && !fltPayeesKeys.has((r.paidToBy || '').trim().toLowerCase()))
       return false;
-    // Text typed in a checklist panel filters the statement instantly
-    // (contains, case-insensitive) — but only until a tick selection
-    // exists for that column. Once the user ticks values, the ticks own
-    // the column and the text reverts to a finder inside the panel
-    // (Excel's model), so selections can accumulate across searches.
-    if (
-      fltHeads === null &&
-      headQuery.trim() &&
-      !(r.accountHead || '').toLowerCase().includes(headQuery.trim().toLowerCase())
-    )
-      return false;
-    if (
-      fltPayees === null &&
-      payeeQuery.trim() &&
-      !(r.paidToBy || '').toLowerCase().includes(payeeQuery.trim().toLowerCase())
-    )
-      return false;
+    // The panels' search text is a FINDER only (Excel's model): it
+    // narrows the value list inside the panel and never filters rows
+    // by itself — the tick selection is the one and only filter, so a
+    // selection can never be trapped or contradicted by leftover text.
     if (fltCheque && !(r.chequeNo || '').toLowerCase().includes(fltCheque.toLowerCase()))
       return false;
     if (fltFrom || fltTo) {
@@ -343,10 +328,6 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
         : `Paid To / By: ${arr.slice(0, 3).join(', ')}${arr.length > 3 ? ` +${arr.length - 3} more` : ''}`
     );
   }
-  if (headQuery.trim() && fltHeads === null)
-    criteriaParts.push(`Account Head contains "${headQuery.trim()}"`);
-  if (payeeQuery.trim() && fltPayees === null)
-    criteriaParts.push(`Paid To / By contains "${payeeQuery.trim()}"`);
   if (fltCheque) criteriaParts.push(`Cheque # contains "${fltCheque}"`);
   if (fltAccts !== null)
     criteriaParts.push(
@@ -783,20 +764,6 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
                   onClear={() => setFltPayees(null)}
                 />
               )}
-              {headQuery.trim() && fltHeads === null && (
-                <FilterChip
-                  darkMode={darkMode}
-                  label={`Head contains "${headQuery.trim()}"`}
-                  onClear={() => setHeadQuery('')}
-                />
-              )}
-              {payeeQuery.trim() && fltPayees === null && (
-                <FilterChip
-                  darkMode={darkMode}
-                  label={`Payee contains "${payeeQuery.trim()}"`}
-                  onClear={() => setPayeeQuery('')}
-                />
-              )}
               {fltCheque && (
                 <FilterChip
                   darkMode={darkMode}
@@ -1009,7 +976,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
                   PAID TO / BY
                   <HeaderFilterButton
                     label="Paid To / By"
-                    active={fltPayees !== null || payeeQuery.trim() !== ''}
+                    active={fltPayees !== null}
                     open={openFilter === 'payee'}
                     onClick={() => setOpenFilter(openFilter === 'payee' ? null : 'payee')}
                   />
@@ -1036,7 +1003,7 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
                   ACCOUNT HEAD
                   <HeaderFilterButton
                     label="Account Head"
-                    active={fltHeads !== null || headQuery.trim() !== ''}
+                    active={fltHeads !== null}
                     open={openFilter === 'head'}
                     onClick={() => setOpenFilter(openFilter === 'head' ? null : 'head')}
                   />

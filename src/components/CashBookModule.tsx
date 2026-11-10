@@ -149,8 +149,6 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     fltMonths !== null ||
     fltHeads !== null ||
     fltPayees !== null ||
-    (headQuery.trim() !== '' && fltHeads === null) ||
-    (payeeQuery.trim() !== '' && fltPayees === null) ||
     fltCheque !== '' ||
     fltFrom !== '' ||
     fltTo !== '' ||
@@ -604,10 +602,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         if (fltMonths !== null && !fltMonths.has(entry.month)) return false;
         if (fltHeadsKeys !== null && !fltHeadsKeys.has((entry.accountHead || '').trim().toLowerCase())) return false;
         if (fltPayeesKeys !== null && !fltPayeesKeys.has((entry.paidToBy || '').trim().toLowerCase())) return false;
-        // Text typed in a checklist panel filters instantly (contains,
-        // case-insensitive), ANDed with the tick selection.
-        if (fltHeads === null && headQuery.trim() && !(entry.accountHead || '').toLowerCase().includes(headQuery.trim().toLowerCase())) return false;
-        if (fltPayees === null && payeeQuery.trim() && !(entry.paidToBy || '').toLowerCase().includes(payeeQuery.trim().toLowerCase())) return false;
+        // The panels' search text is a FINDER only (Excel's model):
+        // the tick selection is the one and only filter for a column.
         if (fltCheque && !(entry.chequeNo || '').toLowerCase().includes(fltCheque.toLowerCase()))
           return false;
         if (fltVoucher && !(entry.voucherSerial || '').toLowerCase().includes(fltVoucher.toLowerCase()))
@@ -663,8 +659,6 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         : `Paid To / By: ${arr.slice(0, 3).join(', ')}${arr.length > 3 ? ` +${arr.length - 3} more` : ''}`
     );
   }
-  if (headQuery.trim() && fltHeads === null) filterCriteriaParts.push(`Budget Account Head contains "${headQuery.trim()}"`);
-  if (payeeQuery.trim() && fltPayees === null) filterCriteriaParts.push(`Paid To / By contains "${payeeQuery.trim()}"`);
   if (fltCheque) filterCriteriaParts.push(`Cheque # contains "${fltCheque}"`);
   if (fltVoucher) filterCriteriaParts.push(`Voucher # contains "${fltVoucher}"`);
   if (fltParticulars) filterCriteriaParts.push(`Particulars contain "${fltParticulars}"`);
@@ -1427,20 +1421,6 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
               onClear={() => setFltPayees(null)}
             />
           )}
-          {headQuery.trim() && fltHeads === null && (
-            <FilterChip
-              darkMode={darkMode}
-              label={`Head contains "${headQuery.trim()}"`}
-              onClear={() => setHeadQuery('')}
-            />
-          )}
-          {payeeQuery.trim() && fltPayees === null && (
-            <FilterChip
-              darkMode={darkMode}
-              label={`Payee contains "${payeeQuery.trim()}"`}
-              onClear={() => setPayeeQuery('')}
-            />
-          )}
           {fltCheque && (
             <FilterChip
               darkMode={darkMode}
@@ -1624,7 +1604,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                     Paid To / By
                     <HeaderFilterButton
                       label="Paid To / By"
-                      active={fltPayees !== null || payeeQuery.trim() !== ''}
+                      active={fltPayees !== null}
                       open={openFilter === 'payee'}
                       onClick={() => setOpenFilter(openFilter === 'payee' ? null : 'payee')}
                     />
@@ -1651,7 +1631,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                     Budget Account Head
                     <HeaderFilterButton
                       label="Budget Account Head"
-                      active={fltHeads !== null || headQuery.trim() !== ''}
+                      active={fltHeads !== null}
                       open={openFilter === 'head'}
                       onClick={() => setOpenFilter(openFilter === 'head' ? null : 'head')}
                     />
