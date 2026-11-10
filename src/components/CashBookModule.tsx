@@ -50,6 +50,16 @@ import {
 } from 'lucide-react';
 import { AccountHeadDisplay } from './AccountHeadTag';
 import { TfcChallanHub } from './TfcChallanHub';
+import {
+  HeaderFilterButton,
+  HeaderFilterPanel,
+  ValuesChecklist,
+  DateRangeFilter,
+  TextFilter,
+  FilterChip,
+  EntryTypeControl,
+  EntryTypeFilter,
+} from './HeaderFilter';
 
 interface CashBookModuleProps {
   darkMode: boolean;
@@ -87,6 +97,44 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
   // Sub-Ledger Presentation States for Non-Salary Account (allows extracting dedicated NAVTTC cashbook)
   const [nsSubMode, setNsSubMode] = useState<'ALL' | 'REGULAR' | 'NAVTTC'>('ALL');
   const [navttcSortOrder, setNavttcSortOrder] = useState<'CHEQUE_THEN_DATE' | 'DATE_THEN_CHEQUE'>('CHEQUE_THEN_DATE');
+
+  // Header filters (display-only): they choose which already-computed entries
+  // are shown. Running balances are never recomputed — every entry keeps the
+  // true ledger balance it was computed with.
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [fltMonths, setFltMonths] = useState<Set<string> | null>(null);
+  const [fltHeads, setFltHeads] = useState<Set<string> | null>(null);
+  const [fltPayees, setFltPayees] = useState<Set<string> | null>(null);
+  const [fltCheque, setFltCheque] = useState('');
+  const [fltFrom, setFltFrom] = useState('');
+  const [fltTo, setFltTo] = useState('');
+  const [fltType, setFltType] = useState<EntryTypeFilter>('ALL');
+
+  const clearAllFilters = () => {
+    setFltMonths(null);
+    setFltHeads(null);
+    setFltPayees(null);
+    setFltCheque('');
+    setFltFrom('');
+    setFltTo('');
+    setFltType('ALL');
+    setOpenFilter(null);
+  };
+
+  const anyHeaderFilterActive =
+    fltMonths !== null ||
+    fltHeads !== null ||
+    fltPayees !== null ||
+    fltCheque !== '' ||
+    fltFrom !== '' ||
+    fltTo !== '' ||
+    fltType !== 'ALL';
+
+  // Switching account (or NS sub-ledger) starts with clean header filters.
+  useEffect(() => {
+    clearAllFilters();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAccountKey, nsSubMode]);
 
   // Custom User Recorded Receipt Modal
   const [showRecordReceiptModal, setShowRecordReceiptModal] = useState(false);
@@ -387,8 +435,9 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     return activeLedgerData.openingBalance;
   }, [activeLedgerData.openingBalance]);
 
-  // Filtered Ledger Entries by Search & Period Range (interleaved chronologically with running balances)
-  const filteredEntries = useMemo(() => {
+  // Ledger Entries mapped from the statement rows (interleaved chronologically
+  // with the true running balances computed by the statement generator)
+  const mappedEntries = useMemo(() => {
     const rawRows = activeLedgerData.rows;
     
     // Map CashBookStatementRow to CashBookEntry format compatible with table and exports
@@ -429,25 +478,111 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       };
     });
 
-    if (!searchTerm) {
-      return mappedEntries;
+    return mappedEntries;
+  }, [activeLedgerData.rows]);
+
+  // Distinct values present in this ledger (for the header filter panels).
+  // Derived from the full mapped set, so the lists never shrink while filtering.
+  const headerFilterOptions = useMemo(() => {
+    const FY_MONTH_ORDER = [
+      'July', 'August', 'September', 'October', 'November', 'December',
+      'January', 'February', 'March', 'April', 'May', 'June',
+    ];
+    const months = new Map<string, number>();
+    const heads = new Map<string, number>();
+    const payees = new Map<string, number>();
+    for (const e of mappedEntries) {
+      if (e.month) months.set(e.month, (months.get(e.month) || 0) + 1);
+      const head = (e.accountHead || '').trim();
+      if (head) heads.set(head, (heads.get(head) || 0) + 1);
+      const payee = (e.paidToBy || '').trim();
+      if (payee) payees.set(payee, (payees.get(payee) || 0) + 1);
+    }
+    const toArr = (m: Map<string, number>) =>
+      [...m.entries()].map(([value, count]) => ({ value, count }));
+    return {
+      months: toArr(months).sort(
+        (a, b) => FY_MONTH_ORDER.indexOf(a.value) - FY_MONTH_ORDER.indexOf(b.value)
+      ),
+      heads: toArr(heads).sort((a, b) => a.value.localeCompare(b.value)),
+      payees: toArr(payees).sort((a, b) => a.value.localeCompare(b.value)),
+    };
+  }, [mappedEntries]);
+
+  // Filtered Ledger Entries by Search & Header Filters (AND-combined).
+  // With nothing active this returns the mapped entries unchanged.
+  const filteredEntries = useMemo(() => {
+    let list = mappedEntries;
+
+    if (searchTerm) {
+      const t = searchTerm.toLowerCase();
+      list = list.filter((entry) => {
+        return (
+          entry.particulars.toLowerCase().includes(t) ||
+          entry.paidToBy.toLowerCase().includes(t) ||
+          entry.accountHead.toLowerCase().includes(t) ||
+          entry.chequeNo.toLowerCase().includes(t) ||
+          entry.voucherSerial.toLowerCase().includes(t)
+        );
+      });
     }
 
-    const t = searchTerm.toLowerCase();
-    return mappedEntries.filter((entry) => {
-      return (
-        entry.particulars.toLowerCase().includes(t) ||
-        entry.paidToBy.toLowerCase().includes(t) ||
-        entry.accountHead.toLowerCase().includes(t) ||
-        entry.chequeNo.toLowerCase().includes(t) ||
-        entry.voucherSerial.toLowerCase().includes(t)
-      );
-    });
-  }, [activeLedgerData.rows, searchTerm]);
+    if (anyHeaderFilterActive) {
+      list = list.filter((entry) => {
+        if (fltMonths !== null && !fltMonths.has(entry.month)) return false;
+        if (fltHeads !== null && !fltHeads.has((entry.accountHead || '').trim())) return false;
+        if (fltPayees !== null && !fltPayees.has((entry.paidToBy || '').trim())) return false;
+        if (fltCheque && !(entry.chequeNo || '').toLowerCase().includes(fltCheque.toLowerCase()))
+          return false;
+        if (fltFrom || fltTo) {
+          const ts = parseDateToTimestamp(entry.date);
+          if (fltFrom && ts < parseDateToTimestamp(fltFrom)) return false;
+          if (fltTo && ts > parseDateToTimestamp(fltTo) + 86399999) return false;
+        }
+        if (fltType === 'RECEIPT' && entry.entryType !== 'RECEIPT') return false;
+        if (fltType === 'PAYMENT' && entry.entryType !== 'PAYMENT') return false;
+        return true;
+      });
+    }
+
+    return list;
+  }, [mappedEntries, searchTerm, anyHeaderFilterActive, fltMonths, fltHeads, fltPayees, fltCheque, fltFrom, fltTo, fltType]);
+
+  // Human-readable filter criteria — printed on the folio when filtered.
+  const filterCriteriaParts: string[] = [];
+  if (searchTerm) filterCriteriaParts.push(`Search: "${searchTerm}"`);
+  if (fltMonths !== null)
+    filterCriteriaParts.push(
+      fltMonths.size === 0 ? 'Month: (none selected)' : `Month: ${[...fltMonths].join(', ')}`
+    );
+  if (fltFrom || fltTo)
+    filterCriteriaParts.push(
+      `Dates: ${fltFrom ? formatPakistaniDate(fltFrom) : '…'} to ${fltTo ? formatPakistaniDate(fltTo) : '…'}`
+    );
+  if (fltHeads !== null) {
+    const arr = [...fltHeads];
+    filterCriteriaParts.push(
+      arr.length === 0
+        ? 'Budget Account Head: (none selected)'
+        : `Budget Account Head: ${arr.slice(0, 3).join(', ')}${arr.length > 3 ? ` +${arr.length - 3} more` : ''}`
+    );
+  }
+  if (fltPayees !== null) {
+    const arr = [...fltPayees];
+    filterCriteriaParts.push(
+      arr.length === 0
+        ? 'Paid To / By: (none selected)'
+        : `Paid To / By: ${arr.slice(0, 3).join(', ')}${arr.length > 3 ? ` +${arr.length - 3} more` : ''}`
+    );
+  }
+  if (fltCheque) filterCriteriaParts.push(`Cheque # contains "${fltCheque}"`);
+  if (fltType !== 'ALL')
+    filterCriteriaParts.push(fltType === 'RECEIPT' ? 'Entries: Receipts only' : 'Entries: Payments only');
+  const filterCriteriaText = filterCriteriaParts.join(' • ');
 
   // Period-aware financial totals (opening balance, total receipts, total payments, net closing balance)
   const periodFinancials = useMemo(() => {
-    if (!searchTerm) {
+    if (!searchTerm && !anyHeaderFilterActive) {
       return {
         openingBalance: activeLedgerData.openingBalance,
         totalReceipts: activeLedgerData.totalReceipts,
@@ -468,7 +603,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       totalPayments: Math.round(totPay * 100) / 100,
       closingBalance: closeBal,
     };
-  }, [searchTerm, activeLedgerData, filteredEntries, periodOpeningBalance]);
+  }, [searchTerm, anyHeaderFilterActive, activeLedgerData, filteredEntries, periodOpeningBalance]);
 
   // Find linked voucher for a given entry
   const voucherMap = useMemo(() => {
@@ -619,6 +754,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
             <h2>${isNavttcActive ? 'OFFICIAL NAVTTC SPECIAL CASH BOOK FOLIO — FY 2026-2027' : 'OFFICIAL CASH BOOK FOLIO — FY 2026-2027'}</h2>
             <p>${activeFolioMeta.fullName} • A/C NO: ${activeFolioMeta.accountNo} (${activeFolioMeta.bankName})</p>
           </div>
+
+          ${(searchTerm || anyHeaderFilterActive) ? `<div style="margin: 0 0 8px; padding: 6px 8px; border: 1.5px solid #b45309; background: #fffbeb; color: #92400e; text-align: center; font-weight: bold; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em;">Filtered Extract — Not the Complete Statement<div style="font-weight: normal; text-transform: none; letter-spacing: 0; font-size: 9.5px; margin-top: 2px;">Filters applied: ${filterCriteriaText}</div><div style="font-weight: normal; text-transform: none; letter-spacing: 0; font-size: 9px;">Balances shown are the ledger running balances.</div></div>` : ''}
 
           <div class="meta-strip">
             <div><span>Account: </span>${activeFolioMeta.shortName} (${activeFolioMeta.code})</div>
@@ -1128,8 +1265,12 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
             </div>
           )}
 
+          <EntryTypeControl value={fltType} onChange={setFltType} darkMode={darkMode} />
+
           <div className="text-xs font-mono text-slate-400 font-bold hidden lg:block">
-            {filteredEntries.length} Records
+            {anyHeaderFilterActive || searchTerm
+              ? `Showing ${filteredEntries.length} of ${mappedEntries.length} Records`
+              : `${filteredEntries.length} Records`}
           </div>
         </div>
 
@@ -1154,6 +1295,76 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         )}
       </div>
 
+      {/* Active header-filter chips */}
+      {anyHeaderFilterActive && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {fltMonths !== null && (
+            <FilterChip
+              darkMode={darkMode}
+              label={fltMonths.size === 0 ? 'Month: (none)' : `Month: ${[...fltMonths].join(', ')}`}
+              onClear={() => setFltMonths(null)}
+            />
+          )}
+          {(fltFrom || fltTo) && (
+            <FilterChip
+              darkMode={darkMode}
+              label={`Dates: ${fltFrom ? formatPakistaniDate(fltFrom) : '…'} → ${fltTo ? formatPakistaniDate(fltTo) : '…'}`}
+              onClear={() => {
+                setFltFrom('');
+                setFltTo('');
+              }}
+            />
+          )}
+          {fltHeads !== null && (
+            <FilterChip
+              darkMode={darkMode}
+              label={
+                fltHeads.size === 0
+                  ? 'Head: (none)'
+                  : fltHeads.size === 1
+                    ? `Head: ${[...fltHeads][0]}`
+                    : `Head: ${fltHeads.size} selected`
+              }
+              onClear={() => setFltHeads(null)}
+            />
+          )}
+          {fltPayees !== null && (
+            <FilterChip
+              darkMode={darkMode}
+              label={
+                fltPayees.size === 0
+                  ? 'Payee: (none)'
+                  : fltPayees.size === 1
+                    ? `Payee: ${[...fltPayees][0]}`
+                    : `Payee: ${fltPayees.size} selected`
+              }
+              onClear={() => setFltPayees(null)}
+            />
+          )}
+          {fltCheque && (
+            <FilterChip
+              darkMode={darkMode}
+              label={`Cheque: "${fltCheque}"`}
+              onClear={() => setFltCheque('')}
+            />
+          )}
+          {fltType !== 'ALL' && (
+            <FilterChip
+              darkMode={darkMode}
+              label={fltType === 'RECEIPT' ? 'Receipts only' : 'Payments only'}
+              onClear={() => setFltType('ALL')}
+            />
+          )}
+          <button
+            type="button"
+            onClick={clearAllFilters}
+            className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+          >
+            Clear all filters
+          </button>
+        </div>
+      )}
+
       {/* ------------------------------------------------------------- */}
       {/* 4. DOUBLE-COLUMN CASHBOOK LEDGER TABLE                         */}
       {/* ------------------------------------------------------------- */}
@@ -1165,13 +1376,134 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
             <thead className="bg-slate-900 text-white font-extrabold text-[11px] uppercase tracking-wider border-b border-slate-800 sticky top-0 z-20 shadow-sm">
               <tr>
                 <th className="py-3 px-2 text-center w-12 border-r border-slate-800 sticky top-0 bg-slate-900">Sr.#</th>
-                <th className="py-3 px-3 border-r border-slate-800 w-28 sticky top-0 bg-slate-900">Date</th>
-                <th className="py-3 px-2 border-r border-slate-800 w-20 sticky top-0 bg-slate-900">Month</th>
+                <th className="py-3 px-3 border-r border-slate-800 w-28 sticky top-0 bg-slate-900">
+                  <span className="inline-flex items-center gap-1.5">
+                    Date
+                    <HeaderFilterButton
+                      label="Date Range"
+                      active={fltFrom !== '' || fltTo !== ''}
+                      open={openFilter === 'date'}
+                      onClick={() => setOpenFilter(openFilter === 'date' ? null : 'date')}
+                    />
+                  </span>
+                  <HeaderFilterPanel
+                    open={openFilter === 'date'}
+                    onClose={() => setOpenFilter(null)}
+                    darkMode={darkMode}
+                    width={264}
+                  >
+                    <DateRangeFilter
+                      from={fltFrom}
+                      to={fltTo}
+                      onChange={(f, t) => {
+                        setFltFrom(f);
+                        setFltTo(t);
+                      }}
+                      darkMode={darkMode}
+                    />
+                  </HeaderFilterPanel>
+                </th>
+                <th className="py-3 px-2 border-r border-slate-800 w-20 sticky top-0 bg-slate-900">
+                  <span className="inline-flex items-center gap-1.5">
+                    Month
+                    <HeaderFilterButton
+                      label="Month"
+                      active={fltMonths !== null}
+                      open={openFilter === 'month'}
+                      onClick={() => setOpenFilter(openFilter === 'month' ? null : 'month')}
+                    />
+                  </span>
+                  <HeaderFilterPanel
+                    open={openFilter === 'month'}
+                    onClose={() => setOpenFilter(null)}
+                    darkMode={darkMode}
+                    width={230}
+                  >
+                    <ValuesChecklist
+                      options={headerFilterOptions.months}
+                      included={fltMonths}
+                      onChange={setFltMonths}
+                      darkMode={darkMode}
+                    />
+                  </HeaderFilterPanel>
+                </th>
                 <th className="py-3 px-2 text-center border-r border-slate-800 min-w-[140px] whitespace-nowrap sticky top-0 bg-slate-900">V#</th>
                 <th className="py-3 px-4 border-r border-slate-800 min-w-[240px] sticky top-0 bg-slate-900">Particulars / Narration</th>
-                <th className="py-3 px-3 border-r border-slate-800 w-44 sticky top-0 bg-slate-900">Paid To / By</th>
-                <th className="py-3 px-3 border-r border-slate-800 w-48 sticky top-0 bg-slate-900">Budget Account Head</th>
-                <th className="py-3 px-3 text-center border-r border-slate-800 w-28 sticky top-0 bg-slate-900">Cheque #</th>
+                <th className="py-3 px-3 border-r border-slate-800 w-44 sticky top-0 bg-slate-900">
+                  <span className="inline-flex items-center gap-1.5">
+                    Paid To / By
+                    <HeaderFilterButton
+                      label="Paid To / By"
+                      active={fltPayees !== null}
+                      open={openFilter === 'payee'}
+                      onClick={() => setOpenFilter(openFilter === 'payee' ? null : 'payee')}
+                    />
+                  </span>
+                  <HeaderFilterPanel
+                    open={openFilter === 'payee'}
+                    onClose={() => setOpenFilter(null)}
+                    darkMode={darkMode}
+                    width={280}
+                  >
+                    <ValuesChecklist
+                      options={headerFilterOptions.payees}
+                      included={fltPayees}
+                      onChange={setFltPayees}
+                      searchable
+                      darkMode={darkMode}
+                    />
+                  </HeaderFilterPanel>
+                </th>
+                <th className="py-3 px-3 border-r border-slate-800 w-48 sticky top-0 bg-slate-900">
+                  <span className="inline-flex items-center gap-1.5">
+                    Budget Account Head
+                    <HeaderFilterButton
+                      label="Budget Account Head"
+                      active={fltHeads !== null}
+                      open={openFilter === 'head'}
+                      onClick={() => setOpenFilter(openFilter === 'head' ? null : 'head')}
+                    />
+                  </span>
+                  <HeaderFilterPanel
+                    open={openFilter === 'head'}
+                    onClose={() => setOpenFilter(null)}
+                    darkMode={darkMode}
+                    width={300}
+                  >
+                    <ValuesChecklist
+                      options={headerFilterOptions.heads}
+                      included={fltHeads}
+                      onChange={setFltHeads}
+                      searchable
+                      darkMode={darkMode}
+                    />
+                  </HeaderFilterPanel>
+                </th>
+                <th className="py-3 px-3 text-center border-r border-slate-800 w-28 sticky top-0 bg-slate-900">
+                  <span className="inline-flex items-center gap-1.5">
+                    Cheque #
+                    <HeaderFilterButton
+                      label="Cheque Number"
+                      active={fltCheque !== ''}
+                      open={openFilter === 'cheque'}
+                      onClick={() => setOpenFilter(openFilter === 'cheque' ? null : 'cheque')}
+                    />
+                  </span>
+                  <HeaderFilterPanel
+                    open={openFilter === 'cheque'}
+                    onClose={() => setOpenFilter(null)}
+                    darkMode={darkMode}
+                    align="right"
+                    width={220}
+                  >
+                    <TextFilter
+                      value={fltCheque}
+                      onChange={setFltCheque}
+                      darkMode={darkMode}
+                      placeholder="e.g. 8061"
+                    />
+                  </HeaderFilterPanel>
+                </th>
                 <th className="py-3 px-3 text-right border-r border-slate-800 w-28 text-emerald-400 sticky top-0 bg-slate-900">Receipts (Rs.)</th>
                 <th className="py-3 px-3 text-right border-r border-slate-800 w-28 text-rose-400 sticky top-0 bg-slate-900">Payments (Rs.)</th>
                 <th className="py-3 px-3 text-right border-r border-slate-800 w-32 text-amber-300 sticky top-0 bg-slate-900">Balance (Rs.)</th>
@@ -1222,7 +1554,21 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
               {filteredEntries.length === 0 ? (
                 <tr>
                   <td colSpan={12} className="py-10 text-center text-slate-500 italic">
-                    No transactions recorded in this cashbook for FY 2026-27.
+                    {anyHeaderFilterActive || searchTerm
+                      ? 'No entries match the active filters.'
+                      : 'No transactions recorded in this cashbook for FY 2026-27.'}
+                    {(anyHeaderFilterActive || searchTerm) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearAllFilters();
+                          setSearchTerm('');
+                        }}
+                        className="ml-2 font-bold not-italic text-rose-500 hover:underline cursor-pointer"
+                      >
+                        Clear all filters
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
