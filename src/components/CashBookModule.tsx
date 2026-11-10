@@ -149,8 +149,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     fltMonths !== null ||
     fltHeads !== null ||
     fltPayees !== null ||
-    headQuery.trim() !== '' ||
-    payeeQuery.trim() !== '' ||
+    (headQuery.trim() !== '' && fltHeads === null) ||
+    (payeeQuery.trim() !== '' && fltPayees === null) ||
     fltCheque !== '' ||
     fltFrom !== '' ||
     fltTo !== '' ||
@@ -606,8 +606,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         if (fltPayeesKeys !== null && !fltPayeesKeys.has((entry.paidToBy || '').trim().toLowerCase())) return false;
         // Text typed in a checklist panel filters instantly (contains,
         // case-insensitive), ANDed with the tick selection.
-        if (headQuery.trim() && !(entry.accountHead || '').toLowerCase().includes(headQuery.trim().toLowerCase())) return false;
-        if (payeeQuery.trim() && !(entry.paidToBy || '').toLowerCase().includes(payeeQuery.trim().toLowerCase())) return false;
+        if (fltHeads === null && headQuery.trim() && !(entry.accountHead || '').toLowerCase().includes(headQuery.trim().toLowerCase())) return false;
+        if (fltPayees === null && payeeQuery.trim() && !(entry.paidToBy || '').toLowerCase().includes(payeeQuery.trim().toLowerCase())) return false;
         if (fltCheque && !(entry.chequeNo || '').toLowerCase().includes(fltCheque.toLowerCase()))
           return false;
         if (fltVoucher && !(entry.voucherSerial || '').toLowerCase().includes(fltVoucher.toLowerCase()))
@@ -663,8 +663,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         : `Paid To / By: ${arr.slice(0, 3).join(', ')}${arr.length > 3 ? ` +${arr.length - 3} more` : ''}`
     );
   }
-  if (headQuery.trim()) filterCriteriaParts.push(`Budget Account Head contains "${headQuery.trim()}"`);
-  if (payeeQuery.trim()) filterCriteriaParts.push(`Paid To / By contains "${payeeQuery.trim()}"`);
+  if (headQuery.trim() && fltHeads === null) filterCriteriaParts.push(`Budget Account Head contains "${headQuery.trim()}"`);
+  if (payeeQuery.trim() && fltPayees === null) filterCriteriaParts.push(`Paid To / By contains "${payeeQuery.trim()}"`);
   if (fltCheque) filterCriteriaParts.push(`Cheque # contains "${fltCheque}"`);
   if (fltVoucher) filterCriteriaParts.push(`Voucher # contains "${fltVoucher}"`);
   if (fltParticulars) filterCriteriaParts.push(`Particulars contain "${fltParticulars}"`);
@@ -1427,14 +1427,14 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
               onClear={() => setFltPayees(null)}
             />
           )}
-          {headQuery.trim() && (
+          {headQuery.trim() && fltHeads === null && (
             <FilterChip
               darkMode={darkMode}
               label={`Head contains "${headQuery.trim()}"`}
               onClear={() => setHeadQuery('')}
             />
           )}
-          {payeeQuery.trim() && (
+          {payeeQuery.trim() && fltPayees === null && (
             <FilterChip
               darkMode={darkMode}
               label={`Payee contains "${payeeQuery.trim()}"`}
@@ -1624,7 +1624,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                     Paid To / By
                     <HeaderFilterButton
                       label="Paid To / By"
-                      active={fltPayees !== null}
+                      active={fltPayees !== null || payeeQuery.trim() !== ''}
                       open={openFilter === 'payee'}
                       onClick={() => setOpenFilter(openFilter === 'payee' ? null : 'payee')}
                     />
@@ -1651,7 +1651,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                     Budget Account Head
                     <HeaderFilterButton
                       label="Budget Account Head"
-                      active={fltHeads !== null}
+                      active={fltHeads !== null || headQuery.trim() !== ''}
                       open={openFilter === 'head'}
                       onClick={() => setOpenFilter(openFilter === 'head' ? null : 'head')}
                     />

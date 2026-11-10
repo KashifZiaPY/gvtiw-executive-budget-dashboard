@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Check, Filter, Search } from 'lucide-react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Check, Filter, Minus, Search } from 'lucide-react';
 
 /**
  * Shared Excel-style column header filters.
@@ -48,32 +49,110 @@ export const HeaderFilterPanel: React.FC<{
   width?: number;
   children: React.ReactNode;
 }> = ({ open, onClose, darkMode, align = 'left', width = 250, children }) => {
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // The panel is rendered through a portal at the document root with
+  // fixed positioning measured from the header cell. Rendered inside
+  // the table it was trapped by the scroll container's stacking and
+  // clipping: any part of the panel extending past the container's box
+  // was painted under the click-away backdrop, so visible rows could
+  // not be clicked. At root level every pixel of the panel is on top
+  // and clickable, it flips up when there is no room below (Excel
+  // behaviour), and its height is capped to the space on that side.
+  const [coords, setCoords] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    maxH: number;
+  } | null>(null);
+
+  const computeCoords = () => {
+    const anchorEl = anchorRef.current;
+    if (!anchorEl) return;
+    const cell = (anchorEl.closest('th') as HTMLElement | null) ?? anchorEl.parentElement;
+    if (!cell) return;
+    const r = cell.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    const below = vh - r.bottom;
+    const above = r.top;
+    const up = below < 360 && above > below;
+    const maxH = Math.max(200, Math.min(560, (up ? above : below) - 14));
+    let left = align === 'right' ? r.right - width : r.left;
+    left = Math.max(8, Math.min(left, vw - width - 8));
+    setCoords(
+      up ? { bottom: vh - r.top + 4, left, maxH } : { top: r.bottom + 4, left, maxH }
+    );
+  };
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
+    // The panel FOLLOWS its header cell when anything scrolls (the
+    // header is sticky, and filtering itself can shift scroll offsets);
+    // it never closes or detaches mid-selection. Scrolling the panel's
+    // own list needs no repositioning.
+    let raf = 0;
+    const onScroll = (e: Event) => {
+      if (panelRef.current && e.target instanceof Node && panelRef.current.contains(e.target))
+        return;
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(computeCoords);
+    };
+    const onResize = () => computeCoords();
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onResize);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, onClose]);
 
-  if (!open) return null;
+  useLayoutEffect(() => {
+    if (!open) {
+      setCoords(null);
+      return;
+    }
+    computeCoords();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, align, width]);
+
   return (
     <>
-      <div className="fixed inset-0 z-40 cursor-default" onClick={onClose} />
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{ width }}
-        className={`absolute top-full mt-1 z-50 rounded-xl border shadow-2xl p-3 text-left normal-case tracking-normal ${
-          align === 'right' ? 'right-0' : 'left-0'
-        } ${
-          darkMode
-            ? 'bg-slate-900 border-slate-600 text-slate-100'
-            : 'bg-white border-slate-300 text-slate-800'
-        }`}
-      >
-        {children}
-      </div>
+      <span ref={anchorRef} className="hidden" aria-hidden="true" />
+      {open &&
+        coords &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-40 cursor-default" onClick={onClose} />
+            <div
+              ref={panelRef}
+              data-header-filter-panel="true"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width,
+                maxHeight: coords.maxH,
+                top: coords.top,
+                bottom: coords.bottom,
+                left: coords.left,
+              }}
+              className={`fixed z-50 rounded-xl border shadow-2xl p-3 text-left normal-case tracking-normal flex flex-col overflow-hidden ${
+                darkMode
+                  ? 'bg-slate-900 border-slate-600 text-slate-100'
+                  : 'bg-white border-slate-300 text-slate-800'
+              }`}
+            >
+              {children}
+            </div>
+          </>,
+          document.body
+        )}
     </>
   );
 };
@@ -137,14 +216,28 @@ export const ValuesChecklist: React.FC<{
     onChange(base.size === options.length ? null : base);
   };
 
+  /* Excel's "(Select All Search Results)": acts on exactly the values
+     the current search is showing — adds them all to the selection, or
+     removes them all when every shown value is already in. Selections
+     built this way accumulate across successive searches. */
+  const shownAllIn = shown.length > 0 && shown.every((o) => isChecked(o.value));
+  const shownSomeIn = shown.some((o) => isChecked(o.value));
+  const toggleShown = () => {
+    const base =
+      included === null ? new Set(options.map((o) => o.value)) : new Set(included);
+    if (shownAllIn) shown.forEach((o) => base.delete(o.value));
+    else shown.forEach((o) => base.add(o.value));
+    onChange(base.size === options.length ? null : base);
+  };
+
   const inputCls = darkMode
     ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-500'
     : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400';
   const rowHover = darkMode ? 'hover:bg-slate-800' : 'hover:bg-slate-50';
 
   return (
-    <div className="font-sans">
-      <div className="flex items-center justify-between mb-1.5">
+    <div className="font-sans flex flex-col min-h-0">
+      <div className="flex items-center justify-between mb-1.5 shrink-0">
         <span className="text-[11px] font-bold">
           {included === null
             ? `All ${options.length} values shown`
@@ -169,7 +262,7 @@ export const ValuesChecklist: React.FC<{
       </div>
 
       {searchable && (
-        <div className="relative mb-1.5">
+        <div className="relative mb-1.5 shrink-0">
           <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -181,7 +274,41 @@ export const ValuesChecklist: React.FC<{
         </div>
       )}
 
-      <div className="max-h-56 overflow-y-auto pr-0.5">
+      <div className="overflow-y-auto pr-0.5 min-h-0 overscroll-contain">
+        {q && shown.length > 0 && (
+          <button
+            type="button"
+            onClick={toggleShown}
+            className={`w-full flex items-center gap-2 px-1.5 py-[5px] rounded-md cursor-pointer border-b mb-0.5 ${
+              darkMode ? 'border-slate-700' : 'border-slate-200'
+            } ${rowHover}`}
+            title="Add or remove all values matching the search"
+          >
+            <span
+              className={`w-3.5 h-3.5 shrink-0 rounded-[4px] border flex items-center justify-center ${
+                shownSomeIn
+                  ? 'bg-blue-600 border-blue-600 text-white'
+                  : darkMode
+                    ? 'border-slate-500 bg-slate-800'
+                    : 'border-slate-400 bg-white'
+              }`}
+            >
+              {shownAllIn ? (
+                <Check className="w-2.5 h-2.5" strokeWidth={3.5} />
+              ) : shownSomeIn ? (
+                <Minus className="w-2.5 h-2.5" strokeWidth={3.5} />
+              ) : null}
+            </span>
+            <span className="flex-1 text-[11px] font-bold truncate text-left">
+              Select all search results
+            </span>
+            <span
+              className={`text-[10px] font-mono shrink-0 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}
+            >
+              {shown.length}
+            </span>
+          </button>
+        )}
         {shown.length === 0 && (
           <div className="text-[11px] text-slate-400 py-2 text-center">No matching values</div>
         )}
