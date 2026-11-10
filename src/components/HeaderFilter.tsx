@@ -271,6 +271,60 @@ export const TextFilter: React.FC<{
 };
 
 /* ------------------------------------------------------------------ */
+/* Min / Max amount range block (Receipts / Payments / Balance).       */
+/* Values are kept as strings in the parent; '' means "no limit".      */
+/* Setting Min = Max finds one exact amount.                           */
+/* ------------------------------------------------------------------ */
+export const AmountRangeFilter: React.FC<{
+  min: string;
+  max: string;
+  onChange: (min: string, max: string) => void;
+  darkMode: boolean;
+}> = ({ min, max, onChange, darkMode }) => {
+  const inputCls = darkMode
+    ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-500'
+    : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400';
+  return (
+    <div className="font-sans space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-bold">Amount range (Rs.)</span>
+        {(min !== '' || max !== '') && (
+          <button
+            type="button"
+            onClick={() => onChange('', '')}
+            className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5">
+        <input
+          type="number"
+          min="0"
+          value={min}
+          onChange={(e) => onChange(e.target.value, max)}
+          placeholder="Min"
+          className={`flex-1 min-w-0 px-2 py-1.5 text-[11px] rounded-md border outline-none ${inputCls}`}
+        />
+        <span className="text-[11px] text-slate-400">to</span>
+        <input
+          type="number"
+          min="0"
+          value={max}
+          onChange={(e) => onChange(min, e.target.value)}
+          placeholder="Max"
+          className={`flex-1 min-w-0 px-2 py-1.5 text-[11px] rounded-md border outline-none ${inputCls}`}
+        />
+      </div>
+      <div className={`text-[10px] leading-snug ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+        Blank = no limit. Set Min = Max to find one exact amount.
+      </div>
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------ */
 /* One active-filter chip with an x to clear just that filter          */
 /* ------------------------------------------------------------------ */
 export const FilterChip: React.FC<{

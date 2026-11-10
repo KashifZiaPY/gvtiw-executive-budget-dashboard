@@ -56,6 +56,7 @@ import {
   ValuesChecklist,
   DateRangeFilter,
   TextFilter,
+  AmountRangeFilter,
   FilterChip,
   EntryTypeControl,
   EntryTypeFilter,
@@ -109,6 +110,14 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
   const [fltFrom, setFltFrom] = useState('');
   const [fltTo, setFltTo] = useState('');
   const [fltType, setFltType] = useState<EntryTypeFilter>('ALL');
+  const [fltVoucher, setFltVoucher] = useState('');
+  const [fltParticulars, setFltParticulars] = useState('');
+  const [fltRecMin, setFltRecMin] = useState('');
+  const [fltRecMax, setFltRecMax] = useState('');
+  const [fltPayMin, setFltPayMin] = useState('');
+  const [fltPayMax, setFltPayMax] = useState('');
+  const [fltBalMin, setFltBalMin] = useState('');
+  const [fltBalMax, setFltBalMax] = useState('');
 
   const clearAllFilters = () => {
     setFltMonths(null);
@@ -118,6 +127,14 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     setFltFrom('');
     setFltTo('');
     setFltType('ALL');
+    setFltVoucher('');
+    setFltParticulars('');
+    setFltRecMin('');
+    setFltRecMax('');
+    setFltPayMin('');
+    setFltPayMax('');
+    setFltBalMin('');
+    setFltBalMax('');
     setOpenFilter(null);
   };
 
@@ -128,7 +145,15 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     fltCheque !== '' ||
     fltFrom !== '' ||
     fltTo !== '' ||
-    fltType !== 'ALL';
+    fltType !== 'ALL' ||
+    fltVoucher !== '' ||
+    fltParticulars !== '' ||
+    fltRecMin !== '' ||
+    fltRecMax !== '' ||
+    fltPayMin !== '' ||
+    fltPayMax !== '' ||
+    fltBalMin !== '' ||
+    fltBalMax !== '';
 
   // Switching account (or NS sub-ledger) starts with clean header filters.
   useEffect(() => {
@@ -534,6 +559,16 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
         if (fltPayees !== null && !fltPayees.has((entry.paidToBy || '').trim())) return false;
         if (fltCheque && !(entry.chequeNo || '').toLowerCase().includes(fltCheque.toLowerCase()))
           return false;
+        if (fltVoucher && !(entry.voucherSerial || '').toLowerCase().includes(fltVoucher.toLowerCase()))
+          return false;
+        if (fltParticulars && !(entry.particulars || '').toLowerCase().includes(fltParticulars.toLowerCase()))
+          return false;
+        if (fltRecMin !== '' && (entry.receipts || 0) < parseFloat(fltRecMin)) return false;
+        if (fltRecMax !== '' && (entry.receipts || 0) > parseFloat(fltRecMax)) return false;
+        if (fltPayMin !== '' && (entry.payments || 0) < parseFloat(fltPayMin)) return false;
+        if (fltPayMax !== '' && (entry.payments || 0) > parseFloat(fltPayMax)) return false;
+        if (fltBalMin !== '' && (entry.runningBalance || 0) < parseFloat(fltBalMin)) return false;
+        if (fltBalMax !== '' && (entry.runningBalance || 0) > parseFloat(fltBalMax)) return false;
         if (fltFrom || fltTo) {
           const ts = parseDateToTimestamp(entry.date);
           if (fltFrom && ts < parseDateToTimestamp(fltFrom)) return false;
@@ -546,9 +581,11 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     }
 
     return list;
-  }, [mappedEntries, searchTerm, anyHeaderFilterActive, fltMonths, fltHeads, fltPayees, fltCheque, fltFrom, fltTo, fltType]);
+  }, [mappedEntries, searchTerm, anyHeaderFilterActive, fltMonths, fltHeads, fltPayees, fltCheque, fltFrom, fltTo, fltType, fltVoucher, fltParticulars, fltRecMin, fltRecMax, fltPayMin, fltPayMax, fltBalMin, fltBalMax]);
 
   // Human-readable filter criteria — printed on the folio when filtered.
+  const rangeCriteria = (label: string, minS: string, maxS: string) =>
+    `${label}: Rs. ${minS !== '' ? Number(minS).toLocaleString('en-US') : '…'} to ${maxS !== '' ? Number(maxS).toLocaleString('en-US') : '…'}`;
   const filterCriteriaParts: string[] = [];
   if (searchTerm) filterCriteriaParts.push(`Search: "${searchTerm}"`);
   if (fltMonths !== null)
@@ -576,6 +613,14 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     );
   }
   if (fltCheque) filterCriteriaParts.push(`Cheque # contains "${fltCheque}"`);
+  if (fltVoucher) filterCriteriaParts.push(`Voucher # contains "${fltVoucher}"`);
+  if (fltParticulars) filterCriteriaParts.push(`Particulars contain "${fltParticulars}"`);
+  if (fltRecMin !== '' || fltRecMax !== '')
+    filterCriteriaParts.push(rangeCriteria('Receipts', fltRecMin, fltRecMax));
+  if (fltPayMin !== '' || fltPayMax !== '')
+    filterCriteriaParts.push(rangeCriteria('Payments', fltPayMin, fltPayMax));
+  if (fltBalMin !== '' || fltBalMax !== '')
+    filterCriteriaParts.push(rangeCriteria('Balance', fltBalMin, fltBalMax));
   if (fltType !== 'ALL')
     filterCriteriaParts.push(fltType === 'RECEIPT' ? 'Entries: Receipts only' : 'Entries: Payments only');
   const filterCriteriaText = filterCriteriaParts.join(' • ');
@@ -1348,6 +1393,50 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
               onClear={() => setFltCheque('')}
             />
           )}
+          {fltVoucher && (
+            <FilterChip
+              darkMode={darkMode}
+              label={`Voucher: "${fltVoucher}"`}
+              onClear={() => setFltVoucher('')}
+            />
+          )}
+          {fltParticulars && (
+            <FilterChip
+              darkMode={darkMode}
+              label={`Particulars: "${fltParticulars}"`}
+              onClear={() => setFltParticulars('')}
+            />
+          )}
+          {(fltRecMin !== '' || fltRecMax !== '') && (
+            <FilterChip
+              darkMode={darkMode}
+              label={rangeCriteria('Receipts', fltRecMin, fltRecMax)}
+              onClear={() => {
+                setFltRecMin('');
+                setFltRecMax('');
+              }}
+            />
+          )}
+          {(fltPayMin !== '' || fltPayMax !== '') && (
+            <FilterChip
+              darkMode={darkMode}
+              label={rangeCriteria('Payments', fltPayMin, fltPayMax)}
+              onClear={() => {
+                setFltPayMin('');
+                setFltPayMax('');
+              }}
+            />
+          )}
+          {(fltBalMin !== '' || fltBalMax !== '') && (
+            <FilterChip
+              darkMode={darkMode}
+              label={rangeCriteria('Balance', fltBalMin, fltBalMax)}
+              onClear={() => {
+                setFltBalMin('');
+                setFltBalMax('');
+              }}
+            />
+          )}
           {fltType !== 'ALL' && (
             <FilterChip
               darkMode={darkMode}
@@ -1427,8 +1516,54 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                     />
                   </HeaderFilterPanel>
                 </th>
-                <th className="py-3 px-2 text-center border-r border-slate-800 min-w-[140px] whitespace-nowrap sticky top-0 bg-slate-900">V#</th>
-                <th className="py-3 px-4 border-r border-slate-800 min-w-[240px] sticky top-0 bg-slate-900">Particulars / Narration</th>
+                <th className="py-3 px-2 text-center border-r border-slate-800 min-w-[140px] whitespace-nowrap sticky top-0 bg-slate-900">
+                  <span className="inline-flex items-center gap-1.5">
+                    V#
+                    <HeaderFilterButton
+                      label="Voucher Number"
+                      active={fltVoucher !== ''}
+                      open={openFilter === 'voucher'}
+                      onClick={() => setOpenFilter(openFilter === 'voucher' ? null : 'voucher')}
+                    />
+                  </span>
+                  <HeaderFilterPanel
+                    open={openFilter === 'voucher'}
+                    onClose={() => setOpenFilter(null)}
+                    darkMode={darkMode}
+                    width={220}
+                  >
+                    <TextFilter
+                      value={fltVoucher}
+                      onChange={setFltVoucher}
+                      darkMode={darkMode}
+                      placeholder="e.g. NS-JUL26"
+                    />
+                  </HeaderFilterPanel>
+                </th>
+                <th className="py-3 px-4 border-r border-slate-800 min-w-[240px] sticky top-0 bg-slate-900">
+                  <span className="inline-flex items-center gap-1.5">
+                    Particulars / Narration
+                    <HeaderFilterButton
+                      label="Particulars"
+                      active={fltParticulars !== ''}
+                      open={openFilter === 'particulars'}
+                      onClick={() => setOpenFilter(openFilter === 'particulars' ? null : 'particulars')}
+                    />
+                  </span>
+                  <HeaderFilterPanel
+                    open={openFilter === 'particulars'}
+                    onClose={() => setOpenFilter(null)}
+                    darkMode={darkMode}
+                    width={260}
+                  >
+                    <TextFilter
+                      value={fltParticulars}
+                      onChange={setFltParticulars}
+                      darkMode={darkMode}
+                      placeholder="e.g. Cylinder GAS"
+                    />
+                  </HeaderFilterPanel>
+                </th>
                 <th className="py-3 px-3 border-r border-slate-800 w-44 sticky top-0 bg-slate-900">
                   <span className="inline-flex items-center gap-1.5">
                     Paid To / By
@@ -1504,9 +1639,90 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
                     />
                   </HeaderFilterPanel>
                 </th>
-                <th className="py-3 px-3 text-right border-r border-slate-800 w-28 text-emerald-400 sticky top-0 bg-slate-900">Receipts (Rs.)</th>
-                <th className="py-3 px-3 text-right border-r border-slate-800 w-28 text-rose-400 sticky top-0 bg-slate-900">Payments (Rs.)</th>
-                <th className="py-3 px-3 text-right border-r border-slate-800 w-32 text-amber-300 sticky top-0 bg-slate-900">Balance (Rs.)</th>
+                <th className="py-3 px-3 text-right border-r border-slate-800 w-28 text-emerald-400 sticky top-0 bg-slate-900">
+                  <span className="inline-flex items-center gap-1.5">
+                    Receipts (Rs.)
+                    <HeaderFilterButton
+                      label="Receipts Amount"
+                      active={fltRecMin !== '' || fltRecMax !== ''}
+                      open={openFilter === 'receipts'}
+                      onClick={() => setOpenFilter(openFilter === 'receipts' ? null : 'receipts')}
+                    />
+                  </span>
+                  <HeaderFilterPanel
+                    open={openFilter === 'receipts'}
+                    onClose={() => setOpenFilter(null)}
+                    darkMode={darkMode}
+                    align="right"
+                    width={230}
+                  >
+                    <AmountRangeFilter
+                      min={fltRecMin}
+                      max={fltRecMax}
+                      onChange={(mn, mx) => {
+                        setFltRecMin(mn);
+                        setFltRecMax(mx);
+                      }}
+                      darkMode={darkMode}
+                    />
+                  </HeaderFilterPanel>
+                </th>
+                <th className="py-3 px-3 text-right border-r border-slate-800 w-28 text-rose-400 sticky top-0 bg-slate-900">
+                  <span className="inline-flex items-center gap-1.5">
+                    Payments (Rs.)
+                    <HeaderFilterButton
+                      label="Payments Amount"
+                      active={fltPayMin !== '' || fltPayMax !== ''}
+                      open={openFilter === 'payments'}
+                      onClick={() => setOpenFilter(openFilter === 'payments' ? null : 'payments')}
+                    />
+                  </span>
+                  <HeaderFilterPanel
+                    open={openFilter === 'payments'}
+                    onClose={() => setOpenFilter(null)}
+                    darkMode={darkMode}
+                    align="right"
+                    width={230}
+                  >
+                    <AmountRangeFilter
+                      min={fltPayMin}
+                      max={fltPayMax}
+                      onChange={(mn, mx) => {
+                        setFltPayMin(mn);
+                        setFltPayMax(mx);
+                      }}
+                      darkMode={darkMode}
+                    />
+                  </HeaderFilterPanel>
+                </th>
+                <th className="py-3 px-3 text-right border-r border-slate-800 w-32 text-amber-300 sticky top-0 bg-slate-900">
+                  <span className="inline-flex items-center gap-1.5">
+                    Balance (Rs.)
+                    <HeaderFilterButton
+                      label="Balance Amount"
+                      active={fltBalMin !== '' || fltBalMax !== ''}
+                      open={openFilter === 'balance'}
+                      onClick={() => setOpenFilter(openFilter === 'balance' ? null : 'balance')}
+                    />
+                  </span>
+                  <HeaderFilterPanel
+                    open={openFilter === 'balance'}
+                    onClose={() => setOpenFilter(null)}
+                    darkMode={darkMode}
+                    align="right"
+                    width={230}
+                  >
+                    <AmountRangeFilter
+                      min={fltBalMin}
+                      max={fltBalMax}
+                      onChange={(mn, mx) => {
+                        setFltBalMin(mn);
+                        setFltBalMax(mx);
+                      }}
+                      darkMode={darkMode}
+                    />
+                  </HeaderFilterPanel>
+                </th>
                 <th className="py-3 px-2 text-center w-24 sticky top-0 bg-slate-900">PAF</th>
               </tr>
             </thead>
