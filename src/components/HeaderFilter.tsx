@@ -158,28 +158,24 @@ export const HeaderFilterPanel: React.FC<{
 };
 
 /* Human-readable summary of a checklist selection, for filter chips:
-   names the values when only a few are included, names the EXCLUSIONS
-   when nearly everything is included (that untick is the meaningful
-   action), and falls back to a count otherwise. */
+   names the ticked values when there are only a few, else a count. */
 export const describeSelection = (
   options: { value: string }[],
   included: Set<string> | null
 ): string => {
   if (included === null) return 'All';
   const incl = options.filter((o) => included.has(o.value)).map((o) => o.value);
-  const excl = options.filter((o) => !included.has(o.value)).map((o) => o.value);
-  if (incl.length === 0) return '(none)';
-  if (excl.length === 0) return 'All';
-  if (excl.length <= 2) return `all except ${excl.join(', ')}`;
   if (incl.length <= 3) return incl.join(', ');
   return `${incl.length} of ${options.length} selected`;
 };
 
 /* ------------------------------------------------------------------ */
 /* Checkbox list of the distinct values present, with row counts.      */
-/* included === null means "no filter" (everything passes).            */
-/* included === empty Set means the filter is active and nothing       */
-/* passes (user unticked every value).                                 */
+/* POSITIVE selection model: a tick means "this value is in my         */
+/* filter". Nothing ticked (included === null) = no filter, everything */
+/* shown. The selection is normalised by the toggle logic: an empty    */
+/* set or a full set both collapse back to null, so a tick always      */
+/* means exactly one thing and can never read as its own opposite.     */
 /* ------------------------------------------------------------------ */
 export const ValuesChecklist: React.FC<{
   options: { value: string; count: number }[];
@@ -207,27 +203,27 @@ export const ValuesChecklist: React.FC<{
   const q = query.trim().toLowerCase();
   const shown = q ? options.filter((o) => o.value.toLowerCase().includes(q)) : options;
 
-  const isChecked = (v: string) => included === null || included.has(v);
+  const isChecked = (v: string) => included !== null && included.has(v);
+  const commit = (next: Set<string>) =>
+    onChange(next.size === 0 || next.size === options.length ? null : next);
   const toggle = (v: string) => {
-    const base =
-      included === null ? new Set(options.map((o) => o.value)) : new Set(included);
+    const base = new Set(included ?? []);
     if (base.has(v)) base.delete(v);
     else base.add(v);
-    onChange(base.size === options.length ? null : base);
+    commit(base);
   };
 
-  /* Excel's "(Select All Search Results)": acts on exactly the values
-     the current search is showing — adds them all to the selection, or
-     removes them all when every shown value is already in. Selections
-     built this way accumulate across successive searches. */
+  /* "Select all search results": acts on exactly the values the
+     current search is showing — ticks them all, or unticks them all
+     when every shown value is already ticked. Selections built this
+     way accumulate across successive searches. */
   const shownAllIn = shown.length > 0 && shown.every((o) => isChecked(o.value));
   const shownSomeIn = shown.some((o) => isChecked(o.value));
   const toggleShown = () => {
-    const base =
-      included === null ? new Set(options.map((o) => o.value)) : new Set(included);
+    const base = new Set(included ?? []);
     if (shownAllIn) shown.forEach((o) => base.delete(o.value));
     else shown.forEach((o) => base.add(o.value));
-    onChange(base.size === options.length ? null : base);
+    commit(base);
   };
 
   const inputCls = darkMode
@@ -244,20 +240,19 @@ export const ValuesChecklist: React.FC<{
             : `${included.size} of ${options.length} selected`}
         </span>
         <span className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
-          >
-            All
-          </button>
-          <button
-            type="button"
-            onClick={() => onChange(new Set<string>())}
-            className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
-          >
-            Clear
-          </button>
+          {included === null ? (
+            <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500">
+              Tick values to filter
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onChange(null)}
+              className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+            >
+              Show all
+            </button>
+          )}
         </span>
       </div>
 
