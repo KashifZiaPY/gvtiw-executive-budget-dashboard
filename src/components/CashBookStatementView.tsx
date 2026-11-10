@@ -109,11 +109,16 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
     setOpenFilter(null);
   };
 
-  // A new statement (different bank / period) starts with clean filters.
+  // A DIFFERENT statement (another bank / another period) starts with
+  // clean filters — but a background auto-sync refresh of the SAME
+  // statement must not wipe them. The reset is therefore keyed to the
+  // statement's identity (bank + period), not to the data object,
+  // which is rebuilt on every sync.
+  const statementIdentity = `${data.title}|${data.accountNoText}|${data.fromDate || ''}|${data.toDate || ''}`;
   useEffect(() => {
     clearAllFilters();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data]);
+  }, [statementIdentity]);
 
   const MONTH_LABELS = [
     'January', 'February', 'March', 'April', 'May', 'June',
