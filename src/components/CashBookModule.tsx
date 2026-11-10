@@ -514,14 +514,41 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       'January', 'February', 'March', 'April', 'May', 'June',
     ];
     const months = new Map<string, number>();
-    const heads = new Map<string, number>();
-    const payees = new Map<string, number>();
+    // Free-text values (heads, payees) are grouped CASE-INSENSITIVELY: the
+    // sheet holds e.g. "Kashif Zia" and "KASHIF ZIA" for the same payee, and
+    // one payee must be one filter value — the option's label is the most
+    // frequent casing and its count is the merged total.
+    type OptAcc = Map<string, { total: number; casings: Map<string, number> }>;
+    const accAdd = (acc: OptAcc, raw: string) => {
+      const v = (raw || '').trim();
+      if (!v) return;
+      const k = v.toLowerCase();
+      let e = acc.get(k);
+      if (!e) {
+        e = { total: 0, casings: new Map() };
+        acc.set(k, e);
+      }
+      e.total += 1;
+      e.casings.set(v, (e.casings.get(v) || 0) + 1);
+    };
+    const accToArr = (acc: OptAcc) =>
+      [...acc.values()].map((e) => {
+        let rep = '';
+        let best = -1;
+        for (const [c, n] of e.casings) {
+          if (n > best) {
+            best = n;
+            rep = c;
+          }
+        }
+        return { value: rep, count: e.total };
+      });
+    const heads: OptAcc = new Map();
+    const payees: OptAcc = new Map();
     for (const e of mappedEntries) {
       if (e.month) months.set(e.month, (months.get(e.month) || 0) + 1);
-      const head = (e.accountHead || '').trim();
-      if (head) heads.set(head, (heads.get(head) || 0) + 1);
-      const payee = (e.paidToBy || '').trim();
-      if (payee) payees.set(payee, (payees.get(payee) || 0) + 1);
+      accAdd(heads, e.accountHead || '');
+      accAdd(payees, e.paidToBy || '');
     }
     const toArr = (m: Map<string, number>) =>
       [...m.entries()].map(([value, count]) => ({ value, count }));
@@ -529,10 +556,21 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
       months: toArr(months).sort(
         (a, b) => FY_MONTH_ORDER.indexOf(a.value) - FY_MONTH_ORDER.indexOf(b.value)
       ),
-      heads: toArr(heads).sort((a, b) => a.value.localeCompare(b.value)),
-      payees: toArr(payees).sort((a, b) => a.value.localeCompare(b.value)),
+      heads: accToArr(heads).sort((a, b) => a.value.localeCompare(b.value)),
+      payees: accToArr(payees).sort((a, b) => a.value.localeCompare(b.value)),
     };
   }, [mappedEntries]);
+
+  // Lowercase key sets for the case-insensitive checklist filters: the
+  // stored selection holds representative casings; rows may carry any casing.
+  const fltHeadsKeys = useMemo(
+    () => (fltHeads === null ? null : new Set([...fltHeads].map((v) => v.toLowerCase()))),
+    [fltHeads]
+  );
+  const fltPayeesKeys = useMemo(
+    () => (fltPayees === null ? null : new Set([...fltPayees].map((v) => v.toLowerCase()))),
+    [fltPayees]
+  );
 
   // Filtered Ledger Entries by Search & Header Filters (AND-combined).
   // With nothing active this returns the mapped entries unchanged.
@@ -555,8 +593,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     if (anyHeaderFilterActive) {
       list = list.filter((entry) => {
         if (fltMonths !== null && !fltMonths.has(entry.month)) return false;
-        if (fltHeads !== null && !fltHeads.has((entry.accountHead || '').trim())) return false;
-        if (fltPayees !== null && !fltPayees.has((entry.paidToBy || '').trim())) return false;
+        if (fltHeadsKeys !== null && !fltHeadsKeys.has((entry.accountHead || '').trim().toLowerCase())) return false;
+        if (fltPayeesKeys !== null && !fltPayeesKeys.has((entry.paidToBy || '').trim().toLowerCase())) return false;
         if (fltCheque && !(entry.chequeNo || '').toLowerCase().includes(fltCheque.toLowerCase()))
           return false;
         if (fltVoucher && !(entry.voucherSerial || '').toLowerCase().includes(fltVoucher.toLowerCase()))
@@ -581,7 +619,7 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
     }
 
     return list;
-  }, [mappedEntries, searchTerm, anyHeaderFilterActive, fltMonths, fltHeads, fltPayees, fltCheque, fltFrom, fltTo, fltType, fltVoucher, fltParticulars, fltRecMin, fltRecMax, fltPayMin, fltPayMax, fltBalMin, fltBalMax]);
+  }, [mappedEntries, searchTerm, anyHeaderFilterActive, fltMonths, fltHeads, fltPayees, fltHeadsKeys, fltPayeesKeys, fltCheque, fltFrom, fltTo, fltType, fltVoucher, fltParticulars, fltRecMin, fltRecMax, fltPayMin, fltPayMax, fltBalMin, fltBalMax]);
 
   // Human-readable filter criteria — printed on the folio when filtered.
   const rangeCriteria = (label: string, minS: string, maxS: string) =>

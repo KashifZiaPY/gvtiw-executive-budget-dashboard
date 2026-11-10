@@ -156,33 +156,71 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
     fltBalMax !== '';
 
   // Distinct values present in this statement (for the header panels).
+  // Free-text values (heads, payees) are grouped CASE-INSENSITIVELY: the
+  // sheet holds e.g. "Kashif Zia" and "KASHIF ZIA" for the same payee, and
+  // one payee must be one filter value — the option's label is the most
+  // frequent casing and its count is the merged total.
   const filterOptions = useMemo(() => {
     const months = new Map<string, number>();
-    const heads = new Map<string, number>();
-    const payees = new Map<string, number>();
     const accts = new Map<string, number>();
+    type OptAcc = Map<string, { total: number; casings: Map<string, number> }>;
+    const accAdd = (acc: OptAcc, raw: string) => {
+      const v = (raw || '').trim();
+      if (!v) return;
+      const k = v.toLowerCase();
+      let e = acc.get(k);
+      if (!e) {
+        e = { total: 0, casings: new Map() };
+        acc.set(k, e);
+      }
+      e.total += 1;
+      e.casings.set(v, (e.casings.get(v) || 0) + 1);
+    };
+    const accToArr = (acc: OptAcc) =>
+      [...acc.values()].map((e) => {
+        let rep = '';
+        let best = -1;
+        for (const [c, n] of e.casings) {
+          if (n > best) {
+            best = n;
+            rep = c;
+          }
+        }
+        return { value: rep, count: e.total };
+      });
+    const heads: OptAcc = new Map();
+    const payees: OptAcc = new Map();
     for (const g of data.groups) {
       for (const r of g.rows) {
         if (isSpecialRow(r)) continue;
         const ml = monthLabelOf(r.date);
         months.set(ml, (months.get(ml) || 0) + 1);
         if (g.accountKey) accts.set(g.accountKey, (accts.get(g.accountKey) || 0) + 1);
-        const head = (r.accountHead || '').trim();
-        if (head) heads.set(head, (heads.get(head) || 0) + 1);
-        const payee = (r.paidToBy || '').trim();
-        if (payee) payees.set(payee, (payees.get(payee) || 0) + 1);
+        accAdd(heads, r.accountHead || '');
+        accAdd(payees, r.paidToBy || '');
       }
     }
     const toArr = (m: Map<string, number>) =>
       [...m.entries()].map(([value, count]) => ({ value, count }));
     return {
       months: toArr(months).sort((a, b) => monthSortKey(a.value) - monthSortKey(b.value)),
-      heads: toArr(heads).sort((a, b) => a.value.localeCompare(b.value)),
-      payees: toArr(payees).sort((a, b) => a.value.localeCompare(b.value)),
+      heads: accToArr(heads).sort((a, b) => a.value.localeCompare(b.value)),
+      payees: accToArr(payees).sort((a, b) => a.value.localeCompare(b.value)),
       accts: toArr(accts).sort((a, b) => a.value.localeCompare(b.value)),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
+
+  // Lowercase key sets for the case-insensitive checklist filters: the
+  // stored selection holds representative casings; rows may carry any casing.
+  const fltHeadsKeys = useMemo(
+    () => (fltHeads === null ? null : new Set([...fltHeads].map((v) => v.toLowerCase()))),
+    [fltHeads]
+  );
+  const fltPayeesKeys = useMemo(
+    () => (fltPayees === null ? null : new Set([...fltPayees].map((v) => v.toLowerCase()))),
+    [fltPayees]
+  );
 
   const inAmtRange = (v: number, minS: string, maxS: string): boolean => {
     if (minS !== '' && !Number.isNaN(parseFloat(minS)) && v < parseFloat(minS)) return false;
@@ -194,8 +232,10 @@ export const CashBookStatementView: React.FC<CashBookStatementViewProps> = ({
     if (isOpeningRow(r)) return true; // opening row is always pinned
     if (isSpecialRow(r)) return !anyFilterActive; // statement subtotal/closing rows belong to the complete statement
     if (fltMonths !== null && !fltMonths.has(monthLabelOf(r.date))) return false;
-    if (fltHeads !== null && !fltHeads.has((r.accountHead || '').trim())) return false;
-    if (fltPayees !== null && !fltPayees.has((r.paidToBy || '').trim())) return false;
+    if (fltHeadsKeys !== null && !fltHeadsKeys.has((r.accountHead || '').trim().toLowerCase()))
+      return false;
+    if (fltPayeesKeys !== null && !fltPayeesKeys.has((r.paidToBy || '').trim().toLowerCase()))
+      return false;
     if (fltCheque && !(r.chequeNo || '').toLowerCase().includes(fltCheque.toLowerCase()))
       return false;
     if (fltFrom || fltTo) {
