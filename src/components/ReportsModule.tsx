@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   INITIAL_MASTER_VOUCHERS,
   INITIAL_CASHBOOK_STATES,
@@ -181,6 +181,16 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   const [bankSearchQuery, setBankSearchQuery] = useState<string>('');
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
+  // Date-field validity messages. A native <input type="date"> DISPLAYS
+  // an impossible date the user typed (e.g. 31-Sep) while its real value
+  // is empty — and fires no change event at all — so without this the
+  // app would silently treat it as "no date bound" (open-ended statement).
+  const [fromDateError, setFromDateError] = useState<string | null>(null);
+  const [toDateError, setToDateError] = useState<string | null>(null);
+  const dateSettleTimers = useRef<Record<'from' | 'to', ReturnType<typeof setTimeout> | null>>({
+    from: null,
+    to: null,
+  });
 
   // Tab-Specific Filters
   const [selectedHead, setSelectedHead] = useState<string>('ALL');
@@ -199,6 +209,8 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   // Date Preset Handlers
   const applyPreset = (type: 'thisMonth' | 'lastMonth' | 'fy' | 'all') => {
     const now = new Date();
+    setFromDateError(null);
+    setToDateError(null);
     if (type === 'thisMonth') {
       const y = now.getFullYear();
       const m = String(now.getMonth() + 1).padStart(2, '0');
@@ -221,6 +233,47 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       setFromDate('');
       setToDate('');
     }
+  };
+
+  // Date-field validation. validity.badInput is true when the user
+  // typed a date that does not exist (31-Sep, 30-Feb, ...): the box
+  // shows it, but the value is empty and no change event ever fired.
+  // We say so loudly instead of letting the statement run unbounded.
+  // The To-before-From check is a warning only — no filter math changes.
+  const RANGE_ERROR = 'To date is before From date — no transactions can fall in this range.';
+  const checkDateRange = (fromVal: string, toVal: string) => {
+    if (fromVal && toVal && fromVal > toVal) {
+      setToDateError(RANGE_ERROR);
+    } else {
+      setToDateError((prev) => (prev === RANGE_ERROR ? null : prev));
+    }
+  };
+  const validateDateField = (which: 'from' | 'to', input: HTMLInputElement | null) => {
+    if (!input) return;
+    const setErr = which === 'from' ? setFromDateError : setToDateError;
+    if (input.validity.badInput) {
+      setErr(
+        which === 'from'
+          ? 'Invalid date — this date does not exist (e.g. September has 30 days). Not applied: the statement is running from the start of the cash book.'
+          : 'Invalid date — this date does not exist (e.g. September has 30 days). Not applied: the statement is running with no end date.'
+      );
+      return;
+    }
+    setErr(null);
+    checkDateRange(fromDate, toDate);
+  };
+  // One Tab from a date field only reaches its picker button, so blur
+  // alone can miss a keyboard user. Re-check shortly after the last
+  // keystroke: still badInput + still empty = a finished, impossible
+  // date (mid-typing clears itself when the date becomes valid).
+  const handleDateKeyUp = (which: 'from' | 'to', input: HTMLInputElement | null) => {
+    if (!input) return;
+    const timers = dateSettleTimers.current;
+    if (timers[which]) clearTimeout(timers[which]);
+    if (!input.validity.badInput) return;
+    timers[which] = setTimeout(() => {
+      if (input.validity.badInput && !input.value) validateDateField(which, input);
+    }, 700);
   };
 
   const handleOpenPAFByVoucherNo = (voucherNo: string) => {
@@ -2441,22 +2494,46 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
                 <input
                   type="date"
                   value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setFromDate(v);
+                    if (!e.currentTarget.validity.badInput) setFromDateError(null);
+                    checkDateRange(v, toDate);
+                  }}
+                  onKeyUp={(e) => handleDateKeyUp('from', e.currentTarget)}
+                  onBlur={(e) => validateDateField('from', e.currentTarget)}
                   className={`w-full p-2 rounded-lg border text-xs outline-none ${
                     darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 />
+                {fromDateError && (
+                  <p className="mt-1 text-[10px] font-bold leading-snug text-rose-600 dark:text-rose-400">
+                    {fromDateError}
+                  </p>
+                )}
               </div>
               <div className="flex-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">To Date</label>
                 <input
                   type="date"
                   value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setToDate(v);
+                    if (!e.currentTarget.validity.badInput) setToDateError(null);
+                    checkDateRange(fromDate, v);
+                  }}
+                  onKeyUp={(e) => handleDateKeyUp('to', e.currentTarget)}
+                  onBlur={(e) => validateDateField('to', e.currentTarget)}
                   className={`w-full p-2 rounded-lg border text-xs outline-none ${
                     darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                   }`}
                 />
+                {toDateError && (
+                  <p className="mt-1 text-[10px] font-bold leading-snug text-rose-600 dark:text-rose-400">
+                    {toDateError}
+                  </p>
+                )}
               </div>
             </div>
 

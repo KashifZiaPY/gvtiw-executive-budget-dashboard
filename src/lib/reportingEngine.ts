@@ -120,8 +120,16 @@ export function resolveBankKeyFromAccount(accountStr?: string): BankAccountKey {
   return 'NS';
 }
 
+/** Days in a real calendar month (monthIndex0 is 0-based). Used to reject
+ * impossible dates instead of letting `new Date` silently roll them into
+ * the next month (31-Sep would otherwise become 1-Oct). */
+const daysInMonth = (year: number, monthIndex0: number): number =>
+  new Date(year, monthIndex0 + 1, 0).getDate();
+
 /**
- * Robust date parser handling DD-MMM-YYYY, YYYY-MM-DD, and standard strings
+ * Robust date parser handling DD-MMM-YYYY, YYYY-MM-DD, and standard strings.
+ * Returns 0 for anything unparseable — INCLUDING impossible calendar days
+ * such as 31-Sep or 30-Feb, which used to roll over to the next month.
  */
 export function parseDateToTimestamp(dateStr?: string): number {
   if (!dateStr) return 0;
@@ -130,6 +138,7 @@ export function parseDateToTimestamp(dateStr?: string): number {
     const year = parseInt(s.substring(0, 4), 10);
     const month = parseInt(s.substring(5, 7), 10);
     const day = parseInt(s.substring(8, 10), 10);
+    if (month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month - 1)) return 0;
     return new Date(year, month - 1, day).getTime();
   }
   const parts = s.split(/[-/ ]/);
@@ -143,6 +152,7 @@ export function parseDateToTimestamp(dateStr?: string): number {
     };
     const m = months[monthStr.slice(0, 3)];
     if (!isNaN(day) && m !== undefined && !isNaN(year)) {
+      if (day < 1 || day > daysInMonth(year, m)) return 0;
       return new Date(year, m, day).getTime();
     }
   }

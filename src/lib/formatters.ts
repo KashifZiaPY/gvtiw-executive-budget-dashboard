@@ -71,8 +71,18 @@ export function formatCompactPKR(val: number | null | undefined): string {
   return `${sign}Rs. ${abs.toLocaleString('en-US')}`;
 }
 
+/** True only for a day that really exists in the given month (month1 is
+ * 1-based). Stops impossible dates such as 31-Sep from being printed as
+ * if they were real — the regexes below used to format them blindly. */
+const isRealCalendarDay = (day: number, month1: number, year: number): boolean => {
+  if (!Number.isInteger(day) || !Number.isInteger(month1) || !Number.isInteger(year)) return false;
+  if (month1 < 1 || month1 > 12 || day < 1) return false;
+  return day <= new Date(year, month1, 0).getDate();
+};
+
 /**
- * Format date in standard Pakistani official format (e.g. "03-Jul-2026")
+ * Format date in standard Pakistani official format (e.g. "03-Jul-2026").
+ * Impossible calendar days (31-Sep, 30-Feb, …) return 'N/A'.
  */
 export function formatPakistaniDate(dateInput: Date | string | number | null | undefined): string {
   if (!dateInput || dateInput === 'N/A' || dateInput === '-') return 'N/A';
@@ -85,6 +95,9 @@ export function formatPakistaniDate(dateInput: Date | string | number | null | u
       const day = matchDmy[1].padStart(2, '0');
       const mon = matchDmy[2].charAt(0).toUpperCase() + matchDmy[2].slice(1).toLowerCase();
       const yr = matchDmy[3];
+      const monthsIdx = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+      const mNum = monthsIdx.indexOf(matchDmy[2].toLowerCase()) + 1;
+      if (!isRealCalendarDay(parseInt(day, 10), mNum, parseInt(yr, 10))) return 'N/A';
       return `${day}-${mon}-${yr}`;
     }
     // Match YYYY-MM-DD (e.g. 2026-09-04 or 2026 - 09 - 04)
@@ -93,6 +106,7 @@ export function formatPakistaniDate(dateInput: Date | string | number | null | u
       const yr = matchYmd[1];
       const mNum = parseInt(matchYmd[2], 10);
       const day = matchYmd[3].padStart(2, '0');
+      if (!isRealCalendarDay(parseInt(day, 10), mNum, parseInt(yr, 10))) return 'N/A';
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const mon = months[mNum - 1] || 'Jan';
       return `${day}-${mon}-${yr}`;
@@ -103,6 +117,7 @@ export function formatPakistaniDate(dateInput: Date | string | number | null | u
       const day = matchDdmmyyyy[1].padStart(2, '0');
       const mNum = parseInt(matchDdmmyyyy[2], 10);
       const yr = matchDdmmyyyy[3];
+      if (!isRealCalendarDay(parseInt(day, 10), mNum, parseInt(yr, 10))) return 'N/A';
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const mon = months[mNum - 1] || 'Jan';
       return `${day}-${mon}-${yr}`;
