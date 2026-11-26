@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useDateFieldGuard, DateFieldError } from '../lib/dateFieldGuard';
 import {
   MasterVoucher,
   INSTITUTIONAL_BANK_ACCOUNTS,
@@ -167,12 +168,15 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
   const [bankAccount, setBankAccount] = useState(BANK_OPTIONS[0].fullName);
   const [billNo, setBillNo] = useState('');
   const [billDate, setBillDate] = useState(todayISO);
+  // Impossible typed dates (31-Sep) must warn, not silently keep the old date.
+  const billDateGuard = useDateFieldGuard(setBillDate);
   const [billAmtExclTax, setBillAmtExclTax] = useState<number | string>('');
   const [saleTax, setSaleTax] = useState<number | string>('');
   const [praTaxOnBill, setPraTaxOnBill] = useState<number | string>('');
 
   const [chequeNoNet, setChequeNoNet] = useState('');
   const [chequeDate, setChequeDate] = useState(todayISO);
+  const chequeDateGuard = useDateFieldGuard(setChequeDate);
   const [chequeAmtNet, setChequeAmtNet] = useState<number | string>('');
   const [isManualNetOverride, setIsManualNetOverride] = useState(false);
 
@@ -1344,9 +1348,12 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                     type="date"
                     max={todayISO}
                     value={billDate}
-                    onChange={(e) => setBillDate(e.target.value)}
+                    onChange={(e) => billDateGuard.change(e)}
+                    onKeyUp={(e) => billDateGuard.keyUp(e.currentTarget)}
+                    onBlur={(e) => billDateGuard.blur(e.currentTarget)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold outline-none focus:border-indigo-500"
                   />
+                  <DateFieldError message={billDateGuard.error} />
                   <span className="text-[10px] text-slate-400 block mt-0.5 font-medium">Future dates blocked</span>
                 </div>
               </div>
@@ -1522,9 +1529,12 @@ export const VoucherEntryModal: React.FC<VoucherEntryModalProps> = ({
                   <input
                     type="date"
                     value={chequeDate}
-                    onChange={(e) => setChequeDate(e.target.value)}
+                    onChange={(e) => chequeDateGuard.change(e)}
+                    onKeyUp={(e) => chequeDateGuard.keyUp(e.currentTarget)}
+                    onBlur={(e) => chequeDateGuard.blur(e.currentTarget)}
                     className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-bold outline-none focus:border-emerald-500"
                   />
+                  <DateFieldError message={chequeDateGuard.error} />
                 </div>
 
                 <div>

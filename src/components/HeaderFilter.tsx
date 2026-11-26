@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useDateRangeGuard, DateFieldError } from '../lib/dateFieldGuard';
 import { Check, Filter, Minus, Search, X } from 'lucide-react';
 
 /**
@@ -365,6 +366,8 @@ export const DateRangeFilter: React.FC<{
   onChange: (from: string, to: string) => void;
   darkMode: boolean;
 }> = ({ from, to, onChange, darkMode }) => {
+  // Impossible typed dates (31-Sep) must warn, not silently unbound the range.
+  const dates = useDateRangeGuard(from, (v) => onChange(v, to), to, (v) => onChange(from, v));
   const inputCls = darkMode
     ? 'bg-slate-800 border-slate-600 text-white'
     : 'bg-slate-50 border-slate-300 text-slate-900';
@@ -375,7 +378,10 @@ export const DateRangeFilter: React.FC<{
         {(from || to) && (
           <button
             type="button"
-            onClick={() => onChange('', '')}
+            onClick={() => {
+              onChange('', '');
+              dates.clearErrors();
+            }}
             className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
           >
             Clear
@@ -386,17 +392,23 @@ export const DateRangeFilter: React.FC<{
         <input
           type="date"
           value={from}
-          onChange={(e) => onChange(e.target.value, to)}
+          onChange={(e) => dates.change('from', e)}
+          onKeyUp={(e) => dates.keyUp('from', e.currentTarget)}
+          onBlur={(e) => dates.blur('from', e.currentTarget)}
           className={`flex-1 min-w-0 px-1.5 py-1.5 text-[11px] rounded-md border outline-none ${inputCls}`}
         />
         <span className="text-[11px] text-slate-400">to</span>
         <input
           type="date"
           value={to}
-          onChange={(e) => onChange(from, e.target.value)}
+          onChange={(e) => dates.change('to', e)}
+          onKeyUp={(e) => dates.keyUp('to', e.currentTarget)}
+          onBlur={(e) => dates.blur('to', e.currentTarget)}
           className={`flex-1 min-w-0 px-1.5 py-1.5 text-[11px] rounded-md border outline-none ${inputCls}`}
         />
       </div>
+      <DateFieldError message={dates.fromError} />
+      <DateFieldError message={dates.toError} />
     </div>
   );
 };

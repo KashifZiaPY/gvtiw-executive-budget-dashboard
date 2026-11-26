@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useDateRangeGuard, DateFieldError } from '../lib/dateFieldGuard';
 import {
   Printer,
   Download,
@@ -143,6 +144,8 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
   const [monthFilter, setMonthFilter] = useState<'ALL' | 'Q1' | 'JUL' | 'AUG' | 'SEP' | 'CUSTOM'>('ALL');
   const [customStartDate, setCustomStartDate] = useState('2026-07-01');
   const [customEndDate, setCustomEndDate] = useState('2026-09-30');
+  // Impossible typed dates (31-Sep) must warn, not silently unbound the range.
+  const rangeDates = useDateRangeGuard(customStartDate, setCustomStartDate, customEndDate, setCustomEndDate);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<string>(() => formatTimestamp(new Date()));
@@ -1675,7 +1678,9 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
                     value={customStartDate}
                     min="2026-07-01"
                     max="2027-06-30"
-                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    onChange={(e) => rangeDates.change('from', e)}
+                    onKeyUp={(e) => rangeDates.keyUp('from', e.currentTarget)}
+                    onBlur={(e) => rangeDates.blur('from', e.currentTarget)}
                     className="h-7 px-1.5 text-xs rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
                   />
                   <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
@@ -1690,13 +1695,22 @@ export const NsOwnWorkingReportView: React.FC<NsOwnReportProps> = ({
                     value={customEndDate}
                     min="2026-07-01"
                     max="2027-06-30"
-                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    onChange={(e) => rangeDates.change('to', e)}
+                    onKeyUp={(e) => rangeDates.keyUp('to', e.currentTarget)}
+                    onBlur={(e) => rangeDates.blur('to', e.currentTarget)}
                     className="h-7 px-1.5 text-xs rounded border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100"
                   />
                   <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">
                     ({formatIsoToDmy(customEndDate)})
                   </span>
                 </div>
+
+                {(rangeDates.fromError || rangeDates.toError) && (
+                  <div className="w-full">
+                    <DateFieldError message={rangeDates.fromError} />
+                    <DateFieldError message={rangeDates.toError} />
+                  </div>
+                )}
               </div>
             )}
           </div>

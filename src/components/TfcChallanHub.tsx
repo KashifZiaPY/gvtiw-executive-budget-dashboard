@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useDateRangeGuard, DateFieldError } from '../lib/dateFieldGuard';
 import ExcelJS from 'exceljs';
 import {
   TfcChallanRecord,
@@ -207,6 +208,8 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
   const [dateFilterMode, setDateFilterMode] = useState<'MONTH' | 'CUSTOM_RANGE'>('MONTH');
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
+  // Impossible typed dates (31-Sep) must warn, not silently unbound the range.
+  const rangeDates = useDateRangeGuard(customStartDate, setCustomStartDate, customEndDate, setCustomEndDate);
 
   const isCourseSelected = useCallback((courseAbbr: string) => {
     if (!selectedCourses || selectedCourses.includes('ALL')) return true;
@@ -2294,6 +2297,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                           setDateFilterMode('CUSTOM_RANGE');
                           if (!customStartDate && minMaxDates.minIso) setCustomStartDate(minMaxDates.minIso);
                           if (!customEndDate && minMaxDates.maxIso) setCustomEndDate(minMaxDates.maxIso);
+                          rangeDates.clearErrors();
                         }}
                         className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 ${
                           dateFilterMode === 'CUSTOM_RANGE'
@@ -2333,7 +2337,9 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                             value={customStartDate}
                             min={minMaxDates.minIso}
                             max={customEndDate || minMaxDates.maxIso}
-                            onChange={(e) => setCustomStartDate(e.target.value)}
+                            onChange={(e) => rangeDates.change('from', e)}
+                            onKeyUp={(e) => rangeDates.keyUp('from', e.currentTarget)}
+                            onBlur={(e) => rangeDates.blur('from', e.currentTarget)}
                             className="px-2 py-0.5 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-md text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                           />
                         </div>
@@ -2345,7 +2351,9 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                             value={customEndDate}
                             min={customStartDate || minMaxDates.minIso}
                             max={minMaxDates.maxIso}
-                            onChange={(e) => setCustomEndDate(e.target.value)}
+                            onChange={(e) => rangeDates.change('to', e)}
+                            onKeyUp={(e) => rangeDates.keyUp('to', e.currentTarget)}
+                            onBlur={(e) => rangeDates.blur('to', e.currentTarget)}
                             className="px-2 py-0.5 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-md text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                           />
                         </div>
@@ -2356,6 +2364,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                             onClick={() => {
                               setCustomStartDate('');
                               setCustomEndDate('');
+                              rangeDates.clearErrors();
                             }}
                             title="Reset date range to all dates"
                             className="px-1.5 py-0.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer flex items-center gap-0.5"
@@ -2363,6 +2372,12 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                             <X className="w-3.5 h-3.5" />
                             <span>Clear</span>
                           </button>
+                        )}
+                        {(rangeDates.fromError || rangeDates.toError) && (
+                          <div className="w-full">
+                            <DateFieldError message={rangeDates.fromError} />
+                            <DateFieldError message={rangeDates.toError} />
+                          </div>
                         )}
                       </div>
                     )}
@@ -2627,6 +2642,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                           setDateFilterMode('CUSTOM_RANGE');
                           if (!customStartDate && minMaxDates.minIso) setCustomStartDate(minMaxDates.minIso);
                           if (!customEndDate && minMaxDates.maxIso) setCustomEndDate(minMaxDates.maxIso);
+                          rangeDates.clearErrors();
                         }}
                         className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 ${
                           dateFilterMode === 'CUSTOM_RANGE'
@@ -2666,7 +2682,9 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                             value={customStartDate}
                             min={minMaxDates.minIso}
                             max={customEndDate || minMaxDates.maxIso}
-                            onChange={(e) => setCustomStartDate(e.target.value)}
+                            onChange={(e) => rangeDates.change('from', e)}
+                            onKeyUp={(e) => rangeDates.keyUp('from', e.currentTarget)}
+                            onBlur={(e) => rangeDates.blur('from', e.currentTarget)}
                             className="px-2 py-0.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-md text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
                           />
                         </div>
@@ -2678,7 +2696,9 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                             value={customEndDate}
                             min={customStartDate || minMaxDates.minIso}
                             max={minMaxDates.maxIso}
-                            onChange={(e) => setCustomEndDate(e.target.value)}
+                            onChange={(e) => rangeDates.change('to', e)}
+                            onKeyUp={(e) => rangeDates.keyUp('to', e.currentTarget)}
+                            onBlur={(e) => rangeDates.blur('to', e.currentTarget)}
                             className="px-2 py-0.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-md text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500 cursor-pointer"
                           />
                         </div>
@@ -2689,6 +2709,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                             onClick={() => {
                               setCustomStartDate('');
                               setCustomEndDate('');
+                              rangeDates.clearErrors();
                             }}
                             title="Reset date range to all dates"
                             className="px-1.5 py-0.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 cursor-pointer flex items-center gap-0.5"
@@ -2696,6 +2717,12 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
                             <X className="w-3.5 h-3.5" />
                             <span>Clear</span>
                           </button>
+                        )}
+                        {(rangeDates.fromError || rangeDates.toError) && (
+                          <div className="w-full">
+                            <DateFieldError message={rangeDates.fromError} />
+                            <DateFieldError message={rangeDates.toError} />
+                          </div>
                         )}
                       </div>
                     )}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useDateFieldGuard, DateFieldError } from '../lib/dateFieldGuard';
 import { Landmark, X, BookOpen, Check, PlusCircle, Calendar, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { MasterVoucher, INSTITUTIONAL_BANK_ACCOUNTS, BankAccountKey } from '../data/cashBookData';
 import { MASTER_ACCOUNT_HEADS } from '../data/voucherMasterLists';
@@ -104,6 +105,8 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
   const [accountKey, setAccountKey] = useState<BankAccountKey>('NS');
   const [amount, setAmount] = useState<number>(0);
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  // Impossible typed dates (31-Sep) must warn, not silently keep the old date.
+  const dateGuard = useDateFieldGuard(setDate);
   const [memo, setMemo] = useState<string>('Bank Charges / SMS / FED Charges');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -382,7 +385,9 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
                   type="date"
                   required
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={(e) => dateGuard.change(e)}
+                  onKeyUp={(e) => dateGuard.keyUp(e.currentTarget)}
+                  onBlur={(e) => dateGuard.blur(e.currentTarget)}
                   disabled={isSubmitting}
                   className={`w-full p-2.5 rounded-xl border outline-none font-mono font-semibold transition-all ${
                     darkMode
@@ -391,6 +396,7 @@ export const BankChargeModal: React.FC<BankChargeModalProps> = ({
                   }`}
                 />
               </div>
+              <DateFieldError message={dateGuard.error} />
             </div>
 
             <div>

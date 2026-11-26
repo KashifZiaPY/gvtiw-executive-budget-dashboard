@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useDateRangeGuard, DateFieldError } from '../lib/dateFieldGuard';
 import {
   BankAccountKey,
   INSTITUTIONAL_BANK_ACCOUNTS,
@@ -94,6 +95,8 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
   const [periodFilter, setPeriodFilter] = useState<'ALL' | 'JUL' | 'AUG' | 'SEP' | 'Q1' | 'Q2' | 'CUSTOM'>('ALL');
   const [customFromDate, setCustomFromDate] = useState('');
   const [customToDate, setCustomToDate] = useState('');
+  // Impossible typed dates (31-Sep) must warn, not silently unbound the range.
+  const folioDates = useDateRangeGuard(customFromDate, setCustomFromDate, customToDate, setCustomToDate);
   const [selectedVoucherForPAF, setSelectedVoucherForPAF] = useState<MasterVoucher | null>(null);
 
   // Sub-Ledger Presentation States for Non-Salary Account (allows extracting dedicated NAVTTC cashbook)
@@ -1318,7 +1321,10 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
             <Calendar className="w-4 h-4 text-amber-400" />
             <select
               value={periodFilter}
-              onChange={(e) => setPeriodFilter(e.target.value as any)}
+              onChange={(e) => {
+                setPeriodFilter(e.target.value as any);
+                folioDates.clearErrors();
+              }}
               className={`px-3 py-2 text-xs rounded-lg border outline-none font-bold cursor-pointer transition-all ${
                 darkMode
                   ? 'bg-slate-900 border-slate-700 text-amber-300'
@@ -1336,25 +1342,37 @@ export const CashBookModule: React.FC<CashBookModuleProps> = ({
           </div>
 
           {periodFilter === 'CUSTOM' && (
-            <div className="flex items-center gap-1.5">
-              <input
-                type="date"
-                value={customFromDate}
-                onChange={(e) => setCustomFromDate(e.target.value)}
-                className={`px-2 py-1.5 text-xs rounded-lg border outline-none ${
-                  darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                }`}
-              />
-              <span className="text-xs text-slate-400">to</span>
-              <input
-                type="date"
-                value={customToDate}
-                onChange={(e) => setCustomToDate(e.target.value)}
-                className={`px-2 py-1.5 text-xs rounded-lg border outline-none ${
-                  darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                }`}
-              />
-            </div>
+            <>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={customFromDate}
+                  onChange={(e) => folioDates.change('from', e)}
+                  onKeyUp={(e) => folioDates.keyUp('from', e.currentTarget)}
+                  onBlur={(e) => folioDates.blur('from', e.currentTarget)}
+                  className={`px-2 py-1.5 text-xs rounded-lg border outline-none ${
+                    darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+                <span className="text-xs text-slate-400">to</span>
+                <input
+                  type="date"
+                  value={customToDate}
+                  onChange={(e) => folioDates.change('to', e)}
+                  onKeyUp={(e) => folioDates.keyUp('to', e.currentTarget)}
+                  onBlur={(e) => folioDates.blur('to', e.currentTarget)}
+                  className={`px-2 py-1.5 text-xs rounded-lg border outline-none ${
+                    darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+              </div>
+              {(folioDates.fromError || folioDates.toError) && (
+                <div className="w-full">
+                  <DateFieldError message={folioDates.fromError} />
+                  <DateFieldError message={folioDates.toError} />
+                </div>
+              )}
+            </>
           )}
 
           <EntryTypeControl value={fltType} onChange={setFltType} darkMode={darkMode} />

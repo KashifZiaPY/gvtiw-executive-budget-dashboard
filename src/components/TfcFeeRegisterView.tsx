@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useDateRangeGuard, DateFieldError } from '../lib/dateFieldGuard';
 import ExcelJS from 'exceljs';
 import {
   TfcChallanRecord,
@@ -281,6 +282,8 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
   const [dateFilterMode, setDateFilterMode] = useState<'MONTH' | 'CUSTOM_RANGE'>('MONTH');
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
+  // Impossible typed dates (31-Sep) must warn, not silently unbound the range.
+  const rangeDates = useDateRangeGuard(customStartDate, setCustomStartDate, customEndDate, setCustomEndDate);
   const [selectedTrades, setSelectedTrades] = useState<string[]>(['ALL']);
   const isTradeSelected = (code: string) =>
     selectedTrades.includes('ALL') || selectedTrades.includes(code);
@@ -2428,7 +2431,9 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                 <input
                   type="date"
                   value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  onChange={(e) => rangeDates.change('from', e)}
+                  onKeyUp={(e) => rangeDates.keyUp('from', e.currentTarget)}
+                  onBlur={(e) => rangeDates.blur('from', e.currentTarget)}
                   className={`text-xs px-2.5 py-1 rounded-xl border ${
                     darkMode
                       ? 'bg-slate-800 border-slate-700 text-white'
@@ -2439,7 +2444,9 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                 <input
                   type="date"
                   value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  onChange={(e) => rangeDates.change('to', e)}
+                  onKeyUp={(e) => rangeDates.keyUp('to', e.currentTarget)}
+                  onBlur={(e) => rangeDates.blur('to', e.currentTarget)}
                   className={`text-xs px-2.5 py-1 rounded-xl border ${
                     darkMode
                       ? 'bg-slate-800 border-slate-700 text-white'
@@ -2452,12 +2459,19 @@ export const TfcFeeRegisterView: React.FC<TfcFeeRegisterViewProps> = ({
                     onClick={() => {
                       setCustomStartDate('');
                       setCustomEndDate('');
+                      rangeDates.clearErrors();
                     }}
                     className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 cursor-pointer"
                     title="Clear date range"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                   </button>
+                )}
+                {(rangeDates.fromError || rangeDates.toError) && (
+                  <div className="w-full">
+                    <DateFieldError message={rangeDates.fromError} />
+                    <DateFieldError message={rangeDates.toError} />
+                  </div>
                 )}
               </div>
             )}

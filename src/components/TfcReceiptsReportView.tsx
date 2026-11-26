@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useDateRangeGuard, DateFieldError } from '../lib/dateFieldGuard';
 import ExcelJS from 'exceljs';
 import {
   TfcChallanRecord,
@@ -157,6 +158,8 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  // Impossible typed dates (31-Sep) must warn, not silently unbound the range.
+  const rangeDates = useDateRangeGuard(startDate, setStartDate, endDate, setEndDate);
   
   // Multi-Course Filter State
   const [internalCourses, setInternalCourses] = useState<string[]>(selectedCoursesProp || ['ALL']);
@@ -1558,26 +1561,32 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                     <input
                       type="date"
                       value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
+                      onChange={(e) => rangeDates.change('from', e)}
+                      onKeyUp={(e) => rangeDates.keyUp('from', e.currentTarget)}
+                      onBlur={(e) => rangeDates.blur('from', e.currentTarget)}
                       min={datasetDateRange.minIso || '2026-08-01'}
                       max={datasetDateRange.maxIso || '2026-09-30'}
                       className={`w-full px-2 py-1 rounded-lg border text-xs font-medium focus:outline-none ${
                         darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
                       }`}
                     />
+                    <DateFieldError message={rangeDates.fromError} />
                   </div>
                   <div>
                     <label className="text-[10px] text-slate-500 block mb-0.5">To Date:</label>
                     <input
                       type="date"
                       value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
+                      onChange={(e) => rangeDates.change('to', e)}
+                      onKeyUp={(e) => rangeDates.keyUp('to', e.currentTarget)}
+                      onBlur={(e) => rangeDates.blur('to', e.currentTarget)}
                       min={datasetDateRange.minIso || '2026-08-01'}
                       max={datasetDateRange.maxIso || '2026-09-30'}
                       className={`w-full px-2 py-1 rounded-lg border text-xs font-medium focus:outline-none ${
                         darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
                       }`}
                     />
+                    <DateFieldError message={rangeDates.toError} />
                   </div>
                 </div>
 
@@ -1587,6 +1596,7 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                     onClick={() => {
                       setStartDate(datasetDateRange.minIso || '2026-08-01');
                       setEndDate(datasetDateRange.maxIso || '2026-09-30');
+                      rangeDates.clearErrors();
                     }}
                     className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
                   >
@@ -1597,6 +1607,7 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                     onClick={() => {
                       setStartDate('2026-08-01');
                       setEndDate('2026-08-31');
+                      rangeDates.clearErrors();
                     }}
                     className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
                   >
@@ -1607,6 +1618,7 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                     onClick={() => {
                       setStartDate('2026-09-01');
                       setEndDate('2026-09-30');
+                      rangeDates.clearErrors();
                     }}
                     className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-300 cursor-pointer"
                   >
@@ -1617,6 +1629,7 @@ export const TfcReceiptsReportView: React.FC<TfcReceiptsReportViewProps> = ({
                     onClick={() => {
                       setStartDate('');
                       setEndDate('');
+                      rangeDates.clearErrors();
                     }}
                     className="px-2 py-0.5 rounded text-[10px] font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer ml-auto"
                   >

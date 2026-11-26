@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useDateRangeGuard, useDateFieldGuard, DateFieldError } from '../lib/dateFieldGuard';
 import {
   Building2,
   Printer,
@@ -775,6 +776,13 @@ export function DirectorReconciliationReport({
   const selectedFY = '2026-27';
   const [fromDate, setFromDate] = useState<string>('2026-07-01');
   const [toDate, setToDate] = useState<string>('2026-08-31');
+  // Impossible typed dates (31-Sep) must warn, not silently keep the old date.
+  const rangeDates = useDateRangeGuard(
+    fromDate,
+    (v) => { if (v) setFromDate(v); },
+    toDate,
+    (v) => { if (v) setToDate(v); }
+  );
 
   // As on date with persistent local storage
   const [asOnDate, setAsOnDate] = useState<string>(() => {
@@ -899,6 +907,9 @@ export function DirectorReconciliationReport({
     }
   };
 
+
+  // Same guard for the As-On cut-off date (two inputs share this state).
+  const asOnGuard = useDateFieldGuard(handleAsOnDateChange, 'The previous As-On date is still in effect.');
 
   // Handler to open Payment Approval Form (PAF) for a specific payment voucher
   const handleOpenPAF = (p: LivePaymentRow) => {
@@ -2579,9 +2590,9 @@ export function DirectorReconciliationReport({
             <input
               type="date"
               value={fromDate}
-              onChange={(e) => {
-                if (e.target.value) setFromDate(e.target.value);
-              }}
+              onChange={(e) => rangeDates.change('from', e)}
+              onKeyUp={(e) => rangeDates.keyUp('from', e.currentTarget)}
+              onBlur={(e) => rangeDates.blur('from', e.currentTarget)}
               className={`w-full px-2 py-1.5 rounded-xl text-xs font-mono font-bold border focus:outline-hidden ${
                 darkMode
                   ? 'bg-slate-800 border-slate-700 text-white focus:border-cyan-500'
@@ -2593,9 +2604,9 @@ export function DirectorReconciliationReport({
             <input
               type="date"
               value={toDate}
-              onChange={(e) => {
-                if (e.target.value) setToDate(e.target.value);
-              }}
+              onChange={(e) => rangeDates.change('to', e)}
+              onKeyUp={(e) => rangeDates.keyUp('to', e.currentTarget)}
+              onBlur={(e) => rangeDates.blur('to', e.currentTarget)}
               className={`w-full px-2 py-1.5 rounded-xl text-xs font-mono font-bold border focus:outline-hidden ${
                 darkMode
                   ? 'bg-slate-800 border-slate-700 text-white focus:border-cyan-500'
@@ -2604,6 +2615,8 @@ export function DirectorReconciliationReport({
               title="Select To Date"
             />
           </div>
+          <DateFieldError message={rangeDates.fromError} />
+          <DateFieldError message={rangeDates.toError} />
         </div>
 
         {/* As On Date */}
@@ -2615,7 +2628,9 @@ export function DirectorReconciliationReport({
             <input
               type="date"
               value={ddmmyyyyToIso(asOnDate)}
-              onChange={(e) => handleAsOnDateChange(e.target.value)}
+              onChange={(e) => asOnGuard.change(e)}
+              onKeyUp={(e) => asOnGuard.keyUp(e.currentTarget)}
+              onBlur={(e) => asOnGuard.blur(e.currentTarget)}
               className={`w-full px-3 py-1.5 rounded-xl text-xs font-mono font-bold border focus:outline-hidden ${
                 darkMode
                   ? 'bg-slate-800 border-slate-700 text-white focus:border-cyan-500'
@@ -2624,6 +2639,7 @@ export function DirectorReconciliationReport({
               title="Select reconciliation cut-off date"
             />
           </div>
+          <DateFieldError message={asOnGuard.error} />
           <div className="text-[10px] text-slate-400 font-mono mt-0.5">Active As On: {asOnDate}</div>
         </div>
       </div>
@@ -2830,11 +2846,14 @@ export function DirectorReconciliationReport({
                 <input
                   type="date"
                   value={ddmmyyyyToIso(asOnDate)}
-                  onChange={(e) => handleAsOnDateChange(e.target.value)}
+                  onChange={(e) => asOnGuard.change(e)}
+                  onKeyUp={(e) => asOnGuard.keyUp(e.currentTarget)}
+                  onBlur={(e) => asOnGuard.blur(e.currentTarget)}
                   className="px-2 py-0.5 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-xs focus:outline-hidden focus:border-cyan-600"
                   title="Change reconciliation As-On date"
                 />
                 <span className="font-mono text-slate-600 dark:text-slate-400 font-semibold">({asOnDate})</span>
+                <DateFieldError message={asOnGuard.error} className="w-full text-[10px] font-bold leading-snug text-rose-600 dark:text-rose-400" />
               </div>
             </div>
           </div>
@@ -3178,6 +3197,13 @@ export function DirectorReconciliationReport({
                                 const val = e.target.value;
                                 const ddmmyyyy = val ? isoToDdmmyyyy(val) : '';
                                 handleUpdateManualCheque(c.id, 'date', ddmmyyyy);
+                              }}
+                              onBlur={(e) => {
+                                // Impossible typed date (31-Sep): clear the cell so the
+                                // fake display cannot sit over the stored value.
+                                if (e.currentTarget.validity.badInput) {
+                                  handleUpdateManualCheque(c.id, 'date', '');
+                                }
                               }}
                               className={`w-full min-w-[115px] px-2 py-0.5 rounded border text-xs font-mono text-center text-slate-900 dark:text-white font-medium ${
                                 !isEffectiveUnlocked
