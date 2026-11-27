@@ -3416,7 +3416,7 @@ export const TfcChallanHub: React.FC<TfcChallanHubProps> = ({
               TEVTA Fee Collection (TFC) Bank Account # 6580027832200011 (Bank of Punjab)
             </p>
             <div className="flex items-center justify-between text-[10px] text-slate-600 mt-2 px-2 border-t pt-1">
-              <span><strong>Period:</strong> {selectedMonth === 'ALL' ? 'All Available Months' : selectedMonth}</span>
+              <span><strong>Period:</strong> {activePeriodLabel}</span>
               <span><strong>Total Paid Challans:</strong> {filteredChallans.length} ({hardCashBookData.dateGroups.length} Dates)</span>
               <span><strong>TFC Credited:</strong> Rs. {formatPKR(hardCashBookData.grandTotal.tfcCredited, false)}</span>
               <span><strong>Generated:</strong> {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString()}</span>
